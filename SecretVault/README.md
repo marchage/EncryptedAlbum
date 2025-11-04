@@ -1,6 +1,6 @@
 # Secret Vault
 
-A beautiful macOS app for securely hiding and encrypting photos with military-grade encryption.
+A beautiful macOS app - true - for securely hiding and encrypting photos with military-grade encryption. (But that's what they all say. details: it was a "simple XOR", and now it uses AES-256)
 
 ## ✨ Features
 
