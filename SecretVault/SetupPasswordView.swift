@@ -12,6 +12,8 @@ struct SetupPasswordView: View {
     @State private var errorMessage = ""
     @State private var biometricsAvailable = false
     @State private var biometricType: LABiometryType = .none
+    @State private var revealPassword = false
+    @State private var flashScreen = false
     
     private var passwordStrength: PasswordStrength {
         evaluatePasswordStrength(useAutoPassword ? generatedPasswords[selectedPasswordIndex] : manualPassword)
@@ -105,45 +107,76 @@ struct SetupPasswordView: View {
                     .frame(width: 400)
                     
                     if useAutoPassword {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Choose a password:")
-                                .font(.headline)
+                        VStack(spacing: 12) {
+                            HStack {
+                                Image(systemName: "key.fill")
+                                    .foregroundStyle(.green)
+                                    .font(.title2)
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Secure password generated")
+                                        .font(.headline)
+                                    Text("Stored in Keychain • Unlocked with \(biometricType == .faceID ? "Face ID" : "Touch ID")")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                            }
+                            .padding()
+                            .frame(width: 400)
+                            .background(Color.green.opacity(0.1))
+                            .cornerRadius(12)
                             
-                            ForEach(0..<3, id: \.self) { index in
-                                Button {
-                                    selectedPasswordIndex = index
-                                } label: {
-                                    HStack {
-                                        Text(generatedPasswords[index])
-                                            .font(.system(.body, design: .monospaced))
-                                            .fontWeight(.medium)
-                                        Spacer()
-                                        if selectedPasswordIndex == index {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .foregroundStyle(.green)
+                            if revealPassword {
+                                VStack(spacing: 8) {
+                                    Text(generatedPasswords[0])
+                                        .font(.system(.title3, design: .monospaced))
+                                        .fontWeight(.semibold)
+                                        .padding()
+                                        .frame(width: 400)
+                                        .background(Color.red.opacity(0.1))
+                                        .cornerRadius(8)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.red, lineWidth: 2)
+                                        )
+                                    
+                                    Button {
+                                        withAnimation {
+                                            revealPassword = false
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "eye.slash.fill")
+                                            Text("Hide Password")
                                         }
                                     }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 10)
-                                    .frame(width: 400)
-                                    .background(selectedPasswordIndex == index ? Color.accentColor.opacity(0.1) : Color(nsColor: .controlBackgroundColor))
-                                    .cornerRadius(8)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(selectedPasswordIndex == index ? Color.accentColor : Color.clear, lineWidth: 2)
-                                    )
+                                    .buttonStyle(.bordered)
                                 }
-                                .buttonStyle(.plain)
+                            } else {
+                                HStack {
+                                    Image(systemName: "eye.slash.fill")
+                                        .foregroundStyle(.secondary)
+                                    Text("Password hidden for security.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    
+                                    Spacer()
+                                    
+                                    Button {
+                                        revealPasswordWithFlash()
+                                    } label: {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "eye.fill")
+                                            Text("Reveal")
+                                        }
+                                        .font(.caption)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .foregroundStyle(.orange)
+                                }
+                                .frame(width: 400, alignment: .leading)
                             }
-                            
-                            HStack {
-                                Image(systemName: "info.circle")
-                                    .foregroundStyle(.secondary)
-                                Text("Password is stored securely in Keychain. You'll never need to type it.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(width: 400, alignment: .leading)
                         }
                     } else {
                         // Manual password entry
@@ -177,6 +210,14 @@ struct SetupPasswordView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(
+            // Flash overlay
+            Rectangle()
+                .fill(.white)
+                .opacity(flashScreen ? 1.0 : 0.0)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+        )
         .onAppear {
             checkBiometrics()
             generatePasswords()
@@ -242,11 +283,8 @@ struct SetupPasswordView: View {
     }
     
     private func generatePasswords() {
-        generatedPasswords = [
-            generateStrongPassword(),
-            generateStrongPassword(),
-            generateStrongPassword()
-        ]
+        // Only generate one password - no need to show it
+        generatedPasswords = [generateStrongPassword()]
     }
     
     private func generateStrongPassword() -> String {
@@ -313,7 +351,7 @@ struct SetupPasswordView: View {
             DispatchQueue.main.async {
                 if success {
                     // Biometric authentication successful
-                    let finalPassword = generatedPasswords[selectedPasswordIndex]
+                    let finalPassword = generatedPasswords[0]
                     completeSetup(with: finalPassword)
                 } else {
                     // Authentication failed
@@ -342,6 +380,27 @@ struct SetupPasswordView: View {
         }
         
         vaultManager.isUnlocked = true
+    }
+    
+    private func revealPasswordWithFlash() {
+        // Flash the screen white
+        withAnimation(.easeInOut(duration: 0.15)) {
+            flashScreen = true
+        }
+        
+        // Hold the flash briefly
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                flashScreen = false
+            }
+            
+            // Reveal password after flash
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation {
+                    revealPassword = true
+                }
+            }
+        }
     }
 }
 
