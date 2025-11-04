@@ -197,10 +197,8 @@ struct MainVaultView: View {
     
     private func restoreSelectedPhotos() {
         let photosToRestore = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
-        for photo in photosToRestore {
-            vaultManager.restorePhotoToLibrary(photo)
-        }
         selectedPhotos.removeAll()
+        vaultManager.batchRestorePhotos(photosToRestore)
     }
     
     private func deleteSelectedPhotos() {

@@ -188,6 +188,45 @@ class VaultManager: ObservableObject {
         }
     }
     
+    func batchRestorePhotos(_ photos: [SecurePhoto]) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let group = DispatchGroup()
+            var restoredPhotos: [SecurePhoto] = []
+            
+            for photo in photos {
+                group.enter()
+                
+                do {
+                    // Decrypt the photo
+                    let decryptedData = try self.decryptPhoto(photo)
+                    
+                    // Save to Photos library
+                    PhotosLibraryService.shared.saveImageToLibrary(decryptedData, filename: photo.filename) { success in
+                        if success {
+                            print("Photo restored to library: \(photo.filename)")
+                            restoredPhotos.append(photo)
+                        } else {
+                            print("Failed to restore photo to library: \(photo.filename)")
+                        }
+                        group.leave()
+                    }
+                } catch {
+                    print("Failed to decrypt photo for restore: \(error)")
+                    group.leave()
+                }
+            }
+            
+            group.wait()
+            
+            // Delete all restored photos from vault at once
+            DispatchQueue.main.async {
+                for photo in restoredPhotos {
+                    self.deletePhoto(photo)
+                }
+            }
+        }
+    }
+    
     func removeDuplicates() {
         DispatchQueue.global(qos: .userInitiated).async {
             var seen = Set<String>()
