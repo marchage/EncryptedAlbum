@@ -44,20 +44,29 @@ struct MainVaultView: View {
             // Toolbar
             HStack {
                 HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.blue, .purple],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
+                    // App Icon
+                    if let appIcon = NSImage(named: "AppIcon") {
+                        Image(nsImage: appIcon)
+                            .resizable()
                             .frame(width: 36, height: 36)
-                        
-                        Image(systemName: "lock.open.fill")
-                            .font(.system(size: 16))
-                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    } else {
+                        // Fallback to SF Symbol if app icon not found
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.blue, .purple],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 36, height: 36)
+                            
+                            Image(systemName: "lock.open.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(.white)
+                        }
                     }
                     
                     VStack(alignment: .leading, spacing: 2) {
