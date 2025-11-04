@@ -14,8 +14,84 @@ struct PhotosLibraryPicker: View {
     @State private var selectedLibrary: LibraryType = .personal
     @State private var isLoading = false
     @State private var showDeletedReminder = false
+    @State private var selectedAlbumFilter: String? = nil
+    
+    var filteredPhotos: [(album: String, asset: PHAsset)] {
+        if let filter = selectedAlbumFilter {
+            return allPhotos.filter { $0.album == filter }
+        }
+        return allPhotos
+    }
     
     var body: some View {
+        HStack(spacing: 0) {
+            // Sidebar with albums
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Albums")
+                    .font(.headline)
+                    .padding()
+                
+                Divider()
+                
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 2) {
+                        // "All Items" option
+                        Button {
+                            selectedAlbumFilter = nil
+                        } label: {
+                            HStack {
+                                Image(systemName: "photo.on.rectangle.angled")
+                                    .frame(width: 20)
+                                Text("All Items")
+                                Spacer()
+                                Text("\(allPhotos.count)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(selectedAlbumFilter == nil ? Color.accentColor.opacity(0.2) : Color.clear)
+                            .cornerRadius(6)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Divider()
+                            .padding(.vertical, 4)
+                        
+                        // Album list
+                        ForEach(uniqueAlbums.sorted(), id: \.self) { album in
+                            Button {
+                                selectedAlbumFilter = album
+                            } label: {
+                                HStack {
+                                    Image(systemName: albumIcon(for: album))
+                                        .frame(width: 20)
+                                    Text(album)
+                                        .lineLimit(1)
+                                    Spacer()
+                                    Text("\(albumPhotoCount(album))")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(selectedAlbumFilter == album ? Color.accentColor.opacity(0.2) : Color.clear)
+                                .cornerRadius(6)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(8)
+                }
+            }
+            .frame(width: 220)
+            .background(.ultraThinMaterial)
+            
+            Divider()
+            
+            // Main content area
         VStack(spacing: 0) {
             // Header with library selector
             HStack {
@@ -115,6 +191,8 @@ struct PhotosLibraryPicker: View {
                 }
             }
         }
+        }
+        }
         .frame(minWidth: 900, minHeight: 700)
         .onAppear {
             requestPhotosAccess()
@@ -150,8 +228,47 @@ struct PhotosLibraryPicker: View {
         }
     }
     
+    private var uniqueAlbums: [String] {
+        Array(Set(allPhotos.map { $0.album }))
+    }
+    
+    private func albumPhotoCount(_ album: String) -> Int {
+        allPhotos.filter { $0.album == album }.count
+    }
+    
+    private func albumIcon(for album: String) -> String {
+        // Special icons for known albums
+        if album.contains("Hidden") {
+            return "eye.slash.fill"
+        } else if album.contains("Favorites") || album.contains("❤️") {
+            return "heart.fill"
+        } else if album.contains("Recent") {
+            return "clock.fill"
+        } else if album.contains("Screenshot") {
+            return "camera.viewfinder"
+        } else if album.contains("Selfie") {
+            return "person.crop.circle.fill"
+        } else if album.contains("Video") {
+            return "video.fill"
+        } else if album.contains("Portrait") {
+            return "person.fill"
+        } else if album.contains("Live Photo") {
+            return "livephoto"
+        } else if album.contains("Panorama") {
+            return "pano.fill"
+        } else if album.contains("Burst") {
+            return "square.stack.3d.up.fill"
+        } else if album.contains("📤") {
+            return "person.2.fill"
+        } else if album.contains("👤") {
+            return "person.fill"
+        } else {
+            return "photo.on.rectangle"
+        }
+    }
+    
     private var groupedPhotos: [(album: String, photos: [(album: String, asset: PHAsset)])] {
-        Dictionary(grouping: allPhotos) { $0.album }
+        Dictionary(grouping: filteredPhotos) { $0.album }
             .map { (album: $0.key, photos: $0.value) }
             .sorted { $0.album < $1.album }
     }

@@ -9,7 +9,8 @@ A beautiful macOS app for securely hiding and encrypting photos and videos with 
 ### Security
 - 🔐 **AES-256-GCM Encryption** - Military-grade encryption using CryptoKit
 - 👆 **Touch ID/Face ID Support** - Biometric authentication with auto-generated passwords
-- 🎲 **Auto-Generated Passwords** - Choose from 3 strong random passwords (16 chars, mixed case, numbers, symbols)
+- 🎲 **Auto-Generated Passwords** - Invisible 16-character password (uppercase, lowercase, numbers, symbols)
+- 👁️ **Optional Password Reveal** - Can reveal password with screen flash warning (security feature)
 - 🔑 **Manual Password Option** - Set your own password with strength requirements
 - 🚫 **Single Instance** - Prevents multiple app instances from corrupting vault
 
@@ -33,7 +34,7 @@ A beautiful macOS app for securely hiding and encrypting photos and videos with 
 1. **Open the project in Xcode**
 2. **Build and run** (⌘R)
 3. **Set up security** on first launch:
-   - **With Touch ID/Face ID**: Choose from 3 auto-generated strong passwords (recommended)
+   - **With Touch ID/Face ID**: Auto-generated strong password (recommended) - completely hidden
    - **Manual**: Create your own password (min 8 chars, uppercase, number required)
 4. **Hide items** by clicking "Hide Items" button
 5. **Select photos and videos** from your Photos library to encrypt and hide
@@ -55,8 +56,25 @@ Your photos and videos are encrypted using the Advanced Encryption Standard with
 - Auto-generates strong 16-character passwords
 - Password is securely stored in macOS Keychain
 - Only accessible after biometric authentication
-- You never need to remember or type the password
+- **Password remains hidden during setup** - never displayed on screen
+- Optional reveal with screen flash warning (prevents silent capture)
 - Can toggle to manual password if preferred
+
+### Password Reveal Protection
+When using auto-generated passwords, the password is completely hidden by default for maximum security:
+- **Hidden by Default**: Password never appears on screen during setup
+- **Optional Reveal**: Click "Reveal" if you need to see it (backup purposes, etc.)
+- **Screen Flash Warning**: Entire screen flashes white when revealing password
+  - Makes it impossible to silently capture the password
+  - Prevents malware/screen recording from accessing it unnoticed
+  - Clear visual indicator that password is being exposed
+- **Re-hide Anytime**: Click "Hide Password" to conceal it again
+
+This design ensures:
+- ✅ Maximum convenience (never need to type password)
+- ✅ Maximum security (password invisible to observers)
+- ✅ Emergency access (can reveal if needed for backup)
+- ✅ Tamper evidence (flash makes reveal obvious)
 
 ## 📖 Usage Guide
 
@@ -170,15 +188,16 @@ open photos/some-uuid_thumb.jpg
 
 ## ⚠️ Important Notes
 
-1. **Auto-Generated Password (Recommended)** - If using Touch ID/Face ID with auto-generated password, your vault is only accessible with biometric authentication on this Mac. Make note of your password if you need backup access.
+1. **Auto-Generated Password (Recommended)** - Password is hidden by default for security. Optional reveal with screen flash warning if needed for backup. Your vault is accessible with biometric authentication on this Mac.
 2. **Manual Password** - If you set a manual password, remember it! There is NO password recovery.
-3. **Vault Location** - Encrypted files stored in `~/Library/Application Support/SecretVault/`
-4. **Backup Strategy** - Copy the entire `SecretVault/` folder to backup. Files remain encrypted and need your password to decrypt.
-5. **Thumbnails** - Low-resolution thumbnails (~200x200px) are NOT encrypted for performance. Full originals are fully encrypted.
-6. **Recently Deleted** - Items deleted from library go to Recently Deleted album. Empty it manually for complete removal.
-7. **Encryption is strong** - Without the password, items are unrecoverable (this is a feature!)
-8. **Video file sizes** - Large videos take longer to encrypt/decrypt but remain fully encrypted at rest
-9. **Portability** - Can move vault to another Mac, but biometric password won't transfer - you'll need the actual password
+3. **Screen Flash Feature** - When revealing auto-generated passwords, the screen flashes white to prevent silent password capture by malware or screen recording.
+4. **Vault Location** - Encrypted files stored in `~/Library/Application Support/SecretVault/`
+5. **Backup Strategy** - Copy the entire `SecretVault/` folder to backup. Files remain encrypted and need your password to decrypt.
+6. **Thumbnails** - Low-resolution thumbnails (~200x200px) are NOT encrypted for performance. Full originals are fully encrypted.
+7. **Recently Deleted** - Items deleted from library go to Recently Deleted album. Empty it manually for complete removal.
+8. **Encryption is strong** - Without the password, items are unrecoverable (this is a feature!)
+9. **Video file sizes** - Large videos take longer to encrypt/decrypt but remain fully encrypted at rest
+10. **Portability** - Can move vault to another Mac, but biometric password won't transfer - you'll need the actual password
 
 ## 🗺️ Future Enhancements
 
