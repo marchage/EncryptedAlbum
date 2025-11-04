@@ -118,7 +118,7 @@ class PhotosLibraryService {
         return assets
     }
     
-    func getMediaData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, VaultManager.SecurePhoto.Location?, Bool?) -> Void) {
+    func getMediaData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, SecurePhoto.Location?, Bool?) -> Void) {
         if asset.mediaType == .video {
             getVideoData(for: asset, completion: completion)
         } else {
@@ -126,7 +126,7 @@ class PhotosLibraryService {
         }
     }
     
-    func getImageData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, VaultManager.SecurePhoto.Location?, Bool?) -> Void) {
+    func getImageData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, SecurePhoto.Location?, Bool?) -> Void) {
         let options = PHImageRequestOptions()
         options.isSynchronous = false
         options.deliveryMode = .highQualityFormat
@@ -138,7 +138,7 @@ class PhotosLibraryService {
             let dateTaken = asset.creationDate
             
             // Extract metadata
-            let location = asset.location.map { VaultManager.SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
+            let location = asset.location.map { SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
             let isFavorite = asset.isFavorite
             
             DispatchQueue.main.async {
@@ -147,7 +147,7 @@ class PhotosLibraryService {
         }
     }
     
-    func getVideoData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, VaultManager.SecurePhoto.Location?, Bool?) -> Void) {
+    func getVideoData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, SecurePhoto.Location?, Bool?) -> Void) {
         let options = PHVideoRequestOptions()
         options.isNetworkAccessAllowed = true
         options.deliveryMode = .highQualityFormat
@@ -168,7 +168,7 @@ class PhotosLibraryService {
                 let duration = asset.duration
                 
                 // Extract metadata
-                let location = asset.location.map { VaultManager.SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
+                let location = asset.location.map { SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
                 let isFavorite = asset.isFavorite
                 
                 DispatchQueue.main.async {
@@ -266,7 +266,7 @@ class PhotosLibraryService {
     }
     
     // Save media (photo or video) to library with metadata restoration
-    func saveMediaToLibrary(_ mediaData: Data, filename: String, mediaType: MediaType, toAlbum albumName: String? = nil, creationDate: Date? = nil, location: VaultManager.SecurePhoto.Location? = nil, isFavorite: Bool? = nil, completion: @escaping (Bool) -> Void) {
+    func saveMediaToLibrary(_ mediaData: Data, filename: String, mediaType: MediaType, toAlbum albumName: String? = nil, creationDate: Date? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil, completion: @escaping (Bool) -> Void) {
         // For videos, we need to save to a temporary file first
         if mediaType == .video {
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)

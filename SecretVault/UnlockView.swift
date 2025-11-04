@@ -11,20 +11,30 @@ struct UnlockView: View {
         VStack(spacing: 24) {
             Spacer()
             
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [.blue, .purple],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+            // App Icon
+            if let appIcon = NSImage(named: "AppIcon") {
+                Image(nsImage: appIcon)
+                    .resizable()
+                    .frame(width: 120, height: 120)
+                    .clipShape(RoundedRectangle(cornerRadius: 26))
+                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+            } else {
+                // Fallback to gradient circle with lock
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-                    .frame(width: 100, height: 100)
-                
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 40))
-                    .foregroundStyle(.white)
+                        .frame(width: 100, height: 100)
+                    
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.white)
+                }
             }
             
             Text("Secret Vault")
