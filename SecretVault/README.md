@@ -8,8 +8,9 @@ A beautiful macOS app for securely hiding and encrypting photos and videos with 
 
 ### Security
 - 🔐 **AES-256-GCM Encryption** - Military-grade encryption using CryptoKit
-- 👆 **Touch ID/Face ID Support** - Biometric authentication for quick unlock
-- 🔑 **Password Protection** - Secure password-based access
+- 👆 **Touch ID/Face ID Support** - Biometric authentication with auto-generated passwords
+- 🎲 **Auto-Generated Passwords** - Choose from 3 strong random passwords (16 chars, mixed case, numbers, symbols)
+- 🔑 **Manual Password Option** - Set your own password with strength requirements
 - 🚫 **Single Instance** - Prevents multiple app instances from corrupting vault
 
 ### Media Management
@@ -31,7 +32,9 @@ A beautiful macOS app for securely hiding and encrypting photos and videos with 
 
 1. **Open the project in Xcode**
 2. **Build and run** (⌘R)
-3. **Set your master password** on first launch
+3. **Set up security** on first launch:
+   - **With Touch ID/Face ID**: Choose from 3 auto-generated strong passwords (recommended)
+   - **Manual**: Create your own password (min 8 chars, uppercase, number required)
 4. **Hide items** by clicking "Hide Items" button
 5. **Select photos and videos** from your Photos library to encrypt and hide
 
@@ -49,9 +52,11 @@ Your photos and videos are encrypted using the Advanced Encryption Standard with
 - Authenticated encryption prevents tampering
 
 ### Touch ID/Face ID
+- Auto-generates strong 16-character passwords
 - Password is securely stored in macOS Keychain
 - Only accessible after biometric authentication
-- Automatically prompts on unlock for convenience
+- You never need to remember or type the password
+- Can toggle to manual password if preferred
 
 ## 📖 Usage Guide
 
@@ -104,11 +109,12 @@ Your photos and videos are encrypted using the Advanced Encryption Standard with
 
 ## ⚠️ Important Notes
 
-1. **Remember your password** - There is NO password recovery. Lost password = lost photos/videos.
-2. **Keep backups** - While encrypted, vault files are in `~/Library/Application Support/SecretVault/`
-3. **Recently Deleted** - Items deleted from library go to Recently Deleted album. Empty it manually for complete removal.
-4. **Encryption is strong** - Without the password, items are unrecoverable (this is a feature!)
-5. **Video file sizes** - Large videos take longer to encrypt/decrypt but remain fully encrypted at rest
+1. **Auto-Generated Password (Recommended)** - If using Touch ID/Face ID with auto-generated password, your vault is only accessible with biometric authentication on this Mac. Make note of your password if you need backup access.
+2. **Manual Password** - If you set a manual password, remember it! There is NO password recovery.
+3. **Keep backups** - While encrypted, vault files are in `~/Library/Application Support/SecretVault/`
+4. **Recently Deleted** - Items deleted from library go to Recently Deleted album. Empty it manually for complete removal.
+5. **Encryption is strong** - Without the password, items are unrecoverable (this is a feature!)
+6. **Video file sizes** - Large videos take longer to encrypt/decrypt but remain fully encrypted at rest
 
 ## 🗺️ Future Enhancements
 
