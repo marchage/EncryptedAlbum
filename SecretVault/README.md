@@ -2,7 +2,7 @@
 
 A beautiful macOS app - true - for securely hiding and encrypting photos with military-grade encryption.
 
-(@NOTE-TO-SELF: include nice visuals!)
+(@NOTE-TO-SELF: include nice visuals! And how does it work when setting a password or code and also using biometric stuff, what is then stored where, and how "hufter-proof" is that then?)
 
 ## ✨ Features
 
