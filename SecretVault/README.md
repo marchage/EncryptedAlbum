@@ -107,14 +107,78 @@ Your photos and videos are encrypted using the Advanced Encryption Standard with
 - Photo thumbnails stored unencrypted for performance (only low-res previews)
 - Video thumbnails generated from first frame
 
+**Vault Storage:**
+- Location: `~/Library/Application Support/SecretVault/`
+- Structure:
+  ```
+  SecretVault/
+  ├── vault.json          # Encrypted metadata (filenames, dates, albums, GPS, etc.)
+  ├── password.hash       # SHA-256 hash of your password
+  └── photos/
+      ├── UUID.enc        # Encrypted photo/video data (AES-256-GCM)
+      ├── UUID_thumb.jpg  # Unencrypted thumbnail (low-res preview)
+      └── ...
+  ```
+- Files are encrypted with AES-256-GCM using your password-derived key
+- Thumbnails are low-resolution previews only (not the full image)
+- Metadata (GPS, dates, albums) is stored in encrypted vault.json
+- Without your password, all `.enc` files are just random data
+
+## 🔒 Vault Security Details
+
+### What's Encrypted
+- ✅ Full-resolution photos and videos (`*.enc` files)
+- ✅ Metadata (filenames, dates taken, GPS coordinates, favorite status)
+- ✅ Album information (source album, vault albums)
+
+### What's NOT Encrypted
+- ❌ Thumbnails (low-resolution previews only - ~200x200px)
+- ❌ File count (visible in Finder)
+- ❌ File sizes (attacker can see encrypted file sizes)
+
+**Important**: Thumbnails are stored in the vault directory (`~/Library/Application Support/SecretVault/photos/`), **NOT in Photos.app**. They are completely invisible to Photos.app, Spotlight, and other apps. Only accessible by:
+- Direct file system access to the vault folder
+- The Secret Vault app itself
+
+### Why This Design?
+- **Thumbnails**: Need instant grid view without decrypting everything
+- **Performance**: Decrypting hundreds of photos just to show thumbnails would be too slow
+- **Trade-off**: Thumbnails reveal you have photos, but not the full content
+- **Isolation**: Thumbnails are in app's private folder, not indexed or visible anywhere else
+- **Security**: Full-resolution originals remain fully encrypted and unrecoverable without password
+
+### Accessing Vault Files
+```bash
+# Navigate to vault directory
+cd ~/Library/Application\ Support/SecretVault/
+
+# List encrypted files
+ls -lh photos/
+
+# View vault metadata (encrypted)
+cat vault.json  # Will show encrypted gibberish without decryption
+
+# Thumbnails are viewable (low-res previews only)
+open photos/some-uuid_thumb.jpg
+```
+
+### Backup & Portability
+- Copy entire `SecretVault/` folder to backup vault
+- Can transfer to another Mac (need same password)
+- Cloud backup possible (files are encrypted, but consider privacy)
+- Password in Keychain is NOT transferred - manual password needed on new Mac
+
 ## ⚠️ Important Notes
 
 1. **Auto-Generated Password (Recommended)** - If using Touch ID/Face ID with auto-generated password, your vault is only accessible with biometric authentication on this Mac. Make note of your password if you need backup access.
 2. **Manual Password** - If you set a manual password, remember it! There is NO password recovery.
-3. **Keep backups** - While encrypted, vault files are in `~/Library/Application Support/SecretVault/`
-4. **Recently Deleted** - Items deleted from library go to Recently Deleted album. Empty it manually for complete removal.
-5. **Encryption is strong** - Without the password, items are unrecoverable (this is a feature!)
-6. **Video file sizes** - Large videos take longer to encrypt/decrypt but remain fully encrypted at rest
+3. **Vault Location** - Encrypted files stored in `~/Library/Application Support/SecretVault/`
+4. **Backup Strategy** - Copy the entire `SecretVault/` folder to backup. Files remain encrypted and need your password to decrypt.
+5. **Thumbnails** - Low-resolution thumbnails (~200x200px) are NOT encrypted for performance. Full originals are fully encrypted.
+6. **Recently Deleted** - Items deleted from library go to Recently Deleted album. Empty it manually for complete removal.
+7. **Encryption is strong** - Without the password, items are unrecoverable (this is a feature!)
+8. **Video file sizes** - Large videos take longer to encrypt/decrypt but remain fully encrypted at rest
+9. **Portability** - Can move vault to another Mac, but biometric password won't transfer - you'll need the actual password
 
 ## 🗺️ Future Enhancements
 
