@@ -185,13 +185,12 @@ struct PhotoThumbnailView: View {
     
     private func loadThumbnail() {
         loadTask = Task {
-            guard let data = try? Data(contentsOf: URL(fileURLWithPath: photo.thumbnailPath)),
-                  let image = NSImage(data: data) else {
+            guard let data = try? Data(contentsOf: URL(fileURLWithPath: photo.thumbnailPath)) else {
                 return
             }
             
             await MainActor.run {
-                thumbnailImage = image
+                thumbnailImage = NSImage(data: data)
             }
         }
     }
