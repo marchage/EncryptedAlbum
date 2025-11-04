@@ -4,5 +4,7 @@
 <dict>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Secret Vault needs access to import and encrypt your photos.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Secret Vault needs permission to remove photos from your library after encrypting them.</string>
 </dict>
 </plist>
