@@ -40,39 +40,41 @@ def create_icon(size):
     lock_width = int(size * 0.35)
     lock_height = int(size * 0.30)
     lock_x = (size - lock_width) // 2
-    lock_y = int(size * 0.45)
+    lock_y = int(size * 0.48)
     
-    # Shackle proportions
-    shackle_width = int(lock_width * 0.65)
-    shackle_height = int(size * 0.22)
-    shackle_x = lock_x + (lock_width - shackle_width) // 2
-    shackle_y = lock_y - shackle_height
-    
-    # Shackle thickness - UNIFORM
+    # Shackle proportions - even wider and even shorter for more rounded top
+    shackle_outer_width = int(lock_width * 0.78)  # Even wider
     shackle_thickness = max(int(size * 0.055), 3)
+    shackle_inner_width = shackle_outer_width - (shackle_thickness * 2)
+    shackle_height = int(size * 0.15)  # Even shorter for rounder arc
     
-    # Draw outer shackle arc (white background)
+    shackle_outer_x = lock_x + (lock_width - shackle_outer_width) // 2
+    shackle_y = lock_y - shackle_height - int(shackle_thickness * 0.8)
+    
+    # Draw shackle using chord method for clean U-shape
+    # Outer arc (white)
     outer_bbox = [
-        shackle_x - shackle_thickness,
+        shackle_outer_x,
         shackle_y,
-        shackle_x + shackle_width + shackle_thickness,
+        shackle_outer_x + shackle_outer_width,
         shackle_y + shackle_height * 2
     ]
-    draw.chord(outer_bbox, start=180, end=0, fill='white')
+    draw.chord(outer_bbox, start=180, end=0, fill='white', outline='white')
     
-    # Draw inner shackle arc (cut out to create uniform thickness)
-    inner_width = shackle_width - (shackle_thickness * 2)
-    if inner_width > 0:
+    # Inner arc (gradient color to cut out the middle)
+    if shackle_inner_width > 0:
+        inner_x = shackle_outer_x + shackle_thickness
+        inner_y = shackle_y + shackle_thickness
         inner_bbox = [
-            shackle_x + shackle_thickness,
-            shackle_y + shackle_thickness,
-            shackle_x + shackle_thickness + inner_width,
-            shackle_y + shackle_height * 2 - shackle_thickness
+            inner_x,
+            inner_y,
+            inner_x + shackle_inner_width,
+            inner_y + shackle_height * 2 - shackle_thickness
         ]
-        # Get the gradient color at this position to cut out
-        sample_y = min(shackle_y + shackle_height, size - 1)
-        gradient_sample = gradient.getpixel((size // 2, sample_y))
-        draw.chord(inner_bbox, start=180, end=0, fill=gradient_sample)
+        # Sample gradient color from that area
+        sample_y = min(int(shackle_y + shackle_height), size - 1)
+        gradient_color = gradient.getpixel((size // 2, sample_y))
+        draw.chord(inner_bbox, start=180, end=0, fill=gradient_color, outline=gradient_color)
     
     # Draw lock body with rounded corners
     body_corner_radius = int(lock_width * 0.15)
@@ -121,4 +123,4 @@ for size in sizes:
     img.save(filepath, 'PNG')
     print(f'✓ Created {filename}')
 
-print('✅ All icons created with uniform thickness shackle!')
+print('✅ All icons created with even rounder shackle!')
