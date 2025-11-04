@@ -119,4 +119,31 @@ class PhotosLibraryService {
             }
         }
     }
+    
+    func hideAssetInLibrary(_ asset: PHAsset, completion: @escaping (Bool) -> Void) {
+        PHPhotoLibrary.shared().performChanges({
+            let request = PHAssetChangeRequest(for: asset)
+            request.isHidden = true
+        }) { success, error in
+            if let error = error {
+                print("Failed to hide photo in library: \(error.localizedDescription)")
+            }
+            DispatchQueue.main.async {
+                completion(success)
+            }
+        }
+    }
+    
+    func deleteAssetFromLibrary(_ asset: PHAsset, completion: @escaping (Bool) -> Void) {
+        PHPhotoLibrary.shared().performChanges({
+            PHAssetChangeRequest.deleteAssets([asset] as NSArray)
+        }) { success, error in
+            if let error = error {
+                print("Failed to delete photo from library: \(error.localizedDescription)")
+            }
+            DispatchQueue.main.async {
+                completion(success)
+            }
+        }
+    }
 }

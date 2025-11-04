@@ -207,9 +207,12 @@ struct PhotosLibraryPicker: View {
             for photoData in assetsToHide {
                 group.enter()
                 PhotosLibraryService.shared.getImageData(for: photoData.asset) { data, filename, dateTaken in
-                    defer { group.leave() }
-                    guard let imageData = data else { return }
+                    guard let imageData = data else {
+                        group.leave()
+                        return
+                    }
                     
+                    // Add to vault
                     try? vaultManager.hidePhoto(
                         imageData: imageData,
                         filename: filename,
@@ -217,6 +220,16 @@ struct PhotosLibraryPicker: View {
                         sourceAlbum: photoData.album,
                         assetIdentifier: photoData.asset.localIdentifier
                     )
+                    
+                    // Delete from Photos library
+                    PhotosLibraryService.shared.deleteAssetFromLibrary(photoData.asset) { success in
+                        if success {
+                            print("Photo deleted from library: \(filename)")
+                        } else {
+                            print("Failed to delete photo from library: \(filename)")
+                        }
+                        group.leave()
+                    }
                 }
             }
             
