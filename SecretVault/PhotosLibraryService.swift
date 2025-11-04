@@ -1,5 +1,6 @@
 import Foundation
 import Photos
+import AppKit
 
 enum LibraryType {
     case personal
@@ -166,6 +167,27 @@ class PhotosLibraryService {
         }) { success, error in
             if let error = error {
                 print("Failed to batch delete photos from library: \(error.localizedDescription)")
+            }
+            DispatchQueue.main.async {
+                completion(success)
+            }
+        }
+    }
+    
+    func saveImageToLibrary(_ imageData: Data, filename: String, completion: @escaping (Bool) -> Void) {
+        guard let image = NSImage(data: imageData) else {
+            DispatchQueue.main.async {
+                completion(false)
+            }
+            return
+        }
+        
+        PHPhotoLibrary.shared().performChanges({
+            let creationRequest = PHAssetCreationRequest.forAsset()
+            creationRequest.addResource(with: .photo, data: imageData, options: nil)
+        }) { success, error in
+            if let error = error {
+                print("Failed to save photo to library: \(error.localizedDescription)")
             }
             DispatchQueue.main.async {
                 completion(success)

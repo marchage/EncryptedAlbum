@@ -5,6 +5,7 @@ struct MainVaultView: View {
     @State private var showingPhotosLibrary = false
     @State private var selectedPhoto: SecurePhoto?
     @State private var showingPhotoViewer = false
+    @State private var selectedPhotos: Set<UUID> = []
     
     var body: some View {
         VStack(spacing: 0) {
@@ -41,6 +42,29 @@ struct MainVaultView: View {
                 Spacer()
                 
                 HStack(spacing: 12) {
+                    if !selectedPhotos.isEmpty {
+                        Text("\(selectedPhotos.count) selected")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        Button {
+                            restoreSelectedPhotos()
+                        } label: {
+                            Label("Restore Selected", systemImage: "arrow.uturn.backward")
+                        }
+                        .buttonStyle(.bordered)
+                        
+                        Button(role: .destructive) {
+                            deleteSelectedPhotos()
+                        } label: {
+                            Label("Delete Selected", systemImage: "trash")
+                        }
+                        .buttonStyle(.bordered)
+                        
+                        Divider()
+                            .frame(height: 20)
+                    }
+                    
                     Button {
                         showingPhotosLibrary = true
                     } label: {
@@ -104,12 +128,23 @@ struct MainVaultView: View {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 200), spacing: 16)], spacing: 16) {
                         ForEach(vaultManager.hiddenPhotos) { photo in
-                            PhotoThumbnailView(photo: photo)
-                                .onTapGesture {
+                            PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id))
+                                .onTapGesture(count: 2) {
                                     selectedPhoto = photo
                                     showingPhotoViewer = true
                                 }
+                                .onTapGesture {
+                                    toggleSelection(photo.id)
+                                }
                                 .contextMenu {
+                                    Button {
+                                        vaultManager.restorePhotoToLibrary(photo)
+                                    } label: {
+                                        Label("Restore to Photos", systemImage: "arrow.uturn.backward")
+                                    }
+                                    
+                                    Divider()
+                                    
                                     Button(role: .destructive) {
                                         vaultManager.deletePhoto(photo)
                                     } label: {
@@ -122,10 +157,9 @@ struct MainVaultView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingPhotoViewer) {
-            if let photo = selectedPhoto {
-                PhotoViewerSheet(photo: photo)
-            }
+        .onAppear {
+            selectedPhotos.removeAll()
+            setupKeyboardShortcuts()
         }
         .sheet(isPresented: $showingPhotoViewer) {
             if let photo = selectedPhoto {
@@ -136,30 +170,85 @@ struct MainVaultView: View {
             PhotosLibraryPicker()
         }
     }
+    
+    private func setupKeyboardShortcuts() {
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            if event.modifierFlags.contains(.command) {
+                if event.charactersIgnoringModifiers == "a" {
+                    selectAll()
+                    return nil
+                }
+            }
+            return event
+        }
+    }
+    
+    private func toggleSelection(_ id: UUID) {
+        if selectedPhotos.contains(id) {
+            selectedPhotos.remove(id)
+        } else {
+            selectedPhotos.insert(id)
+        }
+    }
+    
+    private func selectAll() {
+        selectedPhotos = Set(vaultManager.hiddenPhotos.map { $0.id })
+    }
+    
+    private func restoreSelectedPhotos() {
+        let photosToRestore = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
+        for photo in photosToRestore {
+            vaultManager.restorePhotoToLibrary(photo)
+        }
+        selectedPhotos.removeAll()
+    }
+    
+    private func deleteSelectedPhotos() {
+        let photosToDelete = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
+        for photo in photosToDelete {
+            vaultManager.deletePhoto(photo)
+        }
+        selectedPhotos.removeAll()
+    }
 }
 
 struct PhotoThumbnailView: View {
     let photo: SecurePhoto
+    let isSelected: Bool
     @State private var thumbnailImage: NSImage?
     @State private var loadTask: Task<Void, Never>?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if let image = thumbnailImage {
-                Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 180, height: 180)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .shadow(radius: 2)
-            } else {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.gray.opacity(0.2))
-                    .frame(width: 180, height: 180)
-                    .overlay {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
+            ZStack(alignment: .topTrailing) {
+                if let image = thumbnailImage {
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 180, height: 180)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .shadow(radius: 2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
+                        )
+                } else {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(width: 180, height: 180)
+                        .overlay {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                }
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.white)
+                        .background(Circle().fill(Color.accentColor).padding(3))
+                        .padding(6)
+                }
             }
             
             VStack(alignment: .leading, spacing: 2) {

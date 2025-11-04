@@ -163,6 +163,31 @@ class VaultManager: ObservableObject {
         savePhotos()
     }
     
+    func restorePhotoToLibrary(_ photo: SecurePhoto) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                // Decrypt the photo
+                let decryptedData = try self.decryptPhoto(photo)
+                
+                // Save to Photos library
+                PhotosLibraryService.shared.saveImageToLibrary(decryptedData, filename: photo.filename) { success in
+                    if success {
+                        print("Photo restored to library: \(photo.filename)")
+                        
+                        // Delete from vault
+                        DispatchQueue.main.async {
+                            self.deletePhoto(photo)
+                        }
+                    } else {
+                        print("Failed to restore photo to library: \(photo.filename)")
+                    }
+                }
+            } catch {
+                print("Failed to decrypt photo for restore: \(error)")
+            }
+        }
+    }
+    
     func removeDuplicates() {
         DispatchQueue.global(qos: .userInitiated).async {
             var seen = Set<String>()
