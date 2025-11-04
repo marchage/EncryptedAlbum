@@ -1,5 +1,6 @@
 import SwiftUI
 import LocalAuthentication
+import AppKit
 
 struct UnlockView: View {
     @EnvironmentObject var vaultManager: VaultManager
@@ -87,6 +88,18 @@ struct UnlockView: View {
             }
             
             Spacer()
+            
+            #if DEBUG
+            Button {
+                resetVaultForDevelopment()
+            } label: {
+                Text("🔧 Reset Vault (Dev)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .padding(.bottom, 8)
+            #endif
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
@@ -145,4 +158,40 @@ struct UnlockView: View {
             password = ""
         }
     }
+    
+    #if DEBUG
+    private func resetVaultForDevelopment() {
+        let alert = NSAlert()
+        alert.messageText = "Reset Vault? (Development)"
+        alert.informativeText = "This will delete all vault data, the password, and return to setup. This action cannot be undone."
+        alert.alertStyle = .critical
+        alert.addButton(withTitle: "Reset Vault")
+        alert.addButton(withTitle: "Cancel")
+        
+        if alert.runModal() == .alertFirstButtonReturn {
+            // Delete all vault files
+            let fileManager = FileManager.default
+            let vaultDirectory = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+                .appendingPathComponent("SecretVault")
+            
+            if let vaultDirectory = vaultDirectory {
+                try? fileManager.removeItem(at: vaultDirectory)
+            }
+            
+            // Delete password hash
+            UserDefaults.standard.removeObject(forKey: "passwordHash")
+            
+            // Delete Keychain entry
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: "com.secretvault.password"
+            ]
+            SecItemDelete(query as CFDictionary)
+            
+            // Trigger the app to show setup
+            vaultManager.passwordHash = ""
+            vaultManager.showUnlockPrompt = false
+        }
+    }
+    #endif
 }
