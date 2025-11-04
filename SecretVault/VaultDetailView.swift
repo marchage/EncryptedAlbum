@@ -483,6 +483,8 @@ struct PhotoAssetView: View {
     private func loadThumbnail() {
         let options = PHImageRequestOptions()
         options.deliveryMode = .opportunistic
+        options.isNetworkAccessAllowed = true
+        options.isSynchronous = false
         
         PHImageManager.default().requestImage(
             for: asset,
@@ -490,8 +492,10 @@ struct PhotoAssetView: View {
             contentMode: .aspectFill,
             options: options
         ) { image, _ in
-            if let image = image {
-                thumbnail = image
+            DispatchQueue.main.async {
+                if let image = image {
+                    self.thumbnail = image
+                }
             }
         }
     }
