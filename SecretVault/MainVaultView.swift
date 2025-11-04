@@ -141,6 +141,7 @@ struct MainVaultView: View {
 struct PhotoThumbnailView: View {
     let photo: SecurePhoto
     @State private var thumbnailImage: NSImage?
+    @State private var loadTask: Task<Void, Never>?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -155,6 +156,10 @@ struct PhotoThumbnailView: View {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.gray.opacity(0.2))
                     .frame(width: 180, height: 180)
+                    .overlay {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
             }
             
             VStack(alignment: .leading, spacing: 2) {
@@ -173,12 +178,21 @@ struct PhotoThumbnailView: View {
         .onAppear {
             loadThumbnail()
         }
+        .onDisappear {
+            loadTask?.cancel()
+        }
     }
     
     private func loadThumbnail() {
-        if let data = try? Data(contentsOf: URL(fileURLWithPath: photo.thumbnailPath)),
-           let image = NSImage(data: data) {
-            thumbnailImage = image
+        loadTask = Task {
+            guard let data = try? Data(contentsOf: URL(fileURLWithPath: photo.thumbnailPath)),
+                  let image = NSImage(data: data) else {
+                return
+            }
+            
+            await MainActor.run {
+                thumbnailImage = image
+            }
         }
     }
 }
