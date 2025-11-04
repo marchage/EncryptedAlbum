@@ -69,15 +69,39 @@ class VaultManager: ObservableObject {
     private let photosURL: URL
     
     private init() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let appDirectory = appSupport.appendingPathComponent("SecretVault", isDirectory: true)
+        // Use the app's container directory instead of shared Application Support
+        // This works with App Sandbox
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let baseDirectory: URL
         
-        try? FileManager.default.createDirectory(at: appDirectory, withIntermediateDirectories: true)
+        if let appSupport = appSupport {
+            baseDirectory = appSupport
+        } else {
+            // Fallback to documents directory if Application Support is unavailable
+            guard let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                fatalError("Unable to access file system")
+            }
+            baseDirectory = documents
+        }
         
-        vaultsURL = appDirectory.appendingPathComponent("vaults.json")
-        photosURL = appDirectory.appendingPathComponent("photos", isDirectory: true)
+        let appDirectory = baseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
         
-        try? FileManager.default.createDirectory(at: photosURL, withIntermediateDirectories: true)
+        // Initialize the URLs first
+        self.vaultsURL = appDirectory.appendingPathComponent("vaults.json")
+        self.photosURL = appDirectory.appendingPathComponent("photos", isDirectory: true)
+        
+        // Now create directories
+        do {
+            try FileManager.default.createDirectory(at: appDirectory, withIntermediateDirectories: true)
+        } catch {
+            print("Failed to create directory: \(error)")
+        }
+        
+        do {
+            try FileManager.default.createDirectory(at: photosURL, withIntermediateDirectories: true)
+        } catch {
+            print("Failed to create photos directory: \(error)")
+        }
         
         loadVaults()
     }
