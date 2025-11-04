@@ -3,38 +3,8 @@ import Foundation
 
 // MARK: - Data Models
 
-struct Vault: Identifiable, Codable, Hashable {
-    let id: UUID
-    var name: String
-    var color: String
-    var photoCount: Int
-    var passwordHash: String
-    var salt: Data
-    
-    init(id: UUID = UUID(), name: String, color: String = "blue", passwordHash: String, salt: Data) {
-        self.id = id
-        self.name = name
-        self.color = color
-        self.photoCount = 0
-        self.passwordHash = passwordHash
-        self.salt = salt
-    }
-    
-    var colorValue: Color {
-        switch color {
-        case "blue": return .blue
-        case "purple": return .purple
-        case "pink": return .pink
-        case "red": return .red
-        case "green": return .green
-        default: return .blue
-        }
-    }
-}
-
 struct SecurePhoto: Identifiable, Codable {
     let id: UUID
-    var vaultId: UUID
     var encryptedDataPath: String
     var thumbnailPath: String
     var filename: String
@@ -42,10 +12,10 @@ struct SecurePhoto: Identifiable, Codable {
     var dateTaken: Date?
     var sourceAlbum: String?
     var fileSize: Int64
+    var originalAssetIdentifier: String? // To track the original Photos library asset
     
-    init(id: UUID = UUID(), vaultId: UUID, encryptedDataPath: String, thumbnailPath: String, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, fileSize: Int64 = 0) {
+    init(id: UUID = UUID(), encryptedDataPath: String, thumbnailPath: String, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, fileSize: Int64 = 0, originalAssetIdentifier: String? = nil) {
         self.id = id
-        self.vaultId = vaultId
         self.encryptedDataPath = encryptedDataPath
         self.thumbnailPath = thumbnailPath
         self.filename = filename
@@ -53,6 +23,7 @@ struct SecurePhoto: Identifiable, Codable {
         self.dateTaken = dateTaken
         self.sourceAlbum = sourceAlbum
         self.fileSize = fileSize
+        self.originalAssetIdentifier = originalAssetIdentifier
     }
 }
 
@@ -61,12 +32,14 @@ struct SecurePhoto: Identifiable, Codable {
 class VaultManager: ObservableObject {
     static let shared = VaultManager()
     
-    @Published var vaults: [Vault] = []
-    @Published var unlockedVaults: Set<UUID> = []
-    @Published var showCreateVault = false
+    @Published var hiddenPhotos: [SecurePhoto] = []
+    @Published var isUnlocked = false
+    @Published var showUnlockPrompt = false
+    @Published var passwordHash: String = ""
     
-    private let vaultsURL: URL
     private let photosURL: URL
+    private let photosFile: URL
+    private let settingsFile: URL
     
     private init() {
         // Use the app's container directory instead of shared Application Support
@@ -87,8 +60,9 @@ class VaultManager: ObservableObject {
         let appDirectory = baseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
         
         // Initialize the URLs first
-        self.vaultsURL = appDirectory.appendingPathComponent("vaults.json")
         self.photosURL = appDirectory.appendingPathComponent("photos", isDirectory: true)
+        self.photosFile = appDirectory.appendingPathComponent("hidden_photos.json")
+        self.settingsFile = appDirectory.appendingPathComponent("settings.json")
         
         // Now create directories
         do {
@@ -103,60 +77,46 @@ class VaultManager: ObservableObject {
             print("Failed to create photos directory: \(error)")
         }
         
-        loadVaults()
+        loadSettings()
+        if !passwordHash.isEmpty {
+            showUnlockPrompt = true
+        }
     }
     
-    func createVault(name: String, password: String, color: String) -> Bool {
-        // Simple hash for demo (in production, use proper PBKDF2)
-        let salt = Data(UUID().uuidString.utf8)
-        let passwordHash = password.data(using: .utf8)?.base64EncodedString() ?? ""
-        
-        let vault = Vault(name: name, color: color, passwordHash: passwordHash, salt: salt)
-        vaults.append(vault)
-        saveVaults()
-        
-        let vaultDir = photosURL.appendingPathComponent(vault.id.uuidString, isDirectory: true)
-        try? FileManager.default.createDirectory(at: vaultDir, withIntermediateDirectories: true)
-        
-        return true
+    func setupPassword(_ password: String) {
+        let hash = password.data(using: .utf8)?.base64EncodedString() ?? ""
+        passwordHash = hash
+        saveSettings()
     }
     
-    func unlockVault(_ vault: Vault, password: String) -> Bool {
+    func unlock(password: String) -> Bool {
         let testHash = password.data(using: .utf8)?.base64EncodedString() ?? ""
-        if testHash == vault.passwordHash {
-            unlockedVaults.insert(vault.id)
+        if testHash == passwordHash {
+            isUnlocked = true
+            loadPhotos()
             return true
         }
         return false
     }
     
-    func lockVault(_ vaultId: UUID) {
-        unlockedVaults.remove(vaultId)
+    func lock() {
+        isUnlocked = false
+        hiddenPhotos = []
     }
     
-    func isVaultUnlocked(_ vaultId: UUID) -> Bool {
-        unlockedVaults.contains(vaultId)
+    func hasPassword() -> Bool {
+        return !passwordHash.isEmpty
     }
     
-    func getPhotos(for vaultId: UUID) -> [SecurePhoto] {
-        let photosFile = photosURL.appendingPathComponent(vaultId.uuidString).appendingPathComponent("photos.json")
-        guard let data = try? Data(contentsOf: photosFile),
-              let photos = try? JSONDecoder().decode([SecurePhoto].self, from: data) else {
-            return []
-        }
-        return photos
-    }
-    
-    func addPhoto(to vault: Vault, imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil) throws {
+    func hidePhoto(imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil) throws {
         // Create photo ID and paths
         let photoId = UUID()
-        let vaultDir = photosURL.appendingPathComponent(vault.id.uuidString, isDirectory: true)
         
-        let encryptedPath = vaultDir.appendingPathComponent("\(photoId.uuidString).enc")
-        let thumbnailPath = vaultDir.appendingPathComponent("\(photoId.uuidString)_thumb.jpg")
+        let encryptedPath = photosURL.appendingPathComponent("\(photoId.uuidString).enc")
+        let thumbnailPath = photosURL.appendingPathComponent("\(photoId.uuidString)_thumb.jpg")
         
         // Simple encryption (XOR for demo - replace with real AES in production)
-        let encrypted = encryptImage(imageData, password: vault.passwordHash)
+        let encrypted = encryptImage(imageData, password: passwordHash)
         try encrypted.write(to: encryptedPath)
         
         // Generate thumbnail
@@ -165,30 +125,34 @@ class VaultManager: ObservableObject {
         
         // Create photo record
         let photo = SecurePhoto(
-            vaultId: vault.id,
             encryptedDataPath: encryptedPath.path,
             thumbnailPath: thumbnailPath.path,
             filename: filename,
             dateTaken: dateTaken,
             sourceAlbum: sourceAlbum,
-            fileSize: Int64(imageData.count)
+            fileSize: Int64(imageData.count),
+            originalAssetIdentifier: assetIdentifier
         )
         
         // Save to photos list
-        var photos = getPhotos(for: vault.id)
-        photos.append(photo)
-        savePhotos(photos, for: vault.id)
-        
-        // Update vault photo count
-        if let index = vaults.firstIndex(where: { $0.id == vault.id }) {
-            vaults[index].photoCount += 1
-            saveVaults()
-        }
+        hiddenPhotos.append(photo)
+        savePhotos()
+        objectWillChange.send()
     }
     
-    func decryptPhoto(_ photo: SecurePhoto, vault: Vault) throws -> Data {
+    func decryptPhoto(_ photo: SecurePhoto) throws -> Data {
         let encryptedData = try Data(contentsOf: URL(fileURLWithPath: photo.encryptedDataPath))
-        return decryptImage(encryptedData, password: vault.passwordHash)
+        return decryptImage(encryptedData, password: passwordHash)
+    }
+    
+    func deletePhoto(_ photo: SecurePhoto) {
+        // Delete files
+        try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.encryptedDataPath))
+        try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.thumbnailPath))
+        
+        // Remove from list
+        hiddenPhotos.removeAll { $0.id == photo.id }
+        savePhotos()
     }
     
     private func encryptImage(_ data: Data, password: String) -> Data {
@@ -233,23 +197,31 @@ class VaultManager: ObservableObject {
         return jpegData
     }
     
-    private func savePhotos(_ photos: [SecurePhoto], for vaultId: UUID) {
-        let photosFile = photosURL.appendingPathComponent(vaultId.uuidString).appendingPathComponent("photos.json")
-        guard let data = try? JSONEncoder().encode(photos) else { return }
+    private func savePhotos() {
+        guard let data = try? JSONEncoder().encode(hiddenPhotos) else { return }
         try? data.write(to: photosFile)
     }
     
-    private func loadVaults() {
-        guard let data = try? Data(contentsOf: vaultsURL),
-              let decoded = try? JSONDecoder().decode([Vault].self, from: data) else {
+    private func loadPhotos() {
+        guard let data = try? Data(contentsOf: photosFile),
+              let photos = try? JSONDecoder().decode([SecurePhoto].self, from: data) else {
             return
         }
-        vaults = decoded
+        hiddenPhotos = photos
     }
     
-    private func saveVaults() {
-        guard let data = try? JSONEncoder().encode(vaults) else { return }
-        try? data.write(to: vaultsURL)
-        objectWillChange.send()
+    private func saveSettings() {
+        let settings = ["passwordHash": passwordHash]
+        guard let data = try? JSONEncoder().encode(settings) else { return }
+        try? data.write(to: settingsFile)
+    }
+    
+    private func loadSettings() {
+        guard let data = try? Data(contentsOf: settingsFile),
+              let settings = try? JSONDecoder().decode([String: String].self, from: data),
+              let hash = settings["passwordHash"] else {
+            return
+        }
+        passwordHash = hash
     }
 }

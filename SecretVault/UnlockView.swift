@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct UnlockView: View {
-    let vault: Vault
     @EnvironmentObject var vaultManager: VaultManager
     @State private var password = ""
     @State private var showError = false
@@ -12,7 +11,13 @@ struct UnlockView: View {
             
             ZStack {
                 Circle()
-                    .fill(vault.colorValue.gradient)
+                    .fill(
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .frame(width: 100, height: 100)
                 
                 Image(systemName: "lock.fill")
@@ -20,11 +25,11 @@ struct UnlockView: View {
                     .foregroundStyle(.white)
             }
             
-            Text(vault.name)
+            Text("Secret Vault")
                 .font(.largeTitle)
                 .fontWeight(.bold)
             
-            Text("This vault is locked")
+            Text("Enter your password to unlock")
                 .font(.title3)
                 .foregroundStyle(.secondary)
             
@@ -45,7 +50,7 @@ struct UnlockView: View {
                 Button {
                     unlock()
                 } label: {
-                    Text("Unlock Vault")
+                    Text("Unlock")
                         .frame(width: 200)
                 }
                 .buttonStyle(.borderedProminent)
@@ -59,7 +64,7 @@ struct UnlockView: View {
     }
     
     private func unlock() {
-        if vaultManager.unlockVault(vault, password: password) {
+        if vaultManager.unlock(password: password) {
             showError = false
         } else {
             showError = true
