@@ -274,13 +274,11 @@ struct SetupPasswordView: View {
     }
     
     private func setupPassword() {
-        let finalPassword: String
-        
-        if useAutoPassword {
-            // Use generated password
-            finalPassword = generatedPasswords[selectedPasswordIndex]
+        if useAutoPassword && biometricsAvailable {
+            // Verify biometric authentication first
+            authenticateAndSetup()
         } else {
-            // Use manual password with validation
+            // Manual password validation
             guard manualPassword == confirmPassword else {
                 errorMessage = "Passwords do not match"
                 showError = true
@@ -303,14 +301,44 @@ struct SetupPasswordView: View {
                 return
             }
             
-            finalPassword = manualPassword
+            completeSetup(with: manualPassword)
         }
+    }
+    
+    private func authenticateAndSetup() {
+        let context = LAContext()
+        let reason = "Authenticate to set up your Secret Vault"
         
-        vaultManager.setupPassword(finalPassword)
+        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, error in
+            DispatchQueue.main.async {
+                if success {
+                    // Biometric authentication successful
+                    let finalPassword = generatedPasswords[selectedPasswordIndex]
+                    completeSetup(with: finalPassword)
+                } else {
+                    // Authentication failed
+                    if let error = error as? LAError {
+                        switch error.code {
+                        case .userCancel:
+                            errorMessage = "Setup cancelled"
+                        case .userFallback:
+                            errorMessage = "Biometric authentication required"
+                        default:
+                            errorMessage = "Biometric authentication failed"
+                        }
+                        showError = true
+                    }
+                }
+            }
+        }
+    }
+    
+    private func completeSetup(with password: String) {
+        vaultManager.setupPassword(password)
         
         // Store in Keychain for biometric unlock if biometrics available
         if biometricsAvailable {
-            vaultManager.saveBiometricPassword(finalPassword)
+            vaultManager.saveBiometricPassword(password)
         }
         
         vaultManager.isUnlocked = true
