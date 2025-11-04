@@ -109,6 +109,14 @@ class VaultManager: ObservableObject {
     }
     
     func hidePhoto(imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil) throws {
+        // Check for duplicates by asset identifier
+        if let assetId = assetIdentifier {
+            if hiddenPhotos.contains(where: { $0.originalAssetIdentifier == assetId }) {
+                print("Photo already hidden: \(filename)")
+                return // Skip duplicate
+            }
+        }
+        
         // Create photo ID and paths
         let photoId = UUID()
         
@@ -153,6 +161,37 @@ class VaultManager: ObservableObject {
         // Remove from list
         hiddenPhotos.removeAll { $0.id == photo.id }
         savePhotos()
+    }
+    
+    func removeDuplicates() {
+        var seen = Set<String>()
+        var uniquePhotos: [SecurePhoto] = []
+        var duplicatesToDelete: [SecurePhoto] = []
+        
+        for photo in hiddenPhotos {
+            if let assetId = photo.originalAssetIdentifier {
+                if seen.contains(assetId) {
+                    duplicatesToDelete.append(photo)
+                } else {
+                    seen.insert(assetId)
+                    uniquePhotos.append(photo)
+                }
+            } else {
+                // Keep photos without asset identifier
+                uniquePhotos.append(photo)
+            }
+        }
+        
+        // Delete duplicate files
+        for photo in duplicatesToDelete {
+            try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.encryptedDataPath))
+            try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.thumbnailPath))
+        }
+        
+        hiddenPhotos = uniquePhotos
+        savePhotos()
+        
+        print("Removed \(duplicatesToDelete.count) duplicate photos")
     }
     
     private func encryptImage(_ data: Data, password: String) -> Data {

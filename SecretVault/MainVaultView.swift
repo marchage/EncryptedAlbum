@@ -48,11 +48,24 @@ struct MainVaultView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     
-                    Button {
-                        vaultManager.lock()
+                    Menu {
+                        Button {
+                            vaultManager.removeDuplicates()
+                        } label: {
+                            Label("Remove Duplicates", systemImage: "trash.slash")
+                        }
+                        
+                        Divider()
+                        
+                        Button {
+                            vaultManager.lock()
+                        } label: {
+                            Label("Lock Vault", systemImage: "lock.fill")
+                        }
                     } label: {
-                        Label("Lock", systemImage: "lock.fill")
+                        Image(systemName: "ellipsis.circle")
                     }
+                    .menuStyle(.borderlessButton)
                 }
             }
             .padding()
