@@ -174,7 +174,7 @@ class PhotosLibraryService {
         }
     }
     
-    func saveImageToLibrary(_ imageData: Data, filename: String, completion: @escaping (Bool) -> Void) {
+    func saveImageToLibrary(_ imageData: Data, filename: String, toAlbum albumName: String? = nil, completion: @escaping (Bool) -> Void) {
         guard let image = NSImage(data: imageData) else {
             DispatchQueue.main.async {
                 completion(false)
@@ -185,6 +185,28 @@ class PhotosLibraryService {
         PHPhotoLibrary.shared().performChanges({
             let creationRequest = PHAssetCreationRequest.forAsset()
             creationRequest.addResource(with: .photo, data: imageData, options: nil)
+            
+            // Add to album if specified
+            if let albumName = albumName, let assetPlaceholder = creationRequest.placeholderForCreatedAsset {
+                // Try to find existing album
+                let fetchOptions = PHFetchOptions()
+                fetchOptions.predicate = NSPredicate(format: "title = %@", albumName)
+                let collections = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
+                
+                if let album = collections.firstObject {
+                    // Add to existing album
+                    if let albumChangeRequest = PHAssetCollectionChangeRequest(for: album) {
+                        albumChangeRequest.addAssets([assetPlaceholder] as NSArray)
+                    }
+                } else {
+                    // Create new album and add photo
+                    let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
+                    if let albumPlaceholder = createAlbumRequest.placeholderForCreatedAssetCollection {
+                        let albumAddRequest = PHAssetCollectionChangeRequest(for: albumPlaceholder)
+                        albumAddRequest?.addAssets([assetPlaceholder] as NSArray)
+                    }
+                }
+            }
         }) { success, error in
             if let error = error {
                 print("Failed to save photo to library: \(error.localizedDescription)")

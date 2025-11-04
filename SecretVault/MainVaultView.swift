@@ -10,6 +10,8 @@ struct MainVaultView: View {
     @State private var selectedAlbum: String? = nil
     @State private var showingAlbumSheet = false
     @State private var newAlbumName = ""
+    @State private var showingRestoreOptions = false
+    @State private var photosToRestore: [SecurePhoto] = []
     
     var filteredPhotos: [SecurePhoto] {
         var photos = vaultManager.hiddenPhotos
@@ -201,6 +203,20 @@ struct MainVaultView: View {
             selectedPhotos.removeAll()
             setupKeyboardShortcuts()
         }
+        .alert("Restore Photos", isPresented: $showingRestoreOptions) {
+            Button("Restore to Original Albums") {
+                restoreToOriginalAlbums()
+            }
+            Button("Restore to New Album") {
+                restoreToNewAlbum()
+            }
+            Button("Just Add to Library") {
+                restoreToLibrary()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("How would you like to restore \(photosToRestore.count) photo(s)?")
+        }
         .sheet(isPresented: $showingPhotoViewer) {
             if let photo = selectedPhoto {
                 PhotoViewerSheet(photo: photo)
@@ -272,9 +288,41 @@ struct MainVaultView: View {
     }
     
     private func restoreSelectedPhotos() {
-        let photosToRestore = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
+        photosToRestore = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
+        showingRestoreOptions = true
+    }
+    
+    private func restoreToOriginalAlbums() {
         selectedPhotos.removeAll()
-        vaultManager.batchRestorePhotos(photosToRestore)
+        vaultManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: true)
+    }
+    
+    private func restoreToNewAlbum() {
+        // Prompt for album name
+        let alert = NSAlert()
+        alert.messageText = "Create New Album"
+        alert.informativeText = "Enter a name for the new album:"
+        alert.alertStyle = .informational
+        
+        let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        textField.placeholderString = "Album Name"
+        alert.accessoryView = textField
+        
+        alert.addButton(withTitle: "Create")
+        alert.addButton(withTitle: "Cancel")
+        
+        if alert.runModal() == .alertFirstButtonReturn {
+            let albumName = textField.stringValue
+            if !albumName.isEmpty {
+                selectedPhotos.removeAll()
+                vaultManager.batchRestorePhotos(photosToRestore, toNewAlbum: albumName)
+            }
+        }
+    }
+    
+    private func restoreToLibrary() {
+        selectedPhotos.removeAll()
+        vaultManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: false)
     }
     
     private func deleteSelectedPhotos() {

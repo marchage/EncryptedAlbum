@@ -176,8 +176,8 @@ class VaultManager: ObservableObject {
                 // Decrypt the photo
                 let decryptedData = try self.decryptPhoto(photo)
                 
-                // Save to Photos library
-                PhotosLibraryService.shared.saveImageToLibrary(decryptedData, filename: photo.filename) { success in
+                // Save to Photos library (to original album if available)
+                PhotosLibraryService.shared.saveImageToLibrary(decryptedData, filename: photo.filename, toAlbum: photo.sourceAlbum) { success in
                     if success {
                         print("Photo restored to library: \(photo.filename)")
                         
@@ -195,7 +195,7 @@ class VaultManager: ObservableObject {
         }
     }
     
-    func batchRestorePhotos(_ photos: [SecurePhoto]) {
+    func batchRestorePhotos(_ photos: [SecurePhoto], restoreToSourceAlbum: Bool = false, toNewAlbum: String? = nil) {
         DispatchQueue.global(qos: .userInitiated).async {
             let group = DispatchGroup()
             var restoredPhotos: [SecurePhoto] = []
@@ -207,8 +207,16 @@ class VaultManager: ObservableObject {
                     // Decrypt the photo
                     let decryptedData = try self.decryptPhoto(photo)
                     
+                    // Determine target album
+                    var targetAlbum: String? = nil
+                    if let newAlbum = toNewAlbum {
+                        targetAlbum = newAlbum
+                    } else if restoreToSourceAlbum {
+                        targetAlbum = photo.sourceAlbum
+                    }
+                    
                     // Save to Photos library
-                    PhotosLibraryService.shared.saveImageToLibrary(decryptedData, filename: photo.filename) { success in
+                    PhotosLibraryService.shared.saveImageToLibrary(decryptedData, filename: photo.filename, toAlbum: targetAlbum) { success in
                         if success {
                             print("Photo restored to library: \(photo.filename)")
                             restoredPhotos.append(photo)
