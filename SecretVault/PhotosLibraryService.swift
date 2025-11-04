@@ -201,10 +201,9 @@ class PhotosLibraryService {
                 } else {
                     // Create new album and add photo
                     let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
-                    if let albumPlaceholder = createAlbumRequest.placeholderForCreatedAssetCollection {
-                        let albumAddRequest = PHAssetCollectionChangeRequest(for: albumPlaceholder)
-                        albumAddRequest?.addAssets([assetPlaceholder] as NSArray)
-                    }
+                    createAlbumRequest.placeholderForCreatedAssetCollection
+                    // Add the asset to the newly created album
+                    createAlbumRequest.addAssets([assetPlaceholder] as NSArray)
                 }
             }
         }) { success, error in
