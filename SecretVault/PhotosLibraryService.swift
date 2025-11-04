@@ -42,6 +42,26 @@ class PhotosLibraryService {
         let includePersonal = libraryType == .personal || libraryType == .both
         let includeShared = libraryType == .shared || libraryType == .both
         
+        // Explicitly fetch Hidden album FIRST (most important)
+        if includePersonal || libraryType == .both {
+            let hiddenAlbum = PHAssetCollection.fetchAssetCollections(
+                with: .smartAlbum,
+                subtype: .smartAlbumAllHidden,
+                options: nil
+            )
+            
+            hiddenAlbum.enumerateObjects { collection, _, _ in
+                let assetCount = PHAsset.fetchAssets(in: collection, options: nil).count
+                print("Found Hidden album with \(assetCount) items")
+                
+                var name = collection.localizedTitle ?? "Hidden"
+                if libraryType == .both {
+                    name = "👤 " + name
+                }
+                albums.append((name, collection))
+            }
+        }
+        
         // User albums
         if includePersonal {
             let userAlbums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: nil)
@@ -56,7 +76,7 @@ class PhotosLibraryService {
             }
         }
         
-        // Smart albums
+        // Smart albums (including Hidden album)
         let smartAlbums = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .any, options: nil)
         smartAlbums.enumerateObjects { collection, _, _ in
             // Filter based on library type
@@ -71,7 +91,10 @@ class PhotosLibraryService {
                     let prefix = isSharedAlbum ? "📤 " : "👤 "
                     name = prefix + name
                 }
-                albums.append((name, collection))
+                // Avoid duplicating Hidden album
+                if !albums.contains(where: { $0.0 == name }) {
+                    albums.append((name, collection))
+                }
             }
         }
         

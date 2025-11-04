@@ -192,7 +192,6 @@ struct PhotosLibraryPicker: View {
             }
         }
         }
-        }
         .frame(minWidth: 900, minHeight: 700)
         .onAppear {
             requestPhotosAccess()
