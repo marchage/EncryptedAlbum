@@ -13,9 +13,22 @@ class PhotosLibraryService {
     private init() {}
     
     func requestAccess(completion: @escaping (Bool) -> Void) {
-        PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        
+        switch status {
+        case .authorized, .limited:
             DispatchQueue.main.async {
-                completion(status == .authorized)
+                completion(true)
+            }
+        case .notDetermined:
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
+                DispatchQueue.main.async {
+                    completion(newStatus == .authorized || newStatus == .limited)
+                }
+            }
+        default:
+            DispatchQueue.main.async {
+                completion(false)
             }
         }
     }
@@ -140,6 +153,19 @@ class PhotosLibraryService {
         }) { success, error in
             if let error = error {
                 print("Failed to delete photo from library: \(error.localizedDescription)")
+            }
+            DispatchQueue.main.async {
+                completion(success)
+            }
+        }
+    }
+    
+    func batchDeleteAssets(_ assets: [PHAsset], completion: @escaping (Bool) -> Void) {
+        PHPhotoLibrary.shared().performChanges({
+            PHAssetChangeRequest.deleteAssets(assets as NSArray)
+        }) { success, error in
+            if let error = error {
+                print("Failed to batch delete photos from library: \(error.localizedDescription)")
             }
             DispatchQueue.main.async {
                 completion(success)

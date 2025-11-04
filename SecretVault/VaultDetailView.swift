@@ -13,6 +13,7 @@ struct PhotosLibraryPicker: View {
     @State private var importing = false
     @State private var selectedLibrary: LibraryType = .personal
     @State private var isLoading = false
+    @State private var showDeletedReminder = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -118,6 +119,16 @@ struct PhotosLibraryPicker: View {
         .onAppear {
             requestPhotosAccess()
         }
+        .alert("Photos Hidden Successfully", isPresented: $showDeletedReminder) {
+            Button("Open Photos App") {
+                NSWorkspace.shared.open(URL(string: "photos://")!)
+            }
+            Button("OK", role: .cancel) {
+                dismiss()
+            }
+        } message: {
+            Text("Your photos are now encrypted in the vault.\n\nThey've been moved to 'Recently Deleted' in Photos. To permanently remove them from your library, open Photos and empty the 'Recently Deleted' album.")
+        }
         .overlay {
             if importing {
                 ZStack {
@@ -203,6 +214,7 @@ struct PhotosLibraryPicker: View {
         
         DispatchQueue.global(qos: .userInitiated).async {
             let group = DispatchGroup()
+            var successfulAssets: [PHAsset] = []
             
             for photoData in assetsToHide {
                 group.enter()
@@ -213,31 +225,45 @@ struct PhotosLibraryPicker: View {
                     }
                     
                     // Add to vault
-                    try? vaultManager.hidePhoto(
-                        imageData: imageData,
-                        filename: filename,
-                        dateTaken: dateTaken,
-                        sourceAlbum: photoData.album,
-                        assetIdentifier: photoData.asset.localIdentifier
-                    )
-                    
-                    // Delete from Photos library
-                    PhotosLibraryService.shared.deleteAssetFromLibrary(photoData.asset) { success in
-                        if success {
-                            print("Photo deleted from library: \(filename)")
-                        } else {
-                            print("Failed to delete photo from library: \(filename)")
-                        }
-                        group.leave()
+                    do {
+                        try vaultManager.hidePhoto(
+                            imageData: imageData,
+                            filename: filename,
+                            dateTaken: dateTaken,
+                            sourceAlbum: photoData.album,
+                            assetIdentifier: photoData.asset.localIdentifier
+                        )
+                        successfulAssets.append(photoData.asset)
+                        print("Photo added to vault: \(filename)")
+                    } catch {
+                        print("Failed to add photo to vault: \(filename)")
                     }
+                    
+                    group.leave()
                 }
             }
             
             group.wait()
             
-            DispatchQueue.main.async {
-                importing = false
-                dismiss()
+            // Batch delete all successfully vaulted photos at once
+            if !successfulAssets.isEmpty {
+                PhotosLibraryService.shared.batchDeleteAssets(successfulAssets) { success in
+                    if success {
+                        print("Successfully deleted \(successfulAssets.count) photos from library")
+                    } else {
+                        print("Failed to delete some photos from library")
+                    }
+                    
+                    DispatchQueue.main.async {
+                        importing = false
+                        showDeletedReminder = true
+                    }
+                }
+            } else {
+                DispatchQueue.main.async {
+                    importing = false
+                    dismiss()
+                }
             }
         }
     }
