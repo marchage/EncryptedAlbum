@@ -51,7 +51,12 @@ class PhotosLibraryService {
             )
             
             hiddenAlbum.enumerateObjects { collection, _, _ in
-                let assetCount = PHAsset.fetchAssets(in: collection, options: nil).count
+                // Include hidden assets when counting
+                let countOptions = PHFetchOptions()
+                if #available(macOS 13.0, *) {
+                    countOptions.includeHiddenAssets = true
+                }
+                let assetCount = PHAsset.fetchAssets(in: collection, options: countOptions).count
                 print("Found Hidden album with \(assetCount) items")
                 
                 var name = collection.localizedTitle ?? "Hidden"
@@ -130,6 +135,10 @@ class PhotosLibraryService {
         var assets: [PHAsset] = []
         let fetchOptions = PHFetchOptions()
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        // Critical: include hidden assets when fetching from the Hidden smart album
+        if #available(macOS 13.0, *), collection.assetCollectionSubtype == .smartAlbumAllHidden {
+            fetchOptions.includeHiddenAssets = true
+        }
         
         let result = PHAsset.fetchAssets(in: collection, options: fetchOptions)
         result.enumerateObjects { asset, _, _ in
