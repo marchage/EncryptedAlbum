@@ -201,7 +201,6 @@ class PhotosLibraryService {
                 } else {
                     // Create new album and add photo
                     let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
-                    createAlbumRequest.placeholderForCreatedAssetCollection
                     // Add the asset to the newly created album
                     createAlbumRequest.addAssets([assetPlaceholder] as NSArray)
                 }
