@@ -9,11 +9,6 @@
 /* Begin PBXBuildFile section */
 		9849B4552EB9893D00B17DAC /* SecretVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4542EB9893D00B17DAC /* SecretVaultApp.swift */; };
 		9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4562EB9893D00B17DAC /* ContentView.swift */; };
-		1CA80AC13D192EBBFCD3B516 /* PhotosLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */; };
-		432DD49F40365EA5EAEBFD23 /* VaultDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C904A396A6B1968CDD78D9 /* VaultDetailView.swift */; };
-		F9B0EAD109417F32CF3B7D50 /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C068CD08B70A6DBEA00400 /* UnlockView.swift */; };
-		1193035DEA665D53338314DC /* CreateVaultSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CECFB44F4F17EEACF6960BE /* CreateVaultSheet.swift */; };
-		E48BBB324071974C8BE48D0D /* VaultManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F96EA3625074B045C751E84 /* VaultManager.swift */; };
 		9849B4592EB9893F00B17DAC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B4582EB9893F00B17DAC /* Assets.xcassets */; };
 		9849B45C2EB9893F00B17DAC /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B45B2EB9893F00B17DAC /* Preview Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -22,12 +17,6 @@
 		9849B4512EB9893D00B17DAC /* SecretVault.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SecretVault.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9849B4542EB9893D00B17DAC /* SecretVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultApp.swift; sourceTree = "<group>"; };
 		9849B4562EB9893D00B17DAC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		CF9ADA530C59D1A9B3039479 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosLibraryService.swift; sourceTree = "<group>"; };
-		C5C904A396A6B1968CDD78D9 /* VaultDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultDetailView.swift; sourceTree = "<group>"; };
-		D4C068CD08B70A6DBEA00400 /* UnlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockView.swift; sourceTree = "<group>"; };
-		6CECFB44F4F17EEACF6960BE /* CreateVaultSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateVaultSheet.swift; sourceTree = "<group>"; };
-		9F96EA3625074B045C751E84 /* VaultManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultManager.swift; sourceTree = "<group>"; };
 		9849B4582EB9893F00B17DAC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9849B45B2EB9893F00B17DAC /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		9849B45D2EB9893F00B17DAC /* SecretVault.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SecretVault.entitlements; sourceTree = "<group>"; };
@@ -65,12 +54,6 @@
 			children = (
 				9849B4542EB9893D00B17DAC /* SecretVaultApp.swift */,
 				9849B4562EB9893D00B17DAC /* ContentView.swift */,
-				CF9ADA530C59D1A9B3039479 /* Info.plist */,
-				A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */,
-				C5C904A396A6B1968CDD78D9 /* VaultDetailView.swift */,
-				D4C068CD08B70A6DBEA00400 /* UnlockView.swift */,
-				6CECFB44F4F17EEACF6960BE /* CreateVaultSheet.swift */,
-				9F96EA3625074B045C751E84 /* VaultManager.swift */,
 				9849B4582EB9893F00B17DAC /* Assets.xcassets */,
 				9849B45D2EB9893F00B17DAC /* SecretVault.entitlements */,
 				9849B45A2EB9893F00B17DAC /* Preview Content */,
@@ -157,11 +140,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */,
-				1CA80AC13D192EBBFCD3B516 /* PhotosLibraryService.swift in Sources */,
-				432DD49F40365EA5EAEBFD23 /* VaultDetailView.swift in Sources */,
-				F9B0EAD109417F32CF3B7D50 /* UnlockView.swift in Sources */,
-				1193035DEA665D53338314DC /* CreateVaultSheet.swift in Sources */,
-				E48BBB324071974C8BE48D0D /* VaultManager.swift in Sources */,
 				9849B4552EB9893D00B17DAC /* SecretVaultApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -300,8 +278,7 @@
 				DEVELOPMENT_TEAM = TDWHVYP98Z;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = SecretVault/Info.plist;
+				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -328,8 +305,7 @@
 				DEVELOPMENT_TEAM = TDWHVYP98Z;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = SecretVault/Info.plist;
+				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
