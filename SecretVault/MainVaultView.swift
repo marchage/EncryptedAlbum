@@ -6,6 +6,35 @@ struct MainVaultView: View {
     @State private var selectedPhoto: SecurePhoto?
     @State private var showingPhotoViewer = false
     @State private var selectedPhotos: Set<UUID> = []
+    @State private var searchText = ""
+    @State private var selectedAlbum: String? = nil
+    @State private var showingAlbumSheet = false
+    @State private var newAlbumName = ""
+    
+    var filteredPhotos: [SecurePhoto] {
+        var photos = vaultManager.hiddenPhotos
+        
+        // Filter by album
+        if let album = selectedAlbum {
+            photos = photos.filter { $0.vaultAlbum == album }
+        }
+        
+        // Filter by search
+        if !searchText.isEmpty {
+            photos = photos.filter { photo in
+                photo.filename.localizedCaseInsensitiveContains(searchText) ||
+                photo.sourceAlbum?.localizedCaseInsensitiveContains(searchText) == true ||
+                photo.vaultAlbum?.localizedCaseInsensitiveContains(searchText) == true
+            }
+        }
+        
+        return photos
+    }
+    
+    var vaultAlbums: [String] {
+        let albums = Set(vaultManager.hiddenPhotos.compactMap { $0.vaultAlbum })
+        return albums.sorted()
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -54,6 +83,13 @@ struct MainVaultView: View {
                         }
                         .buttonStyle(.bordered)
                         
+                        Button {
+                            exportSelectedPhotos()
+                        } label: {
+                            Label("Export Selected", systemImage: "square.and.arrow.up")
+                        }
+                        .buttonStyle(.bordered)
+                        
                         Button(role: .destructive) {
                             deleteSelectedPhotos()
                         } label: {
@@ -64,6 +100,10 @@ struct MainVaultView: View {
                         Divider()
                             .frame(height: 20)
                     }
+                    
+                    TextField("Search...", text: $searchText)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 200)
                     
                     Button {
                         showingPhotosLibrary = true
@@ -127,7 +167,7 @@ struct MainVaultView: View {
             } else {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 200), spacing: 16)], spacing: 16) {
-                        ForEach(vaultManager.hiddenPhotos) { photo in
+                        ForEach(filteredPhotos) { photo in
                             PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id))
                                 .onTapGesture(count: 2) {
                                     selectedPhoto = photo
@@ -192,7 +232,43 @@ struct MainVaultView: View {
     }
     
     private func selectAll() {
-        selectedPhotos = Set(vaultManager.hiddenPhotos.map { $0.id })
+        selectedPhotos = Set(filteredPhotos.map { $0.id })
+    }
+    
+    private func exportSelectedPhotos() {
+        let panel = NSSavePanel()
+        panel.canCreateDirectories = true
+        panel.prompt = "Export"
+        panel.message = "Choose a folder to export photos to"
+        panel.canSelectHiddenExtension = true
+        
+        panel.begin { response in
+            if response == .OK, let url = panel.url {
+                exportPhotos(to: url)
+            }
+        }
+    }
+    
+    private func exportPhotos(to folderURL: URL) {
+        let photosToExport = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            for photo in photosToExport {
+                do {
+                    let decryptedData = try vaultManager.decryptPhoto(photo)
+                    let fileURL = folderURL.appendingPathComponent(photo.filename)
+                    try decryptedData.write(to: fileURL)
+                    print("Exported: \(photo.filename)")
+                } catch {
+                    print("Failed to export \(photo.filename): \(error)")
+                }
+            }
+            
+            DispatchQueue.main.async {
+                selectedPhotos.removeAll()
+                // Could show a success message here
+            }
+        }
     }
     
     private func restoreSelectedPhotos() {

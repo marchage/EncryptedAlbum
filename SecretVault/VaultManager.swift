@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import CryptoKit
 
 // MARK: - Data Models
 
@@ -11,10 +12,11 @@ struct SecurePhoto: Identifiable, Codable {
     var dateAdded: Date
     var dateTaken: Date?
     var sourceAlbum: String?
+    var vaultAlbum: String? // Custom album within the vault
     var fileSize: Int64
     var originalAssetIdentifier: String? // To track the original Photos library asset
     
-    init(id: UUID = UUID(), encryptedDataPath: String, thumbnailPath: String, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, fileSize: Int64 = 0, originalAssetIdentifier: String? = nil) {
+    init(id: UUID = UUID(), encryptedDataPath: String, thumbnailPath: String, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, vaultAlbum: String? = nil, fileSize: Int64 = 0, originalAssetIdentifier: String? = nil) {
         self.id = id
         self.encryptedDataPath = encryptedDataPath
         self.thumbnailPath = thumbnailPath
@@ -22,6 +24,7 @@ struct SecurePhoto: Identifiable, Codable {
         self.dateAdded = Date()
         self.dateTaken = dateTaken
         self.sourceAlbum = sourceAlbum
+        self.vaultAlbum = vaultAlbum
         self.fileSize = fileSize
         self.originalAssetIdentifier = originalAssetIdentifier
     }
@@ -87,6 +90,8 @@ class VaultManager: ObservableObject {
         let hash = password.data(using: .utf8)?.base64EncodedString() ?? ""
         passwordHash = hash
         saveSettings()
+        // Store password for biometric unlock
+        saveBiometricPassword(password)
     }
     
     func unlock(password: String) -> Bool {
@@ -94,6 +99,8 @@ class VaultManager: ObservableObject {
         if testHash == passwordHash {
             isUnlocked = true
             loadPhotos()
+            // Update stored password for biometric unlock
+            saveBiometricPassword(password)
             return true
         }
         return false
@@ -263,19 +270,44 @@ class VaultManager: ObservableObject {
     }
     
     private func encryptImage(_ data: Data, password: String) -> Data {
-        // Simple XOR encryption (use AES-256 in production)
-        let key = password.data(using: .utf8) ?? Data()
-        var encrypted = Data()
-        for (index, byte) in data.enumerated() {
-            let keyByte = key[index % key.count]
-            encrypted.append(byte ^ keyByte)
+        do {
+            // Derive a key from the password using SHA-256
+            let passwordData = password.data(using: .utf8) ?? Data()
+            let key = SHA256.hash(data: passwordData)
+            let symmetricKey = SymmetricKey(data: key)
+            
+            // Encrypt using AES-GCM
+            let sealedBox = try AES.GCM.seal(data, using: symmetricKey)
+            
+            // Combine nonce + ciphertext + tag for storage
+            guard let combined = sealedBox.combined else {
+                print("Failed to get combined data from sealed box")
+                return data
+            }
+            
+            return combined
+        } catch {
+            print("Encryption failed: \(error)")
+            return data
         }
-        return encrypted
     }
     
     private func decryptImage(_ data: Data, password: String) -> Data {
-        // XOR is reversible
-        return encryptImage(data, password: password)
+        do {
+            // Derive the same key from password
+            let passwordData = password.data(using: .utf8) ?? Data()
+            let key = SHA256.hash(data: passwordData)
+            let symmetricKey = SymmetricKey(data: key)
+            
+            // Decrypt using AES-GCM
+            let sealedBox = try AES.GCM.SealedBox(combined: data)
+            let decrypted = try AES.GCM.open(sealedBox, using: symmetricKey)
+            
+            return decrypted
+        } catch {
+            print("Decryption failed: \(error)")
+            return data
+        }
     }
     
     private func generateThumbnail(from imageData: Data) -> Data {
@@ -330,5 +362,52 @@ class VaultManager: ObservableObject {
             return
         }
         passwordHash = hash
+    }
+    
+    // MARK: - Biometric Authentication Helpers
+    
+    func saveBiometricPassword(_ password: String) {
+        let keychainKey = "SecretVault.BiometricPassword"
+        
+        // Delete any existing item first
+        let deleteQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: keychainKey
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
+        
+        // Add new password
+        guard let passwordData = password.data(using: .utf8) else { return }
+        
+        let addQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: keychainKey,
+            kSecValueData as String: passwordData,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        ]
+        
+        SecItemAdd(addQuery as CFDictionary, nil)
+    }
+    
+    func getBiometricPassword() -> String? {
+        let keychainKey = "SecretVault.BiometricPassword"
+        
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: keychainKey,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        
+        guard status == errSecSuccess,
+              let passwordData = result as? Data,
+              let password = String(data: passwordData, encoding: .utf8) else {
+            return nil
+        }
+        
+        return password
     }
 }
