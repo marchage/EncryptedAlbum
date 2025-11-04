@@ -24,7 +24,16 @@ struct SecurePhoto: Identifiable, Codable {
     var mediaType: MediaType // Photo or video
     var duration: TimeInterval? // For videos
     
-    init(id: UUID = UUID(), encryptedDataPath: String, thumbnailPath: String, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, vaultAlbum: String? = nil, fileSize: Int64 = 0, originalAssetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil) {
+    // Metadata preservation
+    var location: Location?
+    var isFavorite: Bool?
+    
+    struct Location: Codable {
+        let latitude: Double
+        let longitude: Double
+    }
+    
+    init(id: UUID = UUID(), encryptedDataPath: String, thumbnailPath: String, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, vaultAlbum: String? = nil, fileSize: Int64 = 0, originalAssetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: Location? = nil, isFavorite: Bool? = nil) {
         self.id = id
         self.encryptedDataPath = encryptedDataPath
         self.thumbnailPath = thumbnailPath
@@ -37,6 +46,8 @@ struct SecurePhoto: Identifiable, Codable {
         self.originalAssetIdentifier = originalAssetIdentifier
         self.mediaType = mediaType
         self.duration = duration
+        self.location = location
+        self.isFavorite = isFavorite
     }
 }
 
@@ -125,7 +136,7 @@ class VaultManager: ObservableObject {
         return !passwordHash.isEmpty
     }
     
-    func hidePhoto(imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil) throws {
+    func hidePhoto(imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil) throws {
         // Check for duplicates by asset identifier
         if let assetId = assetIdentifier {
             if hiddenPhotos.contains(where: { $0.originalAssetIdentifier == assetId }) {
@@ -158,7 +169,9 @@ class VaultManager: ObservableObject {
             fileSize: Int64(imageData.count),
             originalAssetIdentifier: assetIdentifier,
             mediaType: mediaType,
-            duration: duration
+            duration: duration,
+            location: location,
+            isFavorite: isFavorite
         )
         
         // Save to photos list
@@ -188,21 +201,29 @@ class VaultManager: ObservableObject {
                 // Decrypt the photo
                 let decryptedData = try self.decryptPhoto(photo)
                 
-                // Save to Photos library (to original album if available)
-                PhotosLibraryService.shared.saveImageToLibrary(decryptedData, filename: photo.filename, toAlbum: photo.sourceAlbum) { success in
+                // Save to Photos library (to original album if available) with metadata
+                PhotosLibraryService.shared.saveMediaToLibrary(
+                    decryptedData,
+                    filename: photo.filename,
+                    mediaType: photo.mediaType,
+                    toAlbum: photo.sourceAlbum,
+                    creationDate: photo.dateTaken,
+                    location: photo.location,
+                    isFavorite: photo.isFavorite
+                ) { success in
                     if success {
-                        print("Photo restored to library: \(photo.filename)")
+                        print("Media restored to library with metadata: \(photo.filename)")
                         
                         // Delete from vault
                         DispatchQueue.main.async {
                             self.deletePhoto(photo)
                         }
                     } else {
-                        print("Failed to restore photo to library: \(photo.filename)")
+                        print("Failed to restore media to library: \(photo.filename)")
                     }
                 }
             } catch {
-                print("Failed to decrypt photo for restore: \(error)")
+                print("Failed to decrypt media for restore: \(error)")
             }
         }
     }
@@ -227,13 +248,21 @@ class VaultManager: ObservableObject {
                         targetAlbum = photo.sourceAlbum
                     }
                     
-                    // Save to Photos library
-                    PhotosLibraryService.shared.saveImageToLibrary(decryptedData, filename: photo.filename, toAlbum: targetAlbum) { success in
+                    // Save to Photos library with metadata
+                    PhotosLibraryService.shared.saveMediaToLibrary(
+                        decryptedData,
+                        filename: photo.filename,
+                        mediaType: photo.mediaType,
+                        toAlbum: targetAlbum,
+                        creationDate: photo.dateTaken,
+                        location: photo.location,
+                        isFavorite: photo.isFavorite
+                    ) { success in
                         if success {
-                            print("Photo restored to library: \(photo.filename)")
+                            print("Media restored to library with metadata: \(photo.filename)")
                             restoredPhotos.append(photo)
                         } else {
-                            print("Failed to restore photo to library: \(photo.filename)")
+                            print("Failed to restore media to library: \(photo.filename)")
                         }
                         group.leave()
                     }

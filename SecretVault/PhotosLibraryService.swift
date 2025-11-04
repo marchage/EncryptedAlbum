@@ -1,6 +1,7 @@
 import Foundation
 import Photos
 import AppKit
+import CoreLocation
 
 enum LibraryType {
     case personal
@@ -117,7 +118,7 @@ class PhotosLibraryService {
         return assets
     }
     
-    func getMediaData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?) -> Void) {
+    func getMediaData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, VaultManager.SecurePhoto.Location?, Bool?) -> Void) {
         if asset.mediaType == .video {
             getVideoData(for: asset, completion: completion)
         } else {
@@ -125,7 +126,7 @@ class PhotosLibraryService {
         }
     }
     
-    func getImageData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?) -> Void) {
+    func getImageData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, VaultManager.SecurePhoto.Location?, Bool?) -> Void) {
         let options = PHImageRequestOptions()
         options.isSynchronous = false
         options.deliveryMode = .highQualityFormat
@@ -136,13 +137,17 @@ class PhotosLibraryService {
             let filename = resources.first?.originalFilename ?? "photo_\(UUID().uuidString).jpg"
             let dateTaken = asset.creationDate
             
+            // Extract metadata
+            let location = asset.location.map { VaultManager.SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
+            let isFavorite = asset.isFavorite
+            
             DispatchQueue.main.async {
-                completion(data, filename, dateTaken, .photo, nil)
+                completion(data, filename, dateTaken, .photo, nil, location, isFavorite)
             }
         }
     }
     
-    func getVideoData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?) -> Void) {
+    func getVideoData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, VaultManager.SecurePhoto.Location?, Bool?) -> Void) {
         let options = PHVideoRequestOptions()
         options.isNetworkAccessAllowed = true
         options.deliveryMode = .highQualityFormat
@@ -150,7 +155,7 @@ class PhotosLibraryService {
         PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { avAsset, _, _ in
             guard let urlAsset = avAsset as? AVURLAsset else {
                 DispatchQueue.main.async {
-                    completion(nil, "", nil, .video, nil)
+                    completion(nil, "", nil, .video, nil, nil, nil)
                 }
                 return
             }
@@ -162,13 +167,17 @@ class PhotosLibraryService {
                 let dateTaken = asset.creationDate
                 let duration = asset.duration
                 
+                // Extract metadata
+                let location = asset.location.map { VaultManager.SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
+                let isFavorite = asset.isFavorite
+                
                 DispatchQueue.main.async {
-                    completion(data, filename, dateTaken, .video, duration)
+                    completion(data, filename, dateTaken, .video, duration, location, isFavorite)
                 }
             } catch {
-                print("Failed to read video data: \(error)")
+                print("Failed to load video data: \(error)")
                 DispatchQueue.main.async {
-                    completion(nil, "", nil, .video, nil)
+                    completion(nil, "", nil, .video, nil, nil, nil)
                 }
             }
         }
@@ -252,6 +261,117 @@ class PhotosLibraryService {
             }
             DispatchQueue.main.async {
                 completion(success)
+            }
+        }
+    }
+    
+    // Save media (photo or video) to library with metadata restoration
+    func saveMediaToLibrary(_ mediaData: Data, filename: String, mediaType: MediaType, toAlbum albumName: String? = nil, creationDate: Date? = nil, location: VaultManager.SecurePhoto.Location? = nil, isFavorite: Bool? = nil, completion: @escaping (Bool) -> Void) {
+        // For videos, we need to save to a temporary file first
+        if mediaType == .video {
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+            do {
+                try mediaData.write(to: tempURL)
+                
+                PHPhotoLibrary.shared().performChanges({
+                    let creationRequest = PHAssetCreationRequest.forAsset()
+                    creationRequest.addResource(with: .video, fileURL: tempURL, options: nil)
+                    
+                    // Set metadata
+                    if let creationDate = creationDate {
+                        creationRequest.creationDate = creationDate
+                    }
+                    if let location = location {
+                        creationRequest.location = CLLocation(latitude: location.latitude, longitude: location.longitude)
+                    }
+                    if let isFavorite = isFavorite {
+                        creationRequest.isFavorite = isFavorite
+                    }
+                    
+                    // Add to album if specified
+                    if let albumName = albumName, let assetPlaceholder = creationRequest.placeholderForCreatedAsset {
+                        // Try to find existing album
+                        let fetchOptions = PHFetchOptions()
+                        fetchOptions.predicate = NSPredicate(format: "title = %@", albumName)
+                        let collections = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
+                        
+                        if let album = collections.firstObject {
+                            // Add to existing album
+                            if let albumChangeRequest = PHAssetCollectionChangeRequest(for: album) {
+                                albumChangeRequest.addAssets([assetPlaceholder] as NSArray)
+                            }
+                        } else {
+                            // Create new album and add video
+                            let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
+                            createAlbumRequest.addAssets([assetPlaceholder] as NSArray)
+                        }
+                    }
+                }) { success, error in
+                    // Clean up temp file
+                    try? FileManager.default.removeItem(at: tempURL)
+                    
+                    if let error = error {
+                        print("Failed to save video to library: \(error.localizedDescription)")
+                    }
+                    DispatchQueue.main.async {
+                        completion(success)
+                    }
+                }
+            } catch {
+                print("Failed to write video to temp file: \(error)")
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+            }
+        } else {
+            // For photos, save with metadata
+            guard NSImage(data: mediaData) != nil else {
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+                return
+            }
+            
+            PHPhotoLibrary.shared().performChanges({
+                let creationRequest = PHAssetCreationRequest.forAsset()
+                creationRequest.addResource(with: .photo, data: mediaData, options: nil)
+                
+                // Set metadata
+                if let creationDate = creationDate {
+                    creationRequest.creationDate = creationDate
+                }
+                if let location = location {
+                    creationRequest.location = CLLocation(latitude: location.latitude, longitude: location.longitude)
+                }
+                if let isFavorite = isFavorite {
+                    creationRequest.isFavorite = isFavorite
+                }
+                
+                // Add to album if specified
+                if let albumName = albumName, let assetPlaceholder = creationRequest.placeholderForCreatedAsset {
+                    // Try to find existing album
+                    let fetchOptions = PHFetchOptions()
+                    fetchOptions.predicate = NSPredicate(format: "title = %@", albumName)
+                    let collections = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
+                    
+                    if let album = collections.firstObject {
+                        // Add to existing album
+                        if let albumChangeRequest = PHAssetCollectionChangeRequest(for: album) {
+                            albumChangeRequest.addAssets([assetPlaceholder] as NSArray)
+                        }
+                    } else {
+                        // Create new album and add photo
+                        let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
+                        createAlbumRequest.addAssets([assetPlaceholder] as NSArray)
+                    }
+                }
+            }) { success, error in
+                if let error = error {
+                    print("Failed to save photo to library: \(error.localizedDescription)")
+                }
+                DispatchQueue.main.async {
+                    completion(success)
+                }
             }
         }
     }

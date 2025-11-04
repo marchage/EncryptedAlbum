@@ -218,7 +218,7 @@ struct PhotosLibraryPicker: View {
             
             for photoData in assetsToHide {
                 group.enter()
-                PhotosLibraryService.shared.getMediaData(for: photoData.asset) { data, filename, dateTaken, mediaType, duration in
+                PhotosLibraryService.shared.getMediaData(for: photoData.asset) { data, filename, dateTaken, mediaType, duration, location, isFavorite in
                     guard let mediaData = data else {
                         group.leave()
                         return
@@ -233,7 +233,9 @@ struct PhotosLibraryPicker: View {
                             sourceAlbum: photoData.album,
                             assetIdentifier: photoData.asset.localIdentifier,
                             mediaType: mediaType,
-                            duration: duration
+                            duration: duration,
+                            location: location,
+                            isFavorite: isFavorite
                         )
                         successfulAssets.append(photoData.asset)
                         print("\(mediaType == .video ? "Video" : "Photo") added to vault: \(filename)")
