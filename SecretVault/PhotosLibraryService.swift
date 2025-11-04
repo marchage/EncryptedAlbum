@@ -109,7 +109,7 @@ class PhotosLibraryService {
         
         let result = PHAsset.fetchAssets(in: collection, options: fetchOptions)
         result.enumerateObjects { asset, _, _ in
-            if asset.mediaType == .image {
+            if asset.mediaType == .image || asset.mediaType == .video {
                 assets.append(asset)
             }
         }
@@ -117,7 +117,15 @@ class PhotosLibraryService {
         return assets
     }
     
-    func getImageData(for asset: PHAsset, completion: @escaping (Data?, String, Date?) -> Void) {
+    func getMediaData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?) -> Void) {
+        if asset.mediaType == .video {
+            getVideoData(for: asset, completion: completion)
+        } else {
+            getImageData(for: asset, completion: completion)
+        }
+    }
+    
+    func getImageData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?) -> Void) {
         let options = PHImageRequestOptions()
         options.isSynchronous = false
         options.deliveryMode = .highQualityFormat
@@ -129,7 +137,39 @@ class PhotosLibraryService {
             let dateTaken = asset.creationDate
             
             DispatchQueue.main.async {
-                completion(data, filename, dateTaken)
+                completion(data, filename, dateTaken, .photo, nil)
+            }
+        }
+    }
+    
+    func getVideoData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?) -> Void) {
+        let options = PHVideoRequestOptions()
+        options.isNetworkAccessAllowed = true
+        options.deliveryMode = .highQualityFormat
+        
+        PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { avAsset, _, _ in
+            guard let urlAsset = avAsset as? AVURLAsset else {
+                DispatchQueue.main.async {
+                    completion(nil, "", nil, .video, nil)
+                }
+                return
+            }
+            
+            do {
+                let data = try Data(contentsOf: urlAsset.url)
+                let resources = PHAssetResource.assetResources(for: asset)
+                let filename = resources.first?.originalFilename ?? "video_\(UUID().uuidString).mov"
+                let dateTaken = asset.creationDate
+                let duration = asset.duration
+                
+                DispatchQueue.main.async {
+                    completion(data, filename, dateTaken, .video, duration)
+                }
+            } catch {
+                print("Failed to read video data: \(error)")
+                DispatchQueue.main.async {
+                    completion(nil, "", nil, .video, nil)
+                }
             }
         }
     }
@@ -175,7 +215,8 @@ class PhotosLibraryService {
     }
     
     func saveImageToLibrary(_ imageData: Data, filename: String, toAlbum albumName: String? = nil, completion: @escaping (Bool) -> Void) {
-        guard let image = NSImage(data: imageData) else {
+        // Validate that we can create an image from the data
+        guard NSImage(data: imageData) != nil else {
             DispatchQueue.main.async {
                 completion(false)
             }

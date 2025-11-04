@@ -1,4 +1,5 @@
 import SwiftUI
+import AVKit
 
 struct MainVaultView: View {
     @EnvironmentObject var vaultManager: VaultManager
@@ -60,11 +61,11 @@ struct MainVaultView: View {
                     }
                     
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Hidden Photos")
+                        Text("Hidden Items")
                             .font(.title2)
                             .fontWeight(.bold)
                         
-                        Text("\(vaultManager.hiddenPhotos.count) photos hidden")
+                        Text("\(vaultManager.hiddenPhotos.count) items hidden")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -110,7 +111,7 @@ struct MainVaultView: View {
                     Button {
                         showingPhotosLibrary = true
                     } label: {
-                        Label("Hide Photos", systemImage: "eye.slash")
+                        Label("Hide Items", systemImage: "eye.slash")
                     }
                     .buttonStyle(.borderedProminent)
                     
@@ -146,18 +147,18 @@ struct MainVaultView: View {
                         .font(.system(size: 60))
                         .foregroundStyle(.secondary)
                     
-                    Text("No Hidden Photos")
+                    Text("No Hidden Items")
                         .font(.title2)
                         .fontWeight(.semibold)
                     
-                    Text("Hide photos from your Photos Library")
+                    Text("Hide photos and videos from your Photos Library")
                         .font(.body)
                         .foregroundStyle(.secondary)
                     
                     Button {
                         showingPhotosLibrary = true
                     } label: {
-                        Label("Hide Photos from Library", systemImage: "eye.slash")
+                        Label("Hide Items from Library", systemImage: "eye.slash")
                             .font(.headline)
                             .padding(.horizontal, 24)
                             .padding(.vertical, 12)
@@ -182,7 +183,7 @@ struct MainVaultView: View {
                                     Button {
                                         vaultManager.restorePhotoToLibrary(photo)
                                     } label: {
-                                        Label("Restore to Photos", systemImage: "arrow.uturn.backward")
+                                        Label("Restore to Library", systemImage: "arrow.uturn.backward")
                                     }
                                     
                                     Divider()
@@ -203,7 +204,7 @@ struct MainVaultView: View {
             selectedPhotos.removeAll()
             setupKeyboardShortcuts()
         }
-        .alert("Restore Photos", isPresented: $showingRestoreOptions) {
+        .alert("Restore Items", isPresented: $showingRestoreOptions) {
             Button("Restore to Original Albums") {
                 restoreToOriginalAlbums()
             }
@@ -215,7 +216,7 @@ struct MainVaultView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("How would you like to restore \(photosToRestore.count) photo(s)?")
+            Text("How would you like to restore \(photosToRestore.count) item(s)?")
         }
         .sheet(isPresented: $showingPhotoViewer) {
             if let photo = selectedPhoto {
@@ -255,7 +256,7 @@ struct MainVaultView: View {
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
         panel.prompt = "Export"
-        panel.message = "Choose a folder to export photos to"
+        panel.message = "Choose a folder to export items to"
         panel.canSelectHiddenExtension = true
         
         panel.begin { response in
@@ -354,6 +355,23 @@ struct PhotoThumbnailView: View {
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
                         )
+                        .overlay(alignment: .bottomLeading) {
+                            if photo.mediaType == .video {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "play.fill")
+                                        .font(.caption2)
+                                    if let duration = photo.duration {
+                                        Text(formatDuration(duration))
+                                            .font(.caption2)
+                                    }
+                                }
+                                .foregroundStyle(.white)
+                                .padding(4)
+                                .background(.black.opacity(0.6))
+                                .cornerRadius(4)
+                                .padding(6)
+                            }
+                        }
                 } else {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.gray.opacity(0.2))
@@ -405,6 +423,12 @@ struct PhotoThumbnailView: View {
             }
         }
     }
+    
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let minutes = Int(duration) / 60
+        let seconds = Int(duration) % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
 }
 
 struct PhotoViewerSheet: View {
@@ -412,6 +436,7 @@ struct PhotoViewerSheet: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var vaultManager: VaultManager
     @State private var fullImage: NSImage?
+    @State private var videoURL: URL?
     
     var body: some View {
         VStack(spacing: 0) {
@@ -420,10 +445,17 @@ struct PhotoViewerSheet: View {
                 VStack(alignment: .leading) {
                     Text(photo.filename)
                         .font(.headline)
-                    if let album = photo.sourceAlbum {
-                        Text("From: \(album)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    HStack {
+                        if let album = photo.sourceAlbum {
+                            Text("From: \(album)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        if photo.mediaType == .video, let duration = photo.duration {
+                            Text("• \(formatDuration(duration))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 
@@ -440,22 +472,39 @@ struct PhotoViewerSheet: View {
             .padding()
             .background(.ultraThinMaterial)
             
-            // Image
-            if let image = fullImage {
-                GeometryReader { geometry in
-                    Image(nsImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
+            // Media content
+            if photo.mediaType == .video {
+                if let url = videoURL {
+                    CustomVideoPlayer(url: url)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             } else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if let image = fullImage {
+                    GeometryReader { geometry in
+                        Image(nsImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                } else {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
         }
         .frame(minWidth: 800, minHeight: 600)
         .onAppear {
-            loadFullImage()
+            if photo.mediaType == .video {
+                loadVideo()
+            } else {
+                loadFullImage()
+            }
+        }
+        .onDisappear {
+            cleanupVideo()
         }
     }
     
@@ -468,5 +517,51 @@ struct PhotoViewerSheet: View {
                 }
             }
         }
+    }
+    
+    private func loadVideo() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            if let decryptedData = try? vaultManager.decryptPhoto(photo) {
+                // Write decrypted video to temp file
+                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(photo.id.uuidString + ".mov")
+                do {
+                    try decryptedData.write(to: tempURL)
+                    DispatchQueue.main.async {
+                        self.videoURL = tempURL
+                    }
+                } catch {
+                    print("Failed to write temp video file: \(error)")
+                }
+            }
+        }
+    }
+    
+    private func cleanupVideo() {
+        if let url = videoURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+    
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let minutes = Int(duration) / 60
+        let seconds = Int(duration) % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+}
+
+// Custom Video Player View using AVPlayerView
+struct CustomVideoPlayer: NSViewRepresentable {
+    let url: URL
+    
+    func makeNSView(context: Context) -> AVPlayerView {
+        let playerView = AVPlayerView()
+        playerView.player = AVPlayer(url: url)
+        playerView.controlsStyle = .floating
+        playerView.showsFullScreenToggleButton = true
+        return playerView
+    }
+    
+    func updateNSView(_ nsView: AVPlayerView, context: Context) {
+        // Update if needed
     }
 }

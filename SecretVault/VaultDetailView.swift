@@ -19,7 +19,7 @@ struct PhotosLibraryPicker: View {
         VStack(spacing: 0) {
             // Header with library selector
             HStack {
-                Text("Select Photos to Hide")
+                Text("Select Items to Hide")
                     .font(.headline)
                 
                 Spacer()
@@ -57,7 +57,7 @@ struct PhotosLibraryPicker: View {
             if isLoading {
                 VStack {
                     ProgressView()
-                    Text("Loading photos...")
+                    Text("Loading items...")
                         .foregroundStyle(.secondary)
                         .padding(.top)
                 }
@@ -67,7 +67,7 @@ struct PhotosLibraryPicker: View {
                     Image(systemName: "photo.on.rectangle")
                         .font(.system(size: 48))
                         .foregroundStyle(.secondary)
-                    Text("No photos found")
+                    Text("No items found")
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -92,7 +92,7 @@ struct PhotosLibraryPicker: View {
                                     Text(group.album)
                                         .font(.headline)
                                     Spacer()
-                                    Text("\(group.photos.count) photos")
+                                    Text("\(group.photos.count) items")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                     
@@ -119,7 +119,7 @@ struct PhotosLibraryPicker: View {
         .onAppear {
             requestPhotosAccess()
         }
-        .alert("Photos Hidden Successfully", isPresented: $showDeletedReminder) {
+        .alert("Items Hidden Successfully", isPresented: $showDeletedReminder) {
             Button("Open Photos App") {
                 NSWorkspace.shared.open(URL(string: "photos://")!)
             }
@@ -127,7 +127,7 @@ struct PhotosLibraryPicker: View {
                 dismiss()
             }
         } message: {
-            Text("Your photos are now encrypted in the vault.\n\nThey've been moved to 'Recently Deleted' in Photos. To permanently remove them from your library, open Photos and empty the 'Recently Deleted' album.")
+            Text("Your items are now encrypted in the vault.\n\nThey've been moved to 'Recently Deleted' in Photos. To permanently remove them from your library, open Photos and empty the 'Recently Deleted' album.")
         }
         .overlay {
             if importing {
@@ -136,7 +136,7 @@ struct PhotosLibraryPicker: View {
                     VStack(spacing: 16) {
                         ProgressView()
                             .scaleEffect(1.5)
-                        Text("Hiding \(selectedAssets.count) photos...")
+                        Text("Hiding \(selectedAssets.count) items...")
                             .font(.headline)
                         Text("Please wait...")
                             .font(.caption)
@@ -218,8 +218,8 @@ struct PhotosLibraryPicker: View {
             
             for photoData in assetsToHide {
                 group.enter()
-                PhotosLibraryService.shared.getImageData(for: photoData.asset) { data, filename, dateTaken in
-                    guard let imageData = data else {
+                PhotosLibraryService.shared.getMediaData(for: photoData.asset) { data, filename, dateTaken, mediaType, duration in
+                    guard let mediaData = data else {
                         group.leave()
                         return
                     }
@@ -227,16 +227,18 @@ struct PhotosLibraryPicker: View {
                     // Add to vault
                     do {
                         try vaultManager.hidePhoto(
-                            imageData: imageData,
+                            imageData: mediaData,
                             filename: filename,
                             dateTaken: dateTaken,
                             sourceAlbum: photoData.album,
-                            assetIdentifier: photoData.asset.localIdentifier
+                            assetIdentifier: photoData.asset.localIdentifier,
+                            mediaType: mediaType,
+                            duration: duration
                         )
                         successfulAssets.append(photoData.asset)
-                        print("Photo added to vault: \(filename)")
+                        print("\(mediaType == .video ? "Video" : "Photo") added to vault: \(filename)")
                     } catch {
-                        print("Failed to add photo to vault: \(filename)")
+                        print("Failed to add media to vault: \(filename)")
                     }
                     
                     group.leave()

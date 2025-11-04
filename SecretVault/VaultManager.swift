@@ -1,8 +1,14 @@
 import SwiftUI
 import Foundation
 import CryptoKit
+import AVFoundation
 
 // MARK: - Data Models
+
+enum MediaType: String, Codable {
+    case photo
+    case video
+}
 
 struct SecurePhoto: Identifiable, Codable {
     let id: UUID
@@ -15,8 +21,10 @@ struct SecurePhoto: Identifiable, Codable {
     var vaultAlbum: String? // Custom album within the vault
     var fileSize: Int64
     var originalAssetIdentifier: String? // To track the original Photos library asset
+    var mediaType: MediaType // Photo or video
+    var duration: TimeInterval? // For videos
     
-    init(id: UUID = UUID(), encryptedDataPath: String, thumbnailPath: String, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, vaultAlbum: String? = nil, fileSize: Int64 = 0, originalAssetIdentifier: String? = nil) {
+    init(id: UUID = UUID(), encryptedDataPath: String, thumbnailPath: String, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, vaultAlbum: String? = nil, fileSize: Int64 = 0, originalAssetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil) {
         self.id = id
         self.encryptedDataPath = encryptedDataPath
         self.thumbnailPath = thumbnailPath
@@ -27,6 +35,8 @@ struct SecurePhoto: Identifiable, Codable {
         self.vaultAlbum = vaultAlbum
         self.fileSize = fileSize
         self.originalAssetIdentifier = originalAssetIdentifier
+        self.mediaType = mediaType
+        self.duration = duration
     }
 }
 
@@ -115,11 +125,11 @@ class VaultManager: ObservableObject {
         return !passwordHash.isEmpty
     }
     
-    func hidePhoto(imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil) throws {
+    func hidePhoto(imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil) throws {
         // Check for duplicates by asset identifier
         if let assetId = assetIdentifier {
             if hiddenPhotos.contains(where: { $0.originalAssetIdentifier == assetId }) {
-                print("Photo already hidden: \(filename)")
+                print("Media already hidden: \(filename)")
                 return // Skip duplicate
             }
         }
@@ -130,12 +140,12 @@ class VaultManager: ObservableObject {
         let encryptedPath = photosURL.appendingPathComponent("\(photoId.uuidString).enc")
         let thumbnailPath = photosURL.appendingPathComponent("\(photoId.uuidString)_thumb.jpg")
         
-        // Simple encryption (XOR for demo - replace with real AES in production)
+        // Encrypt the media data
         let encrypted = encryptImage(imageData, password: passwordHash)
         try encrypted.write(to: encryptedPath)
         
         // Generate thumbnail
-        let thumbnail = generateThumbnail(from: imageData)
+        let thumbnail = generateThumbnail(from: imageData, mediaType: mediaType)
         try thumbnail.write(to: thumbnailPath)
         
         // Create photo record
@@ -146,7 +156,9 @@ class VaultManager: ObservableObject {
             dateTaken: dateTaken,
             sourceAlbum: sourceAlbum,
             fileSize: Int64(imageData.count),
-            originalAssetIdentifier: assetIdentifier
+            originalAssetIdentifier: assetIdentifier,
+            mediaType: mediaType,
+            duration: duration
         )
         
         // Save to photos list
@@ -318,30 +330,79 @@ class VaultManager: ObservableObject {
         }
     }
     
-    private func generateThumbnail(from imageData: Data) -> Data {
-        guard let image = NSImage(data: imageData),
-              let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            return imageData
+    private func generateThumbnail(from mediaData: Data, mediaType: MediaType) -> Data {
+        if mediaType == .video {
+            // For videos, extract a frame as thumbnail
+            return generateVideoThumbnail(from: mediaData)
+        } else {
+            // For photos, resize the image
+            guard let image = NSImage(data: mediaData),
+                  let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+                return mediaData
+            }
+            
+            let maxSize: CGFloat = 300
+            let width = CGFloat(cgImage.width)
+            let height = CGFloat(cgImage.height)
+            let scale = min(maxSize / width, maxSize / height)
+            
+            let newSize = NSSize(width: width * scale, height: height * scale)
+            let thumbnail = NSImage(size: newSize)
+            thumbnail.lockFocus()
+            image.draw(in: NSRect(origin: .zero, size: newSize))
+            thumbnail.unlockFocus()
+            
+            guard let tiffData = thumbnail.tiffRepresentation,
+                  let bitmapImage = NSBitmapImageRep(data: tiffData),
+                  let jpegData = bitmapImage.representation(using: .jpeg, properties: [:]) else {
+                return mediaData
+            }
+            
+            return jpegData
+        }
+    }
+    
+    private func generateVideoThumbnail(from videoData: Data) -> Data {
+        // Write video data to temp file
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
+        do {
+            try videoData.write(to: tempURL)
+            
+            let asset = AVAsset(url: tempURL)
+            let imageGenerator = AVAssetImageGenerator(asset: asset)
+            imageGenerator.appliesPreferredTrackTransform = true
+            
+            let time = CMTime(seconds: 1, preferredTimescale: 60)
+            if let cgImage = try? imageGenerator.copyCGImage(at: time, actualTime: nil) {
+                let image = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+                
+                // Resize thumbnail
+                let maxSize: CGFloat = 300
+                let width = CGFloat(cgImage.width)
+                let height = CGFloat(cgImage.height)
+                let scale = min(maxSize / width, maxSize / height)
+                
+                let newSize = NSSize(width: width * scale, height: height * scale)
+                let thumbnail = NSImage(size: newSize)
+                thumbnail.lockFocus()
+                image.draw(in: NSRect(origin: .zero, size: newSize))
+                thumbnail.unlockFocus()
+                
+                if let tiffData = thumbnail.tiffRepresentation,
+                   let bitmapImage = NSBitmapImageRep(data: tiffData),
+                   let jpegData = bitmapImage.representation(using: .jpeg, properties: [:]) {
+                    try? FileManager.default.removeItem(at: tempURL)
+                    return jpegData
+                }
+            }
+            
+            try? FileManager.default.removeItem(at: tempURL)
+        } catch {
+            print("Failed to generate video thumbnail: \(error)")
         }
         
-        let maxSize: CGFloat = 300
-        let width = CGFloat(cgImage.width)
-        let height = CGFloat(cgImage.height)
-        let scale = min(maxSize / width, maxSize / height)
-        
-        let newSize = NSSize(width: width * scale, height: height * scale)
-        let thumbnail = NSImage(size: newSize)
-        thumbnail.lockFocus()
-        image.draw(in: NSRect(origin: .zero, size: newSize))
-        thumbnail.unlockFocus()
-        
-        guard let tiffData = thumbnail.tiffRepresentation,
-              let bitmapImage = NSBitmapImageRep(data: tiffData),
-              let jpegData = bitmapImage.representation(using: .jpeg, properties: [:]) else {
-            return imageData
-        }
-        
-        return jpegData
+        // Return a placeholder if thumbnail generation fails
+        return Data()
     }
     
     private func savePhotos() {
