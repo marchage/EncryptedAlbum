@@ -1,5 +1,6 @@
 import SwiftUI
 import AVKit
+import AppKit
 
 struct MainVaultView: View {
     @EnvironmentObject var vaultManager: VaultManager
@@ -138,6 +139,16 @@ struct MainVaultView: View {
                         } label: {
                             Label("Lock Vault", systemImage: "lock.fill")
                         }
+                        
+                        #if DEBUG
+                        Divider()
+                        
+                        Button(role: .destructive) {
+                            resetVaultForDevelopment()
+                        } label: {
+                            Label("🔧 Reset Vault (Dev)", systemImage: "trash.circle")
+                        }
+                        #endif
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -342,6 +353,41 @@ struct MainVaultView: View {
         }
         selectedPhotos.removeAll()
     }
+    
+    #if DEBUG
+    private func resetVaultForDevelopment() {
+        let alert = NSAlert()
+        alert.messageText = "Reset Vault? (Development)"
+        alert.informativeText = "This will delete all vault data, the password, and return to setup. This action cannot be undone."
+        alert.alertStyle = .critical
+        alert.addButton(withTitle: "Reset Vault")
+        alert.addButton(withTitle: "Cancel")
+        
+        if alert.runModal() == .alertFirstButtonReturn {
+            // Delete all vault files
+            let fileManager = FileManager.default
+            let vaultDirectory = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+                .appendingPathComponent("SecretVault")
+            
+            if let vaultDirectory = vaultDirectory {
+                try? fileManager.removeItem(at: vaultDirectory)
+            }
+            
+            // Delete password hash
+            UserDefaults.standard.removeObject(forKey: "passwordHash")
+            
+            // Delete Keychain entry
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: "com.secretvault.password"
+            ]
+            SecItemDelete(query as CFDictionary)
+            
+            // Lock the vault which will trigger setup
+            vaultManager.lock()
+        }
+    }
+    #endif
 }
 
 struct PhotoThumbnailView: View {
