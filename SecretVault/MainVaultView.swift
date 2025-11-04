@@ -127,6 +127,11 @@ struct MainVaultView: View {
                 PhotoViewerSheet(photo: photo)
             }
         }
+        .sheet(isPresented: $showingPhotoViewer) {
+            if let photo = selectedPhoto {
+                PhotoViewerSheet(photo: photo)
+            }
+        }
         .sheet(isPresented: $showingPhotosLibrary) {
             PhotosLibraryPicker()
         }
@@ -231,9 +236,13 @@ struct PhotoViewerSheet: View {
     }
     
     private func loadFullImage() {
-        if let decryptedData = try? vaultManager.decryptPhoto(photo),
-           let image = NSImage(data: decryptedData) {
-            fullImage = image
+        DispatchQueue.global(qos: .userInitiated).async {
+            if let decryptedData = try? vaultManager.decryptPhoto(photo),
+               let image = NSImage(data: decryptedData) {
+                DispatchQueue.main.async {
+                    fullImage = image
+                }
+            }
         }
     }
 }
