@@ -10,6 +10,20 @@ enum MediaType: String, Codable {
     case video
 }
 
+// Restoration progress tracking
+class RestorationProgress: ObservableObject {
+    @Published var isRestoring = false
+    @Published var totalItems = 0
+    @Published var processedItems = 0
+    @Published var successItems = 0
+    @Published var failedItems = 0
+    
+    var progress: Double {
+        guard totalItems > 0 else { return 0 }
+        return Double(processedItems) / Double(totalItems)
+    }
+}
+
 struct SecurePhoto: Identifiable, Codable {
     let id: UUID
     var encryptedDataPath: String
@@ -60,6 +74,7 @@ class VaultManager: ObservableObject {
     @Published var isUnlocked = false
     @Published var showUnlockPrompt = false
     @Published var passwordHash: String = ""
+    @Published var restorationProgress = RestorationProgress()
     
     private let photosURL: URL
     private let photosFile: URL
@@ -229,45 +244,105 @@ class VaultManager: ObservableObject {
     }
     
     func batchRestorePhotos(_ photos: [SecurePhoto], restoreToSourceAlbum: Bool = false, toNewAlbum: String? = nil) {
+        // Initialize progress tracking
+        DispatchQueue.main.async {
+            self.restorationProgress.isRestoring = true
+            self.restorationProgress.totalItems = photos.count
+            self.restorationProgress.processedItems = 0
+            self.restorationProgress.successItems = 0
+            self.restorationProgress.failedItems = 0
+        }
+        
         DispatchQueue.global(qos: .userInitiated).async {
-            let group = DispatchGroup()
-            var restoredPhotos: [SecurePhoto] = []
+            // Group photos by target album to batch them efficiently
+            var albumGroups: [String?: [SecurePhoto]] = [:]
             
             for photo in photos {
+                var targetAlbum: String? = nil
+                if let newAlbum = toNewAlbum {
+                    targetAlbum = newAlbum
+                } else if restoreToSourceAlbum {
+                    targetAlbum = photo.sourceAlbum
+                }
+                
+                if albumGroups[targetAlbum] == nil {
+                    albumGroups[targetAlbum] = []
+                }
+                albumGroups[targetAlbum]?.append(photo)
+            }
+            
+            let group = DispatchGroup()
+            var allRestoredPhotos: [SecurePhoto] = []
+            let lock = NSLock()
+            
+            print("🔄 Starting batch restore of \(photos.count) items grouped into \(albumGroups.count) albums")
+            
+            // Process each album group
+            for (targetAlbum, photosInGroup) in albumGroups {
                 group.enter()
                 
-                do {
-                    // Decrypt the photo
-                    let decryptedData = try self.decryptPhoto(photo)
-                    
-                    // Determine target album
-                    var targetAlbum: String? = nil
-                    if let newAlbum = toNewAlbum {
-                        targetAlbum = newAlbum
-                    } else if restoreToSourceAlbum {
-                        targetAlbum = photo.sourceAlbum
-                    }
-                    
-                    // Save to Photos library with metadata
-                    PhotosLibraryService.shared.saveMediaToLibrary(
-                        decryptedData,
-                        filename: photo.filename,
-                        mediaType: photo.mediaType,
-                        toAlbum: targetAlbum,
-                        creationDate: photo.dateTaken,
-                        location: photo.location,
-                        isFavorite: photo.isFavorite
-                    ) { success in
-                        if success {
-                            print("Media restored to library with metadata: \(photo.filename)")
-                            restoredPhotos.append(photo)
-                        } else {
-                            print("Failed to restore media to library: \(photo.filename)")
+                print("📁 Processing group: \(targetAlbum ?? "Library") with \(photosInGroup.count) items")
+                
+                // Decrypt all photos in this group
+                var mediaItems: [(data: Data, filename: String, mediaType: MediaType, creationDate: Date?, location: SecurePhoto.Location?, isFavorite: Bool?)] = []
+                var photosToRestore: [SecurePhoto] = []
+                
+                for photo in photosInGroup {
+                    do {
+                        print("  🔓 Decrypting: \(photo.filename) (\(photo.mediaType.rawValue))")
+                        let decryptedData = try self.decryptPhoto(photo)
+                        print("  ✅ Decrypted successfully: \(photo.filename) - \(decryptedData.count) bytes")
+                        mediaItems.append((
+                            data: decryptedData,
+                            filename: photo.filename,
+                            mediaType: photo.mediaType,
+                            creationDate: photo.dateTaken,
+                            location: photo.location,
+                            isFavorite: photo.isFavorite
+                        ))
+                        photosToRestore.append(photo)
+                    } catch {
+                        print("  ❌ Failed to decrypt \(photo.filename): \(error)")
+                        DispatchQueue.main.async {
+                            self.restorationProgress.processedItems += 1
+                            self.restorationProgress.failedItems += 1
                         }
+                    }
+                }
+                
+                // Batch save to Photos library
+                if !mediaItems.isEmpty {
+                    print("💾 Batch saving \(mediaItems.count) items to Photos library...")
+                    PhotosLibraryService.shared.batchSaveMediaToLibrary(
+                        mediaItems,
+                        toAlbum: targetAlbum
+                    ) { successCount in
+                        let failedCount = mediaItems.count - successCount
+                        print("✅ Restored \(successCount) of \(mediaItems.count) media items to album: \(targetAlbum ?? "Library")")
+                        if failedCount > 0 {
+                            print("⚠️ Failed to restore \(failedCount) items")
+                        }
+                        
+                        // Update progress
+                        DispatchQueue.main.async {
+                            self.restorationProgress.processedItems += mediaItems.count
+                            self.restorationProgress.successItems += successCount
+                            self.restorationProgress.failedItems += failedCount
+                        }
+                        
+                        // Only mark as restored if successful
+                        if successCount > 0 {
+                            lock.lock()
+                            // Only add successfully restored photos (proportionally)
+                            let successfulPhotos = Array(photosToRestore.prefix(successCount))
+                            allRestoredPhotos.append(contentsOf: successfulPhotos)
+                            lock.unlock()
+                        }
+                        
                         group.leave()
                     }
-                } catch {
-                    print("Failed to decrypt photo for restore: \(error)")
+                } else {
+                    print("⚠️ No items to restore in this group")
                     group.leave()
                 }
             }
@@ -276,9 +351,19 @@ class VaultManager: ObservableObject {
             
             // Delete all restored photos from vault at once
             DispatchQueue.main.async {
-                for photo in restoredPhotos {
+                print("🗑️ Deleting \(allRestoredPhotos.count) restored photos from vault")
+                for photo in allRestoredPhotos {
                     self.deletePhoto(photo)
                 }
+                
+                // Mark restoration as complete
+                self.restorationProgress.isRestoring = false
+                
+                // Show summary
+                let total = self.restorationProgress.totalItems
+                let success = self.restorationProgress.successItems
+                let failed = self.restorationProgress.failedItems
+                print("📊 Restoration complete: \(success)/\(total) successful, \(failed) failed")
             }
         }
     }

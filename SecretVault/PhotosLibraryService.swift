@@ -407,4 +407,89 @@ class PhotosLibraryService {
             }
         }
     }
+    
+    // Batch save multiple media items to library - prevents duplicate album creation
+    func batchSaveMediaToLibrary(_ mediaItems: [(data: Data, filename: String, mediaType: MediaType, creationDate: Date?, location: SecurePhoto.Location?, isFavorite: Bool?)], toAlbum albumName: String? = nil, completion: @escaping (Int) -> Void) {
+        // Write all videos to temp files first
+        var tempVideoFiles: [(url: URL, filename: String)] = []
+        for item in mediaItems where item.mediaType == .video {
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(item.filename)
+            do {
+                try item.data.write(to: tempURL)
+                tempVideoFiles.append((url: tempURL, filename: item.filename))
+            } catch {
+                print("Failed to write temp video file: \(error)")
+            }
+        }
+        
+        // Perform all changes in a single transaction
+        PHPhotoLibrary.shared().performChanges({
+            var albumRequest: PHAssetCollectionChangeRequest? = nil
+            
+            // Find or create album once
+            if let albumName = albumName {
+                let fetchOptions = PHFetchOptions()
+                fetchOptions.predicate = NSPredicate(format: "title = %@", albumName)
+                let collections = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
+                
+                if let existingAlbum = collections.firstObject {
+                    albumRequest = PHAssetCollectionChangeRequest(for: existingAlbum)
+                } else {
+                    let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
+                    albumRequest = createAlbumRequest
+                }
+            }
+            
+            // Add all assets
+            var successCount = 0
+            for item in mediaItems {
+                let creationRequest = PHAssetCreationRequest.forAsset()
+                
+                // Add media resource
+                if item.mediaType == .video {
+                    if let tempFile = tempVideoFiles.first(where: { $0.filename == item.filename }) {
+                        creationRequest.addResource(with: .video, fileURL: tempFile.url, options: nil)
+                    } else {
+                        continue
+                    }
+                } else {
+                    creationRequest.addResource(with: .photo, data: item.data, options: nil)
+                }
+                
+                // Set metadata
+                if let creationDate = item.creationDate {
+                    creationRequest.creationDate = creationDate
+                }
+                if let location = item.location {
+                    creationRequest.location = CLLocation(latitude: location.latitude, longitude: location.longitude)
+                }
+                if let isFavorite = item.isFavorite {
+                    creationRequest.isFavorite = isFavorite
+                }
+                
+                // Add to album
+                if let assetPlaceholder = creationRequest.placeholderForCreatedAsset {
+                    albumRequest?.addAssets([assetPlaceholder] as NSArray)
+                    successCount += 1
+                }
+            }
+            
+        }) { success, error in
+            // Clean up temp video files
+            for tempFile in tempVideoFiles {
+                try? FileManager.default.removeItem(at: tempFile.url)
+            }
+            
+            if let error = error {
+                print("Failed to batch save media to library: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion(0)
+                }
+            } else {
+                DispatchQueue.main.async {
+                    completion(mediaItems.count)
+                }
+            }
+        }
+    }
 }

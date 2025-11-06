@@ -95,6 +95,7 @@ struct MainVaultView: View {
                             Label("Restore Selected", systemImage: "arrow.uturn.backward")
                         }
                         .buttonStyle(.bordered)
+                        .disabled(vaultManager.restorationProgress.isRestoring)
                         
                         Button {
                             exportSelectedPhotos()
@@ -159,6 +160,38 @@ struct MainVaultView: View {
             .background(.ultraThinMaterial)
             
             Divider()
+            
+            // Restoration progress banner
+            if vaultManager.restorationProgress.isRestoring {
+                VStack(spacing: 8) {
+                    HStack {
+                        ProgressView(value: vaultManager.restorationProgress.progress)
+                            .progressViewStyle(.linear)
+                        
+                        Text("\(vaultManager.restorationProgress.processedItems)/\(vaultManager.restorationProgress.totalItems)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 60)
+                    }
+                    
+                    HStack {
+                        Image(systemName: "arrow.uturn.backward.circle.fill")
+                            .foregroundStyle(.blue)
+                        Text("Restoring items to Photos library...")
+                            .font(.subheadline)
+                        Spacer()
+                        if vaultManager.restorationProgress.failedItems > 0 {
+                            Text("\(vaultManager.restorationProgress.failedItems) failed")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
+                .padding()
+                .background(.blue.opacity(0.1))
+                
+                Divider()
+            }
             
             // Photo grid or empty state
             if vaultManager.hiddenPhotos.isEmpty {
