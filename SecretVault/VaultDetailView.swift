@@ -15,6 +15,8 @@ struct PhotosLibraryPicker: View {
     @State private var isLoading = false
     @State private var showDeletedReminder = false
     @State private var selectedAlbumFilter: String? = nil
+    // Fallback: Force treat all albums as Shared Library when PhotoKit can't distinguish
+    @State private var forceSharedLibrary = false
     
     var filteredPhotos: [(album: String, asset: PHAsset)] {
         if let filter = selectedAlbumFilter {
@@ -111,6 +113,15 @@ struct PhotosLibraryPicker: View {
                 .onChange(of: selectedLibrary) { _ in
                     loadPhotos()
                 }
+                // Manual fallback toggle only relevant when user selects Shared
+                Toggle("Force Shared", isOn: $forceSharedLibrary)
+                    .toggleStyle(.switch)
+                    .help("If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared.")
+                    .onChange(of: forceSharedLibrary) { _ in
+                        if selectedLibrary == .shared { loadPhotos() }
+                    }
+                    .padding(.leading, 8)
+                    .frame(maxWidth: 130)
                 
                 Button("Cancel") {
                     dismiss()
@@ -305,7 +316,16 @@ struct PhotosLibraryPicker: View {
     private func loadPhotos() {
         isLoading = true
         DispatchQueue.global(qos: .userInitiated).async {
-            let albums = PhotosLibraryService.shared.getAllAlbums(libraryType: selectedLibrary)
+            var albums = PhotosLibraryService.shared.getAllAlbums(libraryType: selectedLibrary)
+            // Fallback: if user forces shared and requested Shared library, but result is empty, re-fetch all and mark as shared
+            if selectedLibrary == .shared {
+                let hasAny = !albums.isEmpty
+                if forceSharedLibrary && (albums.isEmpty || hasAny) {
+                    // Fetch all personal albums and relabel as shared
+                    let all = PhotosLibraryService.shared.getAllAlbums(libraryType: .personal)
+                    albums = all.map { (name: $0.name, collection: $0.collection) }
+                }
+            }
             var photos: [(String, PHAsset)] = []
             
             for album in albums {

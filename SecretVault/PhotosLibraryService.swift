@@ -37,13 +37,12 @@ class PhotosLibraryService {
     
     func getAllAlbums(libraryType: LibraryType = .both) -> [(name: String, collection: PHAssetCollection)] {
         var albums: [(String, PHAssetCollection)] = []
+        var seenIds = Set<String>() // Avoid duplicates across different fetches
         
-        // Determine which library sources to include
-        let includePersonal = libraryType == .personal || libraryType == .both
-        let includeShared = libraryType == .shared || libraryType == .both
+        NSLog("📚 getAllAlbums called with libraryType: \(libraryType)")
         
-        // Explicitly fetch Hidden album FIRST (most important)
-        if includePersonal || libraryType == .both {
+        // Explicitly fetch Hidden album FIRST (most important) - always from personal library
+        if libraryType == .personal || libraryType == .both {
             let hiddenAlbum = PHAssetCollection.fetchAssetCollections(
                 with: .smartAlbum,
                 subtype: .smartAlbumAllHidden,
@@ -51,13 +50,12 @@ class PhotosLibraryService {
             )
             
             hiddenAlbum.enumerateObjects { collection, _, _ in
-                // Include hidden assets when counting
                 let countOptions = PHFetchOptions()
                 if #available(macOS 13.0, *) {
                     countOptions.includeHiddenAssets = true
                 }
                 let assetCount = PHAsset.fetchAssets(in: collection, options: countOptions).count
-                print("Found Hidden album with \(assetCount) items")
+                NSLog("Found Hidden album with \(assetCount) items")
                 
                 var name = collection.localizedTitle ?? "Hidden"
                 if libraryType == .both {
@@ -67,68 +65,135 @@ class PhotosLibraryService {
             }
         }
         
-        // User albums
-        if includePersonal {
-            let userAlbums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: nil)
-            userAlbums.enumerateObjects { collection, _, _ in
-                if libraryType == .both {
-                    let isShared = self.isSharedAlbum(collection)
-                    let prefix = isShared ? "📤 " : "👤 "
-                    albums.append((prefix + (collection.localizedTitle ?? "Untitled"), collection))
-                } else {
-                    albums.append((collection.localizedTitle ?? "Untitled", collection))
+        // Fetch user albums and filter based on library type
+        let userAlbums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: nil)
+        userAlbums.enumerateObjects { collection, _, _ in
+            let albumName = collection.localizedTitle ?? "Untitled"
+            let subtypeRaw = collection.assetCollectionSubtype.rawValue
+            NSLog("  🧭 Album subtype raw=\(subtypeRaw) name='\(albumName)'")
+            
+            // Determine if this is a "shared" album (either cloud shared album OR from shared library)
+            let isCloudSharedAlbum = collection.assetCollectionSubtype == .albumCloudShared
+            let isFromSharedLibrary = isCloudSharedAlbum || self.isFromSharedLibrary(collection)
+            
+            NSLog("  📁 Album '\(albumName)': cloudShared=\(isCloudSharedAlbum), assetFromShared=\(self.isFromSharedLibrary(collection)), final isShared=\(isFromSharedLibrary)")
+            
+            // Apply library type filter
+            if libraryType == .personal && isFromSharedLibrary {
+                NSLog("    ⛔ Skipped (personal filter, album is shared)")
+                return // Skip shared albums in personal view
+            }
+            if libraryType == .shared && !isFromSharedLibrary {
+                NSLog("    ⛔ Skipped (shared filter, album is personal)")
+                return // Skip personal albums in shared view
+            }
+            
+            // Add album with appropriate prefix
+            var name = albumName
+            if libraryType == .both {
+                name = (isFromSharedLibrary ? "📤 " : "👤 ") + name
+            }
+            if !seenIds.contains(collection.localIdentifier) {
+                NSLog("    ✅ Added: \(name)")
+                albums.append((name, collection))
+                seenIds.insert(collection.localIdentifier)
+            } else {
+                NSLog("    🔁 Skipped duplicate id=\(collection.localIdentifier)")
+            }
+        }
+        
+        // Explicit fetch of Cloud Shared Albums (albums you explicitly share with people)
+        let cloudShared = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .albumCloudShared, options: nil)
+        cloudShared.enumerateObjects { collection, _, _ in
+            let albumName = collection.localizedTitle ?? "Shared Album"
+            let isShared = true // By definition
+            
+            if libraryType == .personal && isShared {
+                NSLog("    ⛔ Skipped cloud shared in personal view: \(albumName)")
+                return
+            }
+            if libraryType == .shared || libraryType == .both {
+                var name = albumName
+                if libraryType == .both { name = "📤 " + name }
+                if !seenIds.contains(collection.localIdentifier) {
+                    NSLog("    ✅ Added cloud shared: \(name)")
+                    albums.append((name, collection))
+                    seenIds.insert(collection.localIdentifier)
                 }
             }
         }
         
-        // Smart albums (including Hidden album)
+        // Smart albums
         let smartAlbums = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .any, options: nil)
         smartAlbums.enumerateObjects { collection, _, _ in
-            // Filter based on library type
-            let isSharedAlbum = self.isSharedAlbum(collection)
-            let shouldInclude = (includePersonal && !isSharedAlbum) || 
-                               (includeShared && isSharedAlbum) ||
-                               libraryType == .both
+            // Check if from shared library
+            let isFromSharedLibrary = self.isFromSharedLibrary(collection)
             
-            if shouldInclude {
-                var name = collection.localizedTitle ?? "Untitled"
-                if libraryType == .both {
-                    let prefix = isSharedAlbum ? "📤 " : "👤 "
-                    name = prefix + name
-                }
-                // Avoid duplicating Hidden album
-                if !albums.contains(where: { $0.0 == name }) {
-                    albums.append((name, collection))
-                }
+            // Apply library type filter
+            if libraryType == .personal && isFromSharedLibrary {
+                return
             }
-        }
-        
-        // Shared albums (only if including shared)
-        if includeShared {
-            let sharedAlbums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .albumCloudShared, options: nil)
-            sharedAlbums.enumerateObjects { collection, _, _ in
-                let prefix = libraryType == .both ? "📤 " : ""
-                albums.append((prefix + (collection.localizedTitle ?? "Shared Album"), collection))
+            if libraryType == .shared && !isFromSharedLibrary {
+                return
+            }
+            
+            var name = collection.localizedTitle ?? "Untitled"
+            if libraryType == .both {
+                name = (isFromSharedLibrary ? "📤 " : "👤 ") + name
+            }
+            
+            // Avoid duplicating Hidden album
+            if !seenIds.contains(collection.localIdentifier) {
+                albums.append((name, collection))
+                seenIds.insert(collection.localIdentifier)
             }
         }
         
         return albums.sorted { (a, b) in a.0 < b.0 }
     }
     
-    private func isSharedAlbum(_ collection: PHAssetCollection) -> Bool {
-        // Check if the album is from the shared library
+    private func isFromSharedLibrary(_ collection: PHAssetCollection) -> Bool {
+        // Check if the album's assets are from iCloud Shared Photo Library
         if #available(macOS 13.0, *) {
             let fetchOptions = PHFetchOptions()
+            fetchOptions.fetchLimit = 5 // Check first 5 assets to be sure
             let assets = PHAsset.fetchAssets(in: collection, options: fetchOptions)
             
-            if assets.count > 0 {
-                let firstAsset = assets.firstObject
-                return firstAsset?.sourceType == .typeCloudShared
+            var sharedCount = 0
+            var totalCount = 0
+            
+            assets.enumerateObjects { asset, _, _ in
+                totalCount += 1
+                let sourceType = asset.sourceType
+                NSLog("      🔍 Asset sourceType raw: \(sourceType.rawValue)")
+                // Deep introspection to discover undocumented/shared library flags
+                let mirror = Mirror(reflecting: asset)
+                var discoveredSharedIndicators: [String] = []
+                for child in mirror.children {
+                    if let label = child.label?.lowercased() {
+                        if label.contains("shared") || label.contains("participant") || label.contains("sharing") {
+                            discoveredSharedIndicators.append(label)
+                        }
+                    }
+                }
+                if !discoveredSharedIndicators.isEmpty {
+                    NSLog("      🧪 Mirror shared-related fields: \(discoveredSharedIndicators.joined(separator: ", "))")
+                }
+                
+                // Check if this is a shared library asset
+                // sourceType values: 1 = typeUserLibrary, 2 = typeCloudShared, 8 = typeiTunesSynced
+                if sourceType == .typeCloudShared {
+                    sharedCount += 1
+                }
             }
+            
+            // If majority of assets are from shared library, consider the album as shared
+            let isShared = sharedCount > 0 && (Double(sharedCount) / Double(totalCount)) > 0.5
+            NSLog("    � Album shared count: \(sharedCount)/\(totalCount), isShared: \(isShared)")
+            return isShared
         }
         
-        // Fallback: check collection properties
-        return collection.assetCollectionSubtype == .albumCloudShared
+        return false
     }
     
     func getAssets(from collection: PHAssetCollection) -> [PHAsset] {
