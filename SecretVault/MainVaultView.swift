@@ -403,31 +403,83 @@ struct MainVaultView: View {
     }
 
     private func chooseVaultLocation() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Choose"
-        panel.message = "Select the folder where SecretVault should store its encrypted vault."
+        // Step-up authentication before allowing vault location change
+        vaultManager.requireStepUpAuthentication { success in
+            guard success else { return }
 
-        panel.begin { response in
-            if response == .OK, let url = panel.url {
+            let panel = NSOpenPanel()
+            panel.canChooseFiles = false
+            panel.canChooseDirectories = true
+            panel.allowsMultipleSelection = false
+            panel.prompt = "Choose"
+            panel.message = "Select the folder where SecretVault should store its encrypted vault."
+
+            panel.begin { response in
+                guard response == .OK, let baseURL = panel.url else { return }
+
+                // Ask for explicit confirmation and explain implications
+                let confirmAlert = NSAlert()
+                confirmAlert.messageText = "Change Vault Location?"
+                confirmAlert.informativeText = "SecretVault will copy your existing encrypted vault to a new 'SecretVault' folder inside the selected location. If the folder is in iCloud Drive or another synced location, the encrypted vault files (including encrypted thumbnails and metadata) will be synced there. The old vault folder will be left in place so you can clean it up manually."
+                confirmAlert.alertStyle = .warning
+                confirmAlert.addButton(withTitle: "Move Vault")
+                confirmAlert.addButton(withTitle: "Cancel")
+
+                let response = confirmAlert.runModal()
+                guard response == .alertFirstButtonReturn else { return }
+
                 DispatchQueue.global(qos: .userInitiated).async {
                     let fileManager = FileManager.default
-                    let newBase = url.appendingPathComponent("SecretVault", isDirectory: true)
+                    let oldBase = vaultManager.vaultBaseURL
+                    let newBase = baseURL.appendingPathComponent("SecretVault", isDirectory: true)
+                    let migrationMarker = newBase.appendingPathComponent("migration-in-progress", isDirectory: false)
 
                     do {
                         try fileManager.createDirectory(at: newBase, withIntermediateDirectories: true)
+                        try "".data(using: .utf8)?.write(to: migrationMarker)
+
+                        // Copy photos directory
+                        let oldPhotosURL = oldBase.appendingPathComponent("photos", isDirectory: true)
                         let newPhotosURL = newBase.appendingPathComponent("photos", isDirectory: true)
-                        try fileManager.createDirectory(at: newPhotosURL, withIntermediateDirectories: true)
+                        if fileManager.fileExists(atPath: oldPhotosURL.path) {
+                            try fileManager.createDirectory(at: newPhotosURL, withIntermediateDirectories: true)
+                            let items = try fileManager.contentsOfDirectory(atPath: oldPhotosURL.path)
+                            for item in items {
+                                let src = oldPhotosURL.appendingPathComponent(item)
+                                let dst = newPhotosURL.appendingPathComponent(item)
+                                if fileManager.fileExists(atPath: dst.path) {
+                                    try fileManager.removeItem(at: dst)
+                                }
+                                try fileManager.copyItem(at: src, to: dst)
+                            }
+                        }
+
+                        // Copy metadata files (except settings, which will be regenerated)
+                        let oldPhotosFile = oldBase.appendingPathComponent("hidden_photos.json")
+                        let newPhotosFile = newBase.appendingPathComponent("hidden_photos.json")
+                        if fileManager.fileExists(atPath: oldPhotosFile.path) {
+                            if fileManager.fileExists(atPath: newPhotosFile.path) {
+                                try fileManager.removeItem(at: newPhotosFile)
+                            }
+                            try fileManager.copyItem(at: oldPhotosFile, to: newPhotosFile)
+                        }
 
                         DispatchQueue.main.async {
                             vaultManager.vaultBaseURL = newBase
-                            // Recompute internal paths and persist settings on next operation
-                            vaultManager.saveBiometricPassword(vaultManager.getBiometricPassword() ?? "")
                         }
+
+                        // Remove marker once migration completes
+                        try? fileManager.removeItem(at: migrationMarker)
                     } catch {
-                        print("Failed to change vault location: \(error)")
+                        try? fileManager.removeItem(at: migrationMarker)
+                        DispatchQueue.main.async {
+                            let errorAlert = NSAlert()
+                            errorAlert.messageText = "Failed to Move Vault"
+                            errorAlert.informativeText = "SecretVault could not copy your vault to the new location. Your existing vault remains at its previous location. Error: \(error.localizedDescription)"
+                            errorAlert.alertStyle = .critical
+                            errorAlert.addButton(withTitle: "OK")
+                            errorAlert.runModal()
+                        }
                     }
                 }
             }

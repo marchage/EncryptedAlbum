@@ -2,6 +2,7 @@ import SwiftUI
 import Foundation
 import CryptoKit
 import AVFoundation
+import LocalAuthentication
 
 // MARK: - Data Models
 
@@ -130,6 +131,55 @@ class VaultManager: ObservableObject {
         loadSettings()
         if !passwordHash.isEmpty {
             showUnlockPrompt = true
+        }
+    }
+
+    // MARK: - Step-up Authentication
+
+    /// Performs a step-up authentication check for sensitive vault operations.
+    /// Uses biometrics/device auth when available, otherwise falls back to password verification.
+    func requireStepUpAuthentication(completion: @escaping (Bool) -> Void) {
+        // If there is no password yet, no need for step-up auth.
+        guard !passwordHash.isEmpty else {
+            completion(true)
+            return
+        }
+
+        let context = LAContext()
+        var error: NSError?
+
+        if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
+            let reason = "Authenticate to perform a sensitive vault operation."
+            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, _ in
+                DispatchQueue.main.async {
+                    completion(success)
+                }
+            }
+        } else {
+            // Fall back to password entry via a synchronous alert on the main thread.
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "Authenticate to Continue"
+                alert.informativeText = "Enter your SecretVault password to proceed with this sensitive operation."
+                alert.alertStyle = .warning
+
+                let textField = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
+                textField.placeholderString = "Vault Password"
+                alert.accessoryView = textField
+
+                alert.addButton(withTitle: "Continue")
+                alert.addButton(withTitle: "Cancel")
+
+                let response = alert.runModal()
+                guard response == .alertFirstButtonReturn else {
+                    completion(false)
+                    return
+                }
+
+                let enteredPassword = textField.stringValue
+                let enteredHash = enteredPassword.data(using: .utf8)?.base64EncodedString() ?? ""
+                completion(enteredHash == self.passwordHash)
+            }
         }
     }
     
