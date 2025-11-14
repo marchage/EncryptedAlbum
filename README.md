@@ -22,6 +22,23 @@ SecretVault is a native macOS app for securely hiding photos and videos using st
    - **Manual password** – you set a password yourself (no recovery if forgotten).
 5. Use the **“Hide Items”** button to select photos and videos from your library to add to the vault.
 
+### Release builds from the console
+
+To produce a signed, optimized build for distribution, use the `Release` configuration instead of `Debug`:
+
+```bash
+cd /Users/marchage/source/repos/SecretVault
+
+# Build Release configuration for the SecretVault app
+xcodebuild \
+   -project SecretVault.xcodeproj \
+   -scheme SecretVault \
+   -configuration Release \
+   build
+```
+
+- In **Release** builds all `#if DEBUG … #endif` code (including development-only reset actions that can wipe a vault) is **not compiled in**, so those destructive helpers are unavailable in production.
+
 ## Storage & Security (High Level)
 
 - Encrypted media and metadata are stored under `~/Library/Application Support/SecretVault/` in the current user account.
