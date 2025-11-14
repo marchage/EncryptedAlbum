@@ -212,8 +212,13 @@ struct PhotosLibraryPicker: View {
             keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
                 if event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command),
                    event.charactersIgnoringModifiers?.lowercased() == "a" {
-                    // Select all visible/filtered photos
-                    selectedAssets = Set(filteredPhotos.map { $0.asset.localIdentifier })
+                    // If a specific album is selected in the sidebar, only select assets from that album.
+                    if let album = selectedAlbumFilter {
+                        selectedAssets = Set(allPhotos.filter { $0.album == album }.map { $0.asset.localIdentifier })
+                    } else {
+                        // 'All Items' is selected — select the currently visible/filtered set.
+                        selectedAssets = Set(filteredPhotos.map { $0.asset.localIdentifier })
+                    }
                     return nil
                 }
                 return event
