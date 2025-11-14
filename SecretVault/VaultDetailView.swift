@@ -45,7 +45,7 @@ struct PhotosLibraryPicker: View {
                                     .frame(width: 20)
                                 Text("All Items")
                                 Spacer()
-                                Text("\(allPhotos.count)")
+                                Text("\(uniqueAllPhotosCount)")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -231,6 +231,11 @@ struct PhotosLibraryPicker: View {
     private var uniqueAlbums: [String] {
         Array(Set(allPhotos.map { $0.album }))
     }
+
+    // Number of unique assets across all albums (counts each PHAsset once)
+    private var uniqueAllPhotosCount: Int {
+        Set(allPhotos.map { $0.asset.localIdentifier }).count
+    }
     
     private func albumPhotoCount(_ album: String) -> Int {
         allPhotos.filter { $0.album == album }.count
@@ -320,11 +325,21 @@ struct PhotosLibraryPicker: View {
             
             for album in albums {
                 let assets = PhotosLibraryService.shared.getAssets(from: album.collection)
+                var seenInAlbum = Set<String>()
                 for asset in assets {
+                    // Skip duplicate occurrences of the same PHAsset within the same album
+                    let id = asset.localIdentifier
+                    if seenInAlbum.contains(id) { continue }
+                    seenInAlbum.insert(id)
                     photos.append((album.name, asset))
                 }
             }
-            
+
+            // Debug: print loaded asset metadata to help diagnose ghost/placeholder items
+            for (albumName, asset) in photos {
+                print("DEBUG: Loaded asset -> album='\(albumName)' id=\(asset.localIdentifier) type=\(asset.mediaType.rawValue) size=\(asset.pixelWidth)x\(asset.pixelHeight) duration=\(asset.duration) favorite=\(asset.isFavorite) created=\(String(describing: asset.creationDate))")
+            }
+
             DispatchQueue.main.async {
                 self.allPhotos = photos
                 self.isLoading = false
@@ -464,6 +479,8 @@ struct PhotoAssetView: View {
             DispatchQueue.main.async {
                 if let image = image {
                     self.thumbnail = image
+                } else {
+                    print("DEBUG: requestImage returned nil for asset \(asset.localIdentifier)")
                 }
             }
         }

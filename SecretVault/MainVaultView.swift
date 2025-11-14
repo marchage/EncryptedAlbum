@@ -177,6 +177,73 @@ struct MainVaultView: View {
             .background(.ultraThinMaterial)
             
             Divider()
+
+            // Notification banner placed below the header so it doesn't overlap toolbar controls
+            if let note = vaultManager.hideNotification {
+                // Compute valid photos for Undo: ensure photos still exist in the vault
+                let validPhotos = note.photos?.filter { returned in
+                    vaultManager.hiddenPhotos.contains(where: { $0.id == returned.id })
+                } ?? []
+
+                VStack {
+                    HStack(spacing: 12) {
+                        Image(systemName: iconName(for: note.type))
+                            .foregroundStyle(.white)
+                            .padding(6)
+                            .background(Circle().fill(iconColor(for: note.type)))
+
+                        Text(note.message)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+
+                        Spacer()
+
+                        if !validPhotos.isEmpty {
+                            Button("Undo") {
+                                for photo in validPhotos {
+                                    vaultManager.restorePhotoToLibrary(photo)
+                                }
+                                withAnimation {
+                                    vaultManager.hideNotification = nil
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        }
+
+                        Button("Open Photos App") {
+                            NSWorkspace.shared.open(URL(string: "photos://")!)
+                            withAnimation {
+                                vaultManager.hideNotification = nil
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        Group {
+                            switch note.type {
+                            case .success: Color.green.opacity(0.14)
+                            case .failure: Color.red.opacity(0.14)
+                            case .info: Color.gray.opacity(0.12)
+                            }
+                        }
+                    )
+                    .cornerRadius(8)
+                    .padding(.horizontal)
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + undoTimeoutSeconds) {
+                        withAnimation {
+                            vaultManager.hideNotification = nil
+                        }
+                    }
+                }
+            }
             
             // Restoration progress banner
             if vaultManager.restorationProgress.isRestoring {
@@ -270,81 +337,7 @@ struct MainVaultView: View {
                 }
             }
         }
-        // Transient banner for hide notifications (with icon, color, undo, and configurable timeout)
-        if let note = vaultManager.hideNotification {
-            // Compute valid photos for Undo: ensure photos still exist in the vault
-            let validPhotos = note.photos?.filter { returned in
-                vaultManager.hiddenPhotos.contains(where: { $0.id == returned.id })
-            } ?? []
-
-            VStack {
-                HStack(spacing: 12) {
-                    // Icon based on notification type
-                    Image(systemName: iconName(for: note.type))
-                        .foregroundStyle(.white)
-                        .padding(6)
-                        .background(
-                            Circle().fill(iconColor(for: note.type))
-                        )
-                    
-
-                    Text(note.message)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-
-                    Spacer()
-
-                    if !validPhotos.isEmpty {
-                        Button("Undo") {
-                            // Restore each still-present hidden photo back to the Photos library
-                            for photo in validPhotos {
-                                vaultManager.restorePhotoToLibrary(photo)
-                            }
-                            withAnimation {
-                                vaultManager.hideNotification = nil
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                    }
-
-                    Button("Open Photos App") {
-                        NSWorkspace.shared.open(URL(string: "photos://")!)
-                        withAnimation {
-                            vaultManager.hideNotification = nil
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-                .padding()
-                .background(
-                    // Color based on notification type
-                    Group {
-                        switch note.type {
-                        case .success:
-                            Color.green.opacity(0.14)
-                        case .failure:
-                            Color.red.opacity(0.14)
-                        case .info:
-                            Color.gray.opacity(0.12)
-                        }
-                    }
-                )
-                .cornerRadius(10)
-                .padding()
-                Spacer()
-            }
-            .transition(.move(edge: .top).combined(with: .opacity))
-            .onAppear {
-                // Respect the user-configured undo timeout
-                DispatchQueue.main.asyncAfter(deadline: .now() + undoTimeoutSeconds) {
-                    withAnimation {
-                        vaultManager.hideNotification = nil
-                    }
-                }
-            }
-        }
+        // Banner was moved into the VStack above so it doesn't overlap header controls
         }
         .onAppear {
             selectedPhotos.removeAll()
