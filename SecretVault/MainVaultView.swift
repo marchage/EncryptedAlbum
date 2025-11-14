@@ -14,6 +14,7 @@ struct MainVaultView: View {
     @State private var newAlbumName = ""
     @State private var showingRestoreOptions = false
     @State private var photosToRestore: [SecurePhoto] = []
+    @AppStorage("vaultPrivacyModeEnabled") private var privacyModeEnabled: Bool = true
     
     var filteredPhotos: [SecurePhoto] {
         var photos = vaultManager.hiddenPhotos
@@ -118,6 +119,12 @@ struct MainVaultView: View {
                     TextField("Search...", text: $searchText)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 200)
+
+                    Toggle(isOn: $privacyModeEnabled) {
+                        Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
+                    }
+                    .toggleStyle(.switch)
+                    .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
                     
                     Button {
                         showingPhotosLibrary = true
@@ -224,7 +231,7 @@ struct MainVaultView: View {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 200), spacing: 16)], spacing: 16) {
                         ForEach(filteredPhotos) { photo in
-                            PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id))
+                            PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id), privacyModeEnabled: privacyModeEnabled)
                                 .onTapGesture(count: 2) {
                                     selectedPhoto = photo
                                     showingPhotoViewer = true
@@ -426,13 +433,27 @@ struct MainVaultView: View {
 struct PhotoThumbnailView: View {
     let photo: SecurePhoto
     let isSelected: Bool
+    let privacyModeEnabled: Bool
     @State private var thumbnailImage: NSImage?
     @State private var loadTask: Task<Void, Never>?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             ZStack(alignment: .topTrailing) {
-                if let image = thumbnailImage {
+                if privacyModeEnabled {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(width: 180, height: 180)
+                        .overlay {
+                            Image(systemName: photo.mediaType == .video ? "video.slash" : "eye.slash")
+                                .font(.title2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
+                        )
+                } else if let image = thumbnailImage {
                     Image(nsImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -493,7 +514,9 @@ struct PhotoThumbnailView: View {
             .frame(width: 180, alignment: .leading)
         }
         .onAppear {
-            loadThumbnail()
+            if !privacyModeEnabled {
+                loadThumbnail()
+            }
         }
         .onDisappear {
             loadTask?.cancel()
