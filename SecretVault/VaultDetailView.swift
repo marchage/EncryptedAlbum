@@ -13,7 +13,6 @@ struct PhotosLibraryPicker: View {
     @State private var importing = false
     @State private var selectedLibrary: LibraryType = .personal
     @State private var isLoading = false
-    @State private var showDeletedReminder = false
     @State private var selectedAlbumFilter: String? = nil
     // Fallback: Force treat all albums as Shared Library when PhotoKit can't distinguish
     @State private var forceSharedLibrary = false
@@ -207,16 +206,7 @@ struct PhotosLibraryPicker: View {
         .onAppear {
             requestPhotosAccess()
         }
-        .alert("Items Hidden Successfully", isPresented: $showDeletedReminder) {
-            Button("Open Photos App") {
-                NSWorkspace.shared.open(URL(string: "photos://")!)
-            }
-            Button("OK", role: .cancel) {
-                dismiss()
-            }
-        } message: {
-            Text("Your items are now encrypted in the vault.\n\nThey've been moved to 'Recently Deleted' in Photos. To permanently remove them from your library, open Photos and empty the 'Recently Deleted' album.")
-        }
+        // Notify main view and dismiss when hiding completes instead of showing an alert here.
         .overlay {
             if importing {
                 ZStack {
@@ -396,7 +386,22 @@ struct PhotosLibraryPicker: View {
                     
                     DispatchQueue.main.async {
                         importing = false
-                        showDeletedReminder = true
+                        // Find the SecurePhoto records that correspond to the successfully processed PHAssets
+                        let ids = Set(successfulAssets.map { $0.localIdentifier })
+                        let newlyHidden = vaultManager.hiddenPhotos.filter { photo in
+                            if let original = photo.originalAssetIdentifier {
+                                return ids.contains(original)
+                            }
+                            return false
+                        }
+
+                        // Notify main UI with undo-capable notification and dismiss the picker
+                        vaultManager.hideNotification = HideNotification(
+                            message: "Hidden \(successfulAssets.count) item(s). Moved to Recently Deleted.",
+                            type: .success,
+                            photos: newlyHidden
+                        )
+                        dismiss()
                     }
                 }
             } else {

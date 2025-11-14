@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1CA80AC13D192EBBFCD3B516 /* PhotosLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */; };
+		A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345677 /* PreferencesView.swift */; };
 		432DD49F40365EA5EAEBFD23 /* VaultDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C904A396A6B1968CDD78D9 /* VaultDetailView.swift */; };
 		9849B4552EB9893D00B17DAC /* SecretVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4542EB9893D00B17DAC /* SecretVaultApp.swift */; };
 		9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4562EB9893D00B17DAC /* ContentView.swift */; };
@@ -33,6 +34,7 @@
 		CF9ADA530C59D1A9B3039479 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D4C068CD08B70A6DBEA00400 /* UnlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockView.swift; sourceTree = "<group>"; };
 		DD44EE5566FF77AA88BB99CC /* MainVaultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainVaultView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6789012345677 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +74,7 @@
 				C5C904A396A6B1968CDD78D9 /* VaultDetailView.swift */,
 				D4C068CD08B70A6DBEA00400 /* UnlockView.swift */,
 				BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */,
+				A1B2C3D4E5F6789012345677 /* PreferencesView.swift */,
 				DD44EE5566FF77AA88BB99CC /* MainVaultView.swift */,
 				9F96EA3625074B045C751E84 /* VaultManager.swift */,
 				9849B4582EB9893F00B17DAC /* Assets.xcassets */,
@@ -167,6 +170,7 @@
 				CC33DD4455EE66FF77AA88BB /* MainVaultView.swift in Sources */,
 				E48BBB324071974C8BE48D0D /* VaultManager.swift in Sources */,
 				9849B4552EB9893D00B17DAC /* SecretVaultApp.swift in Sources */,
+				A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

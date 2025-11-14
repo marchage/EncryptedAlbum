@@ -25,6 +25,20 @@ class RestorationProgress: ObservableObject {
     }
 }
 
+// Notification types for hide/restore operations
+enum HideNotificationType {
+    case success
+    case failure
+    case info
+}
+
+/// Lightweight notification model published by `VaultManager` to inform the UI
+struct HideNotification {
+    let message: String
+    let type: HideNotificationType
+    let photos: [SecurePhoto]?
+}
+
 struct SecurePhoto: Identifiable, Codable {
     let id: UUID
     var encryptedDataPath: String
@@ -79,6 +93,7 @@ class VaultManager: ObservableObject {
     @Published var passwordHash: String = ""
     @Published var restorationProgress = RestorationProgress()
     @Published var vaultBaseURL: URL
+    @Published var hideNotification: HideNotification? = nil
     @Published var lastActivity: Date = Date()
 
     /// Idle timeout in seconds before automatically locking the vault when unlocked.

@@ -11,6 +11,10 @@ struct SecretVaultApp: App {
                 .environmentObject(vaultManager)
                 .frame(minWidth: 900, minHeight: 600)
         }
+        Settings {
+            PreferencesView()
+                .environmentObject(vaultManager)
+        }
         .commands {
             // Remove "New Window" command to prevent multiple windows
             CommandGroup(replacing: .newItem) { }
