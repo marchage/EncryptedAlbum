@@ -28,6 +28,7 @@ struct SecurePhoto: Identifiable, Codable {
     let id: UUID
     var encryptedDataPath: String
     var thumbnailPath: String
+    var encryptedThumbnailPath: String?
     var filename: String
     var dateAdded: Date
     var dateTaken: Date?
@@ -47,10 +48,11 @@ struct SecurePhoto: Identifiable, Codable {
         let longitude: Double
     }
     
-    init(id: UUID = UUID(), encryptedDataPath: String, thumbnailPath: String, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, vaultAlbum: String? = nil, fileSize: Int64 = 0, originalAssetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: Location? = nil, isFavorite: Bool? = nil) {
+    init(id: UUID = UUID(), encryptedDataPath: String, thumbnailPath: String, encryptedThumbnailPath: String? = nil, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, vaultAlbum: String? = nil, fileSize: Int64 = 0, originalAssetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: Location? = nil, isFavorite: Bool? = nil) {
         self.id = id
         self.encryptedDataPath = encryptedDataPath
         self.thumbnailPath = thumbnailPath
+        self.encryptedThumbnailPath = encryptedThumbnailPath
         self.filename = filename
         self.dateAdded = Date()
         self.dateTaken = dateTaken
@@ -165,6 +167,7 @@ class VaultManager: ObservableObject {
         
         let encryptedPath = photosURL.appendingPathComponent("\(photoId.uuidString).enc")
         let thumbnailPath = photosURL.appendingPathComponent("\(photoId.uuidString)_thumb.jpg")
+        let encryptedThumbnailPath = photosURL.appendingPathComponent("\(photoId.uuidString)_thumb.enc")
         
         // Encrypt the media data
         let encrypted = encryptImage(imageData, password: passwordHash)
@@ -173,11 +176,15 @@ class VaultManager: ObservableObject {
         // Generate thumbnail
         let thumbnail = generateThumbnail(from: imageData, mediaType: mediaType)
         try thumbnail.write(to: thumbnailPath)
+
+        let encryptedThumbnail = encryptImage(thumbnail, password: passwordHash)
+        try encryptedThumbnail.write(to: encryptedThumbnailPath)
         
         // Create photo record
         let photo = SecurePhoto(
             encryptedDataPath: encryptedPath.path,
             thumbnailPath: thumbnailPath.path,
+            encryptedThumbnailPath: encryptedThumbnailPath.path,
             filename: filename,
             dateTaken: dateTaken,
             sourceAlbum: sourceAlbum,
@@ -199,11 +206,23 @@ class VaultManager: ObservableObject {
         let encryptedData = try Data(contentsOf: URL(fileURLWithPath: photo.encryptedDataPath))
         return decryptImage(encryptedData, password: passwordHash)
     }
+
+    func decryptThumbnail(for photo: SecurePhoto) throws -> Data {
+        if let encryptedThumbnailPath = photo.encryptedThumbnailPath {
+            let encryptedData = try Data(contentsOf: URL(fileURLWithPath: encryptedThumbnailPath))
+            return decryptImage(encryptedData, password: passwordHash)
+        } else {
+            return try Data(contentsOf: URL(fileURLWithPath: photo.thumbnailPath))
+        }
+    }
     
     func deletePhoto(_ photo: SecurePhoto) {
         // Delete files
         try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.encryptedDataPath))
         try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.thumbnailPath))
+        if let encryptedThumbnailPath = photo.encryptedThumbnailPath {
+            try? FileManager.default.removeItem(at: URL(fileURLWithPath: encryptedThumbnailPath))
+        }
         
         // Remove from list
         hiddenPhotos.removeAll { $0.id == photo.id }
@@ -392,6 +411,9 @@ class VaultManager: ObservableObject {
             for photo in duplicatesToDelete {
                 try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.encryptedDataPath))
                 try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.thumbnailPath))
+                if let encryptedThumbnailPath = photo.encryptedThumbnailPath {
+                    try? FileManager.default.removeItem(at: URL(fileURLWithPath: encryptedThumbnailPath))
+                }
             }
             
             DispatchQueue.main.async {

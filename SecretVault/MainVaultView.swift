@@ -434,6 +434,7 @@ struct PhotoThumbnailView: View {
     let photo: SecurePhoto
     let isSelected: Bool
     let privacyModeEnabled: Bool
+    @EnvironmentObject var vaultManager: VaultManager
     @State private var thumbnailImage: NSImage?
     @State private var loadTask: Task<Void, Never>?
     
@@ -530,10 +531,10 @@ struct PhotoThumbnailView: View {
     
     private func loadThumbnail() {
         loadTask = Task {
-            guard let data = try? Data(contentsOf: URL(fileURLWithPath: photo.thumbnailPath)) else {
+            guard let data = try? vaultManager.decryptThumbnail(for: photo) else {
                 return
             }
-            
+
             await MainActor.run {
                 thumbnailImage = NSImage(data: data)
             }
