@@ -518,6 +518,11 @@ struct PhotoThumbnailView: View {
                 loadThumbnail()
             }
         }
+        .onChange(of: privacyModeEnabled) { enabled in
+            if !enabled && thumbnailImage == nil {
+                loadThumbnail()
+            }
+        }
         .onDisappear {
             loadTask?.cancel()
         }
