@@ -135,6 +135,14 @@ struct MainVaultView: View {
                     
                     Menu {
                         Button {
+                            chooseVaultLocation()
+                        } label: {
+                            Label("Choose Vault Folder…", systemImage: "folder")
+                        }
+
+                        Divider()
+
+                        Button {
                             vaultManager.removeDuplicates()
                         } label: {
                             Label("Remove Duplicates", systemImage: "trash.slash")
@@ -392,6 +400,38 @@ struct MainVaultView: View {
             vaultManager.deletePhoto(photo)
         }
         selectedPhotos.removeAll()
+    }
+
+    private func chooseVaultLocation() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Choose"
+        panel.message = "Select the folder where SecretVault should store its encrypted vault."
+
+        panel.begin { response in
+            if response == .OK, let url = panel.url {
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let fileManager = FileManager.default
+                    let newBase = url.appendingPathComponent("SecretVault", isDirectory: true)
+
+                    do {
+                        try fileManager.createDirectory(at: newBase, withIntermediateDirectories: true)
+                        let newPhotosURL = newBase.appendingPathComponent("photos", isDirectory: true)
+                        try fileManager.createDirectory(at: newPhotosURL, withIntermediateDirectories: true)
+
+                        DispatchQueue.main.async {
+                            vaultManager.vaultBaseURL = newBase
+                            // Recompute internal paths and persist settings on next operation
+                            vaultManager.saveBiometricPassword(vaultManager.getBiometricPassword() ?? "")
+                        }
+                    } catch {
+                        print("Failed to change vault location: \(error)")
+                    }
+                }
+            }
+        }
     }
     
     #if DEBUG

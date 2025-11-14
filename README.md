@@ -41,7 +41,8 @@ xcodebuild \
 
 ## Storage & Security (High Level)
 
-- Encrypted media and metadata are stored under `~/Library/Application Support/SecretVault/` in the current user account.
+- By default, encrypted media and metadata are stored under `~/Library/Application Support/SecretVault/` in the current user account.
+- You can optionally choose a custom vault folder (for example an iCloud Drive folder); the app then stores its encrypted vault inside a `SecretVault/` subfolder there.
 - Encryption keys are derived from either the auto-generated password or your manual password.
 - The app uses authenticated encryption (AES-256-GCM) so tampering with vault files is detected.
 - Losing or forgetting the password means the vault contents cannot be recovered.

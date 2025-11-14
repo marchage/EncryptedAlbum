@@ -77,6 +77,7 @@ class VaultManager: ObservableObject {
     @Published var showUnlockPrompt = false
     @Published var passwordHash: String = ""
     @Published var restorationProgress = RestorationProgress()
+    @Published var vaultBaseURL: URL
     
     private let photosURL: URL
     private let photosFile: URL
@@ -85,20 +86,28 @@ class VaultManager: ObservableObject {
     private init() {
         // Use the app's container directory instead of shared Application Support
         // This works with App Sandbox
+        // Determine vault base directory (default Application Support, overridable via settings)
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        let baseDirectory: URL
-        
+        let defaultBaseDirectory: URL
+
         if let appSupport = appSupport {
-            baseDirectory = appSupport
+            defaultBaseDirectory = appSupport
         } else {
             // Fallback to documents directory if Application Support is unavailable
             guard let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
                 fatalError("Unable to access file system")
             }
-            baseDirectory = documents
+            defaultBaseDirectory = documents
         }
-        
-        let appDirectory = baseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
+
+        // Load previously chosen vault base URL if available
+        if let storedBaseURL = VaultManager.loadStoredVaultBaseURL() {
+            vaultBaseURL = storedBaseURL
+        } else {
+            vaultBaseURL = defaultBaseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
+        }
+
+        let appDirectory = vaultBaseURL
         
         // Initialize the URLs first
         self.photosURL = appDirectory.appendingPathComponent("photos", isDirectory: true)
@@ -555,18 +564,43 @@ class VaultManager: ObservableObject {
     }
     
     private func saveSettings() {
-        let settings = ["passwordHash": passwordHash]
+        var settings: [String: String] = ["passwordHash": passwordHash]
+        settings["vaultBaseURL"] = vaultBaseURL.path
         guard let data = try? JSONEncoder().encode(settings) else { return }
         try? data.write(to: settingsFile)
     }
     
     private func loadSettings() {
         guard let data = try? Data(contentsOf: settingsFile),
-              let settings = try? JSONDecoder().decode([String: String].self, from: data),
-              let hash = settings["passwordHash"] else {
+              let settings = try? JSONDecoder().decode([String: String].self, from: data) else {
             return
         }
-        passwordHash = hash
+
+        if let hash = settings["passwordHash"] {
+            passwordHash = hash
+        }
+        if let basePath = settings["vaultBaseURL"] {
+            let url = URL(fileURLWithPath: basePath, isDirectory: true)
+            vaultBaseURL = url
+        }
+    }
+
+    private static func loadStoredVaultBaseURL() -> URL? {
+        // This is only used during init before instance properties are set
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let baseDirectory = appSupport ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+
+        guard let baseDirectory = baseDirectory else { return nil }
+        let appDirectory = baseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
+        let settingsFile = appDirectory.appendingPathComponent("settings.json")
+
+        guard let data = try? Data(contentsOf: settingsFile),
+              let settings = try? JSONDecoder().decode([String: String].self, from: data),
+              let basePath = settings["vaultBaseURL"] else {
+            return nil
+        }
+
+        return URL(fileURLWithPath: basePath, isDirectory: true)
     }
     
     // MARK: - Biometric Authentication Helpers
