@@ -370,12 +370,18 @@ struct MainVaultView: View {
     
     private func setupKeyboardShortcuts() {
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            // If the Photos picker sheet is shown, let it receive Cmd+A instead of handling it globally
+            if showingPhotosLibrary {
+                return event
+            }
+
             if event.modifierFlags.contains(.command) {
                 if event.charactersIgnoringModifiers == "a" {
                     selectAll()
                     return nil
                 }
             }
+
             return event
         }
     }

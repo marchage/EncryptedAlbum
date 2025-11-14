@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import Photos
+import AppKit
 
 struct PhotosLibraryPicker: View {
     @Environment(\.dismiss) var dismiss
@@ -206,6 +207,24 @@ struct PhotosLibraryPicker: View {
         .onAppear {
             requestPhotosAccess()
         }
+        .onAppear {
+            // Install a local key monitor so Cmd+A selects all items when this picker is focused.
+            keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                if event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command),
+                   event.charactersIgnoringModifiers?.lowercased() == "a" {
+                    // Select all visible/filtered photos
+                    selectedAssets = Set(filteredPhotos.map { $0.asset.localIdentifier })
+                    return nil
+                }
+                return event
+            }
+        }
+        .onDisappear {
+            if let monitor = keyMonitor {
+                NSEvent.removeMonitor(monitor)
+                keyMonitor = nil
+            }
+        }
         // Notify main view and dismiss when hiding completes instead of showing an alert here.
         .overlay {
             if importing {
@@ -322,23 +341,31 @@ struct PhotosLibraryPicker: View {
                 }
             }
             var photos: [(String, PHAsset)] = []
-            
+
+            // Track seen asset IDs per album name. Some PhotoKit collections may share the same
+            // album name (e.g. multiple 'Recents' collections), which previously allowed the same
+            // PHAsset to be appended multiple times under the same displayed album name. That
+            // produced duplicate localIdentifiers inside groupedSections and caused ForEach
+            // duplicate-ID warnings. We dedupe by album name here so the UI shows each asset
+            // once per displayed album.
+            var seenPerAlbum: [String: Set<String>] = [:]
+
             for album in albums {
                 let assets = PhotosLibraryService.shared.getAssets(from: album.collection)
-                var seenInAlbum = Set<String>()
+                let albumKey = album.name
+                if seenPerAlbum[albumKey] == nil {
+                    seenPerAlbum[albumKey] = Set<String>()
+                }
+
                 for asset in assets {
-                    // Skip duplicate occurrences of the same PHAsset within the same album
                     let id = asset.localIdentifier
-                    if seenInAlbum.contains(id) { continue }
-                    seenInAlbum.insert(id)
-                    photos.append((album.name, asset))
+                    if seenPerAlbum[albumKey]!.contains(id) { continue }
+                    seenPerAlbum[albumKey]!.insert(id)
+                    photos.append((albumKey, asset))
                 }
             }
 
-            // Debug: print loaded asset metadata to help diagnose ghost/placeholder items
-            for (albumName, asset) in photos {
-                print("DEBUG: Loaded asset -> album='\(albumName)' id=\(asset.localIdentifier) type=\(asset.mediaType.rawValue) size=\(asset.pixelWidth)x\(asset.pixelHeight) duration=\(asset.duration) favorite=\(asset.isFavorite) created=\(String(describing: asset.creationDate))")
-            }
+            // (diagnostic prints removed)
 
             DispatchQueue.main.async {
                 self.allPhotos = photos
@@ -427,6 +454,8 @@ struct PhotosLibraryPicker: View {
             }
         }
     }
+
+    @State private var keyMonitor: Any? = nil
 }
 
 struct PhotoAssetView: View {
@@ -480,7 +509,7 @@ struct PhotoAssetView: View {
                 if let image = image {
                     self.thumbnail = image
                 } else {
-                    print("DEBUG: requestImage returned nil for asset \(asset.localIdentifier)")
+                    // Thumbnail unavailable for this asset; ignore silently
                 }
             }
         }
