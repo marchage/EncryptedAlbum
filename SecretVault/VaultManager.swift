@@ -108,13 +108,15 @@ class VaultManager: ObservableObject {
         }
 
         // Load previously chosen vault base URL if available
+        let resolvedBaseURL: URL
         if let storedBaseURL = VaultManager.loadStoredVaultBaseURL() {
-            vaultBaseURL = storedBaseURL
+            resolvedBaseURL = storedBaseURL
         } else {
-            vaultBaseURL = defaultBaseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
+            resolvedBaseURL = defaultBaseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
         }
+        vaultBaseURL = resolvedBaseURL
 
-        let appDirectory = vaultBaseURL
+        let appDirectory = resolvedBaseURL
         
         // Initialize the URLs first
         self.photosURL = appDirectory.appendingPathComponent("photos", isDirectory: true)
