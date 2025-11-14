@@ -271,6 +271,7 @@ struct MainVaultView: View {
         .onAppear {
             selectedPhotos.removeAll()
             setupKeyboardShortcuts()
+            vaultManager.touchActivity()
         }
         .alert("Restore Items", isPresented: $showingRestoreOptions) {
             Button("Restore to Original Albums") {
@@ -321,6 +322,7 @@ struct MainVaultView: View {
     }
     
     private func exportSelectedPhotos() {
+        vaultManager.touchActivity()
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
         panel.prompt = "Export"
@@ -335,6 +337,7 @@ struct MainVaultView: View {
     }
     
     private func exportPhotos(to folderURL: URL) {
+        vaultManager.touchActivity()
         let photosToExport = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         
         DispatchQueue.global(qos: .userInitiated).async {
@@ -357,16 +360,19 @@ struct MainVaultView: View {
     }
     
     private func restoreSelectedPhotos() {
+        vaultManager.touchActivity()
         photosToRestore = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         showingRestoreOptions = true
     }
     
     private func restoreToOriginalAlbums() {
+        vaultManager.touchActivity()
         selectedPhotos.removeAll()
         vaultManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: true)
     }
     
     private func restoreToNewAlbum() {
+        vaultManager.touchActivity()
         // Prompt for album name
         let alert = NSAlert()
         alert.messageText = "Create New Album"
@@ -390,11 +396,13 @@ struct MainVaultView: View {
     }
     
     private func restoreToLibrary() {
+        vaultManager.touchActivity()
         selectedPhotos.removeAll()
         vaultManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: false)
     }
     
     private func deleteSelectedPhotos() {
+        vaultManager.touchActivity()
         let photosToDelete = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         for photo in photosToDelete {
             vaultManager.deletePhoto(photo)
@@ -406,6 +414,8 @@ struct MainVaultView: View {
         // Step-up authentication before allowing vault location change
         vaultManager.requireStepUpAuthentication { success in
             guard success else { return }
+
+            vaultManager.touchActivity()
 
             let panel = NSOpenPanel()
             panel.canChooseFiles = false

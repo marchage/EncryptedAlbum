@@ -97,6 +97,28 @@ This file tracks technical changes and implementation details that are too low-l
     - This ensures that a partially migrated or failed move does not destroy the user's only copy.
     - Users can inspect and delete the old location manually after they are satisfied with the new setup.
 
+### Idle auto-lock / session timeout
+
+- Added a simple idle timeout mechanism to reduce the window where an unlocked vault is usable without re-authentication:
+  - `VaultManager` now tracks `lastActivity: Date` and exposes `idleTimeout: TimeInterval` (default 600 seconds / 10 minutes).
+  - When the vault is successfully unlocked via `unlock(password:)`:
+    - `isUnlocked` is set to `true` and photos are loaded as before.
+    - `touchActivity()` is called to set `lastActivity = Date()`.
+    - `startIdleTimer()` is invoked to start a repeating timer.
+- The idle timer behavior:
+  - A `Timer` runs every 30 seconds on the main run loop (`.common` mode).
+  - On each tick, if `isUnlocked` is `true`:
+    - Computes `elapsed = Date().timeIntervalSince(lastActivity)`.
+    - If `elapsed > idleTimeout`, it calls `lock()`.
+  - When `lock()` runs (manual or automatic):
+    - `isUnlocked` is set to `false`.
+    - `hiddenPhotos` is cleared.
+    - The idle timer is invalidated and set to `nil`.
+- Activity tracking:
+  - `VaultManager` exposes `func touchActivity()` so UI and operations can update the last-activity timestamp.
+  - `MainVaultView` calls `vaultManager.touchActivity()` in `.onAppear` so that whenever the main vault UI becomes active, the idle baseline is refreshed.
+  - Additional calls to `touchActivity()` can be added around other sensitive operations as needed (e.g. hide/restore/export) without changing the core mechanism.
+
 ### Debug-only destructive actions
 
 - The vault reset helpers remain **debug-only** and are excluded from Release builds:

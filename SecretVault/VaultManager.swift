@@ -79,10 +79,16 @@ class VaultManager: ObservableObject {
     @Published var passwordHash: String = ""
     @Published var restorationProgress = RestorationProgress()
     @Published var vaultBaseURL: URL
+    @Published var lastActivity: Date = Date()
+
+    /// Idle timeout in seconds before automatically locking the vault when unlocked.
+    /// Default is 600 seconds (10 minutes).
+    let idleTimeout: TimeInterval = 600
     
     private let photosURL: URL
     private let photosFile: URL
     private let settingsFile: URL
+    private var idleTimer: Timer?
     
     private init() {
         // Use the app's container directory instead of shared Application Support
@@ -198,6 +204,8 @@ class VaultManager: ObservableObject {
             loadPhotos()
             // Update stored password for biometric unlock
             saveBiometricPassword(password)
+            touchActivity()
+            startIdleTimer()
             return true
         }
         return false
@@ -206,13 +214,38 @@ class VaultManager: ObservableObject {
     func lock() {
         isUnlocked = false
         hiddenPhotos = []
+        idleTimer?.invalidate()
+        idleTimer = nil
     }
     
     func hasPassword() -> Bool {
         return !passwordHash.isEmpty
     }
+
+    /// Marks user activity and resets the idle timer baseline.
+    func touchActivity() {
+        lastActivity = Date()
+    }
+
+    /// Starts or restarts the idle timer that auto-locks after `idleTimeout`.
+    private func startIdleTimer() {
+        idleTimer?.invalidate()
+        idleTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            guard self.isUnlocked else { return }
+
+            let elapsed = Date().timeIntervalSince(self.lastActivity)
+            if elapsed > self.idleTimeout {
+                self.lock()
+            }
+        }
+        if let idleTimer = idleTimer {
+            RunLoop.main.add(idleTimer, forMode: .common)
+        }
+    }
     
     func hidePhoto(imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil) throws {
+        touchActivity()
         // Check for duplicates by asset identifier
         if let assetId = assetIdentifier {
             if hiddenPhotos.contains(where: { $0.originalAssetIdentifier == assetId }) {
@@ -276,6 +309,7 @@ class VaultManager: ObservableObject {
     }
     
     func deletePhoto(_ photo: SecurePhoto) {
+        touchActivity()
         // Delete files
         try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.encryptedDataPath))
         try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.thumbnailPath))
@@ -289,6 +323,7 @@ class VaultManager: ObservableObject {
     }
     
     func restorePhotoToLibrary(_ photo: SecurePhoto) {
+        touchActivity()
         DispatchQueue.global(qos: .userInitiated).async {
             do {
                 // Decrypt the photo
@@ -322,6 +357,7 @@ class VaultManager: ObservableObject {
     }
     
     func batchRestorePhotos(_ photos: [SecurePhoto], restoreToSourceAlbum: Bool = false, toNewAlbum: String? = nil) {
+        touchActivity()
         // Initialize progress tracking
         DispatchQueue.main.async {
             self.restorationProgress.isRestoring = true
