@@ -280,24 +280,12 @@ struct MainVaultView: View {
             VStack {
                 HStack(spacing: 12) {
                     // Icon based on notification type
-                    Image(systemName: {
-                        switch note.type {
-                        case .success: return "checkmark.circle.fill"
-                        case .failure: return "xmark.octagon.fill"
-                        case .info: return "info.circle.fill"
-                        }
-                    }())
-                    .foregroundStyle(.white)
-                    .padding(6)
-                    .background(
-                        Circle().fill({
-                            switch note.type {
-                            case .success: return Color.green
-                            case .failure: return Color.red
-                            case .info: return Color.gray
-                            }
-                        }())
-                    )
+                    Image(systemName: iconName(for: note.type))
+                        .foregroundStyle(.white)
+                        .padding(6)
+                        .background(
+                            Circle().fill(iconColor(for: note.type))
+                        )
                     
 
                     Text(note.message)
@@ -446,6 +434,23 @@ struct MainVaultView: View {
                 selectedPhotos.removeAll()
                 // Could show a success message here
             }
+        }
+    }
+
+    // Helpers for banner icon and color (moved into MainVaultView scope)
+    private func iconName(for type: HideNotificationType) -> String {
+        switch type {
+        case .success: return "checkmark.circle.fill"
+        case .failure: return "xmark.octagon.fill"
+        case .info: return "info.circle.fill"
+        }
+    }
+
+    private func iconColor(for type: HideNotificationType) -> Color {
+        switch type {
+        case .success: return Color.green
+        case .failure: return Color.red
+        case .info: return Color.gray
         }
     }
     
@@ -738,6 +743,7 @@ struct PhotoThumbnailView: View {
         let seconds = Int(duration) % 60
         return String(format: "%d:%02d", minutes, seconds)
     }
+    
 }
 
 struct PhotoViewerSheet: View {
