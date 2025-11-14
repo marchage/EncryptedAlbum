@@ -13,6 +13,7 @@
 		9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4562EB9893D00B17DAC /* ContentView.swift */; };
 		9849B4592EB9893F00B17DAC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B4582EB9893F00B17DAC /* Assets.xcassets */; };
 		9849B45C2EB9893F00B17DAC /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B45B2EB9893F00B17DAC /* Preview Assets.xcassets */; };
+		9865C99F2EC6DFF1000F286A /* AppIcon.appiconset in Resources */ = {isa = PBXBuildFile; fileRef = 9865C99E2EC6DFF1000F286A /* AppIcon.appiconset */; };
 		AA11BB2233CC44DD55EE66FF /* SetupPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */; };
 		CC33DD4455EE66FF77AA88BB /* MainVaultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE5566FF77AA88BB99CC /* MainVaultView.swift */; };
 		E48BBB324071974C8BE48D0D /* VaultManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F96EA3625074B045C751E84 /* VaultManager.swift */; };
@@ -26,6 +27,7 @@
 		9849B4582EB9893F00B17DAC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9849B45B2EB9893F00B17DAC /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		9849B45D2EB9893F00B17DAC /* SecretVault.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SecretVault.entitlements; sourceTree = "<group>"; };
+		9865C99E2EC6DFF1000F286A /* AppIcon.appiconset */ = {isa = PBXFileReference; lastKnownFileType = folder; path = AppIcon.appiconset; sourceTree = "<group>"; };
 		9F96EA3625074B045C751E84 /* VaultManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultManager.swift; sourceTree = "<group>"; };
 		A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosLibraryService.swift; sourceTree = "<group>"; };
 		BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupPasswordView.swift; sourceTree = "<group>"; };
@@ -75,6 +77,7 @@
 				DD44EE5566FF77AA88BB99CC /* MainVaultView.swift */,
 				9F96EA3625074B045C751E84 /* VaultManager.swift */,
 				9849B4582EB9893F00B17DAC /* Assets.xcassets */,
+				9865C99E2EC6DFF1000F286A /* AppIcon.appiconset */,
 				9849B45D2EB9893F00B17DAC /* SecretVault.entitlements */,
 				9849B45A2EB9893F00B17DAC /* Preview Content */,
 			);
@@ -148,6 +151,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9849B45C2EB9893F00B17DAC /* Preview Assets.xcassets in Resources */,
+				9865C99F2EC6DFF1000F286A /* AppIcon.appiconset in Resources */,
 				9849B4592EB9893F00B17DAC /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
