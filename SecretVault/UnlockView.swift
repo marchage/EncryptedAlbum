@@ -228,7 +228,9 @@ struct UnlockView: View {
             vaultManager.showUnlockPrompt = false
         }
         #else
-        // iOS implementation
+        // iOS implementation - dismiss keyboard first to avoid constraint conflicts
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        
         let alert = UIAlertController(
             title: "Reset Vault? (Development)",
             message: "This will delete all vault data, the password, and return to setup. This action cannot be undone.",
