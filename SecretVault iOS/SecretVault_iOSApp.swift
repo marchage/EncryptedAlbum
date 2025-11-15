@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct SecretVault_iOSApp: App {
+    @StateObject private var vaultManager = VaultManager.shared
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(vaultManager)
         }
     }
 }
