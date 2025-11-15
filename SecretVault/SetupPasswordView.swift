@@ -70,8 +70,12 @@ struct SetupPasswordView: View {
                     .resizable()
                     .renderingMode(.original)
                     .interpolation(.high)
+                    .scaledToFit()
                     .frame(width: 180, height: 180)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
+                    .compositingGroup()
+                    .drawingGroup()
+                    .antialiased(true)
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {
                 // Fallback to lock shield
@@ -91,8 +95,12 @@ struct SetupPasswordView: View {
                     .resizable()
                     .renderingMode(.original)
                     .interpolation(.high)
+                    .scaledToFit()
                     .frame(width: 180, height: 180)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
+                    .compositingGroup()
+                    .drawingGroup()
+                    .antialiased(true)
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {
                 // Fallback to lock shield
@@ -400,13 +408,14 @@ struct SetupPasswordView: View {
     }
     
     private func completeSetup(with password: String) {
-        vaultManager.setupPassword(password)
-        
-        // Store in Keychain for biometric unlock if biometrics available
-        if biometricsAvailable {
-            vaultManager.saveBiometricPassword(password)
+        let ok = vaultManager.setupPassword(password)
+        guard ok else {
+            errorMessage = "Failed to set password"
+            showError = true
+            return
         }
-        
+
+        // Manager already stores the biometric password when setup succeeds
         vaultManager.isUnlocked = true
     }
     

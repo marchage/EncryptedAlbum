@@ -234,12 +234,23 @@ class VaultManager: ObservableObject {
         }
     }
     
-    func setupPassword(_ password: String) {
+    /// Sets up the vault password. Returns `true` on success, `false` if the password
+    /// was rejected (e.g. empty). This enforces a defensive check so callers cannot
+    /// accidentally persist an empty password.
+    @discardableResult
+    func setupPassword(_ password: String) -> Bool {
+        // Defensive validation: never allow an empty password to be persisted.
+        guard !password.isEmpty else {
+            print("VaultManager: refused to set empty password")
+            return false
+        }
+
         let hash = password.data(using: .utf8)?.base64EncodedString() ?? ""
         passwordHash = hash
         saveSettings()
         // Store password for biometric unlock
         saveBiometricPassword(password)
+        return true
     }
     
     func unlock(password: String) -> Bool {

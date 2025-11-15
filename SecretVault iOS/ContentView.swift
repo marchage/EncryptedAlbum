@@ -8,14 +8,21 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var vaultManager = VaultManager.shared
+    @EnvironmentObject var vaultManager: VaultManager
     
     var body: some View {
-        if vaultManager.isUnlocked {
-            MainVaultView()
-        } else {
-            UnlockView()
+        ZStack {
+            if vaultManager.hasPassword() {
+                if vaultManager.isUnlocked {
+                    MainVaultView()
+                } else {
+                    UnlockView()
+                }
+            } else {
+                SetupPasswordView()
+            }
         }
+        .id(vaultManager.viewRefreshId)
     }
 }
 
