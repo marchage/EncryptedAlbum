@@ -365,6 +365,7 @@ struct MainVaultView: View {
             #endif
             VStack(spacing: 0) {
                 // Responsive Toolbar
+#warning("Header layout: reduced spacing + adaptive portrait padding")
                 let isLandscape: Bool = {
 #if os(iOS)
                     return UIScreen.main.bounds.width > UIScreen.main.bounds.height
@@ -372,9 +373,11 @@ struct MainVaultView: View {
                     return false
 #endif
                 }()
-                HStack(alignment: .center, spacing: isLandscape ? 24 : 8) {
+                let headerExtra: CGFloat = isLandscape ? 36 : 72
+                let minTop: CGFloat = isLandscape ? 56 : 96
+                HStack(alignment: .center, spacing: isLandscape ? 12 : 4) {
                     // App Icon and Title
-                    HStack(spacing: isLandscape ? 20 : 8) {
+                    HStack(spacing: isLandscape ? 8 : 4) {
 #if os(macOS)
                         if let appIcon = NSImage(named: "AppIcon") {
                             Image(nsImage: appIcon)
@@ -413,143 +416,218 @@ struct MainVaultView: View {
                                 .foregroundStyle(.white)
                         }
 #endif
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .trailing, spacing: 2) {
                             Text("Hidden Items")
-                                .font(isLandscape ? .title : .title2)
-                                .fontWeight(.bold)
+                                .font(isLandscape ? .title3 : .title3)
+                                .fontWeight(.semibold)
+                                .lineLimit(2)
                             Text("\(vaultManager.hiddenPhotos.count) items hidden")
-                                .font(.caption)
+                                .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
                     }
                     Spacer()
-                    // Controls
-                    HStack(spacing: isLandscape ? 16 : 4) {
-                        if !selectedPhotos.isEmpty {
-                        Text("\(selectedPhotos.count) selected")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            
+                    // Controls: horizontal layout for landscape, stacked for portrait
+                    if isLandscape {
+                        HStack(spacing: 10) {
+                            if !selectedPhotos.isEmpty {
+                                Text("\(selectedPhotos.count) selected")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+
+                                Button {
+                                    restoreSelectedPhotos()
+                                } label: {
+                                    Label("Restore", systemImage: "arrow.uturn.backward")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .disabled(vaultManager.restorationProgress.isRestoring)
+
+                                Button {
+                                    exportSelectedPhotos()
+                                } label: {
+                                    Label("Export", systemImage: "square.and.arrow.up")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+
+                                Button(role: .destructive) {
+                                    deleteSelectedPhotos()
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+
+                                Divider()
+                                    .frame(height: 20)
+                            }
+
+                            TextField("Search...", text: $searchText)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: 120)
+
+                            Toggle(isOn: $privacyModeEnabled) {
+                                Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
+                            }
+                            .toggleStyle(.switch)
+                            .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
+
                             Button {
-                                restoreSelectedPhotos()
+                                showingPhotosLibrary = true
                             } label: {
-                                Label("Restore Selected", systemImage: "arrow.uturn.backward")
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: actionIconFontSize))
+                                    .foregroundColor(.white)
+                                    .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
+                                    .shadow(radius: 2)
                             }
-                            .buttonStyle(.bordered)
-#if os(iOS)
-                            .controlSize(.mini)
-#else
-                            .controlSize(.regular)
-#endif
-                            .disabled(vaultManager.restorationProgress.isRestoring)
-                            
-                            Button {
-                                exportSelectedPhotos()
+                            .buttonStyle(.plain)
+                            .controlSize(.small)
+
+                            Menu {
+                                #if os(macOS)
+                                Button {
+                                    chooseVaultLocation()
+                                } label: {
+                                    Label("Choose Vault Folder…", systemImage: "folder")
+                                }
+
+                                Divider()
+                                #endif
+
+                                Button {
+                                    vaultManager.removeDuplicates()
+                                } label: {
+                                    Label("Remove Duplicates", systemImage: "trash.slash")
+                                }
+
+                                Divider()
+
+                                Button {
+                                    vaultManager.lock()
+                                } label: {
+                                    Label("Lock Vault", systemImage: "lock.fill")
+                                }
+
+                                #if DEBUG
+                                Divider()
+
+                                Button(role: .destructive) {
+                                    resetVaultForDevelopment()
+                                } label: {
+                                    Label("🔧 Reset Vault (Dev)", systemImage: "trash.circle")
+                                }
+                                #endif
                             } label: {
-                                Label("Export Selected", systemImage: "square.and.arrow.up")
+                                Image(systemName: "ellipsis")
+                                    .font(.system(size: actionIconFontSize))
+                                    .foregroundColor(.white)
+                                    .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
+                                    .shadow(radius: 2)
                             }
-                            .buttonStyle(.bordered)
-#if os(iOS)
-                            .controlSize(.mini)
-#else
-                            .controlSize(.regular)
-#endif
-                            
-                            Button(role: .destructive) {
-                                deleteSelectedPhotos()
-                            } label: {
-                                Label("Delete Selected", systemImage: "trash")
-                            }
-                            .buttonStyle(.bordered)
-#if os(iOS)
-                            .controlSize(.mini)
-#else
-                            .controlSize(.regular)
-#endif
-                            
-                            Divider()
-                                .frame(height: 20)
+                            .menuStyle(.borderlessButton)
+                            .controlSize(.small)
                         }
-                        
-                        TextField("Search...", text: $searchText)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: 120)
-                        
-                        Toggle(isOn: $privacyModeEnabled) {
-                            Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
+                    } else {
+                        // Compact portrait controls: search + toggle, with two small action buttons stacked
+                        HStack(spacing: 8) {
+                            TextField("Search...", text: $searchText)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: 160)
+
+                            Toggle(isOn: $privacyModeEnabled) {
+                                Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
+                            }
+                            .toggleStyle(.switch)
+                            .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
+
+                            VStack(spacing: 8) {
+                                Button {
+                                    showingPhotosLibrary = true
+                                } label: {
+                                    Image(systemName: "lock.fill")
+                                        .font(.system(size: actionIconFontSize))
+                                        .foregroundColor(.white)
+                                        .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
+                                        .shadow(radius: 2)
+                                }
+                                .buttonStyle(.plain)
+                                .controlSize(.small)
+
+                                Menu {
+                                    if !selectedPhotos.isEmpty {
+                                        Button {
+                                            restoreSelectedPhotos()
+                                        } label: {
+                                            Label("Restore Selected", systemImage: "arrow.uturn.backward")
+                                        }
+
+                                        Button {
+                                            exportSelectedPhotos()
+                                        } label: {
+                                            Label("Export Selected", systemImage: "square.and.arrow.up")
+                                        }
+
+                                        Button(role: .destructive) {
+                                            deleteSelectedPhotos()
+                                        } label: {
+                                            Label("Delete Selected", systemImage: "trash")
+                                        }
+                                    }
+
+                                    #if os(macOS)
+                                    Divider()
+                                    Button {
+                                        chooseVaultLocation()
+                                    } label: {
+                                        Label("Choose Vault Folder…", systemImage: "folder")
+                                    }
+                                    #endif
+
+                                    Divider()
+                                    Button {
+                                        vaultManager.removeDuplicates()
+                                    } label: {
+                                        Label("Remove Duplicates", systemImage: "trash.slash")
+                                    }
+
+                                    Divider()
+                                    Button {
+                                        vaultManager.lock()
+                                    } label: {
+                                        Label("Lock Vault", systemImage: "lock.fill")
+                                    }
+
+                                    #if DEBUG
+                                    Divider()
+                                    Button(role: .destructive) {
+                                        resetVaultForDevelopment()
+                                    } label: {
+                                        Label("🔧 Reset Vault (Dev)", systemImage: "trash.circle")
+                                    }
+                                    #endif
+                                } label: {
+                                    Image(systemName: "ellipsis")
+                                        .font(.system(size: actionIconFontSize))
+                                        .foregroundColor(.white)
+                                        .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
+                                        .shadow(radius: 2)
+                                }
+                                .menuStyle(.borderlessButton)
+                                .controlSize(.small)
+                            }
                         }
-                        .toggleStyle(.switch)
-                        .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
-                        
-                        Button {
-                            showingPhotosLibrary = true
-                        } label: {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: actionIconFontSize))
-                                .foregroundColor(.white)
-                                .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
-                                .shadow(radius: 2)
-                        }
-                        .buttonStyle(.plain)
-#if os(iOS)
-                        .controlSize(.mini)
-#else
-                        .controlSize(.large)
-#endif
-                        
-                        Menu {
-#if os(macOS)
-                            Button {
-                                chooseVaultLocation()
-                            } label: {
-                                Label("Choose Vault Folder…", systemImage: "folder")
-                            }
-                            
-                            Divider()
-#endif
-                            
-                            Button {
-                                vaultManager.removeDuplicates()
-                            } label: {
-                                Label("Remove Duplicates", systemImage: "trash.slash")
-                            }
-                            
-                            Divider()
-                            
-                            Button {
-                                vaultManager.lock()
-                            } label: {
-                                Label("Lock Vault", systemImage: "lock.fill")
-                            }
-                            
-#if DEBUG
-                            Divider()
-                            
-                            Button(role: .destructive) {
-                                resetVaultForDevelopment()
-                            } label: {
-                                Label("🔧 Reset Vault (Dev)", systemImage: "trash.circle")
-                            }
-#endif
-                        } label: {
-                            Image(systemName: "ellipsis")
-                                .font(.system(size: actionIconFontSize))
-                                .foregroundColor(.white)
-                                .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
-                                .shadow(radius: 2)
-                        }
-                        .menuStyle(.borderlessButton)
-#if os(iOS)
-                        .controlSize(.mini)
-#else
-                        .controlSize(.large)
-#endif
                     }
                 }
-                .padding()
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
                 .background(.ultraThinMaterial)
                 .background(GeometryReader { proxy in
                     Color.clear.preference(key: HeaderHeightKey.self, value: proxy.size.height)
@@ -694,11 +772,11 @@ struct MainVaultView: View {
 #endif
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.top, max(headerHeight + 36, 56))
+                        .padding(.top, max(headerHeight + headerExtra, minTop))
                 } else {
                     ScrollView {
                         VStack(spacing: 0) {
-                            Color.clear.frame(height: max(headerHeight + 36, 56))
+                            Color.clear.frame(height: max(headerHeight + headerExtra, minTop))
                             GeometryReader { geometry in
                                 let minSize: CGFloat = geometry.size.width < 420 ? 90 : 150
                                 LazyVGrid(columns: [GridItem(.adaptive(minimum: minSize, maximum: 200), spacing: 16)], spacing: 16) {
