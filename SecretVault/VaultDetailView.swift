@@ -400,6 +400,7 @@ struct PhotosLibraryPicker: View {
             let semaphore = DispatchSemaphore(value: 2) // allow 2 concurrent operations
             let group = DispatchGroup()
             var successfulAssets: [PHAsset] = []
+            let lock = NSLock() // For thread-safe access to successfulAssets
 
             for photoData in assetsToHide {
                 semaphore.wait()
@@ -411,28 +412,35 @@ struct PhotosLibraryPicker: View {
                     }
 
                     guard let mediaData = data else {
+                        print("Failed to get media data for asset: \(photoData.asset.localIdentifier)")
                         return
                     }
 
                     // Add to vault. Use autoreleasepool to encourage early temporary object cleanup
-                    do {
-                        try autoreleasepool {
-                            try vaultManager.hidePhoto(
-                                imageData: mediaData,
-                                filename: filename,
-                                dateTaken: dateTaken,
-                                sourceAlbum: photoData.album,
-                                assetIdentifier: photoData.asset.localIdentifier,
-                                mediaType: mediaType,
-                                duration: duration,
-                                location: location,
-                                isFavorite: isFavorite
-                            )
+                    // Perform vault operations on background thread to avoid blocking main thread
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        do {
+                            try autoreleasepool {
+                                try vaultManager.hidePhoto(
+                                    imageData: mediaData,
+                                    filename: filename,
+                                    dateTaken: dateTaken,
+                                    sourceAlbum: photoData.album,
+                                    assetIdentifier: photoData.asset.localIdentifier,
+                                    mediaType: mediaType,
+                                    duration: duration,
+                                    location: location,
+                                    isFavorite: isFavorite
+                                )
+                            }
+                            // Use a lock to safely append to the shared array
+                            lock.lock()
+                            successfulAssets.append(photoData.asset)
+                            lock.unlock()
+                            print("\(mediaType == .video ? "Video" : "Photo") added to vault: \(filename)")
+                        } catch {
+                            print("Failed to add media to vault: \(filename) - \(error)")
                         }
-                        successfulAssets.append(photoData.asset)
-                        print("\(mediaType == .video ? "Video" : "Photo") added to vault: \(filename)")
-                    } catch {
-                        print("Failed to add media to vault: \(filename) - \(error)")
                     }
                 }
             }
