@@ -477,7 +477,7 @@ struct MainVaultView: View {
                             .frame(maxWidth: 120)
                         
                         Toggle(isOn: $privacyModeEnabled) {
-                            Image(systemName: privacyModeEnabled ? "lock.fill" : "lock.open.fill")
+                            Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
                         }
                         .toggleStyle(.switch)
                         .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
