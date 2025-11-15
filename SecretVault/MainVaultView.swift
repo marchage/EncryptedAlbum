@@ -21,6 +21,22 @@ struct MainVaultView: View {
     #if os(iOS)
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     #endif
+
+    private var actionIconFontSize: CGFloat {
+        #if os(iOS)
+        return verticalSizeClass == .regular ? 22 : 28
+        #else
+        return 28
+        #endif
+    }
+
+    private var actionButtonDimension: CGFloat {
+        #if os(iOS)
+        return verticalSizeClass == .regular ? 44 : 56
+        #else
+        return 56
+        #endif
+    }
     
     var filteredPhotos: [SecurePhoto] {
         var photos = vaultManager.hiddenPhotos
@@ -171,9 +187,9 @@ struct MainVaultView: View {
                         showingPhotosLibrary = true
                     } label: {
                         Image(systemName: "eye.slash")
-                            .font(.system(size: verticalSizeClass == .regular ? 22 : 28))
+                            .font(.system(size: actionIconFontSize))
                             .foregroundColor(.white)
-                            .frame(width: verticalSizeClass == .regular ? 44 : 56, height: verticalSizeClass == .regular ? 44 : 56)
+                            .frame(width: actionButtonDimension, height: actionButtonDimension)
                             .background(Color.blue)
                             .clipShape(Circle())
                             .shadow(radius: 2)
@@ -221,9 +237,9 @@ struct MainVaultView: View {
                         #endif
                     } label: {
                         Image(systemName: "ellipsis.circle")
-                            .font(.system(size: verticalSizeClass == .regular ? 22 : 28))
+                            .font(.system(size: actionIconFontSize))
                             .foregroundColor(.white)
-                            .frame(width: verticalSizeClass == .regular ? 44 : 56, height: verticalSizeClass == .regular ? 44 : 56)
+                            .frame(width: actionButtonDimension, height: actionButtonDimension)
                             .background(Color.blue)
                             .clipShape(Circle())
                             .shadow(radius: 2)
@@ -361,9 +377,9 @@ struct MainVaultView: View {
                         showingPhotosLibrary = true
                     } label: {
                         Image(systemName: "eye.slash")
-                            .font(.system(size: verticalSizeClass == .regular ? 22 : 28))
+                            .font(.system(size: actionIconFontSize))
                             .foregroundColor(.white)
-                            .frame(width: verticalSizeClass == .regular ? 44 : 56, height: verticalSizeClass == .regular ? 44 : 56)
+                            .frame(width: actionButtonDimension, height: actionButtonDimension)
                             .background(Color.blue)
                             .clipShape(Circle())
                             .shadow(radius: 2)
@@ -822,20 +838,31 @@ struct PhotoThumbnailView: View {
     
     private func loadThumbnail() {
         loadTask = Task {
-            guard let data = try? vaultManager.decryptThumbnail(for: photo) else {
-                return
-            }
+            do {
+                let data = try vaultManager.decryptThumbnail(for: photo)
 
-            await MainActor.run {
-                #if os(macOS)
-                if let nsImage = NSImage(data: data) {
-                    thumbnailImage = Image(nsImage: nsImage)
+                if data.isEmpty {
+                    print("Thumbnail data empty for photo id=\(photo.id), thumbnailPath=\(photo.thumbnailPath), encryptedThumb=\(photo.encryptedThumbnailPath ?? "nil")")
+                    return
                 }
-                #else
-                if let uiImage = UIImage(data: data) {
-                    thumbnailImage = Image(uiImage: uiImage)
+
+                await MainActor.run {
+                    #if os(macOS)
+                    if let nsImage = NSImage(data: data) {
+                        thumbnailImage = Image(nsImage: nsImage)
+                    } else {
+                        print("Failed to create NSImage from decrypted data for photo id=\(photo.id)")
+                    }
+                    #else
+                    if let uiImage = UIImage(data: data) {
+                        thumbnailImage = Image(uiImage: uiImage)
+                    } else {
+                        print("Failed to create UIImage from decrypted data for photo id=\(photo.id), size=\(data.count) bytes")
+                    }
+                    #endif
                 }
-                #endif
+            } catch {
+                print("Error decrypting thumbnail for photo id=\(photo.id): \(error)")
             }
         }
     }
