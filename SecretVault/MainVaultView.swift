@@ -555,17 +555,24 @@ struct MainVaultView: View {
                                     .controlSize(.small)
                                 }
                             } else {
-                                // Portrait / compact: keep controls compact on the top row and show search full-width below
-                                HStack(spacing: 8) {
-                                    Toggle(isOn: $privacyModeEnabled) {
-                                        Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
-                                    }
-                                    .toggleStyle(.switch)
-                                    .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
-                                    
-                                    Spacer(minLength: 8)
-                                    
+                                // Portrait / compact: keep the privacy toggle on the top row,
+                                // then place the blue action buttons on their own compact row
+                                // above the full-width search field to avoid overlap.
+                                VStack(spacing: 8) {
                                     HStack(spacing: 8) {
+                                        Toggle(isOn: $privacyModeEnabled) {
+                                            Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
+                                        }
+                                        .toggleStyle(.switch)
+                                        .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
+
+                                        Spacer(minLength: 8)
+                                    }
+
+                                    // Action buttons row (right-aligned)
+                                    HStack {
+                                        Spacer()
+
                                         Button {
                                             showingPhotosLibrary = true
                                         } label: {
@@ -578,7 +585,7 @@ struct MainVaultView: View {
                                         }
                                         .buttonStyle(.plain)
                                         .controlSize(.small)
-                                        
+
                                         Menu {
                                             if !selectedPhotos.isEmpty {
                                                 Button {
@@ -586,20 +593,20 @@ struct MainVaultView: View {
                                                 } label: {
                                                     Label("Restore Selected", systemImage: "arrow.uturn.backward")
                                                 }
-                                                
+
                                                 Button {
                                                     exportSelectedPhotos()
                                                 } label: {
                                                     Label("Export Selected", systemImage: "square.and.arrow.up")
                                                 }
-                                                
+
                                                 Button(role: .destructive) {
                                                     deleteSelectedPhotos()
                                                 } label: {
                                                     Label("Delete Selected", systemImage: "trash")
                                                 }
                                             }
-                                            
+
 #if os(macOS)
                                             Divider()
                                             Button {
@@ -608,21 +615,21 @@ struct MainVaultView: View {
                                                 Label("Choose Vault Folder…", systemImage: "folder")
                                             }
 #endif
-                                            
+
                                             Divider()
                                             Button {
                                                 vaultManager.removeDuplicates()
                                             } label: {
                                                 Label("Remove Duplicates", systemImage: "trash.slash")
                                             }
-                                            
+
                                             Divider()
                                             Button {
                                                 vaultManager.lock()
                                             } label: {
                                                 Label("Lock Vault", systemImage: "lock.fill")
                                             }
-                                            
+
 #if DEBUG
                                             Divider()
                                             Button(role: .destructive) {
@@ -642,7 +649,6 @@ struct MainVaultView: View {
                                         .menuStyle(.borderlessButton)
                                         .controlSize(.small)
                                     }
-                                    .padding(.trailing, -10) // allow icons to tuck slightly off the edge
                                 }
                             }
                             
