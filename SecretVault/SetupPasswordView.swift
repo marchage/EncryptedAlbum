@@ -68,7 +68,9 @@ struct SetupPasswordView: View {
             if let appIcon = NSImage(named: "AppIcon") {
                 Image(nsImage: appIcon)
                     .resizable()
-                    .frame(width: 120, height: 120)
+                    .renderingMode(.original)
+                    .interpolation(.high)
+                    .frame(width: 180, height: 180)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {
@@ -87,7 +89,9 @@ struct SetupPasswordView: View {
             if let appIcon = UIImage(named: "AppIcon") {
                 Image(uiImage: appIcon)
                     .resizable()
-                    .frame(width: 120, height: 120)
+                    .renderingMode(.original)
+                    .interpolation(.high)
+                    .frame(width: 180, height: 180)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {

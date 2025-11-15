@@ -1037,4 +1037,3 @@ struct CustomVideoPlayer: UIViewControllerRepresentable {
     }
 }
 #endif
-}
