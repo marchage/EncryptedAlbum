@@ -18,6 +18,9 @@ struct MainVaultView: View {
     @State private var photosToRestore: [SecurePhoto] = []
     @AppStorage("vaultPrivacyModeEnabled") private var privacyModeEnabled: Bool = true
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
+    #if os(iOS)
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    #endif
     
     var filteredPhotos: [SecurePhoto] {
         var photos = vaultManager.hiddenPhotos
@@ -119,6 +122,11 @@ struct MainVaultView: View {
                             Label("Restore Selected", systemImage: "arrow.uturn.backward")
                         }
                         .buttonStyle(.bordered)
+                        #if os(iOS)
+                        .controlSize(verticalSizeClass == .regular ? .small : .regular)
+                        #else
+                        .controlSize(.regular)
+                        #endif
                         .disabled(vaultManager.restorationProgress.isRestoring)
                         
                         Button {
@@ -127,6 +135,11 @@ struct MainVaultView: View {
                             Label("Export Selected", systemImage: "square.and.arrow.up")
                         }
                         .buttonStyle(.bordered)
+                        #if os(iOS)
+                        .controlSize(verticalSizeClass == .regular ? .small : .regular)
+                        #else
+                        .controlSize(.regular)
+                        #endif
                         
                         Button(role: .destructive) {
                             deleteSelectedPhotos()
@@ -134,6 +147,11 @@ struct MainVaultView: View {
                             Label("Delete Selected", systemImage: "trash")
                         }
                         .buttonStyle(.bordered)
+                        #if os(iOS)
+                        .controlSize(verticalSizeClass == .regular ? .small : .regular)
+                        #else
+                        .controlSize(.regular)
+                        #endif
                         
                         Divider()
                             .frame(height: 20)
@@ -155,6 +173,11 @@ struct MainVaultView: View {
                         Label("Hide Items", systemImage: "eye.slash")
                     }
                     .buttonStyle(.borderedProminent)
+                    #if os(iOS)
+                    .controlSize(verticalSizeClass == .regular ? .regular : .large)
+                    #else
+                    .controlSize(.large)
+                    #endif
                     
                     Menu {
                         #if os(macOS)
@@ -194,6 +217,11 @@ struct MainVaultView: View {
                         Image(systemName: "ellipsis.circle")
                     }
                     .menuStyle(.borderlessButton)
+                    #if os(iOS)
+                    .controlSize(verticalSizeClass == .regular ? .regular : .large)
+                    #else
+                    .controlSize(.large)
+                    #endif
                 }
             }
             .padding()
@@ -326,6 +354,11 @@ struct MainVaultView: View {
                             .padding(.vertical, 12)
                     }
                     .buttonStyle(.borderedProminent)
+                    #if os(iOS)
+                    .controlSize(verticalSizeClass == .regular ? .regular : .large)
+                    #else
+                    .controlSize(.large)
+                    #endif
                     .controlSize(.large)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

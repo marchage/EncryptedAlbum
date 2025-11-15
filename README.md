@@ -13,6 +13,33 @@ SecretVault is a native macOS and iOS app for securely hiding photos and videos 
 - **Batch actions** – Select multiple items to restore, export, or delete in one go.
 - **Cross-platform sync** – iCloud Drive sync keeps your vault synchronized between macOS and iOS devices.
 
+## Development Notes
+
+### iCloud Capabilities & Provisioning
+
+**Current Limitation**: Due to Apple's restrictions on personal development teams, iCloud capabilities (including cross-device sync) are disabled in this build. The app uses local storage only on iOS devices.
+
+**To enable iCloud sync**:
+1. Join the Apple Developer Program ($99/year)
+2. Re-enable iCloud entitlements in `SecretVault_iOS.entitlements`:
+   ```xml
+   <key>com.apple.developer.icloud-container-identifiers</key>
+   <array>
+       <string>iCloud.biz.front-end.SecretVault</string>
+   </array>
+   <key>com.apple.developer.icloud-services</key>
+   <array>
+       <string>CloudDocuments</string>
+   </array>
+   <key>com.apple.developer.ubiquity-container-identifiers</key>
+   <array>
+       <string>iCloud.biz.front-end.SecretVault</string>
+   </array>
+   ```
+3. The app will automatically detect and use iCloud Drive for storage when available.
+
+**Without iCloud**: The app works perfectly with local storage on each device. Vault data remains secure but doesn't sync between devices.
+
 ## Build & Run
 
 1. Open `SecretVault.xcodeproj` in Xcode (macOS 13 or later).
@@ -28,7 +55,7 @@ SecretVault is a native macOS and iOS app for securely hiding photos and videos 
 1. Open `SecretVault.xcodeproj` in Xcode (iOS 15 or later).
 2. Select the `SecretVault iOS` app scheme.
 3. Build and run with `⌘R` on your iOS device or simulator.
-4. The app will automatically use iCloud Drive for storage if available, otherwise falls back to local storage.
+4. **Note**: Currently uses local storage only (iCloud sync disabled for personal development teams).
 5. Follow the same setup process as macOS.
 
 ### Release builds from the console
@@ -59,21 +86,25 @@ xcodebuild \
 ## Storage & Security (High Level)
 
 - **macOS**: By default, encrypted media and metadata are stored under `~/Library/Application Support/SecretVault/` in the current user account.
-- **iOS**: Uses iCloud Drive (`~/Library/Mobile Documents/`) if available, otherwise local Documents directory.
+- **iOS**: Currently uses local Documents directory (iCloud Drive sync disabled for personal development teams).
 - You can optionally choose a custom vault folder (for example an iCloud Drive folder); the app then stores its encrypted vault inside a `SecretVault/` subfolder there.
 - Encryption keys are derived from either the auto-generated password or your manual password.
 - The app uses authenticated encryption (AES-256-GCM) so tampering with vault files is detected.
 - Losing or forgetting the password means the vault contents cannot be recovered.
 
-## iCloud Sync Setup
+## iCloud Sync Setup (Currently Disabled)
 
-To enable cross-device synchronization:
+**Status**: iCloud sync is currently disabled due to Apple's personal development team restrictions.
 
-1. **Enable iCloud Drive** on both your Mac and iOS devices in Settings > Apple ID > iCloud > iCloud Drive.
-2. **Grant Photos access** on both platforms when prompted.
-3. **Sign in with the same Apple ID** on all devices.
-4. The vault will automatically sync encrypted files between devices via iCloud Drive.
-5. **Note**: Photos library access is device-specific and won't sync between devices - you'll need to hide photos on each device separately.
+To enable cross-device synchronization in the future:
+
+1. Join the Apple Developer Program ($99/year)
+2. Re-enable iCloud entitlements (see Development Notes above)
+3. Enable iCloud Drive on both your Mac and iOS devices in Settings > Apple ID > iCloud > iCloud Drive
+4. Grant Photos access on both platforms when prompted
+5. Sign in with the same Apple ID on all devices
+6. The vault will automatically sync encrypted files between devices via iCloud Drive
+7. **Note**: Photos library access is device-specific and won't sync between devices - you'll need to hide photos on each device separately
 
 ## License
 

@@ -11,9 +11,6 @@ struct UnlockView: View {
     @State private var password = ""
     @State private var showError = false
     @State private var biometricType: LABiometryType = .none
-    #if os(iOS)
-    @Environment(\.verticalSizeClass) private var verticalSizeClass
-    #endif
     
     var body: some View {
         VStack(spacing: 24) {
@@ -99,63 +96,25 @@ struct UnlockView: View {
                         Button {
                             authenticateWithBiometrics()
                         } label: {
-                            #if os(iOS)
-                            if verticalSizeClass == .regular {
-                                // Portrait mode - smaller biometric button
-                                Image(systemName: biometricType == .faceID ? "faceid" : "touchid")
-                                    .font(.system(size: 20))
-                            } else {
-                                // Landscape mode - full button
-                                HStack {
-                                    Image(systemName: biometricType == .faceID ? "faceid" : "touchid")
-                                    Text(biometricType == .faceID ? "Use Face ID" : "Use Touch ID")
-                                }
-                                .frame(width: 145)
-                            }
-                            #else
                             HStack {
                                 Image(systemName: biometricType == .faceID ? "faceid" : "touchid")
                                 Text(biometricType == .faceID ? "Use Face ID" : "Use Touch ID")
                             }
                             .frame(width: 145)
-                            #endif
                         }
                         .buttonStyle(.bordered)
-                        #if os(iOS)
-                        .controlSize(verticalSizeClass == .regular ? .regular : .large)
-                        #else
                         .controlSize(.large)
-                        #endif
                     }
                     
                     Button {
                         unlock()
                     } label: {
-                        #if os(iOS)
-                        if verticalSizeClass == .regular {
-                            // Portrait mode - smaller rounded button
-                            Image(systemName: "lock.open.fill")
-                                .font(.system(size: 20))
-                        } else {
-                            // Landscape mode - full button
-                            Text("Unlock")
-                                .frame(width: biometricType != .none ? 145 : 200)
-                        }
-                        #else
                         Text("Unlock")
                             .frame(width: biometricType != .none ? 145 : 200)
-                        #endif
                     }
                     .buttonStyle(.borderedProminent)
-                    #if os(iOS)
-                    .controlSize(verticalSizeClass == .regular ? .regular : .large)
-                    #else
                     .controlSize(.large)
-                    #endif
                     .disabled(password.isEmpty)
-                    #if os(iOS)
-                    .clipShape(verticalSizeClass == .regular ? RoundedRectangle(cornerRadius: 12) : RoundedRectangle(cornerRadius: 8))
-                    #endif
                 }
             }
             

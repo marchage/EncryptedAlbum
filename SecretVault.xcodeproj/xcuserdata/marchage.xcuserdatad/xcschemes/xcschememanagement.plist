@@ -9,6 +9,11 @@
 			<key>orderHint</key>
 			<integer>1</integer>
 		</dict>
+		<key>SecretVault iOS (real hardware).xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>3</integer>
+		</dict>
 		<key>SecretVault iOS.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
@@ -22,6 +27,11 @@
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
 	<dict>
+		<key>981926512EC854B600C67291</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
 		<key>9849B4502EB9893D00B17DAC</key>
 		<dict>
 			<key>primary</key>
