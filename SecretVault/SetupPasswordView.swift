@@ -74,9 +74,7 @@ struct SetupPasswordView: View {
                     .frame(width: 180, height: 180)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .compositingGroup()
-                    .drawingGroup()
-                    .antialiased(true)
-                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+                    .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {
                 // Fallback to lock shield
                 Image(systemName: "lock.shield.fill")
@@ -99,9 +97,7 @@ struct SetupPasswordView: View {
                     .frame(width: 180, height: 180)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .compositingGroup()
-                    .drawingGroup()
-                    .antialiased(true)
-                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+                    .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {
                 // Fallback to lock shield
                 Image(systemName: "lock.shield.fill")
