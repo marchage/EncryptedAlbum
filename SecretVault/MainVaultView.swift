@@ -346,6 +346,22 @@ struct MainVaultView: View {
                 .onPreferenceChange(HeaderHeightKey.self) { value in
                     headerHeight = value
                 }
+            #if DEBUG
+            // Debug overlay to show measured header height for tuning
+            VStack {
+                HStack {
+                    Text("headerHeight: \(Int(headerHeight))")
+                        .font(.caption2)
+                        .padding(6)
+                        .background(Color.black.opacity(0.6))
+                        .foregroundColor(.white)
+                        .cornerRadius(6)
+                        .padding(.leading, 8)
+                    Spacer()
+                }
+                Spacer()
+            }
+            #endif
             VStack(spacing: 0) {
                 // Responsive Toolbar
                 let isLandscape: Bool = {
@@ -679,7 +695,7 @@ struct MainVaultView: View {
 #endif
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.top, max(headerHeight + 48, 72))
+                        .padding(.top, max(headerHeight + 36, 56))
                 } else {
                     ScrollView {
                         GeometryReader { geometry in
@@ -711,7 +727,7 @@ struct MainVaultView: View {
                                         }
                                 }
                             }
-                            .padding(.top, max(headerHeight + 48, 72))
+                                .padding(.top, max(headerHeight + 36, 56))
                             .padding([.leading, .trailing, .bottom])
                         }
                     }
