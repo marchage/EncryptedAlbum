@@ -1,6 +1,8 @@
 import SwiftUI
 import LocalAuthentication
+#if os(macOS)
 import AppKit
+#endif
 
 struct UnlockView: View {
     @EnvironmentObject var vaultManager: VaultManager
@@ -13,6 +15,7 @@ struct UnlockView: View {
             Spacer()
             
             // App Icon
+            #if os(macOS)
             if let appIcon = NSImage(named: "AppIcon") {
                 Image(nsImage: appIcon)
                     .resizable()
@@ -37,6 +40,32 @@ struct UnlockView: View {
                         .foregroundStyle(.white)
                 }
             }
+            #else
+            if let appIcon = UIImage(named: "AppIcon") {
+                Image(uiImage: appIcon)
+                    .resizable()
+                    .frame(width: 120, height: 120)
+                    .clipShape(RoundedRectangle(cornerRadius: 26))
+                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+            } else {
+                // Fallback to gradient circle with lock
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.blue, .purple],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 100, height: 100)
+                    
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.white)
+                }
+            }
+            #endif
             
             Text("Secret Vault")
                 .font(.largeTitle)
@@ -161,6 +190,7 @@ struct UnlockView: View {
     
     #if DEBUG
     private func resetVaultForDevelopment() {
+        #if os(macOS)
         let alert = NSAlert()
         alert.messageText = "Reset Vault? (Development)"
         alert.informativeText = "This will delete all vault data, the password, and return to setup. This action cannot be undone."
@@ -192,6 +222,7 @@ struct UnlockView: View {
             vaultManager.passwordHash = ""
             vaultManager.showUnlockPrompt = false
         }
+        #endif
     }
     #endif
 }

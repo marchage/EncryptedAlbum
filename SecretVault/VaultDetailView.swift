@@ -1,7 +1,9 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import Photos
+#if os(macOS)
 import AppKit
+#endif
 
 struct PhotosLibraryPicker: View {
     @Environment(\.dismiss) var dismiss
@@ -208,6 +210,7 @@ struct PhotosLibraryPicker: View {
             requestPhotosAccess()
         }
         .onAppear {
+            #if os(macOS)
             // Install a local key monitor so Cmd+A selects all items when this picker is focused.
             keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
                 if event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command),
@@ -223,12 +226,15 @@ struct PhotosLibraryPicker: View {
                 }
                 return event
             }
+            #endif
         }
         .onDisappear {
+            #if os(macOS)
             if let monitor = keyMonitor {
                 NSEvent.removeMonitor(monitor)
                 keyMonitor = nil
             }
+            #endif
         }
         // Notify main view and dismiss when hiding completes instead of showing an alert here.
         .overlay {

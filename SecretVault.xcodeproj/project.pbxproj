@@ -214,6 +214,7 @@
 			files = (
 				9819265C2EC854B800C67291 /* Preview Assets.xcassets in Resources */,
 				981926592EC854B800C67291 /* Assets.xcassets in Resources */,
+				9849B4592EB9893F00B17DAC /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -235,6 +236,13 @@
 			files = (
 				981926572EC854B600C67291 /* ContentView.swift in Sources */,
 				981926552EC854B600C67291 /* SecretVault_iOSApp.swift in Sources */,
+				1CA80AC13D192EBBFCD3B516 /* PhotosLibraryService.swift in Sources */,
+				432DD49F40365EA5EAEBFD23 /* VaultDetailView.swift in Sources */,
+				F9B0EAD109417F32CF3B7D50 /* UnlockView.swift in Sources */,
+				AA11BB2233CC44DD55EE66FF /* SetupPasswordView.swift in Sources */,
+				CC33DD4455EE66FF77AA88BB /* MainVaultView.swift in Sources */,
+				E48BBB324071974C8BE48D0D /* VaultManager.swift in Sources */,
+				A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

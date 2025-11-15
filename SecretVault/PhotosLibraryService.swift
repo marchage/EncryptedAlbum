@@ -1,6 +1,10 @@
 import Foundation
 import Photos
+#if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 import CoreLocation
 
 enum LibraryType {

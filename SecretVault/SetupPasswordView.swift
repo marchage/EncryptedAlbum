@@ -64,6 +64,7 @@ struct SetupPasswordView: View {
             Spacer()
             
             // App Icon
+            #if os(macOS)
             if let appIcon = NSImage(named: "AppIcon") {
                 Image(nsImage: appIcon)
                     .resizable()
@@ -82,6 +83,26 @@ struct SetupPasswordView: View {
                         )
                     )
             }
+            #else
+            if let appIcon = UIImage(named: "AppIcon") {
+                Image(uiImage: appIcon)
+                    .resizable()
+                    .frame(width: 120, height: 120)
+                    .clipShape(RoundedRectangle(cornerRadius: 26))
+                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+            } else {
+                // Fallback to lock shield
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 80))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            #endif
             
             Text("Welcome to Secret Vault")
                 .font(.largeTitle)

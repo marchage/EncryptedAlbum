@@ -1,6 +1,8 @@
 import SwiftUI
 import AVKit
+#if os(macOS)
 import AppKit
+#endif
 
 struct MainVaultView: View {
     @EnvironmentObject var vaultManager: VaultManager
@@ -49,6 +51,7 @@ struct MainVaultView: View {
             HStack {
                 HStack(spacing: 12) {
                     // App Icon
+                    #if os(macOS)
                     if let appIcon = NSImage(named: "AppIcon") {
                         Image(nsImage: appIcon)
                             .resizable()
@@ -72,6 +75,24 @@ struct MainVaultView: View {
                                 .foregroundStyle(.white)
                         }
                     }
+                    #else
+                    // iOS fallback to SF Symbol
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [.blue, .purple],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 36, height: 36)
+                        
+                        Image(systemName: "lock.open.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.white)
+                    }
+                    #endif
                     
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Hidden Items")
@@ -136,6 +157,7 @@ struct MainVaultView: View {
                     .buttonStyle(.borderedProminent)
                     
                     Menu {
+                        #if os(macOS)
                         Button {
                             chooseVaultLocation()
                         } label: {
@@ -143,6 +165,7 @@ struct MainVaultView: View {
                         }
 
                         Divider()
+                        #endif
 
                         Button {
                             vaultManager.removeDuplicates()
@@ -212,7 +235,9 @@ struct MainVaultView: View {
                         }
 
                         Button("Open Photos App") {
+                            #if os(macOS)
                             NSWorkspace.shared.open(URL(string: "photos://")!)
+                            #endif
                             withAnimation {
                                 vaultManager.hideNotification = nil
                             }
@@ -369,6 +394,7 @@ struct MainVaultView: View {
     }
     
     private func setupKeyboardShortcuts() {
+        #if os(macOS)
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             // If the Photos picker sheet is shown, let it receive Cmd+A instead of handling it globally
             if showingPhotosLibrary {
@@ -384,6 +410,7 @@ struct MainVaultView: View {
 
             return event
         }
+        #endif
     }
     
     private func toggleSelection(_ id: UUID) {
@@ -399,6 +426,7 @@ struct MainVaultView: View {
     }
     
     private func exportSelectedPhotos() {
+        #if os(macOS)
         vaultManager.touchActivity()
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
@@ -411,6 +439,7 @@ struct MainVaultView: View {
                 exportPhotos(to: url)
             }
         }
+        #endif
     }
     
     private func exportPhotos(to folderURL: URL) {
@@ -466,6 +495,7 @@ struct MainVaultView: View {
     }
     
     private func restoreToNewAlbum() {
+        #if os(macOS)
         vaultManager.touchActivity()
         // Prompt for album name
         let alert = NSAlert()
@@ -487,6 +517,7 @@ struct MainVaultView: View {
                 vaultManager.batchRestorePhotos(photosToRestore, toNewAlbum: albumName)
             }
         }
+        #endif
     }
     
     private func restoreToLibrary() {
@@ -505,6 +536,7 @@ struct MainVaultView: View {
     }
 
     private func chooseVaultLocation() {
+        #if os(macOS)
         // Step-up authentication before allowing vault location change
         vaultManager.requireStepUpAuthentication { success in
             guard success else { return }
@@ -588,10 +620,12 @@ struct MainVaultView: View {
                 }
             }
         }
+        #endif
     }
     
     #if DEBUG
     private func resetVaultForDevelopment() {
+        #if os(macOS)
         let alert = NSAlert()
         alert.messageText = "Reset Vault? (Development)"
         alert.informativeText = "This will delete all vault data, the password, and return to setup. This action cannot be undone."
@@ -622,6 +656,7 @@ struct MainVaultView: View {
             // Lock the vault which will trigger setup
             vaultManager.lock()
         }
+        #endif
     }
     #endif
 }
@@ -880,7 +915,8 @@ struct PhotoViewerSheet: View {
     }
 }
 
-// Custom Video Player View using AVPlayerView
+// Custom Video Player View
+#if os(macOS)
 struct CustomVideoPlayer: NSViewRepresentable {
     let url: URL
     
@@ -896,3 +932,18 @@ struct CustomVideoPlayer: NSViewRepresentable {
         // Update if needed
     }
 }
+#else
+struct CustomVideoPlayer: UIViewControllerRepresentable {
+    let url: URL
+    
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let playerViewController = AVPlayerViewController()
+        playerViewController.player = AVPlayer(url: url)
+        return playerViewController
+    }
+    
+    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
+        // Update if needed
+    }
+}
+#endif

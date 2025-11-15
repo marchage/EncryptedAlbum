@@ -8,14 +8,14 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var vaultManager = VaultManager.shared
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        if vaultManager.isUnlocked {
+            MainVaultView()
+        } else {
+            UnlockView()
         }
-        .padding()
     }
 }
 
