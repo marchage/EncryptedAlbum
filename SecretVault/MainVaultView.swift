@@ -24,17 +24,18 @@ struct MainVaultView: View {
     
     private var actionIconFontSize: CGFloat {
 #if os(iOS)
-        return verticalSizeClass == .regular ? 22 : 28
+        return verticalSizeClass == .regular ? 18 : 22
 #else
-        return 28
+        return 22
 #endif
     }
     
     private var actionButtonDimension: CGFloat {
 #if os(iOS)
-        return verticalSizeClass == .regular ? 44 : 56
+    #warning("Action button sizes reduced for a more compact toolbar")
+        return verticalSizeClass == .regular ? 36 : 44
 #else
-        return 56
+        return 44
 #endif
     }
     
@@ -371,9 +372,9 @@ struct MainVaultView: View {
                     return false
 #endif
                 }()
-                HStack(alignment: .center, spacing: isLandscape ? 32 : 12) {
+                HStack(alignment: .top, spacing: isLandscape ? 24 : 8) {
                     // App Icon and Title
-                    HStack(spacing: isLandscape ? 20 : 12) {
+                    HStack(spacing: isLandscape ? 20 : 8) {
 #if os(macOS)
                         if let appIcon = NSImage(named: "AppIcon") {
                             Image(nsImage: appIcon)
@@ -423,11 +424,12 @@ struct MainVaultView: View {
                     }
                     Spacer()
                     // Controls
-                    HStack(spacing: isLandscape ? 20 : 12) {
+                    HStack(spacing: isLandscape ? 16 : 4) {
                         if !selectedPhotos.isEmpty {
-                            Text("\(selectedPhotos.count) selected")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                        Text("\(selectedPhotos.count) selected")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                             
                             Button {
                                 restoreSelectedPhotos()
@@ -436,7 +438,7 @@ struct MainVaultView: View {
                             }
                             .buttonStyle(.bordered)
 #if os(iOS)
-                            .controlSize(verticalSizeClass == .regular ? .small : .regular)
+                            .controlSize(.mini)
 #else
                             .controlSize(.regular)
 #endif
@@ -449,7 +451,7 @@ struct MainVaultView: View {
                             }
                             .buttonStyle(.bordered)
 #if os(iOS)
-                            .controlSize(verticalSizeClass == .regular ? .small : .regular)
+                            .controlSize(.mini)
 #else
                             .controlSize(.regular)
 #endif
@@ -461,7 +463,7 @@ struct MainVaultView: View {
                             }
                             .buttonStyle(.bordered)
 #if os(iOS)
-                            .controlSize(verticalSizeClass == .regular ? .small : .regular)
+                            .controlSize(.mini)
 #else
                             .controlSize(.regular)
 #endif
@@ -472,7 +474,7 @@ struct MainVaultView: View {
                         
                         TextField("Search...", text: $searchText)
                             .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: 180)
+                            .frame(maxWidth: 120)
                         
                         Toggle(isOn: $privacyModeEnabled) {
                             Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
@@ -487,8 +489,7 @@ struct MainVaultView: View {
                                 .font(.system(size: actionIconFontSize))
                                 .foregroundColor(.white)
                                 .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                .background(Color.blue)
-                                .clipShape(Circle())
+                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
                                 .shadow(radius: 2)
                         }
                         .buttonStyle(.plain)
@@ -533,12 +534,11 @@ struct MainVaultView: View {
                             }
 #endif
                         } label: {
-                            Image(systemName: "ellipsis.circle")
+                            Image(systemName: "ellipsis")
                                 .font(.system(size: actionIconFontSize))
                                 .foregroundColor(.white)
                                 .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                .background(Color.blue)
-                                .clipShape(Circle())
+                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
                                 .shadow(radius: 2)
                         }
                         .menuStyle(.borderlessButton)
@@ -680,8 +680,7 @@ struct MainVaultView: View {
                                 .font(.system(size: actionIconFontSize))
                                 .foregroundColor(.white)
                                 .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                .background(Color.blue)
-                                .clipShape(Circle())
+                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
                                 .shadow(radius: 2)
                             Text("Hide Items from Library")
                                 .font(.headline)
@@ -698,37 +697,39 @@ struct MainVaultView: View {
                         .padding(.top, max(headerHeight + 36, 56))
                 } else {
                     ScrollView {
-                        GeometryReader { geometry in
-                            let minSize: CGFloat = geometry.size.width < 420 ? 90 : 150
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: minSize, maximum: 200), spacing: 16)], spacing: 16) {
-                                ForEach(filteredPhotos) { photo in
-                                    PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id), privacyModeEnabled: privacyModeEnabled)
-                                        .onTapGesture(count: 2) {
-                                            selectedPhoto = photo
-                                            showingPhotoViewer = true
-                                        }
-                                        .onTapGesture {
-                                            toggleSelection(photo.id)
-                                        }
-                                        .contextMenu {
-                                            Button {
-                                                vaultManager.restorePhotoToLibrary(photo)
-                                            } label: {
-                                                Label("Restore to Library", systemImage: "arrow.uturn.backward")
+                        VStack(spacing: 0) {
+                            Color.clear.frame(height: max(headerHeight + 36, 56))
+                            GeometryReader { geometry in
+                                let minSize: CGFloat = geometry.size.width < 420 ? 90 : 150
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: minSize, maximum: 200), spacing: 16)], spacing: 16) {
+                                    ForEach(filteredPhotos) { photo in
+                                        PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id), privacyModeEnabled: privacyModeEnabled)
+                                            .onTapGesture(count: 2) {
+                                                selectedPhoto = photo
+                                                showingPhotoViewer = true
                                             }
-                                            
-                                            Divider()
-                                            
-                                            Button(role: .destructive) {
-                                                vaultManager.deletePhoto(photo)
-                                            } label: {
-                                                Label("Delete", systemImage: "trash")
+                                            .onTapGesture {
+                                                toggleSelection(photo.id)
                                             }
-                                        }
+                                            .contextMenu {
+                                                Button {
+                                                    vaultManager.restorePhotoToLibrary(photo)
+                                                } label: {
+                                                    Label("Restore to Library", systemImage: "arrow.uturn.backward")
+                                                }
+                                                
+                                                Divider()
+                                                
+                                                Button(role: .destructive) {
+                                                    vaultManager.deletePhoto(photo)
+                                                } label: {
+                                                    Label("Delete", systemImage: "trash")
+                                                }
+                                            }
+                                    }
                                 }
+                                .padding([.leading, .trailing, .bottom])
                             }
-                                .padding(.top, max(headerHeight + 36, 56))
-                            .padding([.leading, .trailing, .bottom])
                         }
                     }
                 }
