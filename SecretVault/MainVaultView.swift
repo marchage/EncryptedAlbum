@@ -170,11 +170,17 @@ struct MainVaultView: View {
                     Button {
                         showingPhotosLibrary = true
                     } label: {
-                        Label("Hide Items", systemImage: "eye.slash")
+                        Image(systemName: "eye.slash")
+                            .font(.system(size: verticalSizeClass == .regular ? 22 : 28))
+                            .foregroundColor(.white)
+                            .frame(width: verticalSizeClass == .regular ? 44 : 56, height: verticalSizeClass == .regular ? 44 : 56)
+                            .background(Color.blue)
+                            .clipShape(Circle())
+                            .shadow(radius: 2)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.plain)
                     #if os(iOS)
-                    .controlSize(verticalSizeClass == .regular ? .regular : .large)
+                    .controlSize(.mini)
                     #else
                     .controlSize(.large)
                     #endif
@@ -215,10 +221,16 @@ struct MainVaultView: View {
                         #endif
                     } label: {
                         Image(systemName: "ellipsis.circle")
+                            .font(.system(size: verticalSizeClass == .regular ? 22 : 28))
+                            .foregroundColor(.white)
+                            .frame(width: verticalSizeClass == .regular ? 44 : 56, height: verticalSizeClass == .regular ? 44 : 56)
+                            .background(Color.blue)
+                            .clipShape(Circle())
+                            .shadow(radius: 2)
                     }
                     .menuStyle(.borderlessButton)
                     #if os(iOS)
-                    .controlSize(verticalSizeClass == .regular ? .regular : .large)
+                    .controlSize(.mini)
                     #else
                     .controlSize(.large)
                     #endif
@@ -348,18 +360,23 @@ struct MainVaultView: View {
                     Button {
                         showingPhotosLibrary = true
                     } label: {
-                        Label("Hide Items from Library", systemImage: "eye.slash")
+                        Image(systemName: "eye.slash")
+                            .font(.system(size: verticalSizeClass == .regular ? 22 : 28))
+                            .foregroundColor(.white)
+                            .frame(width: verticalSizeClass == .regular ? 44 : 56, height: verticalSizeClass == .regular ? 44 : 56)
+                            .background(Color.blue)
+                            .clipShape(Circle())
+                            .shadow(radius: 2)
+                        Text("Hide Items from Library")
                             .font(.headline)
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 12)
+                            .foregroundColor(.blue)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.plain)
                     #if os(iOS)
-                    .controlSize(verticalSizeClass == .regular ? .regular : .large)
+                    .controlSize(.mini)
                     #else
                     .controlSize(.large)
                     #endif
-                    .controlSize(.large)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
