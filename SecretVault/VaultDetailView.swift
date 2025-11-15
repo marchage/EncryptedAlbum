@@ -103,10 +103,12 @@ struct PhotosLibraryPicker: View {
             #if os(iOS)
             VStack(alignment: .leading, spacing: 12) {
                 // Title and main buttons
-                HStack {
+                HStack(spacing: 8) {
                     Text("Select Items to Hide")
-                        .font(.title3)
+                        .font(.headline)
                         .fontWeight(.semibold)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
                     
                     Spacer()
                     
@@ -117,7 +119,7 @@ struct PhotosLibraryPicker: View {
                     .controlSize(.small)
                     .font(.subheadline)
                     
-                    Button("Hide Selected (\(selectedAssets.count))") {
+                    Button("Hide (\(selectedAssets.count))") {
                         hideSelectedPhotos()
                     }
                     .buttonStyle(.borderedProminent)
