@@ -64,7 +64,7 @@ struct MainVaultView: View {
     }
     
     var body: some View {
-        return ZStack(alignment: .top) {
+        ZStack(alignment: .top) {
             VStack(spacing: 0) {
                 // Responsive Toolbar
                 GeometryReader { geometry in
@@ -453,8 +453,10 @@ struct MainVaultView: View {
             Text("How would you like to restore \(photosToRestore.count) item(s)?")
         }
         .sheet(isPresented: $showingPhotoViewer) {
-            if let photo = selectedPhoto {
-                PhotoViewerSheet(photo: photo)
+            Group {
+                if let photo = selectedPhoto {
+                    PhotoViewerSheet(photo: photo)
+                }
             }
         }
         .sheet(isPresented: $showingPhotosLibrary) {
@@ -537,17 +539,17 @@ struct MainVaultView: View {
     // Helpers for banner icon and color (moved into MainVaultView scope)
     func iconName(for type: HideNotificationType) -> String {
         switch type {
-        case .success: return "checkmark.circle.fill"
-        case .failure: return "xmark.octagon.fill"
-        case .info: return "info.circle.fill"
+        case .success: "checkmark.circle.fill"
+        case .failure: "xmark.octagon.fill"
+        case .info: "info.circle.fill"
         }
     }
 
     func iconColor(for type: HideNotificationType) -> Color {
         switch type {
-        case .success: return Color.green
-        case .failure: return Color.red
-        case .info: return Color.gray
+        case .success: Color.green
+        case .failure: Color.red
+        case .info: Color.gray
         }
     }
     
