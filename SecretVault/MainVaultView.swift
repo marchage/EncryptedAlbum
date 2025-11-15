@@ -32,7 +32,7 @@ struct MainVaultView: View {
     
     private var actionButtonDimension: CGFloat {
 #if os(iOS)
-    #warning("Action button sizes reduced for a more compact toolbar")
+#warning("Action button sizes reduced for a more compact toolbar")
         return verticalSizeClass == .regular ? 36 : 44
 #else
         return 44
@@ -148,17 +148,23 @@ struct MainVaultView: View {
     // Helpers for banner icon and color (moved into MainVaultView scope)
     func iconName(for type: HideNotificationType) -> String {
         switch type {
-        case .success: "checkmark.circle.fill"
-        case .failure: "xmark.octagon.fill"
-        case .info: "info.circle.fill"
+        case .success:
+            return "checkmark.circle.fill"
+        case .failure:
+            return "xmark.octagon.fill"
+        case .info:
+            return "info.circle.fill"
         }
     }
     
     func iconColor(for type: HideNotificationType) -> Color {
         switch type {
-        case .success: Color.green
-        case .failure: Color.red
-        case .info: Color.gray
+        case .success:
+            return Color.green
+        case .failure:
+            return Color.red
+        case .info:
+            return Color.gray
         }
     }
     
@@ -347,7 +353,7 @@ struct MainVaultView: View {
                 .onPreferenceChange(HeaderHeightKey.self) { value in
                     headerHeight = value
                 }
-            #if DEBUG
+#if DEBUG
             // Debug overlay to show measured header height for tuning
             VStack {
                 HStack {
@@ -362,7 +368,7 @@ struct MainVaultView: View {
                 }
                 Spacer()
             }
-            #endif
+#endif
             VStack(spacing: 0) {
                 // Responsive Toolbar
 #warning("Header layout: reduced spacing + adaptive portrait padding")
@@ -430,9 +436,9 @@ struct MainVaultView: View {
                                         .foregroundStyle(.secondary)
                                 }
                             }
-
+                            
                             Spacer()
-
+                            
                             // Controls placed to the right of the title in the top row
                             if isLandscape {
                                 HStack(spacing: 10) {
@@ -441,7 +447,7 @@ struct MainVaultView: View {
                                             .font(.subheadline)
                                             .foregroundStyle(.secondary)
                                             .lineLimit(1)
-
+                                        
                                         Button {
                                             restoreSelectedPhotos()
                                         } label: {
@@ -449,7 +455,7 @@ struct MainVaultView: View {
                                         }
                                         .buttonStyle(.bordered)
                                         .controlSize(.small)
-
+                                        
                                         Button {
                                             exportSelectedPhotos()
                                         } label: {
@@ -457,7 +463,7 @@ struct MainVaultView: View {
                                         }
                                         .buttonStyle(.bordered)
                                         .controlSize(.small)
-
+                                        
                                         Button(role: .destructive) {
                                             deleteSelectedPhotos()
                                         } label: {
@@ -465,22 +471,22 @@ struct MainVaultView: View {
                                         }
                                         .buttonStyle(.bordered)
                                         .controlSize(.small)
-
+                                        
                                         Divider()
                                             .frame(height: 20)
                                     }
-
+                                    
                                     // Keep a compact search in landscape
                                     TextField("Search...", text: $searchText)
                                         .textFieldStyle(.roundedBorder)
                                         .frame(maxWidth: 120)
-
+                                    
                                     Toggle(isOn: $privacyModeEnabled) {
                                         Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
                                     }
                                     .toggleStyle(.switch)
                                     .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
-
+                                    
                                     Button {
                                         showingPhotosLibrary = true
                                     } label: {
@@ -502,7 +508,7 @@ struct MainVaultView: View {
                                     }
                                     .buttonStyle(.plain)
                                     .controlSize(.small)
-
+                                    
                                     Menu {
 #if os(macOS)
                                         Button {
@@ -510,27 +516,27 @@ struct MainVaultView: View {
                                         } label: {
                                             Label("Choose Vault Folder…", systemImage: "folder")
                                         }
-
+                                        
                                         Divider()
 #endif
-
+                                        
                                         Button {
                                             vaultManager.removeDuplicates()
                                         } label: {
                                             Label("Remove Duplicates", systemImage: "trash.slash")
                                         }
-
+                                        
                                         Divider()
-
+                                        
                                         Button {
                                             vaultManager.lock()
                                         } label: {
                                             Label("Lock Vault", systemImage: "lock.fill")
                                         }
-
+                                        
 #if DEBUG
                                         Divider()
-
+                                        
                                         Button(role: .destructive) {
                                             resetVaultForDevelopment()
                                         } label: {
@@ -556,9 +562,9 @@ struct MainVaultView: View {
                                     }
                                     .toggleStyle(.switch)
                                     .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
-
+                                    
                                     Spacer(minLength: 8)
-
+                                    
                                     HStack(spacing: 8) {
                                         Button {
                                             showingPhotosLibrary = true
@@ -572,7 +578,7 @@ struct MainVaultView: View {
                                         }
                                         .buttonStyle(.plain)
                                         .controlSize(.small)
-
+                                        
                                         Menu {
                                             if !selectedPhotos.isEmpty {
                                                 Button {
@@ -580,20 +586,20 @@ struct MainVaultView: View {
                                                 } label: {
                                                     Label("Restore Selected", systemImage: "arrow.uturn.backward")
                                                 }
-
+                                                
                                                 Button {
                                                     exportSelectedPhotos()
                                                 } label: {
                                                     Label("Export Selected", systemImage: "square.and.arrow.up")
                                                 }
-
+                                                
                                                 Button(role: .destructive) {
                                                     deleteSelectedPhotos()
                                                 } label: {
                                                     Label("Delete Selected", systemImage: "trash")
                                                 }
                                             }
-
+                                            
 #if os(macOS)
                                             Divider()
                                             Button {
@@ -602,21 +608,21 @@ struct MainVaultView: View {
                                                 Label("Choose Vault Folder…", systemImage: "folder")
                                             }
 #endif
-
+                                            
                                             Divider()
                                             Button {
                                                 vaultManager.removeDuplicates()
                                             } label: {
                                                 Label("Remove Duplicates", systemImage: "trash.slash")
                                             }
-
+                                            
                                             Divider()
                                             Button {
                                                 vaultManager.lock()
                                             } label: {
                                                 Label("Lock Vault", systemImage: "lock.fill")
                                             }
-
+                                            
 #if DEBUG
                                             Divider()
                                             Button(role: .destructive) {
@@ -638,233 +644,236 @@ struct MainVaultView: View {
                                     }
                                     .padding(.trailing, -10) // allow icons to tuck slightly off the edge
                                 }
-                        }
-
-                        // Search bar row: full width for portrait/macOS; compact search kept in landscape above
-                        if !isLandscape {
-                            HStack {
-                                TextField("Search...", text: $searchText)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(maxWidth: .infinity)
+                            }
+                            
+                            // Search bar row: full width for portrait/macOS; compact search kept in landscape above
+                            if !isLandscape {
+                                HStack {
+                                    TextField("Search...", text: $searchText)
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(maxWidth: .infinity)
+                                }
                             }
                         }
                     }
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 12)
-                .background(.ultraThinMaterial)
-                .background(GeometryReader { proxy in
-                    Color.clear.preference(key: HeaderHeightKey.self, value: proxy.size.height)
-                })
-                
-                Divider()
-                
-                // Notification banner placed below the header so it doesn't overlap toolbar controls
-                if let note = vaultManager.hideNotification {
-                    // Compute valid photos for Undo: ensure photos still exist in the vault
-                    let validPhotos = note.photos?.filter { returned in
-                        vaultManager.hiddenPhotos.contains(where: { $0.id == returned.id })
-                    } ?? []
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .background(.ultraThinMaterial)
+                    .background(GeometryReader { proxy in
+                        Color.clear.preference(key: HeaderHeightKey.self, value: proxy.size.height)
+                    })
                     
-                    VStack {
-                        HStack(spacing: 12) {
-                            Image(systemName: iconName(for: note.type))
-                                .foregroundStyle(.white)
-                                .padding(6)
-                                .background(Circle().fill(iconColor(for: note.type)))
-                            
-                            Text(note.message)
-                                .font(.subheadline)
-                                .foregroundStyle(.primary)
-                            
-                            Spacer()
-                            
-                            if !validPhotos.isEmpty {
-                                Button("Undo") {
-                                    for photo in validPhotos {
-                                        vaultManager.restorePhotoToLibrary(photo)
+                    Divider()
+                    
+                    // Notification banner placed below the header so it doesn't overlap toolbar controls
+                    if let note = vaultManager.hideNotification {
+                        // Compute valid photos for Undo: ensure photos still exist in the vault
+                        let validPhotos = note.photos?.filter { returned in
+                            vaultManager.hiddenPhotos.contains(where: { $0.id == returned.id })
+                        } ?? []
+                        
+                        VStack {
+                            HStack(spacing: 12) {
+                                Image(systemName: iconName(for: note.type))
+                                    .foregroundStyle(.white)
+                                    .padding(6)
+                                    .background(Circle().fill(iconColor(for: note.type)))
+                                
+                                Text(note.message)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.primary)
+                                
+                                Spacer()
+                                
+                                if !validPhotos.isEmpty {
+                                    Button("Undo") {
+                                        for photo in validPhotos {
+                                            vaultManager.restorePhotoToLibrary(photo)
+                                        }
+                                        withAnimation {
+                                            vaultManager.hideNotification = nil
+                                        }
                                     }
+                                    .buttonStyle(.borderedProminent)
+                                    .controlSize(.small)
+                                }
+                                
+                                Button("Open Photos App") {
+#if os(macOS)
+                                    NSWorkspace.shared.open(URL(string: "photos://")!)
+#endif
                                     withAnimation {
                                         vaultManager.hideNotification = nil
                                     }
                                 }
-                                .buttonStyle(.borderedProminent)
+                                .buttonStyle(.bordered)
                                 .controlSize(.small)
                             }
-                            
-                            Button("Open Photos App") {
-#if os(macOS)
-                                NSWorkspace.shared.open(URL(string: "photos://")!)
-#endif
+                            .padding(.horizontal)
+                            .padding(.vertical, 10)
+                            .frame(maxWidth: .infinity)
+                            .background(
+                                Group {
+                                    if note.type == .success {
+                                        Color.green.opacity(0.14)
+                                    } else if note.type == .failure {
+                                        Color.red.opacity(0.14)
+                                    } else {
+                                        Color.gray.opacity(0.12)
+                                    }
+                                }
+                            )
+                            .cornerRadius(8)
+                            .padding(.horizontal)
+                        }
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + undoTimeoutSeconds) {
                                 withAnimation {
                                     vaultManager.hideNotification = nil
                                 }
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                        }
-                        .padding(.horizontal)
-                        .padding(.vertical, 10)
-                        .frame(maxWidth: .infinity)
-                        .background(
-                            Group {
-                                switch note.type {
-                                case .success: Color.green.opacity(0.14)
-                                case .failure: Color.red.opacity(0.14)
-                                case .info: Color.gray.opacity(0.12)
-                                }
-                            }
-                        )
-                        .cornerRadius(8)
-                        .padding(.horizontal)
-                    }
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + undoTimeoutSeconds) {
-                            withAnimation {
-                                vaultManager.hideNotification = nil
-                            }
                         }
                     }
-                }
-                
-                // Restoration progress banner
-                if vaultManager.restorationProgress.isRestoring {
-                    VStack(spacing: 8) {
-                        HStack {
-                            ProgressView(value: vaultManager.restorationProgress.progress)
-                                .progressViewStyle(.linear)
-                            
-                            Text("\(vaultManager.restorationProgress.processedItems)/\(vaultManager.restorationProgress.totalItems)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(width: 60)
-                        }
-                        
-                        HStack {
-                            Image(systemName: "arrow.uturn.backward.circle.fill")
-                                .foregroundStyle(.blue)
-                            Text("Restoring items to Photos library...")
-                                .font(.subheadline)
-                            Spacer()
-                            if vaultManager.restorationProgress.failedItems > 0 {
-                                Text("\(vaultManager.restorationProgress.failedItems) failed")
-                                    .font(.caption)
-                                    .foregroundStyle(.orange)
-                            }
-                        }
-                    }
-                    .padding()
-                    .background(.blue.opacity(0.1))
                     
-                    Divider()
-                }
-                
-                // Photo grid or empty state
-                if vaultManager.hiddenPhotos.isEmpty {
-                    VStack(spacing: 20) {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 60))
-                            .foregroundStyle(.secondary)
-                        
-                        Text("No Hidden Items")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        
-                        Text("Hide photos and videos from your Photos Library")
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                        
-                        Button {
-                            showingPhotosLibrary = true
-                        } label: {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: actionIconFontSize))
-                                .foregroundColor(.white)
-                                .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
-                                .shadow(radius: 2)
-                            Text("Hide Items from Library")
-                                .font(.headline)
-                                .foregroundColor(.blue)
-                        }
-                        .buttonStyle(.plain)
-#if os(iOS)
-                        .controlSize(.mini)
-#else
-                        .controlSize(.large)
-#endif
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.top, max(headerHeight + headerExtra, minTop))
-                } else {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            Color.clear.frame(height: max(headerHeight + headerExtra, minTop))
-                            GeometryReader { geometry in
-                                let minSize: CGFloat = geometry.size.width < 420 ? 90 : 150
-                                LazyVGrid(columns: [GridItem(.adaptive(minimum: minSize, maximum: 200), spacing: 16)], spacing: 16) {
-                                    ForEach(filteredPhotos) { photo in
-                                        PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id), privacyModeEnabled: privacyModeEnabled)
-                                            .onTapGesture(count: 2) {
-                                                selectedPhoto = photo
-                                                showingPhotoViewer = true
-                                            }
-                                            .onTapGesture {
-                                                toggleSelection(photo.id)
-                                            }
-                                            .contextMenu {
-                                                Button {
-                                                    vaultManager.restorePhotoToLibrary(photo)
-                                                } label: {
-                                                    Label("Restore to Library", systemImage: "arrow.uturn.backward")
-                                                }
-                                                
-                                                Divider()
-                                                
-                                                Button(role: .destructive) {
-                                                    vaultManager.deletePhoto(photo)
-                                                } label: {
-                                                    Label("Delete", systemImage: "trash")
-                                                }
-                                            }
-                                    }
+                    // Restoration progress banner
+                    if vaultManager.restorationProgress.isRestoring {
+                        VStack(spacing: 8) {
+                            HStack {
+                                ProgressView(value: vaultManager.restorationProgress.progress)
+                                    .progressViewStyle(.linear)
+                                
+                                Text("\(vaultManager.restorationProgress.processedItems)/\(vaultManager.restorationProgress.totalItems)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 60)
+                            }
+                            
+                            HStack {
+                                Image(systemName: "arrow.uturn.backward.circle.fill")
+                                    .foregroundStyle(.blue)
+                                Text("Restoring items to Photos library...")
+                                    .font(.subheadline)
+                                Spacer()
+                                if vaultManager.restorationProgress.failedItems > 0 {
+                                    Text("\(vaultManager.restorationProgress.failedItems) failed")
+                                        .font(.caption)
+                                        .foregroundStyle(.orange)
                                 }
-                                .padding([.leading, .trailing, .bottom])
+                            }
+                        }
+                        .padding()
+                        .background(.blue.opacity(0.1))
+                        
+                        Divider()
+                    }
+                    
+                    // Photo grid or empty state
+                    if vaultManager.hiddenPhotos.isEmpty {
+                        VStack(spacing: 20) {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 60))
+                                .foregroundStyle(.secondary)
+                            
+                            Text("No Hidden Items")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                            
+                            Text("Hide photos and videos from your Photos Library")
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                            
+                            Button {
+                                showingPhotosLibrary = true
+                            } label: {
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: actionIconFontSize))
+                                    .foregroundColor(.white)
+                                    .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
+                                    .shadow(radius: 2)
+                                Text("Hide Items from Library")
+                                    .font(.headline)
+                                    .foregroundColor(.blue)
+                            }
+                            .buttonStyle(.plain)
+#if os(iOS)
+                            .controlSize(.mini)
+#else
+                            .controlSize(.large)
+#endif
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.top, max(headerHeight + headerExtra, minTop))
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                Color.clear.frame(height: max(headerHeight + headerExtra, minTop))
+                                GeometryReader { geometry in
+                                    let minSize: CGFloat = geometry.size.width < 420 ? 90 : 150
+                                    LazyVGrid(columns: [GridItem(.adaptive(minimum: minSize, maximum: 200), spacing: 16)], spacing: 16) {
+                                        ForEach(filteredPhotos) { photo in
+                                            PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id), privacyModeEnabled: privacyModeEnabled)
+                                                .onTapGesture(count: 2) {
+                                                    selectedPhoto = photo
+                                                    showingPhotoViewer = true
+                                                }
+                                                .onTapGesture {
+                                                    toggleSelection(photo.id)
+                                                }
+                                                .contextMenu {
+                                                    Button {
+                                                        vaultManager.restorePhotoToLibrary(photo)
+                                                    } label: {
+                                                        Label("Restore to Library", systemImage: "arrow.uturn.backward")
+                                                    }
+                                                    
+                                                    Divider()
+                                                    
+                                                    Button(role: .destructive) {
+                                                        vaultManager.deletePhoto(photo)
+                                                    } label: {
+                                                        Label("Delete", systemImage: "trash")
+                                                    }
+                                                }
+                                        }
+                                    }
+                                    .padding([.leading, .trailing, .bottom])
+                                }
                             }
                         }
                     }
+                    // Banner was moved into the VStack above so it doesn't overlap header controls
                 }
-                // Banner was moved into the VStack above so it doesn't overlap header controls
-            }
-            .onAppear {
-                selectedPhotos.removeAll()
-                setupKeyboardShortcuts()
-                vaultManager.touchActivity()
-            }
-            .alert("Restore Items", isPresented: $showingRestoreOptions) {
-                Button("Restore to Original Albums") {
-                    restoreToOriginalAlbums()
+                .onAppear {
+                    selectedPhotos.removeAll()
+                    setupKeyboardShortcuts()
+                    vaultManager.touchActivity()
                 }
-                Button("Restore to New Album") {
-                    restoreToNewAlbum()
+                .alert("Restore Items", isPresented: $showingRestoreOptions) {
+                    Button("Restore to Original Albums") {
+                        restoreToOriginalAlbums()
+                    }
+                    Button("Restore to New Album") {
+                        restoreToNewAlbum()
+                    }
+                    Button("Just Add to Library") {
+                        restoreToLibrary()
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("How would you like to restore \(photosToRestore.count) item(s)?")
                 }
-                Button("Just Add to Library") {
-                    restoreToLibrary()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("How would you like to restore \(photosToRestore.count) item(s)?")
-            }
-            .sheet(isPresented: $showingPhotoViewer) {
-                Group {
-                    if let photo = selectedPhoto {
-                        PhotoViewerSheet(photo: photo)
+                .sheet(isPresented: $showingPhotoViewer) {
+                    Group {
+                        if let photo = selectedPhoto {
+                            PhotoViewerSheet(photo: photo)
+                        }
                     }
                 }
-            }
-            .sheet(isPresented: $showingPhotosLibrary) {
-                PhotosLibraryPicker()
+                .sheet(isPresented: $showingPhotosLibrary) {
+                    PhotosLibraryPicker()
+                }
             }
         }
     }
