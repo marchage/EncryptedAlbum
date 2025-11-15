@@ -92,6 +92,10 @@ struct PhotosLibraryPicker: View {
             }
             #if os(macOS)
             .frame(width: 220)
+            #else
+            // On iOS (especially portrait) constrain the sidebar so it doesn't take
+            // an excessive portion of the screen. Keep it flexible but bounded.
+            .frame(minWidth: 80, idealWidth: 110, maxWidth: 140)
             #endif
             .background(.ultraThinMaterial)
             
