@@ -66,67 +66,68 @@ struct MainVaultView: View {
     var body: some View {
         return ZStack(alignment: .top) {
             VStack(spacing: 0) {
-            // Toolbar
-            HStack {
-                HStack(spacing: 12) {
-                    // App Icon
-                    #if os(macOS)
-                    if let appIcon = NSImage(named: "AppIcon") {
-                        Image(nsImage: appIcon)
-                            .resizable()
-                            .frame(width: 36, height: 36)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                    } else {
-                        // Fallback to SF Symbol if app icon not found
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.blue, .purple],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
+                // Responsive Toolbar
+                GeometryReader { geometry in
+                    let isLandscape: Bool = {
+                        #if os(iOS)
+                        return geometry.size.width > geometry.size.height
+                        #else
+                        return false
+                        #endif
+                    }()
+                    HStack(alignment: .center, spacing: isLandscape ? 32 : 12) {
+                        // App Icon and Title
+                        HStack(spacing: isLandscape ? 20 : 12) {
+                            #if os(macOS)
+                            if let appIcon = NSImage(named: "AppIcon") {
+                                Image(nsImage: appIcon)
+                                    .resizable()
+                                    .frame(width: 36, height: 36)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            } else {
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [.blue, .purple],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .frame(width: 36, height: 36)
+                                    Image(systemName: "lock.open.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                            #else
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [.blue, .purple],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
                                     )
-                                )
-                                .frame(width: 36, height: 36)
-                            
-                            Image(systemName: "lock.open.fill")
-                                .font(.system(size: 16))
-                                .foregroundStyle(.white)
+                                    .frame(width: 36, height: 36)
+                                Image(systemName: "lock.open.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(.white)
+                            }
+                            #endif
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Hidden Items")
+                                    .font(isLandscape ? .title : .title2)
+                                    .fontWeight(.bold)
+                                Text("\(vaultManager.hiddenPhotos.count) items hidden")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
-                    }
-                    #else
-                    // iOS fallback to SF Symbol
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.blue, .purple],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 36, height: 36)
-                        
-                        Image(systemName: "lock.open.fill")
-                            .font(.system(size: 16))
-                            .foregroundStyle(.white)
-                    }
-                    #endif
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Hidden Items")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                        
-                        Text("\(vaultManager.hiddenPhotos.count) items hidden")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                
-                Spacer()
-                
-                HStack(spacing: 12) {
+                        Spacer()
+                        // Controls
+                        HStack(spacing: isLandscape ? 20 : 12) {
                     if !selectedPhotos.isEmpty {
                         Text("\(selectedPhotos.count) selected")
                             .font(.subheadline)
