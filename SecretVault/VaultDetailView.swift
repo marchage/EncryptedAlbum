@@ -105,7 +105,8 @@ struct PhotosLibraryPicker: View {
                 // Title and main buttons
                 HStack {
                     Text("Select Items to Hide")
-                        .font(.headline)
+                        .font(.title3)
+                        .fontWeight(.semibold)
                     
                     Spacer()
                     
@@ -113,11 +114,15 @@ struct PhotosLibraryPicker: View {
                         dismiss()
                     }
                     .keyboardShortcut(.cancelAction)
+                    .controlSize(.small)
+                    .font(.subheadline)
                     
                     Button("Hide Selected (\(selectedAssets.count))") {
                         hideSelectedPhotos()
                     }
                     .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .font(.subheadline)
                     .disabled(selectedAssets.isEmpty)
                     .keyboardShortcut(.defaultAction)
                 }
@@ -296,18 +301,18 @@ struct PhotosLibraryPicker: View {
             if importing {
                 ZStack {
                     Color.black.opacity(0.5)
-                    VStack(spacing: 16) {
+                    VStack(spacing: 12) {
                         ProgressView()
-                            .scaleEffect(1.5)
+                            .scaleEffect(1.3)
                         Text("Hiding \(selectedAssets.count) items...")
-                            .font(.headline)
+                            .font(.subheadline)
                         Text("Please wait...")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    .padding(40)
+                    .padding(28)
                     .background(.ultraThickMaterial)
-                    .cornerRadius(16)
+                    .cornerRadius(12)
                 }
             }
         }
