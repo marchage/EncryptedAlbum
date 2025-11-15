@@ -238,8 +238,10 @@ struct UnlockView: View {
             vaultManager.hiddenPhotos = []
             vaultManager.saveSettings() // Persist the empty state
             
-            // Force view update by triggering objectWillChange
-            vaultManager.objectWillChange.send()
+            // Force view update by triggering objectWillChange on main thread
+            DispatchQueue.main.async {
+                vaultManager.objectWillChange.send()
+            }
         }
         #else
         // iOS implementation - dismiss keyboard first to avoid constraint conflicts
@@ -286,8 +288,10 @@ struct UnlockView: View {
             vaultManager.hiddenPhotos = []
             vaultManager.saveSettings() // Persist the empty state
             
-            // Force view update by triggering objectWillChange
-            vaultManager.objectWillChange.send()
+            // Force view update by triggering objectWillChange on main thread
+            DispatchQueue.main.async {
+                vaultManager.objectWillChange.send()
+            }
         })
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
