@@ -477,7 +477,7 @@ struct MainVaultView: View {
                             .frame(maxWidth: 120)
                         
                         Toggle(isOn: $privacyModeEnabled) {
-                            Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
+                            Image(systemName: privacyModeEnabled ? "lock.fill" : "lock.open.fill")
                         }
                         .toggleStyle(.switch)
                         .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
@@ -485,7 +485,7 @@ struct MainVaultView: View {
                         Button {
                             showingPhotosLibrary = true
                         } label: {
-                            Image(systemName: "eye.slash")
+                            Image(systemName: "lock.fill")
                                 .font(.system(size: actionIconFontSize))
                                 .foregroundColor(.white)
                                 .frame(width: actionButtonDimension, height: actionButtonDimension)
@@ -661,7 +661,7 @@ struct MainVaultView: View {
                 // Photo grid or empty state
                 if vaultManager.hiddenPhotos.isEmpty {
                     VStack(spacing: 20) {
-                        Image(systemName: "eye.slash")
+                        Image(systemName: "lock.fill")
                             .font(.system(size: 60))
                             .foregroundStyle(.secondary)
                         
@@ -676,7 +676,7 @@ struct MainVaultView: View {
                         Button {
                             showingPhotosLibrary = true
                         } label: {
-                            Image(systemName: "eye.slash")
+                            Image(systemName: "lock.fill")
                                 .font(.system(size: actionIconFontSize))
                                 .foregroundColor(.white)
                                 .frame(width: actionButtonDimension, height: actionButtonDimension)
@@ -791,7 +791,7 @@ struct PhotoThumbnailView: View {
                         .fill(Color.gray.opacity(0.2))
                         .frame(width: thumbnailSize, height: thumbnailSize)
                         .overlay {
-                            Image(systemName: photo.mediaType == .video ? "video.slash" : "eye.slash")
+                            Image(systemName: photo.mediaType == .video ? "video.slash" : "lock.fill")
                                 .font(.title2)
                                 .foregroundStyle(.secondary)
                         }
