@@ -92,7 +92,7 @@ class VaultManager: ObservableObject {
     @Published var showUnlockPrompt = false
     @Published var passwordHash: String = ""
     @Published var restorationProgress = RestorationProgress()
-    @Published var vaultBaseURL: URL
+    @Published var vaultBaseURL: URL = URL(fileURLWithPath: "/tmp")
     @Published var hideNotification: HideNotification? = nil
     @Published var lastActivity: Date = Date()
 
@@ -100,15 +100,15 @@ class VaultManager: ObservableObject {
     /// Default is 600 seconds (10 minutes).
     let idleTimeout: TimeInterval = 600
     
-    private let photosURL: URL
-    private let photosFile: URL
-    private let settingsFile: URL
+    private lazy var photosURL: URL = vaultBaseURL.appendingPathComponent("photos", isDirectory: true)
+    private lazy var photosFile: URL = vaultBaseURL.appendingPathComponent("hidden_photos.json")
+    private lazy var settingsFile: URL = vaultBaseURL.appendingPathComponent("settings.json")
     private var idleTimer: Timer?
     
     private init() {
-        // Use the app's container directory instead of shared Application Support
-        // This works with App Sandbox
-        // Determine vault base directory (default Application Support, overridable via settings)
+        // Determine vault base directory based on platform
+        #if os(macOS)
+        // macOS: Use Application Support or custom location
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
         let defaultBaseDirectory: URL
 
@@ -130,21 +130,34 @@ class VaultManager: ObservableObject {
             resolvedBaseURL = defaultBaseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
         }
         vaultBaseURL = resolvedBaseURL
+        #else
+        // iOS: Use iCloud Drive if available, otherwise local documents
+        let fileManager = FileManager.default
+        var baseURL: URL
+        
+        if let iCloudURL = fileManager.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents") {
+            // iCloud is available
+            baseURL = iCloudURL.appendingPathComponent("SecretVault", isDirectory: true)
+            print("Using iCloud Drive for vault storage")
+        } else {
+            // Fallback to local documents
+            guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                fatalError("Unable to access file system")
+            }
+            baseURL = documentsURL.appendingPathComponent("SecretVault", isDirectory: true)
+            print("Using local storage for vault (iCloud not available)")
+        }
+        
+        vaultBaseURL = baseURL
+        #endif
 
-        let appDirectory = resolvedBaseURL
-        
-        // Initialize the URLs first
-        self.photosURL = appDirectory.appendingPathComponent("photos", isDirectory: true)
-        self.photosFile = appDirectory.appendingPathComponent("hidden_photos.json")
-        self.settingsFile = appDirectory.appendingPathComponent("settings.json")
-        
-        // Now create directories
+        // Create directories
         do {
-            try FileManager.default.createDirectory(at: appDirectory, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: vaultBaseURL, withIntermediateDirectories: true)
         } catch {
             print("Failed to create directory: \(error)")
         }
-        
+
         do {
             try FileManager.default.createDirectory(at: photosURL, withIntermediateDirectories: true)
         } catch {
@@ -179,8 +192,11 @@ class VaultManager: ObservableObject {
                 }
             }
         } else {
-            // Fall back to password entry via a synchronous alert on the main thread.
+            // Fall back to password entry via a SwiftUI alert (platform-agnostic)
             DispatchQueue.main.async {
+                // This will need to be handled by the UI layer
+                // For now, we'll show a simple alert if possible
+                #if os(macOS)
                 let alert = NSAlert()
                 alert.messageText = "Authenticate to Continue"
                 alert.informativeText = "Enter your SecretVault password to proceed with this sensitive operation."
@@ -202,6 +218,11 @@ class VaultManager: ObservableObject {
                 let enteredPassword = textField.stringValue
                 let enteredHash = enteredPassword.data(using: .utf8)?.base64EncodedString() ?? ""
                 completion(enteredHash == self.passwordHash)
+                #else
+                // On iOS, we'll need to use a different approach - perhaps a modal view
+                // For now, just fail the authentication
+                completion(false)
+                #endif
             }
         }
     }
@@ -584,6 +605,7 @@ class VaultManager: ObservableObject {
             return generateVideoThumbnail(from: mediaData)
         } else {
             // For photos, resize the image
+            #if os(macOS)
             guard let image = NSImage(data: mediaData),
                   let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
                 return mediaData
@@ -607,6 +629,27 @@ class VaultManager: ObservableObject {
             }
             
             return jpegData
+            #else
+            guard let image = UIImage(data: mediaData) else {
+                return mediaData
+            }
+            
+            let maxSize: CGFloat = 300
+            let size = image.size
+            let scale = min(maxSize / size.width, maxSize / size.height)
+            let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+            
+            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+            guard let resizedImage = UIGraphicsGetImageFromCurrentImageContext(),
+                  let jpegData = resizedImage.jpegData(compressionQuality: 0.8) else {
+                UIGraphicsEndImageContext()
+                return mediaData
+            }
+            UIGraphicsEndImageContext()
+            
+            return jpegData
+            #endif
         }
     }
     
@@ -622,6 +665,7 @@ class VaultManager: ObservableObject {
             
             let time = CMTime(seconds: 1, preferredTimescale: 60)
             if let cgImage = try? imageGenerator.copyCGImage(at: time, actualTime: nil) {
+                #if os(macOS)
                 let image = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
                 
                 // Resize thumbnail
@@ -642,6 +686,28 @@ class VaultManager: ObservableObject {
                     try? FileManager.default.removeItem(at: tempURL)
                     return jpegData
                 }
+                #else
+                let image = UIImage(cgImage: cgImage)
+                
+                // Resize thumbnail
+                let maxSize: CGFloat = 300
+                let size = image.size
+                let scale = min(maxSize / size.width, maxSize / size.height)
+                let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+                
+                UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+                image.draw(in: CGRect(origin: .zero, size: newSize))
+                guard let resizedImage = UIGraphicsGetImageFromCurrentImageContext(),
+                      let jpegData = resizedImage.jpegData(compressionQuality: 0.8) else {
+                    UIGraphicsEndImageContext()
+                    try? FileManager.default.removeItem(at: tempURL)
+                    return Data()
+                }
+                UIGraphicsEndImageContext()
+                
+                try? FileManager.default.removeItem(at: tempURL)
+                return jpegData
+                #endif
             }
             
             try? FileManager.default.removeItem(at: tempURL)

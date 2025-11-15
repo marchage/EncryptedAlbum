@@ -631,7 +631,7 @@ struct PhotoThumbnailView: View {
     let isSelected: Bool
     let privacyModeEnabled: Bool
     @EnvironmentObject var vaultManager: VaultManager
-    @State private var thumbnailImage: NSImage?
+    @State private var thumbnailImage: Image?
     @State private var loadTask: Task<Void, Never>?
     
     var body: some View {
@@ -651,7 +651,7 @@ struct PhotoThumbnailView: View {
                                 .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
                         )
                 } else if let image = thumbnailImage {
-                    Image(nsImage: image)
+                    image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: 180, height: 180)
@@ -732,7 +732,15 @@ struct PhotoThumbnailView: View {
             }
 
             await MainActor.run {
-                thumbnailImage = NSImage(data: data)
+                #if os(macOS)
+                if let nsImage = NSImage(data: data) {
+                    thumbnailImage = Image(nsImage: nsImage)
+                }
+                #else
+                if let uiImage = UIImage(data: data) {
+                    thumbnailImage = Image(uiImage: uiImage)
+                }
+                #endif
             }
         }
     }
@@ -749,7 +757,7 @@ struct PhotoViewerSheet: View {
     let photo: SecurePhoto
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var vaultManager: VaultManager
-    @State private var fullImage: NSImage?
+    @State private var fullImage: Image?
     @State private var videoURL: URL?
     
     var body: some View {
@@ -798,7 +806,7 @@ struct PhotoViewerSheet: View {
             } else {
                 if let image = fullImage {
                     GeometryReader { geometry in
-                        Image(nsImage: image)
+                        image
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -824,11 +832,20 @@ struct PhotoViewerSheet: View {
     
     private func loadFullImage() {
         DispatchQueue.global(qos: .userInitiated).async {
-            if let decryptedData = try? vaultManager.decryptPhoto(photo),
-               let image = NSImage(data: decryptedData) {
-                DispatchQueue.main.async {
-                    fullImage = image
+            if let decryptedData = try? vaultManager.decryptPhoto(photo) {
+                #if os(macOS)
+                if let image = NSImage(data: decryptedData) {
+                    DispatchQueue.main.async {
+                        fullImage = Image(nsImage: image)
+                    }
                 }
+                #else
+                if let image = UIImage(data: decryptedData) {
+                    DispatchQueue.main.async {
+                        fullImage = Image(uiImage: image)
+                    }
+                }
+                #endif
             }
         }
     }

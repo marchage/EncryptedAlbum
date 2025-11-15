@@ -466,12 +466,12 @@ struct PhotosLibraryPicker: View {
 struct PhotoAssetView: View {
     let asset: PHAsset
     let isSelected: Bool
-    @State private var thumbnail: NSImage?
+    @State private var thumbnail: Image?
     
     var body: some View {
         ZStack(alignment: .topTrailing) {
             if let image = thumbnail {
-                Image(nsImage: image)
+                image
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 100, height: 100)
@@ -512,7 +512,11 @@ struct PhotoAssetView: View {
         ) { image, _ in
             DispatchQueue.main.async {
                 if let image = image {
-                    self.thumbnail = image
+                    #if os(macOS)
+                    thumbnail = Image(nsImage: image)
+                    #else
+                    thumbnail = Image(uiImage: image)
+                    #endif
                 } else {
                     // Thumbnail unavailable for this asset; ignore silently
                 }

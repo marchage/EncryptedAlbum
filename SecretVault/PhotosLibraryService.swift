@@ -322,12 +322,21 @@ class PhotosLibraryService {
     
     func saveImageToLibrary(_ imageData: Data, filename: String, toAlbum albumName: String? = nil, completion: @escaping (Bool) -> Void) {
         // Validate that we can create an image from the data
+        #if os(macOS)
         guard NSImage(data: imageData) != nil else {
             DispatchQueue.main.async {
                 completion(false)
             }
             return
         }
+        #else
+        guard UIImage(data: imageData) != nil else {
+            DispatchQueue.main.async {
+                completion(false)
+            }
+            return
+        }
+        #endif
         
         PHPhotoLibrary.shared().performChanges({
             let creationRequest = PHAssetCreationRequest.forAsset()
@@ -422,12 +431,21 @@ class PhotosLibraryService {
             }
         } else {
             // For photos, save with metadata
+            #if os(macOS)
             guard NSImage(data: mediaData) != nil else {
                 DispatchQueue.main.async {
                     completion(false)
                 }
                 return
             }
+            #else
+            guard UIImage(data: mediaData) != nil else {
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+                return
+            }
+            #endif
             
             PHPhotoLibrary.shared().performChanges({
                 let creationRequest = PHAssetCreationRequest.forAsset()

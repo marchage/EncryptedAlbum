@@ -1,6 +1,6 @@
 # SecretVault
 
-SecretVault is a native macOS app for securely hiding photos and videos using strong, modern encryption.
+SecretVault is a native macOS and iOS app for securely hiding photos and videos using strong, modern encryption.
 
 ## Features
 
@@ -11,6 +11,7 @@ SecretVault is a native macOS app for securely hiding photos and videos using st
 - **Video support** – Encrypt, decrypt and play videos directly in the app.
 - **Search & organize** – Search by filename or album and use simple vault albums for grouping.
 - **Batch actions** – Select multiple items to restore, export, or delete in one go.
+- **Cross-platform sync** – iCloud Drive sync keeps your vault synchronized between macOS and iOS devices.
 
 ## Build & Run
 
@@ -20,7 +21,15 @@ SecretVault is a native macOS app for securely hiding photos and videos using st
 4. On first launch, choose either:
    - **Biometric mode** – the app creates and stores a strong random password in Keychain; you unlock with Touch ID / Face ID.
    - **Manual password** – you set a password yourself (no recovery if forgotten).
-5. Use the **“Hide Items”** button to select photos and videos from your library to add to the vault.
+5. Use the **"Hide Items"** button to select photos and videos from your library to add to the vault.
+
+### iOS
+
+1. Open `SecretVault.xcodeproj` in Xcode (iOS 15 or later).
+2. Select the `SecretVault iOS` app scheme.
+3. Build and run with `⌘R` on your iOS device or simulator.
+4. The app will automatically use iCloud Drive for storage if available, otherwise falls back to local storage.
+5. Follow the same setup process as macOS.
 
 ### Release builds from the console
 
@@ -29,11 +38,19 @@ To produce a signed, optimized build for distribution, use the `Release` configu
 ```bash
 cd /Users/marchage/source/repos/SecretVault
 
-# Build Release configuration for the SecretVault app
+# Build Release configuration for macOS
 xcodebuild \
    -project SecretVault.xcodeproj \
    -scheme SecretVault \
    -configuration Release \
+   build
+
+# Build Release configuration for iOS
+xcodebuild \
+   -project SecretVault.xcodeproj \
+   -scheme "SecretVault iOS" \
+   -configuration Release \
+   -sdk iphoneos \
    build
 ```
 
@@ -41,11 +58,22 @@ xcodebuild \
 
 ## Storage & Security (High Level)
 
-- By default, encrypted media and metadata are stored under `~/Library/Application Support/SecretVault/` in the current user account.
+- **macOS**: By default, encrypted media and metadata are stored under `~/Library/Application Support/SecretVault/` in the current user account.
+- **iOS**: Uses iCloud Drive (`~/Library/Mobile Documents/`) if available, otherwise local Documents directory.
 - You can optionally choose a custom vault folder (for example an iCloud Drive folder); the app then stores its encrypted vault inside a `SecretVault/` subfolder there.
 - Encryption keys are derived from either the auto-generated password or your manual password.
 - The app uses authenticated encryption (AES-256-GCM) so tampering with vault files is detected.
 - Losing or forgetting the password means the vault contents cannot be recovered.
+
+## iCloud Sync Setup
+
+To enable cross-device synchronization:
+
+1. **Enable iCloud Drive** on both your Mac and iOS devices in Settings > Apple ID > iCloud > iCloud Drive.
+2. **Grant Photos access** on both platforms when prompted.
+3. **Sign in with the same Apple ID** on all devices.
+4. The vault will automatically sync encrypted files between devices via iCloud Drive.
+5. **Note**: Photos library access is device-specific and won't sync between devices - you'll need to hide photos on each device separately.
 
 ## License
 

@@ -8,12 +8,16 @@
 
 /* Begin PBXBuildFile section */
 		1CA80AC13D192EBBFCD3B516 /* PhotosLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */; };
-		A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345677 /* PreferencesView.swift */; };
 		432DD49F40365EA5EAEBFD23 /* VaultDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C904A396A6B1968CDD78D9 /* VaultDetailView.swift */; };
+		981926552EC854B600C67291 /* SecretVault_iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981926542EC854B600C67291 /* SecretVault_iOSApp.swift */; };
+		981926572EC854B600C67291 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981926562EC854B600C67291 /* ContentView.swift */; };
+		981926592EC854B800C67291 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 981926582EC854B800C67291 /* Assets.xcassets */; };
+		9819265C2EC854B800C67291 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9819265B2EC854B800C67291 /* Preview Assets.xcassets */; };
 		9849B4552EB9893D00B17DAC /* SecretVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4542EB9893D00B17DAC /* SecretVaultApp.swift */; };
 		9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4562EB9893D00B17DAC /* ContentView.swift */; };
 		9849B4592EB9893F00B17DAC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B4582EB9893F00B17DAC /* Assets.xcassets */; };
 		9849B45C2EB9893F00B17DAC /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B45B2EB9893F00B17DAC /* Preview Assets.xcassets */; };
+		A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345677 /* PreferencesView.swift */; };
 		AA11BB2233CC44DD55EE66FF /* SetupPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */; };
 		CC33DD4455EE66FF77AA88BB /* MainVaultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE5566FF77AA88BB99CC /* MainVaultView.swift */; };
 		E48BBB324071974C8BE48D0D /* VaultManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F96EA3625074B045C751E84 /* VaultManager.swift */; };
@@ -21,6 +25,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		981926522EC854B600C67291 /* SecretVault iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SecretVault iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		981926542EC854B600C67291 /* SecretVault_iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVault_iOSApp.swift; sourceTree = "<group>"; };
+		981926562EC854B600C67291 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		981926582EC854B800C67291 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9819265B2EC854B800C67291 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		981926602EC8552000C67291 /* SecretVault-iOS-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "SecretVault-iOS-Info.plist"; sourceTree = SOURCE_ROOT; };
+		981926612EC855B600C67291 /* SecretVault iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "SecretVault iOS.entitlements"; sourceTree = "<group>"; };
 		9849B4512EB9893D00B17DAC /* SecretVault.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SecretVault.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9849B4542EB9893D00B17DAC /* SecretVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultApp.swift; sourceTree = "<group>"; };
 		9849B4562EB9893D00B17DAC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -28,16 +39,23 @@
 		9849B45B2EB9893F00B17DAC /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		9849B45D2EB9893F00B17DAC /* SecretVault.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SecretVault.entitlements; sourceTree = "<group>"; };
 		9F96EA3625074B045C751E84 /* VaultManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultManager.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6789012345677 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosLibraryService.swift; sourceTree = "<group>"; };
 		BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupPasswordView.swift; sourceTree = "<group>"; };
 		C5C904A396A6B1968CDD78D9 /* VaultDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultDetailView.swift; sourceTree = "<group>"; };
 		CF9ADA530C59D1A9B3039479 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D4C068CD08B70A6DBEA00400 /* UnlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockView.swift; sourceTree = "<group>"; };
 		DD44EE5566FF77AA88BB99CC /* MainVaultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainVaultView.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F6789012345677 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		9819264F2EC854B600C67291 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9849B44E2EB9893D00B17DAC /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -48,10 +66,32 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		981926532EC854B600C67291 /* SecretVault iOS */ = {
+			isa = PBXGroup;
+			children = (
+				981926612EC855B600C67291 /* SecretVault iOS.entitlements */,
+				981926602EC8552000C67291 /* SecretVault-iOS-Info.plist */,
+				981926542EC854B600C67291 /* SecretVault_iOSApp.swift */,
+				981926562EC854B600C67291 /* ContentView.swift */,
+				981926582EC854B800C67291 /* Assets.xcassets */,
+				9819265A2EC854B800C67291 /* Preview Content */,
+			);
+			path = "SecretVault iOS";
+			sourceTree = "<group>";
+		};
+		9819265A2EC854B800C67291 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				9819265B2EC854B800C67291 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
 		9849B4482EB9893C00B17DAC = {
 			isa = PBXGroup;
 			children = (
 				9849B4532EB9893D00B17DAC /* SecretVault */,
+				981926532EC854B600C67291 /* SecretVault iOS */,
 				9849B4522EB9893D00B17DAC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -60,6 +100,7 @@
 			isa = PBXGroup;
 			children = (
 				9849B4512EB9893D00B17DAC /* SecretVault.app */,
+				981926522EC854B600C67291 /* SecretVault iOS.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,6 +136,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		981926512EC854B600C67291 /* SecretVault iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9819265F2EC854B800C67291 /* Build configuration list for PBXNativeTarget "SecretVault iOS" */;
+			buildPhases = (
+				9819264E2EC854B600C67291 /* Sources */,
+				9819264F2EC854B600C67291 /* Frameworks */,
+				981926502EC854B600C67291 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "SecretVault iOS";
+			productName = "SecretVault iOS";
+			productReference = 981926522EC854B600C67291 /* SecretVault iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
 		9849B4502EB9893D00B17DAC /* SecretVault */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9849B4602EB9893F00B17DAC /* Build configuration list for PBXNativeTarget "SecretVault" */;
@@ -122,6 +180,9 @@
 				LastSwiftUpdateCheck = 1520;
 				LastUpgradeCheck = 1520;
 				TargetAttributes = {
+					981926512EC854B600C67291 = {
+						CreatedOnToolsVersion = 15.2;
+					};
 					9849B4502EB9893D00B17DAC = {
 						CreatedOnToolsVersion = 15.2;
 					};
@@ -141,11 +202,21 @@
 			projectRoot = "";
 			targets = (
 				9849B4502EB9893D00B17DAC /* SecretVault */,
+				981926512EC854B600C67291 /* SecretVault iOS */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		981926502EC854B600C67291 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9819265C2EC854B800C67291 /* Preview Assets.xcassets in Resources */,
+				981926592EC854B800C67291 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9849B44F2EB9893D00B17DAC /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -158,6 +229,15 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		9819264E2EC854B600C67291 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				981926572EC854B600C67291 /* ContentView.swift in Sources */,
+				981926552EC854B600C67291 /* SecretVault_iOSApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9849B44D2EB9893D00B17DAC /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -177,6 +257,77 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		9819265D2EC854B800C67291 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = SecretVault/SecretVault_iOS.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"SecretVault iOS/Preview Content\"";
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SecretVault-iOS-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = SecretVault;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.SecretVault.iOS";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9819265E2EC854B800C67291 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = SecretVault/SecretVault_iOS.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"SecretVault iOS/Preview Content\"";
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SecretVault-iOS-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = SecretVault;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.SecretVault.iOS";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		9849B45E2EB9893F00B17DAC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -354,6 +505,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		9819265F2EC854B800C67291 /* Build configuration list for PBXNativeTarget "SecretVault iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9819265D2EC854B800C67291 /* Debug */,
+				9819265E2EC854B800C67291 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		9849B44C2EB9893C00B17DAC /* Build configuration list for PBXProject "SecretVault" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
