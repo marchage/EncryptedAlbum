@@ -284,6 +284,12 @@ class VaultManager: ObservableObject {
     
     func hidePhoto(imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil) throws {
         touchActivity()
+        
+        // Check for reasonable data size to prevent memory issues
+        guard imageData.count > 0 && imageData.count < 500 * 1024 * 1024 else { // 500MB limit
+            throw NSError(domain: "VaultManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Media file too large or empty"])
+        }
+        
         // Check for duplicates by asset identifier
         if let assetId = assetIdentifier {
             if hiddenPhotos.contains(where: { $0.originalAssetIdentifier == assetId }) {
@@ -299,16 +305,50 @@ class VaultManager: ObservableObject {
         let thumbnailPath = photosURL.appendingPathComponent("\(photoId.uuidString)_thumb.jpg")
         let encryptedThumbnailPath = photosURL.appendingPathComponent("\(photoId.uuidString)_thumb.enc")
         
-        // Encrypt the media data
+        // Encrypt the media data with error handling
         let encrypted = encryptImage(imageData, password: passwordHash)
-        try encrypted.write(to: encryptedPath)
+        guard encrypted.count > 0 else {
+            throw NSError(domain: "VaultManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "Encryption failed"])
+        }
         
-        // Generate thumbnail
+        do {
+            try encrypted.write(to: encryptedPath, options: .atomic)
+        } catch {
+            throw NSError(domain: "VaultManager", code: -3, userInfo: [NSLocalizedDescriptionKey: "Failed to save encrypted data: \(error.localizedDescription)"])
+        }
+        
+        // Generate thumbnail with memory management
         let thumbnail = generateThumbnail(from: imageData, mediaType: mediaType)
-        try thumbnail.write(to: thumbnailPath)
+        guard thumbnail.count > 0 else {
+            // Clean up encrypted file if thumbnail generation fails
+            try? FileManager.default.removeItem(at: encryptedPath)
+            throw NSError(domain: "VaultManager", code: -4, userInfo: [NSLocalizedDescriptionKey: "Thumbnail generation failed"])
+        }
+        
+        do {
+            try thumbnail.write(to: thumbnailPath, options: .atomic)
+        } catch {
+            // Clean up encrypted file if thumbnail save fails
+            try? FileManager.default.removeItem(at: encryptedPath)
+            throw NSError(domain: "VaultManager", code: -5, userInfo: [NSLocalizedDescriptionKey: "Failed to save thumbnail: \(error.localizedDescription)"])
+        }
 
         let encryptedThumbnail = encryptImage(thumbnail, password: passwordHash)
-        try encryptedThumbnail.write(to: encryptedThumbnailPath)
+        guard encryptedThumbnail.count > 0 else {
+            // Clean up files if thumbnail encryption fails
+            try? FileManager.default.removeItem(at: encryptedPath)
+            try? FileManager.default.removeItem(at: thumbnailPath)
+            throw NSError(domain: "VaultManager", code: -6, userInfo: [NSLocalizedDescriptionKey: "Thumbnail encryption failed"])
+        }
+        
+        do {
+            try encryptedThumbnail.write(to: encryptedThumbnailPath, options: .atomic)
+        } catch {
+            // Clean up files if encrypted thumbnail save fails
+            try? FileManager.default.removeItem(at: encryptedPath)
+            try? FileManager.default.removeItem(at: thumbnailPath)
+            throw NSError(domain: "VaultManager", code: -7, userInfo: [NSLocalizedDescriptionKey: "Failed to save encrypted thumbnail: \(error.localizedDescription)"])
+        }
         
         // Create photo record
         let photo = SecurePhoto(
@@ -551,6 +591,12 @@ class VaultManager: ObservableObject {
     }
     
     private func encryptImage(_ data: Data, password: String) -> Data {
+        // Check input data size
+        guard data.count > 0 && data.count < 500 * 1024 * 1024 else { // 500MB limit
+            print("Encryption failed: data too large or empty")
+            return Data()
+        }
+        
         do {
             // Derive a key from the password using SHA-256
             let passwordData = password.data(using: .utf8) ?? Data()
@@ -563,17 +609,23 @@ class VaultManager: ObservableObject {
             // Combine nonce + ciphertext + tag for storage
             guard let combined = sealedBox.combined else {
                 print("Failed to get combined data from sealed box")
-                return data
+                return Data()
             }
             
             return combined
         } catch {
             print("Encryption failed: \(error)")
-            return data
+            return Data()
         }
     }
     
     private func decryptImage(_ data: Data, password: String) -> Data {
+        // Check input data size
+        guard data.count > 0 && data.count < 500 * 1024 * 1024 else { // 500MB limit
+            print("Decryption failed: data too large or empty")
+            return Data()
+        }
+        
         do {
             // Derive the same key from password
             let passwordData = password.data(using: .utf8) ?? Data()
@@ -587,11 +639,16 @@ class VaultManager: ObservableObject {
             return decrypted
         } catch {
             print("Decryption failed: \(error)")
-            return data
+            return Data()
         }
     }
     
     private func generateThumbnail(from mediaData: Data, mediaType: MediaType) -> Data {
+        // Check input data size
+        guard mediaData.count > 0 && mediaData.count < 100 * 1024 * 1024 else { // 100MB limit for thumbnails
+            return Data() // Return empty data to indicate failure
+        }
+        
         if mediaType == .video {
             // For videos, extract a frame as thumbnail
             return generateVideoThumbnail(from: mediaData)
@@ -600,13 +657,17 @@ class VaultManager: ObservableObject {
             #if os(macOS)
             guard let image = NSImage(data: mediaData),
                   let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-                return mediaData
+                return Data()
             }
             
             let maxSize: CGFloat = 300
             let width = CGFloat(cgImage.width)
             let height = CGFloat(cgImage.height)
-            let scale = min(maxSize / width, maxSize / height)
+            
+            // Prevent division by zero and excessive scaling
+            guard width > 0 && height > 0 else { return Data() }
+            
+            let scale = min(maxSize / width, maxSize / height, 1.0) // Don't upscale
             
             let newSize = NSSize(width: width * scale, height: height * scale)
             let thumbnail = NSImage(size: newSize)
@@ -616,29 +677,33 @@ class VaultManager: ObservableObject {
             
             guard let tiffData = thumbnail.tiffRepresentation,
                   let bitmapImage = NSBitmapImageRep(data: tiffData),
-                  let jpegData = bitmapImage.representation(using: .jpeg, properties: [:]) else {
-                return mediaData
+                  let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) else {
+                return Data()
             }
             
             return jpegData
             #else
             guard let image = UIImage(data: mediaData) else {
-                return mediaData
+                return Data()
             }
             
             let maxSize: CGFloat = 300
             let size = image.size
-            let scale = min(maxSize / size.width, maxSize / size.height)
+            
+            // Prevent division by zero and excessive scaling
+            guard size.width > 0 && size.height > 0 else { return Data() }
+            
+            let scale = min(maxSize / size.width, maxSize / size.height, 1.0) // Don't upscale
             let newSize = CGSize(width: size.width * scale, height: size.height * scale)
             
             UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+            defer { UIGraphicsEndImageContext() }
+            
             image.draw(in: CGRect(origin: .zero, size: newSize))
             guard let resizedImage = UIGraphicsGetImageFromCurrentImageContext(),
                   let jpegData = resizedImage.jpegData(compressionQuality: 0.8) else {
-                UIGraphicsEndImageContext()
-                return mediaData
+                return Data()
             }
-            UIGraphicsEndImageContext()
             
             return jpegData
             #endif
@@ -646,68 +711,97 @@ class VaultManager: ObservableObject {
     }
     
     private func generateVideoThumbnail(from videoData: Data) -> Data {
-        // Write video data to temp file
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
-        do {
-            try videoData.write(to: tempURL)
-            
-            let asset = AVAsset(url: tempURL)
-            let imageGenerator = AVAssetImageGenerator(asset: asset)
-            imageGenerator.appliesPreferredTrackTransform = true
-            
-            let time = CMTime(seconds: 1, preferredTimescale: 60)
-            if let cgImage = try? imageGenerator.copyCGImage(at: time, actualTime: nil) {
-                #if os(macOS)
-                let image = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-                
-                // Resize thumbnail
-                let maxSize: CGFloat = 300
-                let width = CGFloat(cgImage.width)
-                let height = CGFloat(cgImage.height)
-                let scale = min(maxSize / width, maxSize / height)
-                
-                let newSize = NSSize(width: width * scale, height: height * scale)
-                let thumbnail = NSImage(size: newSize)
-                thumbnail.lockFocus()
-                image.draw(in: NSRect(origin: .zero, size: newSize))
-                thumbnail.unlockFocus()
-                
-                if let tiffData = thumbnail.tiffRepresentation,
-                   let bitmapImage = NSBitmapImageRep(data: tiffData),
-                   let jpegData = bitmapImage.representation(using: .jpeg, properties: [:]) {
-                    try? FileManager.default.removeItem(at: tempURL)
-                    return jpegData
-                }
-                #else
-                let image = UIImage(cgImage: cgImage)
-                
-                // Resize thumbnail
-                let maxSize: CGFloat = 300
-                let size = image.size
-                let scale = min(maxSize / size.width, maxSize / size.height)
-                let newSize = CGSize(width: size.width * scale, height: size.height * scale)
-                
-                UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
-                image.draw(in: CGRect(origin: .zero, size: newSize))
-                guard let resizedImage = UIGraphicsGetImageFromCurrentImageContext(),
-                      let jpegData = resizedImage.jpegData(compressionQuality: 0.8) else {
-                    UIGraphicsEndImageContext()
-                    try? FileManager.default.removeItem(at: tempURL)
-                    return Data()
-                }
-                UIGraphicsEndImageContext()
-                
-                try? FileManager.default.removeItem(at: tempURL)
-                return jpegData
-                #endif
-            }
-            
-            try? FileManager.default.removeItem(at: tempURL)
-        } catch {
-            print("Failed to generate video thumbnail: \(error)")
+        // Check video data size
+        guard videoData.count > 0 && videoData.count < 500 * 1024 * 1024 else { // 500MB limit
+            return Data()
         }
         
-        // Return a placeholder if thumbnail generation fails
+        // Write video data to temp file
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
+        
+        do {
+            try videoData.write(to: tempURL, options: .atomic)
+            
+            defer {
+                // Always clean up temp file
+                try? FileManager.default.removeItem(at: tempURL)
+            }
+            
+            let asset = AVAsset(url: tempURL)
+            
+            // Check if asset is valid and has video tracks
+            guard asset.tracks(withMediaType: .video).count > 0 else {
+                return Data()
+            }
+            
+            let imageGenerator = AVAssetImageGenerator(asset: asset)
+            imageGenerator.appliesPreferredTrackTransform = true
+            imageGenerator.maximumSize = CGSize(width: 300, height: 300) // Limit size
+            
+            // Use a safer time - check duration first
+            let duration = asset.duration
+            let time = CMTimeMinimum(CMTime(seconds: 1, preferredTimescale: 60), duration)
+            
+            guard let cgImage = try? imageGenerator.copyCGImage(at: time, actualTime: nil) else {
+                return Data()
+            }
+            
+            #if os(macOS)
+            let image = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+            
+            // Resize if needed
+            let maxSize: CGFloat = 300
+            let width = CGFloat(cgImage.width)
+            let height = CGFloat(cgImage.height)
+            
+            guard width > 0 && height > 0 else { return Data() }
+            
+            let scale = min(maxSize / width, maxSize / height, 1.0)
+            let newSize = NSSize(width: width * scale, height: height * scale)
+            
+            let thumbnail = NSImage(size: newSize)
+            thumbnail.lockFocus()
+            image.draw(in: NSRect(origin: .zero, size: newSize))
+            thumbnail.unlockFocus()
+            
+            guard let tiffData = thumbnail.tiffRepresentation,
+                  let bitmapImage = NSBitmapImageRep(data: tiffData),
+                  let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) else {
+                return Data()
+            }
+            
+            return jpegData
+            #else
+            let image = UIImage(cgImage: cgImage)
+            
+            // Resize if needed
+            let maxSize: CGFloat = 300
+            let size = image.size
+            
+            guard size.width > 0 && size.height > 0 else { return Data() }
+            
+            let scale = min(maxSize / size.width, maxSize / size.height, 1.0)
+            let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+            
+            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+            defer { UIGraphicsEndImageContext() }
+            
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+            guard let resizedImage = UIGraphicsGetImageFromCurrentImageContext(),
+                  let jpegData = resizedImage.jpegData(compressionQuality: 0.8) else {
+                return Data()
+            }
+            
+            return jpegData
+            #endif
+            
+        } catch {
+            print("Failed to generate video thumbnail: \(error)")
+            // Clean up temp file if it exists
+            try? FileManager.default.removeItem(at: tempURL)
+        }
+        
+        // Return empty data if thumbnail generation fails
         return Data()
     }
     

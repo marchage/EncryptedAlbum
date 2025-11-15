@@ -169,20 +169,6 @@ class PhotosLibraryService {
             assets.enumerateObjects { asset, _, _ in
                 totalCount += 1
                 let sourceType = asset.sourceType
-                NSLog("      🔍 Asset sourceType raw: \(sourceType.rawValue)")
-                // Deep introspection to discover undocumented/shared library flags
-                let mirror = Mirror(reflecting: asset)
-                var discoveredSharedIndicators: [String] = []
-                for child in mirror.children {
-                    if let label = child.label?.lowercased() {
-                        if label.contains("shared") || label.contains("participant") || label.contains("sharing") {
-                            discoveredSharedIndicators.append(label)
-                        }
-                    }
-                }
-                if !discoveredSharedIndicators.isEmpty {
-                    NSLog("      🧪 Mirror shared-related fields: \(discoveredSharedIndicators.joined(separator: ", "))")
-                }
                 
                 // Check if this is a shared library asset
                 // sourceType values: 1 = typeUserLibrary, 2 = typeCloudShared, 8 = typeiTunesSynced
@@ -193,7 +179,6 @@ class PhotosLibraryService {
             
             // If majority of assets are from shared library, consider the album as shared
             let isShared = sharedCount > 0 && (Double(sharedCount) / Double(totalCount)) > 0.5
-            NSLog("    � Album shared count: \(sharedCount)/\(totalCount), isShared: \(isShared)")
             return isShared
         }
         

@@ -231,6 +231,9 @@ struct SetupPasswordView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #if os(iOS)
+        .ignoresSafeArea(.keyboard)
+        #endif
         .overlay(
             // Flash overlay
             Rectangle()

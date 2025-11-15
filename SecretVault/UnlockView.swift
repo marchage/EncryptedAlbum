@@ -2,6 +2,8 @@ import SwiftUI
 import LocalAuthentication
 #if os(macOS)
 import AppKit
+#else
+import UIKit
 #endif
 
 struct UnlockView: View {
@@ -131,6 +133,9 @@ struct UnlockView: View {
             #endif
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #if os(iOS)
+        .ignoresSafeArea(.keyboard)
+        #endif
         .onAppear {
             checkBiometricAvailability()
             // Auto-trigger biometric authentication if available
@@ -221,6 +226,47 @@ struct UnlockView: View {
             // Trigger the app to show setup
             vaultManager.passwordHash = ""
             vaultManager.showUnlockPrompt = false
+        }
+        #else
+        // iOS implementation
+        let alert = UIAlertController(
+            title: "Reset Vault? (Development)",
+            message: "This will delete all vault data, the password, and return to setup. This action cannot be undone.",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Reset Vault", style: .destructive) { _ in
+            // Delete all vault files
+            let fileManager = FileManager.default
+            let vaultDirectory = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+                .appendingPathComponent("SecretVault")
+            
+            if let vaultDirectory = vaultDirectory {
+                try? fileManager.removeItem(at: vaultDirectory)
+            }
+            
+            // Delete password hash
+            UserDefaults.standard.removeObject(forKey: "passwordHash")
+            
+            // Delete Keychain entry
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: "com.secretvault.password"
+            ]
+            SecItemDelete(query as CFDictionary)
+            
+            // Trigger the app to show setup
+            vaultManager.passwordHash = ""
+            vaultManager.showUnlockPrompt = false
+        })
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        // Present the alert
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first,
+           let rootViewController = window.rootViewController {
+            rootViewController.present(alert, animated: true)
         }
         #endif
     }

@@ -100,6 +100,56 @@ struct PhotosLibraryPicker: View {
             // Main content area
         VStack(spacing: 0) {
             // Header with library selector
+            #if os(iOS)
+            VStack(alignment: .leading, spacing: 12) {
+                // Title and main buttons
+                HStack {
+                    Text("Select Items to Hide")
+                        .font(.headline)
+                    
+                    Spacer()
+                    
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .keyboardShortcut(.cancelAction)
+                    
+                    Button("Hide Selected (\(selectedAssets.count))") {
+                        hideSelectedPhotos()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(selectedAssets.isEmpty)
+                    .keyboardShortcut(.defaultAction)
+                }
+                
+                // Library selector and options
+                HStack(spacing: 12) {
+                    // Compact library selector with icons
+                    Picker("", selection: $selectedLibrary) {
+                        Label("Personal", systemImage: "person.fill").tag(LibraryType.personal)
+                        Label("Shared", systemImage: "person.2.fill").tag(LibraryType.shared)
+                        Label("All", systemImage: "square.grid.2x2.fill").tag(LibraryType.both)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: .infinity)
+                    .onChange(of: selectedLibrary) { _ in
+                        loadPhotos()
+                    }
+                    
+                    // Manual fallback toggle only relevant when user selects Shared
+                    if selectedLibrary == .shared {
+                        Toggle("Force Shared", isOn: $forceSharedLibrary)
+                            .toggleStyle(.switch)
+                            .help("If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared.")
+                            .onChange(of: forceSharedLibrary) { _ in
+                                loadPhotos()
+                            }
+                    }
+                }
+            }
+            .padding()
+            .background(.ultraThinMaterial)
+            #else
             HStack {
                 Text("Select Items to Hide")
                     .font(.headline)
@@ -141,6 +191,7 @@ struct PhotosLibraryPicker: View {
             }
             .padding()
             .background(.ultraThinMaterial)
+            #endif
             
             Divider()
             
@@ -439,7 +490,8 @@ struct PhotosLibraryPicker: View {
                             lock.unlock()
                             print("\(mediaType == .video ? "Video" : "Photo") added to vault: \(filename)")
                         } catch {
-                            print("Failed to add media to vault: \(filename) - \(error)")
+                            print("Failed to add media to vault: \(filename) - \(error.localizedDescription)")
+                            // Don't add to successfulAssets if it failed
                         }
                     }
                 }
