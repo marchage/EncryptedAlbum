@@ -70,9 +70,9 @@ struct SetupPasswordView: View {
                     .resizable()
                     .renderingMode(.original)
                     .interpolation(.high)
-                    .scaledToFit()
-                    .frame(maxWidth: 180, maxHeight: 180)
-                    .padding(.top, 8)
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: 180)
+                    .padding(.top, 16)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .compositingGroup()
                     .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
@@ -94,9 +94,9 @@ struct SetupPasswordView: View {
                     .resizable()
                     .renderingMode(.original)
                     .interpolation(.high)
-                    .scaledToFit()
-                    .frame(maxWidth: 180, maxHeight: 180)
-                    .padding(.top, 8)
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: 180)
+                    .padding(.top, 16)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .compositingGroup()
                     .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
@@ -255,6 +255,9 @@ struct SetupPasswordView: View {
         .onAppear {
             checkBiometrics()
             generatePasswords()
+        }
+        .safeAreaInset(edge: .top) {
+            Color.clear.frame(height: 12)
         }
     }
     

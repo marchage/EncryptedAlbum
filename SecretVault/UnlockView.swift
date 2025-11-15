@@ -23,9 +23,9 @@ struct UnlockView: View {
                     .resizable()
                     .renderingMode(.original)
                     .interpolation(.high)
-                    .scaledToFit()
-                    .frame(maxWidth: 180, maxHeight: 180)
-                    .padding(.top, 8)
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: 180)
+                    .padding(.top, 16)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {
@@ -39,8 +39,8 @@ struct UnlockView: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(maxWidth: 140, maxHeight: 140)
-                        .padding(.top, 8)
+                        .frame(maxWidth: 140)
+                        .padding(.top, 16)
 
                     Image(systemName: "lock.fill")
                         .font(.system(size: 40))
@@ -53,9 +53,9 @@ struct UnlockView: View {
                     .resizable()
                     .renderingMode(.original)
                     .interpolation(.high)
-                    .scaledToFit()
-                    .frame(maxWidth: 180, maxHeight: 180)
-                    .padding(.top, 8)
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: 180)
+                    .padding(.top, 16)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {
@@ -69,8 +69,8 @@ struct UnlockView: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(maxWidth: 140, maxHeight: 140)
-                        .padding(.top, 8)
+                        .frame(maxWidth: 140)
+                        .padding(.top, 16)
 
                     Image(systemName: "lock.fill")
                         .font(.system(size: 40))
@@ -154,6 +154,9 @@ struct UnlockView: View {
                     authenticateWithBiometrics()
                 }
             }
+        }
+        .safeAreaInset(edge: .top) {
+            Color.clear.frame(height: 12)
         }
     }
     
