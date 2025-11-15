@@ -95,6 +95,7 @@ class VaultManager: ObservableObject {
     @Published var vaultBaseURL: URL = URL(fileURLWithPath: "/tmp")
     @Published var hideNotification: HideNotification? = nil
     @Published var lastActivity: Date = Date()
+    @Published var viewRefreshId = UUID() // Force view refresh when needed
 
     /// Idle timeout in seconds before automatically locking the vault when unlocked.
     /// Default is 600 seconds (10 minutes).
@@ -130,6 +131,7 @@ class VaultManager: ObservableObject {
             resolvedBaseURL = defaultBaseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
         }
         vaultBaseURL = resolvedBaseURL
+        print("macOS vault base URL: \(vaultBaseURL.path)")
         #else
         // iOS: Use iCloud Drive if available, otherwise local documents
         let fileManager = FileManager.default
@@ -138,14 +140,14 @@ class VaultManager: ObservableObject {
         if let iCloudURL = fileManager.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents") {
             // iCloud is available
             baseURL = iCloudURL.appendingPathComponent("SecretVault", isDirectory: true)
-            print("Using iCloud Drive for vault storage")
+            print("Using iCloud Drive for vault storage: \(baseURL.path)")
         } else {
             // Fallback to local documents
             guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
                 fatalError("Unable to access file system")
             }
             baseURL = documentsURL.appendingPathComponent("SecretVault", isDirectory: true)
-            print("Using local storage for vault (iCloud not available)")
+            print("Using local storage for vault (iCloud not available): \(baseURL.path)")
         }
         
         vaultBaseURL = baseURL
@@ -164,9 +166,14 @@ class VaultManager: ObservableObject {
             print("Failed to create photos directory: \(error)")
         }
         
+        print("Loading settings from: \(settingsFile.path)")
         loadSettings()
+        print("After loading settings - passwordHash.isEmpty: \(passwordHash.isEmpty), hasPassword(): \(hasPassword())")
         if !passwordHash.isEmpty {
             showUnlockPrompt = true
+            print("Password exists, showing unlock prompt")
+        } else {
+            print("No password found, should show setup screen")
         }
     }
 
@@ -826,17 +833,22 @@ class VaultManager: ObservableObject {
     }
     
     private func loadSettings() {
+        print("Attempting to load settings from: \(settingsFile.path)")
         guard let data = try? Data(contentsOf: settingsFile),
               let settings = try? JSONDecoder().decode([String: String].self, from: data) else {
+            print("No settings file found or failed to decode")
             return
         }
 
+        print("Loaded settings: \(settings)")
         if let hash = settings["passwordHash"] {
             passwordHash = hash
+            print("Loaded password hash: \(hash.isEmpty ? "empty" : "present")")
         }
         if let basePath = settings["vaultBaseURL"] {
             let url = URL(fileURLWithPath: basePath, isDirectory: true)
             vaultBaseURL = url
+            print("Loaded vault base URL: \(basePath)")
         }
     }
 
@@ -903,5 +915,31 @@ class VaultManager: ObservableObject {
         }
         
         return password
+    }
+    
+    func resetVaultCompletely() {
+        // Clear all data and reset to initial state
+        passwordHash = ""
+        isUnlocked = false
+        hiddenPhotos = []
+        showUnlockPrompt = false
+        viewRefreshId = UUID()
+        
+        // Delete all vault files
+        do {
+            let fileManager = FileManager.default
+            let contents = try fileManager.contentsOfDirectory(at: vaultBaseURL, includingPropertiesForKeys: nil)
+            for url in contents {
+                try fileManager.removeItem(at: url)
+            }
+        } catch {
+            print("Error clearing vault files: \(error)")
+        }
+        
+        // Save empty settings
+        saveSettings()
+        
+        // Notify observers
+        objectWillChange.send()
     }
 }

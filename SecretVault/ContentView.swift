@@ -2,7 +2,6 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var vaultManager: VaultManager
-    @State private var viewRefreshTrigger = false
     
     var body: some View {
         ZStack {
@@ -19,9 +18,6 @@ struct ContentView: View {
         #if os(macOS)
         .frame(minWidth: 900, minHeight: 600)
         #endif
-        .onReceive(vaultManager.objectWillChange) { _ in
-            // Force view refresh when vault manager changes
-            viewRefreshTrigger.toggle()
-        }
+        .id(vaultManager.viewRefreshId) // Force view recreation when refreshId changes
     }
 }

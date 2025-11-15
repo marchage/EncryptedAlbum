@@ -11,6 +11,9 @@ struct UnlockView: View {
     @State private var password = ""
     @State private var showError = false
     @State private var biometricType: LABiometryType = .none
+    #if os(iOS)
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    #endif
     
     var body: some View {
         VStack(spacing: 24) {
@@ -96,25 +99,63 @@ struct UnlockView: View {
                         Button {
                             authenticateWithBiometrics()
                         } label: {
+                            #if os(iOS)
+                            if verticalSizeClass == .regular {
+                                // Portrait mode - smaller biometric button
+                                Image(systemName: biometricType == .faceID ? "faceid" : "touchid")
+                                    .font(.system(size: 20))
+                            } else {
+                                // Landscape mode - full button
+                                HStack {
+                                    Image(systemName: biometricType == .faceID ? "faceid" : "touchid")
+                                    Text(biometricType == .faceID ? "Use Face ID" : "Use Touch ID")
+                                }
+                                .frame(width: 145)
+                            }
+                            #else
                             HStack {
                                 Image(systemName: biometricType == .faceID ? "faceid" : "touchid")
                                 Text(biometricType == .faceID ? "Use Face ID" : "Use Touch ID")
                             }
                             .frame(width: 145)
+                            #endif
                         }
                         .buttonStyle(.bordered)
+                        #if os(iOS)
+                        .controlSize(verticalSizeClass == .regular ? .regular : .large)
+                        #else
                         .controlSize(.large)
+                        #endif
                     }
                     
                     Button {
                         unlock()
                     } label: {
+                        #if os(iOS)
+                        if verticalSizeClass == .regular {
+                            // Portrait mode - smaller rounded button
+                            Image(systemName: "lock.open.fill")
+                                .font(.system(size: 20))
+                        } else {
+                            // Landscape mode - full button
+                            Text("Unlock")
+                                .frame(width: biometricType != .none ? 145 : 200)
+                        }
+                        #else
                         Text("Unlock")
                             .frame(width: biometricType != .none ? 145 : 200)
+                        #endif
                     }
                     .buttonStyle(.borderedProminent)
+                    #if os(iOS)
+                    .controlSize(verticalSizeClass == .regular ? .regular : .large)
+                    #else
                     .controlSize(.large)
+                    #endif
                     .disabled(password.isEmpty)
+                    #if os(iOS)
+                    .clipShape(verticalSizeClass == .regular ? RoundedRectangle(cornerRadius: 12) : RoundedRectangle(cornerRadius: 8))
+                    #endif
                 }
             }
             
@@ -204,14 +245,10 @@ struct UnlockView: View {
         alert.addButton(withTitle: "Cancel")
         
         if alert.runModal() == .alertFirstButtonReturn {
-            // Delete all vault files
+            // Delete all vault files from the correct vault location
             let fileManager = FileManager.default
-            let vaultDirectory = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-                .appendingPathComponent("SecretVault")
-            
-            if let vaultDirectory = vaultDirectory {
-                try? fileManager.removeItem(at: vaultDirectory)
-            }
+            try? fileManager.removeItem(at: vaultManager.vaultBaseURL)
+            print("Deleted vault directory: \(vaultManager.vaultBaseURL.path)")
             
             // Delete password hash from UserDefaults
             UserDefaults.standard.removeObject(forKey: "passwordHash")
@@ -234,14 +271,13 @@ struct UnlockView: View {
             
             // Reset vault manager state
             vaultManager.passwordHash = ""
+            vaultManager.objectWillChange.send() // Immediate notification
             vaultManager.isUnlocked = false
             vaultManager.hiddenPhotos = []
             vaultManager.saveSettings() // Persist the empty state
             
-            // Force view update by triggering objectWillChange on main thread
-            DispatchQueue.main.async {
-                vaultManager.objectWillChange.send()
-            }
+            // Force view refresh
+            vaultManager.viewRefreshId = UUID()
         }
         #else
         // iOS implementation - dismiss keyboard first to avoid constraint conflicts
@@ -254,13 +290,21 @@ struct UnlockView: View {
         )
         
         alert.addAction(UIAlertAction(title: "Reset Vault", style: .destructive) { _ in
-            // Delete all vault files
+            // Delete all vault files from the correct iOS location
             let fileManager = FileManager.default
-            let vaultDirectory = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-                .appendingPathComponent("SecretVault")
             
-            if let vaultDirectory = vaultDirectory {
+            // Delete from iCloud if available
+            if let iCloudURL = fileManager.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents") {
+                let vaultDirectory = iCloudURL.appendingPathComponent("SecretVault", isDirectory: true)
                 try? fileManager.removeItem(at: vaultDirectory)
+                print("Deleted vault from iCloud: \(vaultDirectory.path)")
+            }
+            
+            // Also delete from local documents as fallback
+            if let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
+                let vaultDirectory = documentsURL.appendingPathComponent("SecretVault", isDirectory: true)
+                try? fileManager.removeItem(at: vaultDirectory)
+                print("Deleted vault from local documents: \(vaultDirectory.path)")
             }
             
             // Delete password hash from UserDefaults
@@ -284,14 +328,13 @@ struct UnlockView: View {
             
             // Reset vault manager state
             vaultManager.passwordHash = ""
+            vaultManager.objectWillChange.send() // Immediate notification
             vaultManager.isUnlocked = false
             vaultManager.hiddenPhotos = []
             vaultManager.saveSettings() // Persist the empty state
             
-            // Force view update by triggering objectWillChange on main thread
-            DispatchQueue.main.async {
-                vaultManager.objectWillChange.send()
-            }
+            // Force view refresh
+            vaultManager.viewRefreshId = UUID()
         })
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))

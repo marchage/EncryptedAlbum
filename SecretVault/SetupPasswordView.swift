@@ -255,7 +255,7 @@ struct SetupPasswordView: View {
                     .font(.headline)
                 SecureField("Enter password", text: $manualPassword)
                     .textFieldStyle(.roundedBorder)
-                    .frame(width: 300)
+                    .padding(.horizontal)
                 
                 // Password strength indicator
                 if !manualPassword.isEmpty {
@@ -270,7 +270,7 @@ struct SetupPasswordView: View {
                         
                         Spacer()
                     }
-                    .frame(width: 300)
+                    .padding(.horizontal)
                     
                     // Requirements
                     VStack(alignment: .leading, spacing: 4) {
@@ -279,7 +279,7 @@ struct SetupPasswordView: View {
                         RequirementRow(met: manualPassword.range(of: "[0-9]", options: .regularExpression) != nil, text: "Number")
                     }
                     .font(.caption)
-                    .frame(width: 300)
+                    .padding(.horizontal)
                 }
             }
             
@@ -288,7 +288,7 @@ struct SetupPasswordView: View {
                     .font(.headline)
                 SecureField("Re-enter password", text: $confirmPassword)
                     .textFieldStyle(.roundedBorder)
-                    .frame(width: 300)
+                    .padding(.horizontal)
                     .onSubmit {
                         setupPassword()
                     }
