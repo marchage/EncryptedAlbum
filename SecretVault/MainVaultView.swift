@@ -382,7 +382,7 @@ struct MainVaultView: View {
                 }()
                 let headerExtra: CGFloat = isLandscape ? 36 : 72
                 let minTop: CGFloat = isLandscape ? 56 : 96
-                HStack(alignment: .center, spacing: isLandscape ? 12 : 4) {
+//                HStack(alignment: .center, spacing: isLandscape ? 12 : 4) {
                     // Wrap header rows so we can place a full-width search bar underneath on compact layouts
                     VStack(spacing: isLandscape ? 6 : 4) {
                         HStack(spacing: isLandscape ? 8 : 4) {
@@ -877,311 +877,310 @@ struct MainVaultView: View {
             }
         }
     }
-}
-struct PhotoThumbnailView: View {
-    let photo: SecurePhoto
-    let isSelected: Bool
-    let privacyModeEnabled: Bool
-    @EnvironmentObject var vaultManager: VaultManager
-    @State private var thumbnailImage: Image?
-    @State private var loadTask: Task<Void, Never>?
-    
-    private var thumbnailSize: CGFloat {
+    struct PhotoThumbnailView: View {
+        let photo: SecurePhoto
+        let isSelected: Bool
+        let privacyModeEnabled: Bool
+        @EnvironmentObject var vaultManager: VaultManager
+        @State private var thumbnailImage: Image?
+        @State private var loadTask: Task<Void, Never>?
+        
+        private var thumbnailSize: CGFloat {
 #if os(iOS)
-        return 120
+            return 120
 #else
-        return 180
+            return 180
 #endif
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ZStack(alignment: .topTrailing) {
-                if privacyModeEnabled {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(width: thumbnailSize, height: thumbnailSize)
-                        .overlay {
-                            Image(systemName: photo.mediaType == .video ? "video.slash" : "lock.fill")
-                                .font(.title2)
-                                .foregroundStyle(.secondary)
-                        }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
-                        )
-                } else if let image = thumbnailImage {
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: thumbnailSize, height: thumbnailSize)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .shadow(radius: 2)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
-                        )
-                        .overlay(alignment: .bottomLeading) {
-                            if photo.mediaType == .video {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "play.fill")
-                                        .font(.caption2)
-                                    if let duration = photo.duration {
-                                        Text(formatDuration(duration))
-                                            .font(.caption2)
-                                    }
-                                }
-                                .foregroundStyle(.white)
-                                .padding(4)
-                                .background(.black.opacity(0.6))
-                                .cornerRadius(4)
-                                .padding(6)
+        }
+        
+        var body: some View {
+            VStack(alignment: .leading, spacing: 4) {
+                ZStack(alignment: .topTrailing) {
+                    if privacyModeEnabled {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: thumbnailSize, height: thumbnailSize)
+                            .overlay {
+                                Image(systemName: photo.mediaType == .video ? "video.slash" : "lock.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(.secondary)
                             }
-                        }
-                } else {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(width: thumbnailSize, height: thumbnailSize)
-                        .overlay {
-                            ProgressView()
-                                .controlSize(.small)
-                        }
-                }
-                
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.white)
-                        .background(Circle().fill(Color.accentColor).padding(3))
-                        .padding(6)
-                }
-            }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(photo.filename)
-                    .font(.caption)
-                    .lineLimit(1)
-                
-                if let album = photo.sourceAlbum {
-                    Text(album)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(width: thumbnailSize, alignment: .leading)
-        }
-        .onAppear {
-            if !privacyModeEnabled {
-                loadThumbnail()
-            }
-        }
-        .onChange(of: privacyModeEnabled) {
-            if !$0 && thumbnailImage == nil {
-                loadThumbnail()
-            }
-        }
-        .onDisappear {
-            loadTask?.cancel()
-        }
-    }
-    
-    private func loadThumbnail() {
-        loadTask = Task {
-            do {
-                let data = try vaultManager.decryptThumbnail(for: photo)
-                
-                if data.isEmpty {
-                    print("Thumbnail data empty for photo id=\(photo.id), thumbnailPath=\(photo.thumbnailPath), encryptedThumb=\(photo.encryptedThumbnailPath ?? "nil")")
-                    return
-                }
-                
-                await MainActor.run {
-#if os(macOS)
-                    if let nsImage = NSImage(data: data) {
-                        thumbnailImage = Image(nsImage: nsImage)
-                    } else {
-                        print("Failed to create NSImage from decrypted data for photo id=\(photo.id)")
-                    }
-#else
-                    if let uiImage = UIImage(data: data) {
-                        thumbnailImage = Image(uiImage: uiImage)
-                    } else {
-                        print("Failed to create UIImage from decrypted data for photo id=\(photo.id), size=\(data.count) bytes")
-                    }
-#endif
-                }
-            } catch {
-                print("Error decrypting thumbnail for photo id=\(photo.id): \(error)")
-            }
-        }
-    }
-    
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
-    
-}
-
-struct PhotoViewerSheet: View {
-    let photo: SecurePhoto
-    @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var vaultManager: VaultManager
-    @State private var fullImage: Image?
-    @State private var videoURL: URL?
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                VStack(alignment: .leading) {
-                    Text(photo.filename)
-                        .font(.headline)
-                    HStack {
-                        if let album = photo.sourceAlbum {
-                            Text("From: \(album)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        if photo.mediaType == .video, let duration = photo.duration {
-                            Text("• \(formatDuration(duration))")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                
-                Spacer()
-                
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding()
-            .background(.ultraThinMaterial)
-            
-            // Media content
-            if photo.mediaType == .video {
-                if let url = videoURL {
-                    CustomVideoPlayer(url: url)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            } else {
-                if let image = fullImage {
-                    GeometryReader { geometry in
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
+                            )
+                    } else if let image = thumbnailImage {
                         image
                             .resizable()
-                            .aspectRatio(contentMode: .fit)
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: thumbnailSize, height: thumbnailSize)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .shadow(radius: 2)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
+                            )
+                            .overlay(alignment: .bottomLeading) {
+                                if photo.mediaType == .video {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "play.fill")
+                                            .font(.caption2)
+                                        if let duration = photo.duration {
+                                            Text(formatDuration(duration))
+                                                .font(.caption2)
+                                        }
+                                    }
+                                    .foregroundStyle(.white)
+                                    .padding(4)
+                                    .background(.black.opacity(0.6))
+                                    .cornerRadius(4)
+                                    .padding(6)
+                                }
+                            }
+                    } else {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: thumbnailSize, height: thumbnailSize)
+                            .overlay {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                    }
+                    
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.white)
+                            .background(Circle().fill(Color.accentColor).padding(3))
+                            .padding(6)
+                    }
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(photo.filename)
+                        .font(.caption)
+                        .lineLimit(1)
+                    
+                    if let album = photo.sourceAlbum {
+                        Text(album)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(width: thumbnailSize, alignment: .leading)
+            }
+            .onAppear {
+                if !privacyModeEnabled {
+                    loadThumbnail()
+                }
+            }
+            .onChange(of: privacyModeEnabled) {
+                if !$0 && thumbnailImage == nil {
+                    loadThumbnail()
+                }
+            }
+            .onDisappear {
+                loadTask?.cancel()
+            }
+        }
+        
+        private func loadThumbnail() {
+            loadTask = Task {
+                do {
+                    let data = try vaultManager.decryptThumbnail(for: photo)
+                    
+                    if data.isEmpty {
+                        print("Thumbnail data empty for photo id=\(photo.id), thumbnailPath=\(photo.thumbnailPath), encryptedThumb=\(photo.encryptedThumbnailPath ?? "nil")")
+                        return
+                    }
+                    
+                    await MainActor.run {
+#if os(macOS)
+                        if let nsImage = NSImage(data: data) {
+                            thumbnailImage = Image(nsImage: nsImage)
+                        } else {
+                            print("Failed to create NSImage from decrypted data for photo id=\(photo.id)")
+                        }
+#else
+                        if let uiImage = UIImage(data: data) {
+                            thumbnailImage = Image(uiImage: uiImage)
+                        } else {
+                            print("Failed to create UIImage from decrypted data for photo id=\(photo.id), size=\(data.count) bytes")
+                        }
+#endif
+                    }
+                } catch {
+                    print("Error decrypting thumbnail for photo id=\(photo.id): \(error)")
+                }
+            }
+        }
+        
+        private func formatDuration(_ duration: TimeInterval) -> String {
+            let minutes = Int(duration) / 60
+            let seconds = Int(duration) % 60
+            return String(format: "%d:%02d", minutes, seconds)
+        }
+        
+    }
+    
+    struct PhotoViewerSheet: View {
+        let photo: SecurePhoto
+        @Environment(\.dismiss) var dismiss
+        @EnvironmentObject var vaultManager: VaultManager
+        @State private var fullImage: Image?
+        @State private var videoURL: URL?
+        
+        var body: some View {
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text(photo.filename)
+                            .font(.headline)
+                        HStack {
+                            if let album = photo.sourceAlbum {
+                                Text("From: \(album)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if photo.mediaType == .video, let duration = photo.duration {
+                                Text("• \(formatDuration(duration))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding()
+                .background(.ultraThinMaterial)
+                
+                // Media content
+                if photo.mediaType == .video {
+                    if let url = videoURL {
+                        CustomVideoPlayer(url: url)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ProgressView()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 } else {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    if let image = fullImage {
+                        GeometryReader { geometry in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                    } else {
+                        ProgressView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 }
             }
-        }
 #if os(macOS)
-        .frame(minWidth: 800, minHeight: 600)
+            .frame(minWidth: 800, minHeight: 600)
 #endif
-        .onAppear {
-            if photo.mediaType == .video {
-                loadVideo()
-            } else {
-                loadFullImage()
+            .onAppear {
+                if photo.mediaType == .video {
+                    loadVideo()
+                } else {
+                    loadFullImage()
+                }
+            }
+            .onDisappear {
+                cleanupVideo()
             }
         }
-        .onDisappear {
-            cleanupVideo()
-        }
-    }
-    
-    private func loadFullImage() {
-        DispatchQueue.global(qos: .userInitiated).async {
-            if let decryptedData = try? vaultManager.decryptPhoto(photo) {
+        
+        private func loadFullImage() {
+            DispatchQueue.global(qos: .userInitiated).async {
+                if let decryptedData = try? vaultManager.decryptPhoto(photo) {
 #if os(macOS)
-                if let image = NSImage(data: decryptedData) {
-                    DispatchQueue.main.async {
-                        fullImage = Image(nsImage: image)
+                    if let image = NSImage(data: decryptedData) {
+                        DispatchQueue.main.async {
+                            fullImage = Image(nsImage: image)
+                        }
                     }
-                }
 #else
-                if let image = UIImage(data: decryptedData) {
-                    DispatchQueue.main.async {
-                        fullImage = Image(uiImage: image)
+                    if let image = UIImage(data: decryptedData) {
+                        DispatchQueue.main.async {
+                            fullImage = Image(uiImage: image)
+                        }
                     }
-                }
 #endif
-            }
-        }
-    }
-    
-    private func loadVideo() {
-        DispatchQueue.global(qos: .userInitiated).async {
-            if let decryptedData = try? vaultManager.decryptPhoto(photo) {
-                // Write decrypted video to temp file
-                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(photo.id.uuidString + ".mov")
-                do {
-                    try decryptedData.write(to: tempURL)
-                    DispatchQueue.main.async {
-                        self.videoURL = tempURL
-                    }
-                } catch {
-                    print("Failed to write temp video file: \(error)")
                 }
             }
         }
-    }
-    
-    private func cleanupVideo() {
-        if let url = videoURL {
-            try? FileManager.default.removeItem(at: url)
+        
+        private func loadVideo() {
+            DispatchQueue.global(qos: .userInitiated).async {
+                if let decryptedData = try? vaultManager.decryptPhoto(photo) {
+                    // Write decrypted video to temp file
+                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(photo.id.uuidString + ".mov")
+                    do {
+                        try decryptedData.write(to: tempURL)
+                        DispatchQueue.main.async {
+                            self.videoURL = tempURL
+                        }
+                    } catch {
+                        print("Failed to write temp video file: \(error)")
+                    }
+                }
+            }
+        }
+        
+        private func cleanupVideo() {
+            if let url = videoURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+        
+        private func formatDuration(_ duration: TimeInterval) -> String {
+            let minutes = Int(duration) / 60
+            let seconds = Int(duration) % 60
+            return String(format: "%d:%02d", minutes, seconds)
         }
     }
     
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
-}
-
-// Custom Video Player View
+    // Custom Video Player View
 #if os(macOS)
-struct CustomVideoPlayer: NSViewRepresentable {
-    let url: URL
-    
-    func makeNSView(context: Context) -> AVPlayerView {
-        let playerView = AVPlayerView()
-        playerView.player = AVPlayer(url: url)
-        playerView.controlsStyle = .floating
-        playerView.showsFullScreenToggleButton = true
-        return playerView
+    struct CustomVideoPlayer: NSViewRepresentable {
+        let url: URL
+        
+        func makeNSView(context: Context) -> AVPlayerView {
+            let playerView = AVPlayerView()
+            playerView.player = AVPlayer(url: url)
+            playerView.controlsStyle = .floating
+            playerView.showsFullScreenToggleButton = true
+            return playerView
+        }
+        
+        func updateNSView(_ nsView: AVPlayerView, context: Context) {
+            // Update if needed
+        }
     }
-    
-    func updateNSView(_ nsView: AVPlayerView, context: Context) {
-        // Update if needed
-    }
-}
 #else
-struct CustomVideoPlayer: UIViewControllerRepresentable {
-    let url: URL
-    
-    func makeUIViewController(context: Context) -> AVPlayerViewController {
-        let playerViewController = AVPlayerViewController()
-        playerViewController.player = AVPlayer(url: url)
-        return playerViewController
+    struct CustomVideoPlayer: UIViewControllerRepresentable {
+        let url: URL
+        
+        func makeUIViewController(context: Context) -> AVPlayerViewController {
+            let playerViewController = AVPlayerViewController()
+            playerViewController.player = AVPlayer(url: url)
+            return playerViewController
+        }
+        
+        func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
+            // Update if needed
+        }
     }
-    
-    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
-        // Update if needed
-    }
-}
 #endif
