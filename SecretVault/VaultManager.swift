@@ -818,7 +818,7 @@ class VaultManager: ObservableObject {
         hiddenPhotos = photos
     }
     
-    private func saveSettings() {
+    func saveSettings() {
         var settings: [String: String] = ["passwordHash": passwordHash]
         settings["vaultBaseURL"] = vaultBaseURL.path
         guard let data = try? JSONEncoder().encode(settings) else { return }

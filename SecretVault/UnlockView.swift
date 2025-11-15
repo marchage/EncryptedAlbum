@@ -213,19 +213,33 @@ struct UnlockView: View {
                 try? fileManager.removeItem(at: vaultDirectory)
             }
             
-            // Delete password hash
+            // Delete password hash from UserDefaults
             UserDefaults.standard.removeObject(forKey: "passwordHash")
             
-            // Delete Keychain entry
-            let query: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrService as String: "com.secretvault.password"
+            // Delete Keychain entries (both regular and biometric passwords)
+            let keychainQueries = [
+                [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrService as String: "com.secretvault.password"
+                ],
+                [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrAccount as String: "SecretVault.BiometricPassword"
+                ]
             ]
-            SecItemDelete(query as CFDictionary)
             
-            // Trigger the app to show setup
+            for query in keychainQueries {
+                SecItemDelete(query as CFDictionary)
+            }
+            
+            // Reset vault manager state
             vaultManager.passwordHash = ""
-            vaultManager.showUnlockPrompt = false
+            vaultManager.isUnlocked = false
+            vaultManager.hiddenPhotos = []
+            vaultManager.saveSettings() // Persist the empty state
+            
+            // Force view update by triggering objectWillChange
+            vaultManager.objectWillChange.send()
         }
         #else
         // iOS implementation - dismiss keyboard first to avoid constraint conflicts
@@ -247,19 +261,33 @@ struct UnlockView: View {
                 try? fileManager.removeItem(at: vaultDirectory)
             }
             
-            // Delete password hash
+            // Delete password hash from UserDefaults
             UserDefaults.standard.removeObject(forKey: "passwordHash")
             
-            // Delete Keychain entry
-            let query: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrService as String: "com.secretvault.password"
+            // Delete Keychain entries (both regular and biometric passwords)
+            let keychainQueries = [
+                [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrService as String: "com.secretvault.password"
+                ],
+                [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrAccount as String: "SecretVault.BiometricPassword"
+                ]
             ]
-            SecItemDelete(query as CFDictionary)
             
-            // Trigger the app to show setup
+            for query in keychainQueries {
+                SecItemDelete(query as CFDictionary)
+            }
+            
+            // Reset vault manager state
             vaultManager.passwordHash = ""
-            vaultManager.showUnlockPrompt = false
+            vaultManager.isUnlocked = false
+            vaultManager.hiddenPhotos = []
+            vaultManager.saveSettings() // Persist the empty state
+            
+            // Force view update by triggering objectWillChange
+            vaultManager.objectWillChange.send()
         })
         
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
