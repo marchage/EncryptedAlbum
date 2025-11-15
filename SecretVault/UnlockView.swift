@@ -23,7 +23,9 @@ struct UnlockView: View {
                     .resizable()
                     .renderingMode(.original)
                     .interpolation(.high)
-                    .frame(width: 180, height: 180)
+                    .scaledToFit()
+                    .frame(maxWidth: 180, maxHeight: 180)
+                    .padding(.top, 8)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {
@@ -37,8 +39,9 @@ struct UnlockView: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 140, height: 140)
-                    
+                        .frame(maxWidth: 140, maxHeight: 140)
+                        .padding(.top, 8)
+
                     Image(systemName: "lock.fill")
                         .font(.system(size: 40))
                         .foregroundStyle(.white)
@@ -50,7 +53,9 @@ struct UnlockView: View {
                     .resizable()
                     .renderingMode(.original)
                     .interpolation(.high)
-                    .frame(width: 180, height: 180)
+                    .scaledToFit()
+                    .frame(maxWidth: 180, maxHeight: 180)
+                    .padding(.top, 8)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {
@@ -64,8 +69,9 @@ struct UnlockView: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 140, height: 140)
-                    
+                        .frame(maxWidth: 140, maxHeight: 140)
+                        .padding(.top, 8)
+
                     Image(systemName: "lock.fill")
                         .font(.system(size: 40))
                         .foregroundStyle(.white)
