@@ -370,228 +370,150 @@ struct MainVaultView: View {
 #if os(iOS)
                     return UIScreen.main.bounds.width > UIScreen.main.bounds.height
 #else
-                    return false
+                    // Treat macOS as a wide layout so the inline/header toolbar is preserved
+                    return true
 #endif
                 }()
                 let headerExtra: CGFloat = isLandscape ? 36 : 72
                 let minTop: CGFloat = isLandscape ? 56 : 96
                 HStack(alignment: .center, spacing: isLandscape ? 12 : 4) {
-                    // App Icon and Title
-                    HStack(spacing: isLandscape ? 8 : 4) {
+                    // Wrap header rows so we can place a full-width search bar underneath on compact layouts
+                    VStack(spacing: isLandscape ? 6 : 4) {
+                        HStack(spacing: isLandscape ? 8 : 4) {
+                            // App Icon and Title (kept at top-left)
+                            HStack(spacing: isLandscape ? 8 : 4) {
 #if os(macOS)
-                        if let appIcon = NSImage(named: "AppIcon") {
-                            Image(nsImage: appIcon)
-                                .resizable()
-                                .frame(width: 36, height: 36)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                        } else {
-                            ZStack {
-                                Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [.blue, .purple],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .frame(width: 36, height: 36)
-                                Image(systemName: "lock.open.fill")
-                                    .font(.system(size: 16))
-                                    .foregroundStyle(.white)
-                            }
-                        }
+                                if let appIcon = NSImage(named: "AppIcon") {
+                                    Image(nsImage: appIcon)
+                                        .resizable()
+                                        .frame(width: 36, height: 36)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                } else {
+                                    ZStack {
+                                        Circle()
+                                            .fill(
+                                                LinearGradient(
+                                                    colors: [.blue, .purple],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                )
+                                            )
+                                            .frame(width: 36, height: 36)
+                                        Image(systemName: "lock.open.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundStyle(.white)
+                                    }
+                                }
 #else
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.blue, .purple],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 36, height: 36)
-                            Image(systemName: "lock.open.fill")
-                                .font(.system(size: 16))
-                                .foregroundStyle(.white)
-                        }
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [.blue, .purple],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .frame(width: 36, height: 36)
+                                    Image(systemName: "lock.open.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(.white)
+                                }
 #endif
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("Hidden Items")
-                                .font(isLandscape ? .title3 : .title3)
-                                .fontWeight(.semibold)
-                                .lineLimit(2)
-                            Text("\(vaultManager.hiddenPhotos.count) items hidden")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    Spacer()
-                    // Controls: horizontal layout for landscape, stacked for portrait
-                    if isLandscape {
-                        HStack(spacing: 10) {
-                            if !selectedPhotos.isEmpty {
-                                Text("\(selectedPhotos.count) selected")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-
-                                Button {
-                                    restoreSelectedPhotos()
-                                } label: {
-                                    Label("Restore", systemImage: "arrow.uturn.backward")
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Hidden Items")
+                                        .font(isLandscape ? .title3 : .title3)
+                                        .fontWeight(.semibold)
+                                        .lineLimit(2)
+                                    Text("\(vaultManager.hiddenPhotos.count) items hidden")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
                                 }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .disabled(vaultManager.restorationProgress.isRestoring)
-
-                                Button {
-                                    exportSelectedPhotos()
-                                } label: {
-                                    Label("Export", systemImage: "square.and.arrow.up")
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-
-                                Button(role: .destructive) {
-                                    deleteSelectedPhotos()
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-
-                                Divider()
-                                    .frame(height: 20)
                             }
 
-                            TextField("Search...", text: $searchText)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(maxWidth: 120)
+                            Spacer()
 
-                            Toggle(isOn: $privacyModeEnabled) {
-                                Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
-                            }
-                            .toggleStyle(.switch)
-                            .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
+                            // Controls placed to the right of the title in the top row
+                            if isLandscape {
+                                HStack(spacing: 10) {
+                                    if !selectedPhotos.isEmpty {
+                                        Text("\(selectedPhotos.count) selected")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
 
-                            Button {
-                                showingPhotosLibrary = true
-                            } label: {
-                                Image(systemName: "lock.fill")
-                                    .font(.system(size: actionIconFontSize))
-                                    .foregroundColor(.white)
-                                    .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
-                                    .shadow(radius: 2)
-                            }
-                            .buttonStyle(.plain)
-                            .controlSize(.small)
+                                        Button {
+                                            restoreSelectedPhotos()
+                                        } label: {
+                                            Label("Restore", systemImage: "arrow.uturn.backward")
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
 
-                            Menu {
-                                #if os(macOS)
-                                Button {
-                                    chooseVaultLocation()
-                                } label: {
-                                    Label("Choose Vault Folder…", systemImage: "folder")
-                                }
+                                        Button {
+                                            exportSelectedPhotos()
+                                        } label: {
+                                            Label("Export", systemImage: "square.and.arrow.up")
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
 
-                                Divider()
-                                #endif
+                                        Button(role: .destructive) {
+                                            deleteSelectedPhotos()
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
 
-                                Button {
-                                    vaultManager.removeDuplicates()
-                                } label: {
-                                    Label("Remove Duplicates", systemImage: "trash.slash")
-                                }
+                                        Divider()
+                                            .frame(height: 20)
+                                    }
 
-                                Divider()
+                                    // Keep a compact search in landscape
+                                    TextField("Search...", text: $searchText)
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(maxWidth: 120)
 
-                                Button {
-                                    vaultManager.lock()
-                                } label: {
-                                    Label("Lock Vault", systemImage: "lock.fill")
-                                }
+                                    Toggle(isOn: $privacyModeEnabled) {
+                                        Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
+                                    }
+                                    .toggleStyle(.switch)
+                                    .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
 
-                                #if DEBUG
-                                Divider()
-
-                                Button(role: .destructive) {
-                                    resetVaultForDevelopment()
-                                } label: {
-                                    Label("🔧 Reset Vault (Dev)", systemImage: "trash.circle")
-                                }
-                                #endif
-                            } label: {
-                                Image(systemName: "ellipsis")
-                                    .font(.system(size: actionIconFontSize))
-                                    .foregroundColor(.white)
-                                    .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
-                                    .shadow(radius: 2)
-                            }
-                            .menuStyle(.borderlessButton)
-                            .controlSize(.small)
-                        }
-                    } else {
-                        // Compact portrait controls: place the toggle + action icons on the top row,
-                        // with the search field below (wider). Allow the action icons to extend
-                        // slightly off the right edge for a denser layout.
-                        VStack(alignment: .trailing, spacing: 6) {
-                            HStack(spacing: 8) {
-                                Toggle(isOn: $privacyModeEnabled) {
-                                    Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
-                                }
-                                .toggleStyle(.switch)
-                                .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
-
-                                Spacer(minLength: 8)
-
-                                HStack(spacing: 8) {
                                     Button {
                                         showingPhotosLibrary = true
                                     } label: {
+#if os(macOS)
+                                        Label("Hide Items", systemImage: "lock.fill")
+                                            .padding(.vertical, 6)
+                                            .padding(.horizontal, 10)
+                                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
+                                            .foregroundColor(.white)
+                                            .shadow(radius: 2)
+#else
                                         Image(systemName: "lock.fill")
                                             .font(.system(size: actionIconFontSize))
                                             .foregroundColor(.white)
                                             .frame(width: actionButtonDimension, height: actionButtonDimension)
                                             .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
                                             .shadow(radius: 2)
+#endif
                                     }
                                     .buttonStyle(.plain)
                                     .controlSize(.small)
 
                                     Menu {
-                                        if !selectedPhotos.isEmpty {
-                                            Button {
-                                                restoreSelectedPhotos()
-                                            } label: {
-                                                Label("Restore Selected", systemImage: "arrow.uturn.backward")
-                                            }
-
-                                            Button {
-                                                exportSelectedPhotos()
-                                            } label: {
-                                                Label("Export Selected", systemImage: "square.and.arrow.up")
-                                            }
-
-                                            Button(role: .destructive) {
-                                                deleteSelectedPhotos()
-                                            } label: {
-                                                Label("Delete Selected", systemImage: "trash")
-                                            }
-                                        }
-
-                                        #if os(macOS)
-                                        Divider()
+#if os(macOS)
                                         Button {
                                             chooseVaultLocation()
                                         } label: {
                                             Label("Choose Vault Folder…", systemImage: "folder")
                                         }
-                                        #endif
 
                                         Divider()
+#endif
+
                                         Button {
                                             vaultManager.removeDuplicates()
                                         } label: {
@@ -599,20 +521,22 @@ struct MainVaultView: View {
                                         }
 
                                         Divider()
+
                                         Button {
                                             vaultManager.lock()
                                         } label: {
                                             Label("Lock Vault", systemImage: "lock.fill")
                                         }
 
-                                        #if DEBUG
+#if DEBUG
                                         Divider()
+
                                         Button(role: .destructive) {
                                             resetVaultForDevelopment()
                                         } label: {
                                             Label("🔧 Reset Vault (Dev)", systemImage: "trash.circle")
                                         }
-                                        #endif
+#endif
                                     } label: {
                                         Image(systemName: "ellipsis")
                                             .font(.system(size: actionIconFontSize))
@@ -624,13 +548,105 @@ struct MainVaultView: View {
                                     .menuStyle(.borderlessButton)
                                     .controlSize(.small)
                                 }
-                                .padding(.trailing, -10) // allow icons to tuck slightly off the edge
-                            }
+                            } else {
+                                // Portrait / compact: keep controls compact on the top row and show search full-width below
+                                HStack(spacing: 8) {
+                                    Toggle(isOn: $privacyModeEnabled) {
+                                        Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
+                                    }
+                                    .toggleStyle(.switch)
+                                    .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
 
-                            TextField("Search...", text: $searchText)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(maxWidth: 260)
-                                .fixedSize(horizontal: false, vertical: true)
+                                    Spacer(minLength: 8)
+
+                                    HStack(spacing: 8) {
+                                        Button {
+                                            showingPhotosLibrary = true
+                                        } label: {
+                                            Image(systemName: "lock.fill")
+                                                .font(.system(size: actionIconFontSize))
+                                                .foregroundColor(.white)
+                                                .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
+                                                .shadow(radius: 2)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .controlSize(.small)
+
+                                        Menu {
+                                            if !selectedPhotos.isEmpty {
+                                                Button {
+                                                    restoreSelectedPhotos()
+                                                } label: {
+                                                    Label("Restore Selected", systemImage: "arrow.uturn.backward")
+                                                }
+
+                                                Button {
+                                                    exportSelectedPhotos()
+                                                } label: {
+                                                    Label("Export Selected", systemImage: "square.and.arrow.up")
+                                                }
+
+                                                Button(role: .destructive) {
+                                                    deleteSelectedPhotos()
+                                                } label: {
+                                                    Label("Delete Selected", systemImage: "trash")
+                                                }
+                                            }
+
+#if os(macOS)
+                                            Divider()
+                                            Button {
+                                                chooseVaultLocation()
+                                            } label: {
+                                                Label("Choose Vault Folder…", systemImage: "folder")
+                                            }
+#endif
+
+                                            Divider()
+                                            Button {
+                                                vaultManager.removeDuplicates()
+                                            } label: {
+                                                Label("Remove Duplicates", systemImage: "trash.slash")
+                                            }
+
+                                            Divider()
+                                            Button {
+                                                vaultManager.lock()
+                                            } label: {
+                                                Label("Lock Vault", systemImage: "lock.fill")
+                                            }
+
+#if DEBUG
+                                            Divider()
+                                            Button(role: .destructive) {
+                                                resetVaultForDevelopment()
+                                            } label: {
+                                                Label("🔧 Reset Vault (Dev)", systemImage: "trash.circle")
+                                            }
+#endif
+                                        } label: {
+                                            Image(systemName: "ellipsis")
+                                                .font(.system(size: actionIconFontSize))
+                                                .foregroundColor(.white)
+                                                .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
+                                                .shadow(radius: 2)
+                                        }
+                                        .menuStyle(.borderlessButton)
+                                        .controlSize(.small)
+                                    }
+                                    .padding(.trailing, -10) // allow icons to tuck slightly off the edge
+                                }
+                        }
+
+                        // Search bar row: full width for portrait/macOS; compact search kept in landscape above
+                        if !isLandscape {
+                            HStack {
+                                TextField("Search...", text: $searchText)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(maxWidth: .infinity)
+                            }
                         }
                     }
                 }
