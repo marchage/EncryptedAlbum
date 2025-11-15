@@ -45,7 +45,7 @@ struct MainVaultView: View {
     }
     
     var body: some View {
-        ZStack(alignment: .top) {
+        return ZStack(alignment: .top) {
             VStack(spacing: 0) {
             // Toolbar
             HStack {
@@ -139,9 +139,9 @@ struct MainVaultView: View {
                             .frame(height: 20)
                     }
                     
-                    TextField("Search...", text: $searchText)
+                        TextField("Search...", text: $searchText)
                         .textFieldStyle(.roundedBorder)
-                        .frame(width: 200)
+                        .frame(maxWidth: 180)
 
                     Toggle(isOn: $privacyModeEnabled) {
                         Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
@@ -331,8 +331,10 @@ struct MainVaultView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 200), spacing: 16)], spacing: 16) {
-                        ForEach(filteredPhotos) { photo in
+                    GeometryReader { geometry in
+                        let minSize: CGFloat = geometry.size.width < 420 ? 90 : 150
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: minSize, maximum: 200), spacing: 16)], spacing: 16) {
+                            ForEach(filteredPhotos) { photo in
                             PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id), privacyModeEnabled: privacyModeEnabled)
                                 .onTapGesture(count: 2) {
                                     selectedPhoto = photo
@@ -393,7 +395,7 @@ struct MainVaultView: View {
         }
     }
     
-    private func setupKeyboardShortcuts() {
+    func setupKeyboardShortcuts() {
         #if os(macOS)
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             // If the Photos picker sheet is shown, let it receive Cmd+A instead of handling it globally
@@ -413,7 +415,7 @@ struct MainVaultView: View {
         #endif
     }
     
-    private func toggleSelection(_ id: UUID) {
+    func toggleSelection(_ id: UUID) {
         if selectedPhotos.contains(id) {
             selectedPhotos.remove(id)
         } else {
@@ -421,11 +423,11 @@ struct MainVaultView: View {
         }
     }
     
-    private func selectAll() {
+    func selectAll() {
         selectedPhotos = Set(filteredPhotos.map { $0.id })
     }
     
-    private func exportSelectedPhotos() {
+    func exportSelectedPhotos() {
         #if os(macOS)
         vaultManager.touchActivity()
         let panel = NSSavePanel()
@@ -442,7 +444,7 @@ struct MainVaultView: View {
         #endif
     }
     
-    private func exportPhotos(to folderURL: URL) {
+    func exportPhotos(to folderURL: URL) {
         vaultManager.touchActivity()
         let photosToExport = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         
@@ -466,7 +468,7 @@ struct MainVaultView: View {
     }
 
     // Helpers for banner icon and color (moved into MainVaultView scope)
-    private func iconName(for type: HideNotificationType) -> String {
+    func iconName(for type: HideNotificationType) -> String {
         switch type {
         case .success: return "checkmark.circle.fill"
         case .failure: return "xmark.octagon.fill"
@@ -474,7 +476,7 @@ struct MainVaultView: View {
         }
     }
 
-    private func iconColor(for type: HideNotificationType) -> Color {
+    func iconColor(for type: HideNotificationType) -> Color {
         switch type {
         case .success: return Color.green
         case .failure: return Color.red
@@ -482,19 +484,19 @@ struct MainVaultView: View {
         }
     }
     
-    private func restoreSelectedPhotos() {
+    func restoreSelectedPhotos() {
         vaultManager.touchActivity()
         photosToRestore = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         showingRestoreOptions = true
     }
     
-    private func restoreToOriginalAlbums() {
+    func restoreToOriginalAlbums() {
         vaultManager.touchActivity()
         selectedPhotos.removeAll()
         vaultManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: true)
     }
     
-    private func restoreToNewAlbum() {
+    func restoreToNewAlbum() {
         #if os(macOS)
         vaultManager.touchActivity()
         // Prompt for album name
@@ -520,13 +522,13 @@ struct MainVaultView: View {
         #endif
     }
     
-    private func restoreToLibrary() {
+    func restoreToLibrary() {
         vaultManager.touchActivity()
         selectedPhotos.removeAll()
         vaultManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: false)
     }
     
-    private func deleteSelectedPhotos() {
+    func deleteSelectedPhotos() {
         vaultManager.touchActivity()
         let photosToDelete = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         for photo in photosToDelete {
@@ -535,7 +537,7 @@ struct MainVaultView: View {
         selectedPhotos.removeAll()
     }
 
-    private func chooseVaultLocation() {
+    func chooseVaultLocation() {
         #if os(macOS)
         // Step-up authentication before allowing vault location change
         vaultManager.requireStepUpAuthentication { success in
@@ -624,7 +626,7 @@ struct MainVaultView: View {
     }
     
     #if DEBUG
-    private func resetVaultForDevelopment() {
+    func resetVaultForDevelopment() {
         #if os(macOS)
         let alert = NSAlert()
         alert.messageText = "Reset Vault? (Development)"
@@ -669,13 +671,21 @@ struct PhotoThumbnailView: View {
     @State private var thumbnailImage: Image?
     @State private var loadTask: Task<Void, Never>?
     
+    private var thumbnailSize: CGFloat {
+        #if os(iOS)
+        return 120
+        #else
+        return 180
+        #endif
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             ZStack(alignment: .topTrailing) {
                 if privacyModeEnabled {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.gray.opacity(0.2))
-                        .frame(width: 180, height: 180)
+                        .frame(width: thumbnailSize, height: thumbnailSize)
                         .overlay {
                             Image(systemName: photo.mediaType == .video ? "video.slash" : "eye.slash")
                                 .font(.title2)
@@ -689,7 +699,7 @@ struct PhotoThumbnailView: View {
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: 180, height: 180)
+                        .frame(width: thumbnailSize, height: thumbnailSize)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .shadow(radius: 2)
                         .overlay(
@@ -716,7 +726,7 @@ struct PhotoThumbnailView: View {
                 } else {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.gray.opacity(0.2))
-                        .frame(width: 180, height: 180)
+                        .frame(width: thumbnailSize, height: thumbnailSize)
                         .overlay {
                             ProgressView()
                                 .controlSize(.small)
@@ -743,15 +753,15 @@ struct PhotoThumbnailView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 180, alignment: .leading)
+            .frame(width: thumbnailSize, alignment: .leading)
         }
         .onAppear {
             if !privacyModeEnabled {
                 loadThumbnail()
             }
         }
-        .onChange(of: privacyModeEnabled) { enabled in
-            if !enabled && thumbnailImage == nil {
+        .onChange(of: privacyModeEnabled) {
+            if !$0 && thumbnailImage == nil {
                 loadThumbnail()
             }
         }
@@ -852,7 +862,9 @@ struct PhotoViewerSheet: View {
                 }
             }
         }
+        #if os(macOS)
         .frame(minWidth: 800, minHeight: 600)
+        #endif
         .onAppear {
             if photo.mediaType == .video {
                 loadVideo()
@@ -947,3 +959,4 @@ struct CustomVideoPlayer: UIViewControllerRepresentable {
     }
 }
 #endif
+}

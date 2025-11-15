@@ -3,9 +3,17 @@ import SwiftUI
 @main
 struct SecretVaultApp: App {
     @StateObject private var vaultManager = VaultManager.shared
+    #if os(macOS)
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    #endif
     
     var body: some Scene {
+        #if os(iOS)
+        WindowGroup {
+            ContentView()
+                .environmentObject(vaultManager)
+        }
+        #else
         WindowGroup {
             ContentView()
                 .environmentObject(vaultManager)
@@ -19,9 +27,11 @@ struct SecretVaultApp: App {
             // Remove "New Window" command to prevent multiple windows
             CommandGroup(replacing: .newItem) { }
         }
+        #endif
     }
 }
 
+#if os(macOS)
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return true
@@ -37,3 +47,4 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 }
+#endif

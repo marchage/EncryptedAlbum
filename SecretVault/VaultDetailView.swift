@@ -90,7 +90,9 @@ struct PhotosLibraryPicker: View {
                     .padding(8)
                 }
             }
+            #if os(macOS)
             .frame(width: 220)
+            #endif
             .background(.ultraThinMaterial)
             
             Divider()
@@ -205,7 +207,9 @@ struct PhotosLibraryPicker: View {
             }
         }
         }
+        #if os(macOS)
         .frame(minWidth: 900, minHeight: 700)
+        #endif
         .onAppear {
             requestPhotosAccess()
         }
@@ -392,40 +396,48 @@ struct PhotosLibraryPicker: View {
         let assetsToHide = allPhotos.filter { selectedAssets.contains($0.asset.localIdentifier) }
         
         DispatchQueue.global(qos: .userInitiated).async {
+            // Limit concurrent media fetch & processing to avoid loading many large files into memory at once.
+            let semaphore = DispatchSemaphore(value: 2) // allow 2 concurrent operations
             let group = DispatchGroup()
             var successfulAssets: [PHAsset] = []
-            
+
             for photoData in assetsToHide {
+                semaphore.wait()
                 group.enter()
                 PhotosLibraryService.shared.getMediaData(for: photoData.asset) { data, filename, dateTaken, mediaType, duration, location, isFavorite in
-                    guard let mediaData = data else {
+                    defer {
                         group.leave()
+                        semaphore.signal()
+                    }
+
+                    guard let mediaData = data else {
                         return
                     }
-                    
-                    // Add to vault
+
+                    // Add to vault. Use autoreleasepool to encourage early temporary object cleanup
                     do {
-                        try vaultManager.hidePhoto(
-                            imageData: mediaData,
-                            filename: filename,
-                            dateTaken: dateTaken,
-                            sourceAlbum: photoData.album,
-                            assetIdentifier: photoData.asset.localIdentifier,
-                            mediaType: mediaType,
-                            duration: duration,
-                            location: location,
-                            isFavorite: isFavorite
-                        )
+                        try autoreleasepool {
+                            try vaultManager.hidePhoto(
+                                imageData: mediaData,
+                                filename: filename,
+                                dateTaken: dateTaken,
+                                sourceAlbum: photoData.album,
+                                assetIdentifier: photoData.asset.localIdentifier,
+                                mediaType: mediaType,
+                                duration: duration,
+                                location: location,
+                                isFavorite: isFavorite
+                            )
+                        }
                         successfulAssets.append(photoData.asset)
                         print("\(mediaType == .video ? "Video" : "Photo") added to vault: \(filename)")
                     } catch {
-                        print("Failed to add media to vault: \(filename)")
+                        print("Failed to add media to vault: \(filename) - \(error)")
                     }
-                    
-                    group.leave()
                 }
             }
-            
+
+            // Wait for all limited tasks to finish
             group.wait()
             
             // Batch delete all successfully vaulted photos at once

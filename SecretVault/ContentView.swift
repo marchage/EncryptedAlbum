@@ -15,6 +15,8 @@ struct ContentView: View {
                 SetupPasswordView()
             }
         }
+        #if os(macOS)
         .frame(minWidth: 900, minHeight: 600)
+        #endif
     }
 }

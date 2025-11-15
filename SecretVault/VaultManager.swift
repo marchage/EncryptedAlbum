@@ -432,71 +432,63 @@ class VaultManager: ObservableObject {
             // Process each album group
             for (targetAlbum, photosInGroup) in albumGroups {
                 group.enter()
-                
+
                 print("📁 Processing group: \(targetAlbum ?? "Library") with \(photosInGroup.count) items")
-                
-                // Decrypt all photos in this group
-                var mediaItems: [(data: Data, filename: String, mediaType: MediaType, creationDate: Date?, location: SecurePhoto.Location?, isFavorite: Bool?)] = []
-                var photosToRestore: [SecurePhoto] = []
-                
+
+                // Process photos sequentially (or small batches) to avoid holding many large decrypted Data objects in memory.
                 for photo in photosInGroup {
-                    do {
-                        print("  🔓 Decrypting: \(photo.filename) (\(photo.mediaType.rawValue))")
-                        let decryptedData = try self.decryptPhoto(photo)
-                        print("  ✅ Decrypted successfully: \(photo.filename) - \(decryptedData.count) bytes")
-                        mediaItems.append((
-                            data: decryptedData,
-                            filename: photo.filename,
-                            mediaType: photo.mediaType,
-                            creationDate: photo.dateTaken,
-                            location: photo.location,
-                            isFavorite: photo.isFavorite
-                        ))
-                        photosToRestore.append(photo)
-                    } catch {
-                        print("  ❌ Failed to decrypt \(photo.filename): \(error)")
-                        DispatchQueue.main.async {
-                            self.restorationProgress.processedItems += 1
-                            self.restorationProgress.failedItems += 1
+                    autoreleasepool {
+                        do {
+                            print("  🔓 Decrypting: \(photo.filename) (\(photo.mediaType.rawValue))")
+                            let decryptedData = try self.decryptPhoto(photo)
+                            print("  ✅ Decrypted successfully: \(photo.filename) - \(decryptedData.count) bytes")
+
+                            // Save each media item individually to keep memory use low.
+                            let saveSemaphore = DispatchSemaphore(value: 0)
+                            var saveSuccess = false
+
+                            PhotosLibraryService.shared.saveMediaToLibrary(
+                                decryptedData,
+                                filename: photo.filename,
+                                mediaType: photo.mediaType,
+                                toAlbum: targetAlbum,
+                                creationDate: photo.dateTaken,
+                                location: photo.location,
+                                isFavorite: photo.isFavorite
+                            ) { success in
+                                saveSuccess = success
+                                saveSemaphore.signal()
+                            }
+
+                            // Wait for save to complete before continuing to next item
+                            saveSemaphore.wait()
+
+                            // Update progress
+                            DispatchQueue.main.async {
+                                self.restorationProgress.processedItems += 1
+                                if saveSuccess {
+                                    self.restorationProgress.successItems += 1
+                                } else {
+                                    self.restorationProgress.failedItems += 1
+                                }
+                            }
+
+                            if saveSuccess {
+                                lock.lock()
+                                allRestoredPhotos.append(photo)
+                                lock.unlock()
+                            }
+                        } catch {
+                            print("  ❌ Failed to decrypt \(photo.filename): \(error)")
+                            DispatchQueue.main.async {
+                                self.restorationProgress.processedItems += 1
+                                self.restorationProgress.failedItems += 1
+                            }
                         }
                     }
                 }
-                
-                // Batch save to Photos library
-                if !mediaItems.isEmpty {
-                    print("💾 Batch saving \(mediaItems.count) items to Photos library...")
-                    PhotosLibraryService.shared.batchSaveMediaToLibrary(
-                        mediaItems,
-                        toAlbum: targetAlbum
-                    ) { successCount in
-                        let failedCount = mediaItems.count - successCount
-                        print("✅ Restored \(successCount) of \(mediaItems.count) media items to album: \(targetAlbum ?? "Library")")
-                        if failedCount > 0 {
-                            print("⚠️ Failed to restore \(failedCount) items")
-                        }
-                        
-                        // Update progress
-                        DispatchQueue.main.async {
-                            self.restorationProgress.processedItems += mediaItems.count
-                            self.restorationProgress.successItems += successCount
-                            self.restorationProgress.failedItems += failedCount
-                        }
-                        
-                        // Only mark as restored if successful
-                        if successCount > 0 {
-                            lock.lock()
-                            // Only add successfully restored photos (proportionally)
-                            let successfulPhotos = Array(photosToRestore.prefix(successCount))
-                            allRestoredPhotos.append(contentsOf: successfulPhotos)
-                            lock.unlock()
-                        }
-                        
-                        group.leave()
-                    }
-                } else {
-                    print("⚠️ No items to restore in this group")
-                    group.leave()
-                }
+
+                group.leave()
             }
             
             group.wait()
