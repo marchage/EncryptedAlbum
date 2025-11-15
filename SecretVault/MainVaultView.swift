@@ -372,7 +372,7 @@ struct MainVaultView: View {
                     return false
 #endif
                 }()
-                HStack(alignment: .top, spacing: isLandscape ? 24 : 8) {
+                HStack(alignment: .center, spacing: isLandscape ? 24 : 8) {
                     // App Icon and Title
                     HStack(spacing: isLandscape ? 20 : 8) {
 #if os(macOS)
