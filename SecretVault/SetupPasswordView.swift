@@ -71,8 +71,8 @@ struct SetupPasswordView: View {
                     .renderingMode(.original)
                     .interpolation(.high)
                     .aspectRatio(1, contentMode: .fit)
-                    .frame(maxWidth: 180)
-                    .padding(.top, 16)
+                    .frame(maxWidth: 180, maxHeight: 180)
+                    .padding(.top, 8)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .compositingGroup()
                     .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
@@ -88,20 +88,44 @@ struct SetupPasswordView: View {
                         )
                     )
             }
-            #else
+            #elseif os(iOS)
             if let appIcon = UIImage(named: "AppIcon") {
                 Image(uiImage: appIcon)
                     .resizable()
                     .renderingMode(.original)
                     .interpolation(.high)
                     .aspectRatio(1, contentMode: .fit)
-                    .frame(maxWidth: 180)
-                    .padding(.top, 16)
+                    .frame(maxWidth: 120, maxHeight: 120)
+                    .padding(.top, 28)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .compositingGroup()
                     .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {
                 // Fallback to lock shield
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 72))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+            #else
+            // Default fallback for other platforms: keep existing behavior
+            if let appIcon = UIImage(named: "AppIcon") {
+                Image(uiImage: appIcon)
+                    .resizable()
+                    .renderingMode(.original)
+                    .interpolation(.high)
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: 140, maxHeight: 140)
+                    .padding(.top, 24)
+                    .clipShape(RoundedRectangle(cornerRadius: 26))
+                    .compositingGroup()
+                    .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
+            } else {
                 Image(systemName: "lock.shield.fill")
                     .font(.system(size: 80))
                     .foregroundStyle(
@@ -257,7 +281,7 @@ struct SetupPasswordView: View {
             generatePasswords()
         }
         .safeAreaInset(edge: .top) {
-            Color.clear.frame(height: 12)
+            Color.clear.frame(height: 36)
         }
     }
     

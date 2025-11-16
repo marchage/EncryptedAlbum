@@ -24,8 +24,8 @@ struct UnlockView: View {
                     .renderingMode(.original)
                     .interpolation(.high)
                     .aspectRatio(1, contentMode: .fit)
-                    .frame(maxWidth: 180)
-                    .padding(.top, 16)
+                    .frame(maxWidth: 120, maxHeight: 120)
+                    .padding(.top, 36)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {
@@ -54,8 +54,8 @@ struct UnlockView: View {
                     .renderingMode(.original)
                     .interpolation(.high)
                     .aspectRatio(1, contentMode: .fit)
-                    .frame(maxWidth: 180)
-                    .padding(.top, 16)
+                    .frame(maxWidth: 140, maxHeight: 140)
+                    .padding(.top, 24)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {
@@ -69,8 +69,8 @@ struct UnlockView: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(maxWidth: 140)
-                        .padding(.top, 16)
+                        .frame(maxWidth: 120)
+                        .padding(.top, 36)
 
                     Image(systemName: "lock.fill")
                         .font(.system(size: 40))
@@ -156,7 +156,7 @@ struct UnlockView: View {
             }
         }
         .safeAreaInset(edge: .top) {
-            Color.clear.frame(height: 12)
+            Color.clear.frame(height: 36)
         }
     }
     
