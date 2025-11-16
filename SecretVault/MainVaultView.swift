@@ -4,10 +4,54 @@ import AVKit
 import AppKit
 #endif
 
+#if os(macOS)
+// macOS-only view that detects double-clicks using AppKit's NSClickGestureRecognizer.
+// Using an NSView-based recognizer avoids SwiftUI gesture ordering/focus issues.
+struct DoubleClickDetector: NSViewRepresentable {
+    let onDoubleClick: () -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        view.wantsLayer = false
+
+        let recognizer = NSClickGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleClick(_:)))
+        recognizer.numberOfClicksRequired = 2
+        view.addGestureRecognizer(recognizer)
+        context.coordinator.recognizer = recognizer
+
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.onDoubleClick = onDoubleClick
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onDoubleClick: onDoubleClick)
+    }
+
+    class Coordinator: NSObject {
+        var onDoubleClick: () -> Void
+        weak var recognizer: NSClickGestureRecognizer?
+
+        init(onDoubleClick: @escaping () -> Void) {
+            self.onDoubleClick = onDoubleClick
+        }
+
+        @objc func handleClick(_ sender: NSClickGestureRecognizer) {
+            guard sender.state == .ended else { return }
+            onDoubleClick()
+        }
+    }
+}
+#endif
+
 struct MainVaultView: View {
     @EnvironmentObject var vaultManager: VaultManager
     @State private var showingPhotosLibrary = false
     @State private var selectedPhoto: SecurePhoto?
+    // Note: keeping showingPhotoViewer for compatibility but we'll switch to item-based sheet below
     @State private var showingPhotoViewer = false
     @State private var selectedPhotos: Set<UUID> = []
     @State private var searchText = ""
@@ -825,13 +869,28 @@ struct MainVaultView: View {
                                 LazyVGrid(columns: [GridItem(.adaptive(minimum: minSize, maximum: 200), spacing: 16)], spacing: 16) {
                                     ForEach(filteredPhotos) { photo in
                                         PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id), privacyModeEnabled: privacyModeEnabled)
-                                            .onTapGesture(count: 2) {
-                                                selectedPhoto = photo
-                                                showingPhotoViewer = true
-                                            }
+                                            .contentShape(Rectangle())
                                             .onTapGesture {
                                                 toggleSelection(photo.id)
                                             }
+#if os(macOS)
+                                            .overlay(DoubleClickDetector(onDoubleClick: {
+                                                // Debug: confirm double-click fired
+                                                print("DoubleClickDetector fired for photo id=\(photo.id)")
+                                                DispatchQueue.main.async {
+                                                    selectedPhoto = photo
+                                                }
+                                            }))
+                                            .onHover { hovering in
+                                                if hovering {
+                                                    NSCursor.pointingHand.push()
+                                                } else {
+                                                    NSCursor.pop()
+                                                }
+                                            }
+#else
+                                            .overlay(EmptyView())
+#endif
                                             .contextMenu {
                                                 Button {
                                                     vaultManager.restorePhotoToLibrary(photo)
@@ -875,12 +934,8 @@ struct MainVaultView: View {
             } message: {
                 Text("How would you like to restore \(photosToRestore.count) item(s)?")
             }
-            .sheet(isPresented: $showingPhotoViewer) {
-                Group {
-                    if let photo = selectedPhoto {
-                        PhotoViewerSheet(photo: photo)
-                    }
-                }
+            .sheet(item: $selectedPhoto) { photo in
+                PhotoViewerSheet(photo: photo)
             }
             .sheet(isPresented: $showingPhotosLibrary) {
                 PhotosLibraryPicker()
