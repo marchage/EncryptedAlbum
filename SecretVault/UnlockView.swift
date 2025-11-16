@@ -25,7 +25,7 @@ struct UnlockView: View {
                     .interpolation(.high)
                     .aspectRatio(1, contentMode: .fit)
                     .frame(maxWidth: 120, maxHeight: 120)
-                    .padding(.top, 36)
+                    // .padding(.top, 36)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {
@@ -55,7 +55,7 @@ struct UnlockView: View {
                     .interpolation(.high)
                     .aspectRatio(1, contentMode: .fit)
                     .frame(maxWidth: 140, maxHeight: 140)
-                    .padding(.top, 24)
+                    // .padding(.top, 24)
                     .clipShape(RoundedRectangle(cornerRadius: 26))
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
             } else {
@@ -70,7 +70,7 @@ struct UnlockView: View {
                             )
                         )
                         .frame(maxWidth: 120)
-                        .padding(.top, 36)
+                        // .padding(.top, 36)
 
                     Image(systemName: "lock.fill")
                         .font(.system(size: 40))
