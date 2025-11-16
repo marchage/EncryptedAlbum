@@ -491,14 +491,14 @@ struct MainVaultView: View {
                                         showingPhotosLibrary = true
                                     } label: {
 #if os(macOS)
-                                        Label("Hide Items", systemImage: "lock.fill")
+                                        Label("Hide Items", systemImage: "tray.and.arrow.down.fill")
                                             .padding(.vertical, 6)
                                             .padding(.horizontal, 10)
                                             .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
                                             .foregroundColor(.white)
                                             .shadow(radius: 2)
 #else
-                                        Image(systemName: "lock.fill")
+                                        Image(systemName: "tray.and.arrow.down.fill")
                                             .font(.system(size: actionIconFontSize))
                                             .foregroundColor(.white)
                                             .frame(width: actionButtonDimension, height: actionButtonDimension)
@@ -576,7 +576,7 @@ struct MainVaultView: View {
                                         Button {
                                             showingPhotosLibrary = true
                                         } label: {
-                                            Image(systemName: "lock.fill")
+                                            Image(systemName: "tray.and.arrow.down.fill")
                                                 .font(.system(size: actionIconFontSize))
                                                 .foregroundColor(.white)
                                                 .frame(width: actionButtonDimension, height: actionButtonDimension)
@@ -777,7 +777,7 @@ struct MainVaultView: View {
                     // Photo grid or empty state
                     if vaultManager.hiddenPhotos.isEmpty {
                         VStack(spacing: 20) {
-                            Image(systemName: "lock.fill")
+                            Image(systemName: "tray.and.arrow.down.fill")
                                 .font(.system(size: 60))
                                 .foregroundStyle(.secondary)
                             
@@ -792,7 +792,7 @@ struct MainVaultView: View {
                             Button {
                                 showingPhotosLibrary = true
                             } label: {
-                                Image(systemName: "lock.fill")
+                                Image(systemName: "tray.and.arrow.down.fill")
                                     .font(.system(size: actionIconFontSize))
                                     .foregroundColor(.white)
                                     .frame(width: actionButtonDimension, height: actionButtonDimension)
