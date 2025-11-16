@@ -17,6 +17,14 @@
 		9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4562EB9893D00B17DAC /* ContentView.swift */; };
 		9849B4592EB9893F00B17DAC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B4582EB9893F00B17DAC /* Assets.xcassets */; };
 		9849B45C2EB9893F00B17DAC /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B45B2EB9893F00B17DAC /* Preview Assets.xcassets */; };
+		98C835F92EC9E6CD000997CF /* PhotosLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */; };
+		98C835FA2EC9E6CD000997CF /* VaultDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C904A396A6B1968CDD78D9 /* VaultDetailView.swift */; };
+		98C835FB2EC9E6CD000997CF /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C068CD08B70A6DBEA00400 /* UnlockView.swift */; };
+		98C835FC2EC9E6CD000997CF /* SetupPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */; };
+		98C835FD2EC9E6CD000997CF /* MainVaultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE5566FF77AA88BB99CC /* MainVaultView.swift */; };
+		98C835FE2EC9E6CD000997CF /* VaultManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F96EA3625074B045C751E84 /* VaultManager.swift */; };
+		98C835FF2EC9E6CD000997CF /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345677 /* PreferencesView.swift */; };
+		98C836002EC9E6CD000997CF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B4582EB9893F00B17DAC /* Assets.xcassets */; };
 		A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345677 /* PreferencesView.swift */; };
 		AA11BB2233CC44DD55EE66FF /* SetupPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */; };
 		CC33DD4455EE66FF77AA88BB /* MainVaultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE5566FF77AA88BB99CC /* MainVaultView.swift */; };
@@ -214,7 +222,7 @@
 			files = (
 				9819265C2EC854B800C67291 /* Preview Assets.xcassets in Resources */,
 				981926592EC854B800C67291 /* Assets.xcassets in Resources */,
-				9849B4592EB9893F00B17DAC /* Assets.xcassets in Resources */,
+				98C836002EC9E6CD000997CF /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -236,13 +244,13 @@
 			files = (
 				981926572EC854B600C67291 /* ContentView.swift in Sources */,
 				981926552EC854B600C67291 /* SecretVault_iOSApp.swift in Sources */,
-				1CA80AC13D192EBBFCD3B516 /* PhotosLibraryService.swift in Sources */,
-				432DD49F40365EA5EAEBFD23 /* VaultDetailView.swift in Sources */,
-				F9B0EAD109417F32CF3B7D50 /* UnlockView.swift in Sources */,
-				AA11BB2233CC44DD55EE66FF /* SetupPasswordView.swift in Sources */,
-				CC33DD4455EE66FF77AA88BB /* MainVaultView.swift in Sources */,
-				E48BBB324071974C8BE48D0D /* VaultManager.swift in Sources */,
-				A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */,
+				98C835F92EC9E6CD000997CF /* PhotosLibraryService.swift in Sources */,
+				98C835FA2EC9E6CD000997CF /* VaultDetailView.swift in Sources */,
+				98C835FB2EC9E6CD000997CF /* UnlockView.swift in Sources */,
+				98C835FC2EC9E6CD000997CF /* SetupPasswordView.swift in Sources */,
+				98C835FD2EC9E6CD000997CF /* MainVaultView.swift in Sources */,
+				98C835FE2EC9E6CD000997CF /* VaultManager.swift in Sources */,
+				98C835FF2EC9E6CD000997CF /* PreferencesView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -280,6 +288,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SecretVault-iOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = SecretVault;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -315,6 +324,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SecretVault-iOS-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = SecretVault;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
