@@ -491,19 +491,17 @@ struct MainVaultView: View {
                                     showingPhotosLibrary = true
                                 } label: {
 #if os(macOS)
-                                    Label("Hide Items", systemImage: "tray.and.arrow.down.fill")
+                                    Label("Hide Items", systemImage: "square.and.arrow.down")
                                         .padding(.vertical, 6)
                                         .padding(.horizontal, 10)
                                         .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
                                         .foregroundColor(.white)
-                                        .shadow(radius: 2)
 #else
-                                    Image(systemName: "tray.and.arrow.down.fill")
-                                        .font(.system(size: actionIconFontSize))
+                                    Image(systemName: "square.and.arrow.down")
+                                        .font(.system(size: actionIconFontSize - 2))
                                         .foregroundColor(.white)
                                         .frame(width: actionButtonDimension, height: actionButtonDimension)
                                         .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
-                                        .shadow(radius: 2)
 #endif
                                 }
                                 .buttonStyle(.plain)
@@ -555,99 +553,107 @@ struct MainVaultView: View {
                                 .controlSize(.small)
                             }
                         } else {
-                            // Portrait / compact: keep the privacy toggle on the top row,
-                            // then place the blue action buttons on their own compact row
-                            // above the full-width search field to avoid overlap.
-                            VStack(spacing: 8) {
-                                HStack(spacing: 8) {
-                                    Toggle(isOn: $privacyModeEnabled) {
-                                        Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
-                                    }
-                                    .toggleStyle(.switch)
-                                    .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
-                                    
-                                    Spacer(minLength: 8)
-                                }
-                                
-                                // Action buttons row (right-aligned)
-                                HStack {
-                                    Spacer()
-                                    
-                                    Button {
-                                        showingPhotosLibrary = true
-                                    } label: {
-                                        Image(systemName: "tray.and.arrow.down.fill")
-                                            .font(.system(size: actionIconFontSize))
-                                            .foregroundColor(.white)
+                            // Portrait / compact: two-column compact toolbar.
+                            // Left column: boxed eye icon. Right column: boxed toggle above two square action buttons.
+                            HStack(alignment: .center) {
+                                // Left: small boxed eye icon (matches the square visual language)
+                                Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
+                                    .font(.system(size: actionIconFontSize))
+                                    .foregroundColor(.primary)
+                                    .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color(white: 0.96)))
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.clear))
+
+                                Spacer()
+
+                                // Right: stacked controls (toggle above action buttons)
+                                VStack(spacing: 8) {
+                                    // Boxed switch — switch is centered inside a square to visually match the other controls
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(privacyModeEnabled ? Color.green.opacity(0.16) : Color(white: 0.96))
                                             .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
-                                            .shadow(radius: 2)
+
+                                        Toggle("", isOn: $privacyModeEnabled)
+                                            .labelsHidden()
+                                            .toggleStyle(.switch)
+                                            .scaleEffect(0.9)
                                     }
-                                    .buttonStyle(.plain)
-                                    .controlSize(.small)
-                                    
-                                    Menu {
-                                        if !selectedPhotos.isEmpty {
-                                            Button {
-                                                restoreSelectedPhotos()
-                                            } label: {
-                                                Label("Restore Selected", systemImage: "arrow.uturn.backward")
-                                            }
-                                            
-                                            Button {
-                                                exportSelectedPhotos()
-                                            } label: {
-                                                Label("Export Selected", systemImage: "square.and.arrow.up")
-                                            }
-                                            
-                                            Button(role: .destructive) {
-                                                deleteSelectedPhotos()
-                                            } label: {
-                                                Label("Delete Selected", systemImage: "trash")
-                                            }
+
+                                    // Two square action buttons
+                                    HStack(spacing: 8) {
+                                        Button {
+                                            showingPhotosLibrary = true
+                                        } label: {
+                                            Image(systemName: "square.and.arrow.down")
+                                                .font(.system(size: actionIconFontSize))
+                                                .foregroundColor(.white)
+                                                .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
                                         }
-                                        
+                                        .buttonStyle(.plain)
+
+                                        Menu {
+                                            if !selectedPhotos.isEmpty {
+                                                Button {
+                                                    restoreSelectedPhotos()
+                                                } label: {
+                                                    Label("Restore Selected", systemImage: "arrow.uturn.backward")
+                                                }
+
+                                                Button {
+                                                    exportSelectedPhotos()
+                                                } label: {
+                                                    Label("Export Selected", systemImage: "square.and.arrow.up")
+                                                }
+
+                                                Button(role: .destructive) {
+                                                    deleteSelectedPhotos()
+                                                } label: {
+                                                    Label("Delete Selected", systemImage: "trash")
+                                                }
+                                            }
+
 #if os(macOS)
-                                        Divider()
-                                        Button {
-                                            chooseVaultLocation()
-                                        } label: {
-                                            Label("Choose Vault Folder…", systemImage: "folder")
-                                        }
+                                            Divider()
+                                            Button {
+                                                chooseVaultLocation()
+                                            } label: {
+                                                Label("Choose Vault Folder…", systemImage: "folder")
+                                            }
 #endif
-                                        
-                                        Divider()
-                                        Button {
-                                            vaultManager.removeDuplicates()
-                                        } label: {
-                                            Label("Remove Duplicates", systemImage: "trash.slash")
-                                        }
-                                        
-                                        Divider()
-                                        Button {
-                                            vaultManager.lock()
-                                        } label: {
-                                            Label("Lock Vault", systemImage: "lock.fill")
-                                        }
-                                        
+
+                                            Divider()
+                                            Button {
+                                                vaultManager.removeDuplicates()
+                                            } label: {
+                                                Label("Remove Duplicates", systemImage: "trash.slash")
+                                            }
+
+                                            Divider()
+                                            Button {
+                                                vaultManager.lock()
+                                            } label: {
+                                                Label("Lock Vault", systemImage: "lock.fill")
+                                            }
+
 #if DEBUG
-                                        Divider()
-                                        Button(role: .destructive) {
-                                            resetVaultForDevelopment()
-                                        } label: {
-                                            Label("🔧 Reset Vault (Dev)", systemImage: "trash.circle")
-                                        }
+                                            Divider()
+                                            Button(role: .destructive) {
+                                                resetVaultForDevelopment()
+                                            } label: {
+                                                Label("🔧 Reset Vault (Dev)", systemImage: "trash.circle")
+                                            }
 #endif
-                                    } label: {
-                                        Image(systemName: "ellipsis")
-                                            .font(.system(size: actionIconFontSize))
-                                            .foregroundColor(.white)
-                                            .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
-                                            .shadow(radius: 2)
+                                        } label: {
+                                            Image(systemName: "ellipsis")
+                                                .font(.system(size: actionIconFontSize))
+                                                .foregroundColor(.white)
+                                                .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
+                                        }
+                                        .menuStyle(.borderlessButton)
                                     }
-                                    .menuStyle(.borderlessButton)
-                                    .controlSize(.small)
                                 }
                             }
                         }
@@ -777,7 +783,7 @@ struct MainVaultView: View {
                 // Photo grid or empty state
                 if vaultManager.hiddenPhotos.isEmpty {
                     VStack(spacing: 20) {
-                        Image(systemName: "tray.and.arrow.down.fill")
+                        Image(systemName: "lock.fill")
                             .font(.system(size: 60))
                             .foregroundStyle(.secondary)
                         
@@ -792,12 +798,11 @@ struct MainVaultView: View {
                         Button {
                             showingPhotosLibrary = true
                         } label: {
-                            Image(systemName: "tray.and.arrow.down.fill")
+                            Image(systemName: "square.and.arrow.down")
                                 .font(.system(size: actionIconFontSize))
                                 .foregroundColor(.white)
                                 .frame(width: actionButtonDimension, height: actionButtonDimension)
                                 .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
-                                .shadow(radius: 2)
                             Text("Hide Items from Library")
                                 .font(.headline)
                                 .foregroundColor(.blue)

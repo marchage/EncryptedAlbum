@@ -141,6 +141,7 @@ struct SetupPasswordView: View {
             Text("Welcome to Secret Vault")
                 .font(.largeTitle)
                 .fontWeight(.bold)
+                // .padding(.horizontal)
             
             Text(biometricsAvailable ? "Your vault will be protected by \(biometricType == .faceID ? "Face ID" : "Touch ID")" : "Create a secure password for your vault")
                 .font(.title3)
@@ -290,6 +291,7 @@ struct SetupPasswordView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Create Master Password")
                     .font(.headline)
+                    .padding(.horizontal)
                 SecureField("Enter password", text: $manualPassword)
                     .textFieldStyle(.roundedBorder)
                     .padding(.horizontal)
@@ -323,6 +325,7 @@ struct SetupPasswordView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Confirm Password")
                     .font(.headline)
+                    .padding(.horizontal)
                 SecureField("Re-enter password", text: $confirmPassword)
                     .textFieldStyle(.roundedBorder)
                     .padding(.horizontal)
