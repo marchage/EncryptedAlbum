@@ -821,7 +821,6 @@ struct MainVaultView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 0) {
-                            Color.clear.frame(height: max(headerHeight + headerExtra, minTop))
                             let minSize: CGFloat = 120
                                 LazyVGrid(columns: [GridItem(.adaptive(minimum: minSize, maximum: 200), spacing: 16)], spacing: 16) {
                                     ForEach(filteredPhotos) { photo in
@@ -858,7 +857,9 @@ struct MainVaultView: View {
                                         }
                                     }
                                 }
-                            .padding([.leading, .trailing, .bottom])
+                            .padding(.top, 16)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 16)
                         }
                     }
                 }
