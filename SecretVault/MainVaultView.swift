@@ -5,69 +5,43 @@ import AppKit
 #endif
 
 #if os(macOS)
-// macOS-only view that detects single- and double-clicks using AppKit's NSClickGestureRecognizer.
-// Single recognizer is made to require failure of the double recognizer so double-click takes precedence.
+// macOS-only view that detects double-clicks using AppKit's NSClickGestureRecognizer.
+// Using an NSView-based recognizer avoids SwiftUI gesture ordering/focus issues.
 struct DoubleClickDetector: NSViewRepresentable {
-    let onSingleClick: () -> Void
     let onDoubleClick: () -> Void
 
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
-        view.wantsLayer = true
-        view.layer?.backgroundColor = NSColor.clear.cgColor
+        view.wantsLayer = false
 
-        let doubleRecognizer = NSClickGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleDouble(_:)))
-        doubleRecognizer.numberOfClicksRequired = 2
+        let recognizer = NSClickGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleClick(_:)))
+        recognizer.numberOfClicksRequired = 2
+        view.addGestureRecognizer(recognizer)
+        context.coordinator.recognizer = recognizer
 
-        let singleRecognizer = NSClickGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleSingle(_:)))
-        singleRecognizer.numberOfClicksRequired = 1
-
-        // Make single click wait and fail if a double-click occurs
-        singleRecognizer.require(toFail: doubleRecognizer)
-
-        view.addGestureRecognizer(doubleRecognizer)
-        view.addGestureRecognizer(singleRecognizer)
-
-        context.coordinator.doubleRecognizer = doubleRecognizer
-        context.coordinator.singleRecognizer = singleRecognizer
-
+        view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        context.coordinator.onSingleClick = onSingleClick
         context.coordinator.onDoubleClick = onDoubleClick
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onSingleClick: onSingleClick, onDoubleClick: onDoubleClick)
+        Coordinator(onDoubleClick: onDoubleClick)
     }
 
     class Coordinator: NSObject {
-        var onSingleClick: () -> Void
         var onDoubleClick: () -> Void
-        weak var doubleRecognizer: NSClickGestureRecognizer?
-        weak var singleRecognizer: NSClickGestureRecognizer?
+        weak var recognizer: NSClickGestureRecognizer?
 
-        init(onSingleClick: @escaping () -> Void, onDoubleClick: @escaping () -> Void) {
-            self.onSingleClick = onSingleClick
+        init(onDoubleClick: @escaping () -> Void) {
             self.onDoubleClick = onDoubleClick
         }
 
-        @objc func handleSingle(_ sender: NSClickGestureRecognizer) {
+        @objc func handleClick(_ sender: NSClickGestureRecognizer) {
             guard sender.state == .ended else { return }
-            print("DoubleClickDetector: single click detected")
-            DispatchQueue.main.async {
-                self.onSingleClick()
-            }
-        }
-
-        @objc func handleDouble(_ sender: NSClickGestureRecognizer) {
-            guard sender.state == .ended else { return }
-            print("DoubleClickDetector: double click detected")
-            DispatchQueue.main.async {
-                self.onDoubleClick()
-            }
+            onDoubleClick()
         }
     }
 }
@@ -500,13 +474,11 @@ struct MainVaultView: View {
                                 Text("Hidden Items")
                                     .font(isLandscape ? .title3 : .title3)
                                     .fontWeight(.semibold)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.75)
+                                    .lineLimit(2)
                                 Text("\(vaultManager.hiddenPhotos.count) items hidden")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
-                            .layoutPriority(1)
                         }
                         
                         Spacer()
