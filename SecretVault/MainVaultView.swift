@@ -848,7 +848,6 @@ struct MainVaultView: View {
                             ScrollView {
                                 let minSize: CGFloat = 140
                                 LazyVGrid(columns: [GridItem(.adaptive(minimum: minSize, maximum: 200), spacing: 16)], spacing: 16) {
-                                    Color.clear.frame(height: 8)
                                     ForEach(filteredPhotos) { photo in
                                         // Wrap thumbnail in a plain Button so primary clicks behave consistently
                                         Button(action: {
