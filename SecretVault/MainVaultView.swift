@@ -479,11 +479,21 @@ struct MainVaultView: View {
                                 TextField("Search...", text: $searchText)
                                     .textFieldStyle(.roundedBorder)
                                     .frame(maxWidth: 120)
-                                
-                                Toggle(isOn: $privacyModeEnabled) {
-                                    Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
+
+                                // Compact privacy controls: eye indicator + switch kept together
+                                HStack(spacing: 6) {
+                                    Button {
+                                        privacyModeEnabled.toggle()
+                                    } label: {
+                                        Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
+                                            .font(.system(size: actionIconFontSize))
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    Toggle("", isOn: $privacyModeEnabled)
+                                        .labelsHidden()
+                                        .toggleStyle(.switch)
                                 }
-                                .toggleStyle(.switch)
                                 .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
                                 
                                 Button {
@@ -988,8 +998,8 @@ struct PhotoThumbnailView: View {
                 loadThumbnail()
             }
         }
-        .onChange(of: privacyModeEnabled) {
-            if !$0 && thumbnailImage == nil {
+        .onChange(of: privacyModeEnabled) { newValue in
+            if !newValue && thumbnailImage == nil {
                 loadThumbnail()
             }
         }
