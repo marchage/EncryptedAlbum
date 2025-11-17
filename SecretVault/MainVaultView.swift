@@ -1,3 +1,35 @@
+
+#if DEBUG
+// Pure mock for preview
+final class MockVaultManager: ObservableObject {
+    @Published var hiddenPhotos: [SecurePhoto] = [
+        SecurePhoto(
+            id: UUID(),
+            encryptedDataPath: "preview_encrypted.dat",
+            thumbnailPath: "preview_thumb.jpg",
+            encryptedThumbnailPath: nil,
+            filename: "Sample.jpg",
+            dateTaken: Date(),
+            sourceAlbum: "Demo",
+            vaultAlbum: "Demo",
+            fileSize: 123456,
+            originalAssetIdentifier: "previewAssetId",
+            mediaType: .photo,
+            duration: nil,
+            location: nil,
+            isFavorite: false
+        )
+    ]
+    // Add any other required properties/methods as needed for preview
+}
+
+struct MainVaultView_Previews: PreviewProvider {
+    static var previews: some View {
+        MainVaultView()
+            .environmentObject(MockVaultManager())
+    }
+}
+#endif
 import SwiftUI
 import AVKit
 #if os(macOS)
