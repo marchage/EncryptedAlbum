@@ -453,9 +453,11 @@ class VaultManager: ObservableObject {
             try? FileManager.default.removeItem(at: URL(fileURLWithPath: encryptedThumbnailPath))
         }
         
-        // Remove from list
-        hiddenPhotos.removeAll { $0.id == photo.id }
-        savePhotos()
+        // Remove from list on main thread
+        DispatchQueue.main.async {
+            self.hiddenPhotos.removeAll { $0.id == photo.id }
+            self.savePhotos()
+        }
     }
     
     func restorePhotoToLibrary(_ photo: SecurePhoto) {
