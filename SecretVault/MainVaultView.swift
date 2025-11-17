@@ -452,7 +452,8 @@ struct MainVaultView: View {
                                             Button {
                                                 restoreSelectedPhotos()
                                             } label: {
-                                                Label("Restore", systemImage: "arrow.uturn.backward")
+                                                Image(systemName: "arrow.uturn.backward")
+                                                    .font(.system(size: actionIconFontSize))
                                             }
                                             .buttonStyle(.bordered)
                                             .controlSize(.small)
@@ -460,7 +461,8 @@ struct MainVaultView: View {
                                             Button {
                                                 exportSelectedPhotos()
                                             } label: {
-                                                Label("Export", systemImage: "square.and.arrow.up")
+                                                Image(systemName: "square.and.arrow.up")
+                                                    .font(.system(size: actionIconFontSize))
                                             }
                                             .buttonStyle(.bordered)
                                             .controlSize(.small)
@@ -468,7 +470,8 @@ struct MainVaultView: View {
                                             Button(role: .destructive) {
                                                 deleteSelectedPhotos()
                                             } label: {
-                                                Label("Delete", systemImage: "trash")
+                                                Image(systemName: "trash")
+                                                    .font(.system(size: actionIconFontSize))
                                             }
                                             .buttonStyle(.bordered)
                                             .controlSize(.small)
@@ -595,50 +598,55 @@ struct MainVaultView: View {
                                                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.clear))
                                             }
                                             
-                                            // Two square action buttons
+                                            // Action buttons row
                                             HStack(spacing: 8) {
-                                                Button {
-                                                    showingPhotosLibrary = true
-                                                } label: {
-                                                    Image(systemName: "square.and.arrow.down")
-                                                        .font(.system(size: actionIconFontSize))
-                                                        .foregroundColor(.white)
-                                                        .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
+                                                // Selection-specific actions (only shown when items selected)
+                                                if !selectedPhotos.isEmpty {
+                                                    Button {
+                                                        restoreSelectedPhotos()
+                                                    } label: {
+                                                        Image(systemName: "arrow.uturn.backward")
+                                                            .font(.system(size: actionIconFontSize))
+                                                            .foregroundColor(.white)
+                                                            .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
+                                                    }
+                                                    .buttonStyle(.plain)
+                                                    
+                                                    Button(role: .destructive) {
+                                                        deleteSelectedPhotos()
+                                                    } label: {
+                                                        Image(systemName: "trash")
+                                                            .font(.system(size: actionIconFontSize))
+                                                            .foregroundColor(.white)
+                                                            .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.red))
+                                                    }
+                                                    .buttonStyle(.plain)
+                                                } else {
+                                                    // Normal actions when nothing selected
+                                                    Button {
+                                                        showingPhotosLibrary = true
+                                                    } label: {
+                                                        Image(systemName: "square.and.arrow.down")
+                                                            .font(.system(size: actionIconFontSize))
+                                                            .foregroundColor(.white)
+                                                            .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
+                                                    }
+                                                    .buttonStyle(.plain)
                                                 }
-                                                .buttonStyle(.plain)
                                                 
                                                 Menu {
-                                                    if !selectedPhotos.isEmpty {
-                                                        Button {
-                                                            restoreSelectedPhotos()
-                                                        } label: {
-                                                            Label("Restore Selected", systemImage: "arrow.uturn.backward")
-                                                        }
-                                                        
-                                                        Button {
-                                                            exportSelectedPhotos()
-                                                        } label: {
-                                                            Label("Export Selected", systemImage: "square.and.arrow.up")
-                                                        }
-                                                        
-                                                        Button(role: .destructive) {
-                                                            deleteSelectedPhotos()
-                                                        } label: {
-                                                            Label("Delete Selected", systemImage: "trash")
-                                                        }
-                                                    }
-                                                    
 #if os(macOS)
-                                                    Divider()
                                                     Button {
                                                         chooseVaultLocation()
                                                     } label: {
                                                         Label("Choose Vault Folder…", systemImage: "folder")
                                                     }
-#endif
                                                     
                                                     Divider()
+#endif
                                                     Button {
                                                         vaultManager.removeDuplicates()
                                                     } label: {
@@ -686,14 +694,16 @@ struct MainVaultView: View {
                                 }
                             }
                         }
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background(.ultraThinMaterial)
-                        .background(GeometryReader { proxy in
-                            Color.clear.preference(key: HeaderHeightKey.self, value: proxy.size.height)
-                        })
-                        
-                        Divider()
+                .padding(.vertical, 8)
+                .padding(.leading, 12)
+                .padding(.trailing, 12)
+                .frame(maxWidth: .infinity)
+                .background(.ultraThinMaterial)
+                .background(GeometryReader { proxy in
+                    Color.clear.preference(key: HeaderHeightKey.self, value: proxy.size.height)
+                })
+                
+                Divider()
                         
                         // Notification banner placed below the header so it doesn't overlap toolbar controls
                         if let note = vaultManager.hideNotification {
@@ -838,6 +848,7 @@ struct MainVaultView: View {
                             ScrollView {
                                 let minSize: CGFloat = 140
                                 LazyVGrid(columns: [GridItem(.adaptive(minimum: minSize, maximum: 200), spacing: 16)], spacing: 16) {
+                                    Color.clear.frame(height: 8)
                                     ForEach(filteredPhotos) { photo in
                                         // Wrap thumbnail in a plain Button so primary clicks behave consistently
                                         Button(action: {
