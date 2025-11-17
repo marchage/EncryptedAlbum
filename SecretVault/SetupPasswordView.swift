@@ -60,10 +60,12 @@ struct SetupPasswordView: View {
     }
     
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
-            
-            // App Icon
+        ScrollView {
+            VStack(spacing: 24) {
+                // Top spacing
+                Color.clear.frame(height: 20)
+                
+                // App Icon
             #if os(macOS)
             if let appIcon = NSImage(named: "AppIcon") {
                 Image(nsImage: appIcon)
@@ -265,12 +267,12 @@ struct SetupPasswordView: View {
             .controlSize(.large)
             .disabled(useAutoPassword ? false : manualPassword.isEmpty)
             
-            Spacer()
+            // Bottom spacing
+            Color.clear.frame(height: 20)
+        }
+        .padding(.horizontal)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        #if os(iOS)
-        .ignoresSafeArea(.keyboard)
-        #endif
         .overlay(
             // Flash overlay
             Rectangle()
