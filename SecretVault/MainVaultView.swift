@@ -874,6 +874,9 @@ struct MainVaultView: View {
                 // Banner was moved into the VStack above so it doesn't overlap header controls
             }
             .onAppear {
+                print("DEBUG MainVaultView.onAppear: hiddenPhotos.count = \(vaultManager.hiddenPhotos.count)")
+                print("DEBUG MainVaultView.onAppear: isUnlocked = \(vaultManager.isUnlocked)")
+                print("DEBUG MainVaultView.onAppear: filteredPhotos.count = \(filteredPhotos.count)")
                 selectedPhotos.removeAll()
                 setupKeyboardShortcuts()
                 vaultManager.touchActivity()
@@ -908,6 +911,7 @@ struct PhotoThumbnailView: View {
     @EnvironmentObject var vaultManager: VaultManager
     @State private var thumbnailImage: Image?
     @State private var loadTask: Task<Void, Never>?
+    @State private var failedToLoad: Bool = false
     
     private var thumbnailSize: CGFloat {
 #if os(iOS)
@@ -961,6 +965,19 @@ struct PhotoThumbnailView: View {
                                 .padding(6)
                             }
                         }
+                } else if failedToLoad {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(width: thumbnailSize, height: thumbnailSize)
+                        .overlay {
+                            Image(systemName: photo.mediaType == .video ? "video.slash" : "exclamationmark.triangle.fill")
+                                .font(.title2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
+                        )
                 } else {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.gray.opacity(0.2))
@@ -1015,6 +1032,9 @@ struct PhotoThumbnailView: View {
                 
                 if data.isEmpty {
                     print("Thumbnail data empty for photo id=\(photo.id), thumbnailPath=\(photo.thumbnailPath), encryptedThumb=\(photo.encryptedThumbnailPath ?? "nil")")
+                    await MainActor.run {
+                        failedToLoad = true
+                    }
                     return
                 }
                 
@@ -1024,12 +1044,14 @@ struct PhotoThumbnailView: View {
                         thumbnailImage = Image(nsImage: nsImage)
                     } else {
                         print("Failed to create NSImage from decrypted data for photo id=\(photo.id)")
+                        failedToLoad = true
                     }
 #else
                     if let uiImage = UIImage(data: data) {
                         thumbnailImage = Image(uiImage: uiImage)
                     } else {
                         print("Failed to create UIImage from decrypted data for photo id=\(photo.id), size=\(data.count) bytes")
+                        failedToLoad = true
                     }
 #endif
                 }

@@ -383,25 +383,65 @@ class VaultManager: ObservableObject {
             location: location,
             isFavorite: isFavorite
         )
-        
-        // Save to photos list
-        hiddenPhotos.append(photo)
-        savePhotos()
-        objectWillChange.send()
+
+        // Save to photos list on the main thread to avoid
+        // "Publishing changes from background threads" warnings and
+        // ensure SwiftUI observers see the update consistently.
+        DispatchQueue.main.async {
+            self.hiddenPhotos.append(photo)
+            self.savePhotos()
+            self.objectWillChange.send()
+        }
     }
     
     func decryptPhoto(_ photo: SecurePhoto) throws -> Data {
-        let encryptedData = try Data(contentsOf: URL(fileURLWithPath: photo.encryptedDataPath))
-        return decryptImage(encryptedData, password: passwordHash)
+        let url = URL(fileURLWithPath: photo.encryptedDataPath)
+        let encryptedData = try Data(contentsOf: url)
+        let decrypted = decryptImage(encryptedData, password: passwordHash)
+        if decrypted.isEmpty {
+            print("[VaultManager] decryptPhoto: decrypted data is empty for id=\(photo.id), path=\(photo.encryptedDataPath)")
+        }
+        return decrypted
     }
 
     func decryptThumbnail(for photo: SecurePhoto) throws -> Data {
+        // Option 1: be resilient to missing thumbnail files and fall back gracefully.
         if let encryptedThumbnailPath = photo.encryptedThumbnailPath {
-            let encryptedData = try Data(contentsOf: URL(fileURLWithPath: encryptedThumbnailPath))
-            return decryptImage(encryptedData, password: passwordHash)
-        } else {
-            return try Data(contentsOf: URL(fileURLWithPath: photo.thumbnailPath))
+            let url = URL(fileURLWithPath: encryptedThumbnailPath)
+            if !FileManager.default.fileExists(atPath: url.path) {
+                print("[VaultManager] decryptThumbnail: encrypted thumbnail missing for id=\(photo.id). Falling back to legacy thumbnail if available.")
+            } else {
+                do {
+                    let encryptedData = try Data(contentsOf: url)
+                    let decrypted = decryptImage(encryptedData, password: passwordHash)
+                    if decrypted.isEmpty {
+                        print("[VaultManager] decryptThumbnail: decrypted data empty for id=\(photo.id), encThumb=\(encryptedThumbnailPath)")
+                    }
+                    return decrypted
+                } catch {
+                    print("[VaultManager] decryptThumbnail: error reading encrypted thumbnail for id=\(photo.id): \(error). Falling back to legacy thumbnail if available.")
+                }
+            }
         }
+
+        // Legacy or fallback path: try the plain thumbnailPath.
+        let legacyURL = URL(fileURLWithPath: photo.thumbnailPath)
+        if FileManager.default.fileExists(atPath: legacyURL.path) {
+            do {
+                let data = try Data(contentsOf: legacyURL)
+                if data.isEmpty {
+                    print("[VaultManager] decryptThumbnail: legacy thumbnail data empty for id=\(photo.id), thumb=\(photo.thumbnailPath)")
+                }
+                return data
+            } catch {
+                print("[VaultManager] decryptThumbnail: error reading legacy thumbnail for id=\(photo.id): \(error)")
+            }
+        } else {
+            print("[VaultManager] decryptThumbnail: legacy thumbnail file missing for id=\(photo.id) at path=\(photo.thumbnailPath)")
+        }
+
+        // As a last resort, return empty Data so the UI can show a placeholder.
+        return Data()
     }
     
     func deletePhoto(_ photo: SecurePhoto) {
