@@ -555,9 +555,9 @@ struct MainVaultView: View {
                             // Portrait / compact: two-column compact toolbar.
                             // Left column: boxed eye icon. Right column: boxed toggle above two square action buttons.
                             HStack(alignment: .center) {
-
+                                
                                 Spacer()
-
+                                
                                 // Right: stacked controls (toggle above action buttons)
                                 VStack(spacing: 8) {
                                     HStack {
@@ -566,13 +566,13 @@ struct MainVaultView: View {
                                             RoundedRectangle(cornerRadius: 8)
                                                 .fill(privacyModeEnabled ? Color.green.opacity(0.16) : Color.clear)
                                                 .frame(width: actionButtonDimension, height: actionButtonDimension)
-
+                                            
                                             Toggle("", isOn: $privacyModeEnabled)
                                                 .labelsHidden()
                                                 .toggleStyle(.switch)
                                                 .scaleEffect(0.9)
                                         }
-
+                                        
                                         // Left: small boxed eye icon (matches the square visual language)
                                         Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
                                             .font(.system(size: actionIconFontSize))
@@ -581,7 +581,7 @@ struct MainVaultView: View {
                                             .background(RoundedRectangle(cornerRadius: 8).fill(Color.clear))
                                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.clear))
                                     }
-
+                                    
                                     // Two square action buttons
                                     HStack(spacing: 8) {
                                         Button {
@@ -594,7 +594,7 @@ struct MainVaultView: View {
                                                 .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
                                         }
                                         .buttonStyle(.plain)
-
+                                        
                                         Menu {
                                             if !selectedPhotos.isEmpty {
                                                 Button {
@@ -602,20 +602,20 @@ struct MainVaultView: View {
                                                 } label: {
                                                     Label("Restore Selected", systemImage: "arrow.uturn.backward")
                                                 }
-
+                                                
                                                 Button {
                                                     exportSelectedPhotos()
                                                 } label: {
                                                     Label("Export Selected", systemImage: "square.and.arrow.up")
                                                 }
-
+                                                
                                                 Button(role: .destructive) {
                                                     deleteSelectedPhotos()
                                                 } label: {
                                                     Label("Delete Selected", systemImage: "trash")
                                                 }
                                             }
-
+                                            
 #if os(macOS)
                                             Divider()
                                             Button {
@@ -624,21 +624,21 @@ struct MainVaultView: View {
                                                 Label("Choose Vault Folder…", systemImage: "folder")
                                             }
 #endif
-
+                                            
                                             Divider()
                                             Button {
                                                 vaultManager.removeDuplicates()
                                             } label: {
                                                 Label("Remove Duplicates", systemImage: "trash.slash")
                                             }
-
+                                            
                                             Divider()
                                             Button {
                                                 vaultManager.lock()
                                             } label: {
                                                 Label("Lock Vault", systemImage: "lock.fill")
                                             }
-
+                                            
 #if DEBUG
                                             Divider()
                                             Button(role: .destructive) {
@@ -820,47 +820,45 @@ struct MainVaultView: View {
                     .padding(.top, max(headerHeight + headerExtra, minTop))
                 } else {
                     ScrollView {
-                        VStack(spacing: 0) {
-                            let minSize: CGFloat = 120
-                                LazyVGrid(columns: [GridItem(.adaptive(minimum: minSize, maximum: 200), spacing: 16)], spacing: 16) {
-                                    ForEach(filteredPhotos) { photo in
-                                        // Wrap thumbnail in a plain Button so primary clicks behave consistently
-                                        Button(action: {
-                                            print("[DEBUG] Thumbnail single-click: id=\(photo.id)")
-                                            toggleSelection(photo.id)
-                                        }) {
-                                            PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id), privacyModeEnabled: privacyModeEnabled)
-                                        }
-                                        .buttonStyle(.plain)
-                                        // Avoid making each thumbnail a focusable control on macOS
-                                        .focusable(false)
-                                        // Ensure double-click opens viewer before the single-click action
-                                        .highPriorityGesture(TapGesture(count: 2).onEnded {
-                                            print("[DEBUG] Thumbnail double-click: id=\(photo.id)")
-                                            selectedPhoto = photo
-                                        })
-                                        // Keep context menu available on the thumbnail/button
-                                        .contextMenu {
-                                            Button {
-                                                vaultManager.restorePhotoToLibrary(photo)
-                                            } label: {
-                                                Label("Restore to Library", systemImage: "arrow.uturn.backward")
-                                            }
-
-                                            Divider()
-
-                                            Button(role: .destructive) {
-                                                vaultManager.deletePhoto(photo)
-                                            } label: {
-                                                Label("Delete", systemImage: "trash")
-                                            }
-                                        }
+                        let minSize: CGFloat = 140
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: minSize, maximum: 200), spacing: 16)], spacing: 16) {
+                            ForEach(filteredPhotos) { photo in
+                                // Wrap thumbnail in a plain Button so primary clicks behave consistently
+                                Button(action: {
+                                    print("[DEBUG] Thumbnail single-click: id=\(photo.id)")
+                                    toggleSelection(photo.id)
+                                }) {
+                                    PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id), privacyModeEnabled: privacyModeEnabled)
+                                }
+                                .buttonStyle(.plain)
+                                // Avoid making each thumbnail a focusable control on macOS
+                                .focusable(false)
+                                // Ensure double-click opens viewer before the single-click action
+                                .highPriorityGesture(TapGesture(count: 2).onEnded {
+                                    print("[DEBUG] Thumbnail double-click: id=\(photo.id)")
+                                    selectedPhoto = photo
+                                })
+                                // Keep context menu available on the thumbnail/button
+                                .contextMenu {
+                                    Button {
+                                        vaultManager.restorePhotoToLibrary(photo)
+                                    } label: {
+                                        Label("Restore to Library", systemImage: "arrow.uturn.backward")
+                                    }
+                                    
+                                    Divider()
+                                    
+                                    Button(role: .destructive) {
+                                        vaultManager.deletePhoto(photo)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
                                     }
                                 }
-                            .padding(.top, 16)
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 16)
+                            }
                         }
+                        // .padding(.top, 16)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
                     }
                 }
                 // Banner was moved into the VStack above so it doesn't overlap header controls
