@@ -346,29 +346,31 @@ struct MainVaultView: View {
 #endif
     
     var body: some View {
-        return ZStack(alignment: .top) {
-            // Update headerHeight from preference changes
-            Color.clear
-                .onPreferenceChange(HeaderHeightKey.self) { value in
-                    headerHeight = value
-                }
+        return GeometryReader { geometry in
+            ZStack(alignment: .top) {
+                // Update headerHeight from preference changes
+                Color.clear
+                    .onPreferenceChange(HeaderHeightKey.self) { value in
+                        headerHeight = value
+                    }
 #if DEBUG
-            // Debug overlay to show measured header height for tuning
-            VStack {
-                HStack {
-                    Text("headerHeight: \(Int(headerHeight))")
-                        .font(.caption2)
-                        .padding(6)
-                        .background(Color.black.opacity(0.6))
-                        .foregroundColor(.white)
-                        .cornerRadius(6)
-                        .padding(.leading, 8)
+                // Debug overlay to show measured header height for tuning
+                VStack {
+                    HStack {
+                        Text("headerHeight: \(Int(headerHeight))")
+                            .font(.caption2)
+                            .padding(6)
+                            .background(Color.black.opacity(0.6))
+                            .foregroundColor(.white)
+                            .cornerRadius(6)
+                            .padding(.leading, 8)
+                        Spacer()
+                    }
                     Spacer()
                 }
-                Spacer()
-            }
 #endif
-            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: 0) {
                 // Responsive Toolbar
 #warning("Header layout: reduced spacing + adaptive portrait padding")
                 let isLandscape: Bool = {
@@ -441,46 +443,47 @@ struct MainVaultView: View {
                         // Controls placed to the right of the title in the top row
                         if isLandscape {
                             HStack(spacing: 10) {
-                                if !selectedPhotos.isEmpty {
-                                    Text("\(selectedPhotos.count) selected")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                    
-                                    Button {
-                                        restoreSelectedPhotos()
-                                    } label: {
-                                        Label("Restore", systemImage: "arrow.uturn.backward")
+                                    if !selectedPhotos.isEmpty {
+                                        Text("\(selectedPhotos.count) selected")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                        
+                                        Button {
+                                            restoreSelectedPhotos()
+                                        } label: {
+                                            Label("Restore", systemImage: "arrow.uturn.backward")
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        
+                                        Button {
+                                            exportSelectedPhotos()
+                                        } label: {
+                                            Label("Export", systemImage: "square.and.arrow.up")
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        
+                                        Button(role: .destructive) {
+                                            deleteSelectedPhotos()
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        
+                                        Divider()
+                                            .frame(height: 20)
                                     }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
                                     
-                                    Button {
-                                        exportSelectedPhotos()
-                                    } label: {
-                                        Label("Export", systemImage: "square.and.arrow.up")
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                    
-                                    Button(role: .destructive) {
-                                        deleteSelectedPhotos()
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                    
-                                    Divider()
-                                        .frame(height: 20)
-                                }
-                                
-                                // Keep a compact search in landscape
-                                TextField("Search...", text: $searchText)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(maxWidth: 120)
-
-                                // Compact privacy controls: eye indicator + switch kept together
+                                    // Keep a compact search in landscape
+                                    TextField("Search...", text: $searchText)
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(maxWidth: 120)
+#if os(iOS)
+                                        .submitLabel(.done)
+#endif                                // Compact privacy controls: eye indicator + switch kept together
                                 HStack(spacing: 6) {
                                     Button {
                                         privacyModeEnabled.toggle()
@@ -676,6 +679,9 @@ struct MainVaultView: View {
                                 TextField("Search...", text: $searchText)
                                     .textFieldStyle(.roundedBorder)
                                     .frame(maxWidth: .infinity)
+#if os(iOS)
+                                    .submitLabel(.done)
+#endif
                             }
                         }
                     }
@@ -872,7 +878,11 @@ struct MainVaultView: View {
                     }
                 }
                 // Banner was moved into the VStack above so it doesn't overlap header controls
+                    }
+                }
+                .scrollDismissesKeyboard(.interactively)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onAppear {
                 print("DEBUG MainVaultView.onAppear: hiddenPhotos.count = \(vaultManager.hiddenPhotos.count)")
                 print("DEBUG MainVaultView.onAppear: isUnlocked = \(vaultManager.isUnlocked)")
