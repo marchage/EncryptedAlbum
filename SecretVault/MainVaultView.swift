@@ -1,3 +1,30 @@
+#if DEBUG
+// Mock for PhotoThumbnailView preview
+struct PhotoThumbnailView_Previews: PreviewProvider {
+    static var previews: some View {
+        let mockPhoto = SecurePhoto(
+            id: UUID(),
+            encryptedDataPath: "preview_encrypted.dat",
+            thumbnailPath: "preview_thumb.jpg",
+            encryptedThumbnailPath: nil,
+            filename: "Sample.jpg",
+            dateTaken: Date(),
+            sourceAlbum: "Demo",
+            vaultAlbum: "Demo",
+            fileSize: 123456,
+            originalAssetIdentifier: "previewAssetId",
+            mediaType: .photo,
+            duration: nil,
+            location: nil,
+            isFavorite: false
+        )
+        let mockVaultManager = MockVaultManager()
+        PhotoThumbnailView(photo: mockPhoto, isSelected: true, privacyModeEnabled: false)
+            .environmentObject(mockVaultManager)
+            .previewLayout(.sizeThatFits)
+    }
+}
+#endif
 
 #if DEBUG
 // Pure mock for preview
