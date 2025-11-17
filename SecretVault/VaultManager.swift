@@ -825,14 +825,18 @@ class VaultManager: ObservableObject {
     
     private func savePhotos() {
         guard let data = try? JSONEncoder().encode(hiddenPhotos) else { return }
+        print("savePhotos: writing \(hiddenPhotos.count) items to \(photosFile.path)")
         try? data.write(to: photosFile)
     }
-    
+
     private func loadPhotos() {
+        print("loadPhotos: reading from \(photosFile.path)")
         guard let data = try? Data(contentsOf: photosFile),
-              let photos = try? JSONDecoder().decode([SecurePhoto].self, from: data) else {
+            let photos = try? JSONDecoder().decode([SecurePhoto].self, from: data) else {
+            print("loadPhotos: no data or decode failed")
             return
         }
+        print("loadPhotos: loaded \(photos.count) items")
         hiddenPhotos = photos
     }
     
@@ -856,11 +860,17 @@ class VaultManager: ObservableObject {
             passwordHash = hash
             print("Loaded password hash: \(hash.isEmpty ? "empty" : "present")")
         }
+        // On macOS we respect a stored custom vaultBaseURL so users can move
+        // the vault. On iOS, the container path is not stable across installs,
+        // so we ignore the stored path and always use the current Documents
+        // location determined during init.
+        #if os(macOS)
         if let basePath = settings["vaultBaseURL"] {
             let url = URL(fileURLWithPath: basePath, isDirectory: true)
             vaultBaseURL = url
             print("Loaded vault base URL: \(basePath)")
         }
+        #endif
     }
 
     private static func loadStoredVaultBaseURL() -> URL? {

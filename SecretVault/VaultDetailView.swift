@@ -510,12 +510,27 @@ struct PhotosLibraryPicker: View {
 
             // Wait for all limited tasks to finish
             group.wait()
-            
+
             // Batch delete all successfully vaulted photos at once
+            // Deduplicate by localIdentifier in case the same PHAsset was
+            // encountered multiple times through different album groupings.
+            let uniqueSuccessfulAssets: [PHAsset]
             if !successfulAssets.isEmpty {
-                PhotosLibraryService.shared.batchDeleteAssets(successfulAssets) { success in
+                var seenIds = Set<String>()
+                uniqueSuccessfulAssets = successfulAssets.filter { asset in
+                    let id = asset.localIdentifier
+                    if seenIds.contains(id) { return false }
+                    seenIds.insert(id)
+                    return true
+                }
+            } else {
+                uniqueSuccessfulAssets = []
+            }
+
+            if !uniqueSuccessfulAssets.isEmpty {
+                PhotosLibraryService.shared.batchDeleteAssets(uniqueSuccessfulAssets) { success in
                     if success {
-                        print("Successfully deleted \(successfulAssets.count) photos from library")
+                        print("Successfully deleted \(uniqueSuccessfulAssets.count) photos from library")
                     } else {
                         print("Failed to delete some photos from library")
                     }
@@ -523,7 +538,7 @@ struct PhotosLibraryPicker: View {
                     DispatchQueue.main.async {
                         importing = false
                         // Find the SecurePhoto records that correspond to the successfully processed PHAssets
-                        let ids = Set(successfulAssets.map { $0.localIdentifier })
+                        let ids = Set(uniqueSuccessfulAssets.map { $0.localIdentifier })
                         let newlyHidden = vaultManager.hiddenPhotos.filter { photo in
                             if let original = photo.originalAssetIdentifier {
                                 return ids.contains(original)
