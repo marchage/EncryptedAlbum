@@ -160,6 +160,7 @@ struct SetupPasswordView: View {
                         }
                     }
                     .toggleStyle(.switch)
+                    .padding(.horizontal)
                     .frame(width: 400)
                     
                     if useAutoPassword {
@@ -231,6 +232,7 @@ struct SetupPasswordView: View {
                                     .buttonStyle(.plain)
                                     .foregroundStyle(.orange)
                                 }
+                                .padding(.horizontal)
                                 .frame(width: 400, alignment: .leading)
                             }
                         }
