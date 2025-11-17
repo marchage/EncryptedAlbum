@@ -556,28 +556,31 @@ struct MainVaultView: View {
                             // Portrait / compact: two-column compact toolbar.
                             // Left column: boxed eye icon. Right column: boxed toggle above two square action buttons.
                             HStack(alignment: .center) {
-                                // Left: small boxed eye icon (matches the square visual language)
-                                Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
-                                    .font(.system(size: actionIconFontSize))
-                                    .foregroundColor(.primary)
-                                    .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.clear))
-                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.clear))
 
                                 Spacer()
 
                                 // Right: stacked controls (toggle above action buttons)
                                 VStack(spacing: 8) {
-                                    // Boxed switch — switch is centered inside a square to visually match the other controls
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(privacyModeEnabled ? Color.green.opacity(0.16) : Color.clear)
-                                            .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                    HStack {
+                                        // Boxed switch — switch is centered inside a square to visually match the other controls
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(privacyModeEnabled ? Color.green.opacity(0.16) : Color.clear)
+                                                .frame(width: actionButtonDimension, height: actionButtonDimension)
 
-                                        Toggle("", isOn: $privacyModeEnabled)
-                                            .labelsHidden()
-                                            .toggleStyle(.switch)
-                                            .scaleEffect(0.9)
+                                            Toggle("", isOn: $privacyModeEnabled)
+                                                .labelsHidden()
+                                                .toggleStyle(.switch)
+                                                .scaleEffect(0.9)
+                                        }
+
+                                        // Left: small boxed eye icon (matches the square visual language)
+                                        Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
+                                            .font(.system(size: actionIconFontSize))
+                                            .foregroundColor(.primary)
+                                            .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.clear))
+                                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.clear))
                                     }
 
                                     // Two square action buttons
