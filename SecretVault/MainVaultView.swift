@@ -8,7 +8,6 @@ struct MainVaultView: View {
     @EnvironmentObject var vaultManager: VaultManager
     @State private var showingPhotosLibrary = false
     @State private var selectedPhoto: SecurePhoto?
-    @State private var showingPhotoViewer = false
     @State private var selectedPhotos: Set<UUID> = []
     @State private var searchText = ""
     @State private var selectedAlbum: String? = nil
@@ -823,37 +822,43 @@ struct MainVaultView: View {
                     ScrollView {
                         VStack(spacing: 0) {
                             Color.clear.frame(height: max(headerHeight + headerExtra, minTop))
-                            GeometryReader { geometry in
-                                let minSize: CGFloat = geometry.size.width < 420 ? 90 : 150
+                            let minSize: CGFloat = 120
                                 LazyVGrid(columns: [GridItem(.adaptive(minimum: minSize, maximum: 200), spacing: 16)], spacing: 16) {
                                     ForEach(filteredPhotos) { photo in
-                                        PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id), privacyModeEnabled: privacyModeEnabled)
-                                            .onTapGesture(count: 2) {
-                                                selectedPhoto = photo
-                                                showingPhotoViewer = true
+                                        // Wrap thumbnail in a plain Button so primary clicks behave consistently
+                                        Button(action: {
+                                            print("[DEBUG] Thumbnail single-click: id=\(photo.id)")
+                                            toggleSelection(photo.id)
+                                        }) {
+                                            PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id), privacyModeEnabled: privacyModeEnabled)
+                                        }
+                                        .buttonStyle(.plain)
+                                        // Avoid making each thumbnail a focusable control on macOS
+                                        .focusable(false)
+                                        // Ensure double-click opens viewer before the single-click action
+                                        .highPriorityGesture(TapGesture(count: 2).onEnded {
+                                            print("[DEBUG] Thumbnail double-click: id=\(photo.id)")
+                                            selectedPhoto = photo
+                                        })
+                                        // Keep context menu available on the thumbnail/button
+                                        .contextMenu {
+                                            Button {
+                                                vaultManager.restorePhotoToLibrary(photo)
+                                            } label: {
+                                                Label("Restore to Library", systemImage: "arrow.uturn.backward")
                                             }
-                                            .onTapGesture {
-                                                toggleSelection(photo.id)
+
+                                            Divider()
+
+                                            Button(role: .destructive) {
+                                                vaultManager.deletePhoto(photo)
+                                            } label: {
+                                                Label("Delete", systemImage: "trash")
                                             }
-                                            .contextMenu {
-                                                Button {
-                                                    vaultManager.restorePhotoToLibrary(photo)
-                                                } label: {
-                                                    Label("Restore to Library", systemImage: "arrow.uturn.backward")
-                                                }
-                                                
-                                                Divider()
-                                                
-                                                Button(role: .destructive) {
-                                                    vaultManager.deletePhoto(photo)
-                                                } label: {
-                                                    Label("Delete", systemImage: "trash")
-                                                }
-                                            }
+                                        }
                                     }
                                 }
-                                .padding([.leading, .trailing, .bottom])
-                            }
+                            .padding([.leading, .trailing, .bottom])
                         }
                     }
                 }
@@ -878,12 +883,8 @@ struct MainVaultView: View {
             } message: {
                 Text("How would you like to restore \(photosToRestore.count) item(s)?")
             }
-            .sheet(isPresented: $showingPhotoViewer) {
-                Group {
-                    if let photo = selectedPhoto {
-                        PhotoViewerSheet(photo: photo)
-                    }
-                }
+            .sheet(item: $selectedPhoto) { photo in
+                PhotoViewerSheet(photo: photo)
             }
             .sheet(isPresented: $showingPhotosLibrary) {
                 PhotosLibraryPicker()
@@ -1089,12 +1090,10 @@ struct PhotoViewerSheet: View {
                 }
             } else {
                 if let image = fullImage {
-                    GeometryReader { geometry in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1105,6 +1104,7 @@ struct PhotoViewerSheet: View {
         .frame(minWidth: 800, minHeight: 600)
 #endif
         .onAppear {
+            print("[DEBUG] PhotoViewerSheet onAppear for photo id=\(photo.id)")
             if photo.mediaType == .video {
                 loadVideo()
             } else {
