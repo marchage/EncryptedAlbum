@@ -561,7 +561,7 @@ struct MainVaultView: View {
                                     .font(.system(size: actionIconFontSize))
                                     .foregroundColor(.primary)
                                     .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color(white: 0.96)))
+                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.clear))
                                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.clear))
 
                                 Spacer()
@@ -571,7 +571,7 @@ struct MainVaultView: View {
                                     // Boxed switch — switch is centered inside a square to visually match the other controls
                                     ZStack {
                                         RoundedRectangle(cornerRadius: 8)
-                                            .fill(privacyModeEnabled ? Color.green.opacity(0.16) : Color(white: 0.96))
+                                            .fill(privacyModeEnabled ? Color.green.opacity(0.16) : Color.clear)
                                             .frame(width: actionButtonDimension, height: actionButtonDimension)
 
                                         Toggle("", isOn: $privacyModeEnabled)
