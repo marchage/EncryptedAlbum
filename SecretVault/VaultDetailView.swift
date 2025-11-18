@@ -143,7 +143,7 @@ struct PhotosLibraryPicker: View {
                     }
                     .pickerStyle(.segmented)
                     .frame(maxWidth: .infinity)
-                    .onChange(of: selectedLibrary) { _ in
+                    .onChange(of: selectedLibrary) { _, _ in
                         loadPhotos()
                     }
                     
@@ -152,7 +152,7 @@ struct PhotosLibraryPicker: View {
                         Toggle("Force Shared", isOn: $forceSharedLibrary)
                             .toggleStyle(.switch)
                             .help("If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared.")
-                            .onChange(of: forceSharedLibrary) { _ in
+                            .onChange(of: forceSharedLibrary) { _, _ in
                                 loadPhotos()
                             }
                     }

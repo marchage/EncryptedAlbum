@@ -1035,7 +1035,7 @@ struct PhotoThumbnailView: View {
                 loadThumbnail()
             }
         }
-        .onChange(of: privacyModeEnabled) { newValue in
+        .onChange(of: privacyModeEnabled) { _, newValue in
             if !newValue && thumbnailImage == nil {
                 loadThumbnail()
             }

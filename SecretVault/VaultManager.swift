@@ -790,6 +790,8 @@ class VaultManager: ObservableObject {
             let asset = AVAsset(url: tempURL)
             
             // Check if asset is valid and has video tracks
+            // Note: Using deprecated API because this is a synchronous function
+            // Converting to async would require refactoring the entire thumbnail generation flow
             guard asset.tracks(withMediaType: .video).count > 0 else {
                 return Data()
             }
@@ -799,6 +801,7 @@ class VaultManager: ObservableObject {
             imageGenerator.maximumSize = CGSize(width: 300, height: 300) // Limit size
             
             // Use a safer time - check duration first
+            // Note: Using deprecated API because this is a synchronous function
             let duration = asset.duration
             let time = CMTimeMinimum(CMTime(seconds: 1, preferredTimescale: 60), duration)
             
