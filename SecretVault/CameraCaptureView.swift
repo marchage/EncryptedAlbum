@@ -7,7 +7,7 @@ struct CameraCaptureView: UIViewControllerRepresentable {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var vaultManager: VaultManager
     
-    func makeUIViewController(context: Context) -> UIImagePickerController {
+    func makeUIViewController(context: Context) -> CameraHostingController {
         let picker = UIImagePickerController()
         picker.delegate = context.coordinator
         picker.sourceType = .camera
@@ -15,10 +15,12 @@ struct CameraCaptureView: UIViewControllerRepresentable {
         picker.allowsEditing = false
         picker.modalPresentationStyle = .fullScreen
         
-        return picker
+        let host = CameraHostingController()
+        host.cameraController = picker
+        return host
     }
     
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {
+    func updateUIViewController(_ uiViewController: CameraHostingController, context: Context) {
         // No updates needed
     }
     
@@ -100,6 +102,31 @@ struct CameraCaptureView: UIViewControllerRepresentable {
         
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.dismiss()
+        }
+    }
+}
+
+// Custom hosting controller that locks orientation to portrait while camera is active
+class CameraHostingController: UIViewController {
+    var cameraController: UIImagePickerController?
+    
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
+        return .portrait
+    }
+    
+    override var preferredInterfaceOrientationForPresentation: UIInterfaceOrientation {
+        return .portrait
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        if let camera = cameraController, camera.parent == nil {
+            addChild(camera)
+            view.addSubview(camera.view)
+            camera.view.frame = view.bounds
+            camera.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            camera.didMove(toParent: self)
         }
     }
 }
