@@ -1105,6 +1105,7 @@ struct MainVaultView: View {
 #if os(iOS)
             .sheet(isPresented: $showingCamera) {
                 CameraCaptureView()
+                    .ignoresSafeArea()
             }
 #endif
             .onChange(of: showingFilePicker) { newValue in
