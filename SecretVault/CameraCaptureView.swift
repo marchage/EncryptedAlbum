@@ -7,7 +7,7 @@ struct CameraCaptureView: UIViewControllerRepresentable {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var vaultManager: VaultManager
     
-    func makeUIViewController(context: Context) -> CameraHostingController {
+    func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.delegate = context.coordinator
         picker.sourceType = .camera
@@ -15,12 +15,10 @@ struct CameraCaptureView: UIViewControllerRepresentable {
         picker.allowsEditing = false
         picker.modalPresentationStyle = .fullScreen
         
-        let host = CameraHostingController()
-        host.cameraController = picker
-        return host
+        return picker
     }
     
-    func updateUIViewController(_ uiViewController: CameraHostingController, context: Context) {
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {
         // No updates needed
     }
     
@@ -105,25 +103,5 @@ struct CameraCaptureView: UIViewControllerRepresentable {
         }
     }
 }
-
-// Custom hosting controller that locks orientation to portrait while camera is active
-class CameraHostingController: UIViewController {
-    var cameraController: UIImagePickerController?
-    
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
-        return .portrait
-    }
-    
-    override var preferredInterfaceOrientationForPresentation: UIInterfaceOrientation {
-        return .portrait
-    }
-    
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        
-        if let camera = cameraController, camera.presentingViewController == nil {
-            present(camera, animated: false)
-        }
-    }
-}
 #endif
+
