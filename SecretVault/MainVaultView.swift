@@ -1492,15 +1492,15 @@ struct CameraCaptureView: UIViewControllerRepresentable {
             
             DispatchQueue.global(qos: .userInitiated).async {
                 var data: Data?
-                var filename: String
-                var mediaType: MediaType = .image
+                var filename = "Capture_\(Date().timeIntervalSince1970).jpg"
+                var mediaType: MediaType = .photo
                 var duration: TimeInterval?
                 
                 if let image = info[.originalImage] as? UIImage,
                    let imageData = image.jpegData(compressionQuality: 0.9) {
                     data = imageData
                     filename = "Capture_\(Date().timeIntervalSince1970).jpg"
-                    mediaType = .image
+                    mediaType = .photo
                 } else if let videoURL = info[.mediaURL] as? URL {
                     do {
                         data = try Data(contentsOf: videoURL)
@@ -1516,16 +1516,18 @@ struct CameraCaptureView: UIViewControllerRepresentable {
                 }
                 
                 if let data = data {
-                    let photo = SecurePhoto(
-                        filename: filename,
-                        sourceAlbum: "Captured to Vault",
-                        vaultAlbum: nil,
-                        mediaType: mediaType,
-                        duration: duration
-                    )
-                    
                     do {
-                        try self.parent.vaultManager.savePhotoToVault(photo, data: data)
+                        try self.parent.vaultManager.hidePhoto(
+                            imageData: data,
+                            filename: filename,
+                            dateTaken: Date(),
+                            sourceAlbum: "Captured to Vault",
+                            assetIdentifier: nil,
+                            mediaType: mediaType,
+                            duration: duration,
+                            location: nil,
+                            isFavorite: nil
+                        )
                         print("✅ Captured to vault: \(filename)")
                     } catch {
                         print("❌ Failed to save to vault: \(error)")
