@@ -121,12 +121,8 @@ class CameraHostingController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
-        if let camera = cameraController, camera.parent == nil {
-            addChild(camera)
-            view.addSubview(camera.view)
-            camera.view.frame = view.bounds
-            camera.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            camera.didMove(toParent: self)
+        if let camera = cameraController, camera.presentingViewController == nil {
+            present(camera, animated: false)
         }
     }
 }
