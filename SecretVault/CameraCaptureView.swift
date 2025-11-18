@@ -13,6 +13,8 @@ struct CameraCaptureView: UIViewControllerRepresentable {
         picker.sourceType = .camera
         picker.mediaTypes = ["public.image", "public.movie"]
         picker.allowsEditing = false
+        picker.modalPresentationStyle = .fullScreen
+        
         return picker
     }
     
@@ -52,7 +54,7 @@ struct CameraCaptureView: UIViewControllerRepresentable {
             
             DispatchQueue.global(qos: .userInitiated).async {
                 var data: Data?
-                var filename: String
+                var filename = "Capture_\(Date().timeIntervalSince1970).jpg"
                 var mediaType: MediaType = .photo
                 var duration: TimeInterval?
                 
@@ -80,9 +82,13 @@ struct CameraCaptureView: UIViewControllerRepresentable {
                         try self.parent.vaultManager.hidePhoto(
                             imageData: data,
                             filename: filename,
+                            dateTaken: Date(),
                             sourceAlbum: "Captured to Vault",
+                            assetIdentifier: nil,
                             mediaType: mediaType,
-                            duration: duration
+                            duration: duration,
+                            location: nil,
+                            isFavorite: nil
                         )
                         print("✅ Captured to vault: \(filename)")
                     } catch {
