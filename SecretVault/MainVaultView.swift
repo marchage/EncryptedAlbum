@@ -15,6 +15,8 @@ struct MainVaultView: View {
     @State private var newAlbumName = ""
     @State private var showingRestoreOptions = false
     @State private var photosToRestore: [SecurePhoto] = []
+    @State private var showingCamera = false
+    @State private var showingFilePicker = false
     @AppStorage("vaultPrivacyModeEnabled") private var privacyModeEnabled: Bool = true
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
 #if os(iOS)
@@ -25,7 +27,7 @@ struct MainVaultView: View {
 #if os(iOS)
         return verticalSizeClass == .regular ? 18 : 22
 #else
-        return 22
+        return 16  // Reduced from 22 to prevent cropping on macOS
 #endif
     }
     
@@ -107,11 +109,13 @@ struct MainVaultView: View {
     func exportSelectedPhotos() {
 #if os(macOS)
         vaultManager.touchActivity()
-        let panel = NSSavePanel()
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
         panel.canCreateDirectories = true
-        panel.prompt = "Export"
-        panel.message = "Choose a folder to export items to"
-        panel.canSelectHiddenExtension = true
+        panel.prompt = "Export Here"
+        panel.message = "Choose a folder to export \(selectedPhotos.count) item(s) to"
         
         panel.begin { response in
             if response == .OK, let url = panel.url {
@@ -126,20 +130,46 @@ struct MainVaultView: View {
         let photosToExport = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         
         DispatchQueue.global(qos: .userInitiated).async {
+            var successCount = 0
+            var failureCount = 0
+            var lastError: Error?
+            
             for photo in photosToExport {
                 do {
                     let decryptedData = try vaultManager.decryptPhoto(photo)
                     let fileURL = folderURL.appendingPathComponent(photo.filename)
                     try decryptedData.write(to: fileURL)
-                    print("Exported: \(photo.filename)")
+                    print("✅ Exported: \(photo.filename)")
+                    successCount += 1
                 } catch {
-                    print("Failed to export \(photo.filename): \(error)")
+                    print("❌ Failed to export \(photo.filename): \(error)")
+                    failureCount += 1
+                    lastError = error
                 }
             }
             
             DispatchQueue.main.async {
                 selectedPhotos.removeAll()
-                // Could show a success message here
+                
+#if os(macOS)
+                // Show result alert
+                let alert = NSAlert()
+                if failureCount == 0 {
+                    alert.messageText = "Export Successful"
+                    alert.informativeText = "Successfully exported \(successCount) item(s) to \(folderURL.lastPathComponent)"
+                    alert.alertStyle = .informational
+                } else if successCount == 0 {
+                    alert.messageText = "Export Failed"
+                    alert.informativeText = "Failed to export \(failureCount) item(s). \(lastError?.localizedDescription ?? "Unknown error")"
+                    alert.alertStyle = .critical
+                } else {
+                    alert.messageText = "Partial Export"
+                    alert.informativeText = "Exported \(successCount) item(s), but \(failureCount) failed. \(lastError?.localizedDescription ?? "")"
+                    alert.alertStyle = .warning
+                }
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+#endif
             }
         }
     }
@@ -218,6 +248,88 @@ struct MainVaultView: View {
             vaultManager.deletePhoto(photo)
         }
         selectedPhotos.removeAll()
+    }
+    
+    func importFilesToVault() {
+#if os(macOS)
+        vaultManager.touchActivity()
+        
+        let warningAlert = NSAlert()
+        warningAlert.messageText = "Capture Directly to Vault"
+        warningAlert.informativeText = "Photos/videos imported this way are stored ONLY in the encrypted vault. They will NOT be in your Photos Library or iCloud Photos. Make sure your vault is backed up!"
+        warningAlert.alertStyle = .warning
+        warningAlert.addButton(withTitle: "Continue")
+        warningAlert.addButton(withTitle: "Cancel")
+        
+        guard warningAlert.runModal() == .alertFirstButtonReturn else {
+            showingFilePicker = false
+            return
+        }
+        
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        panel.allowedContentTypes = [.image, .movie, .video]
+        panel.prompt = "Import"
+        panel.message = "Choose photos or videos to import directly to vault"
+        
+        panel.begin { response in
+            showingFilePicker = false
+            
+            guard response == .OK else { return }
+            
+            let urls = panel.urls
+            DispatchQueue.global(qos: .userInitiated).async {
+                var successCount = 0
+                var failureCount = 0
+                
+                for url in urls {
+                    do {
+                        let data = try Data(contentsOf: url)
+                        let filename = url.lastPathComponent
+                        
+                        let isVideo = url.pathExtension.lowercased() == "mov" ||
+                                     url.pathExtension.lowercased() == "mp4" ||
+                                     url.pathExtension.lowercased() == "m4v"
+                        
+                        try vaultManager.hidePhoto(
+                            imageData: data,
+                            filename: filename,
+                            sourceAlbum: "Captured to Vault",
+                            mediaType: isVideo ? .video : .photo,
+                            duration: nil
+                        )
+                        
+                        print("✅ Imported to vault: \(filename)")
+                        successCount += 1
+                    } catch {
+                        print("❌ Failed to import \(url.lastPathComponent): \(error)")
+                        failureCount += 1
+                    }
+                }
+                
+                DispatchQueue.main.async {
+                    let alert = NSAlert()
+                    if failureCount == 0 {
+                        alert.messageText = "Import Successful"
+                        alert.informativeText = "Imported \(successCount) item(s) directly to encrypted vault."
+                        alert.alertStyle = .informational
+                    } else if successCount == 0 {
+                        alert.messageText = "Import Failed"
+                        alert.informativeText = "Failed to import \(failureCount) item(s)."
+                        alert.alertStyle = .critical
+                    } else {
+                        alert.messageText = "Partial Import"
+                        alert.informativeText = "Imported \(successCount) item(s), but \(failureCount) failed."
+                        alert.alertStyle = .warning
+                    }
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
+                }
+            }
+        }
+#endif
     }
     
     func chooseVaultLocation() {
@@ -393,8 +505,8 @@ struct MainVaultView: View {
                                     if let appIcon = NSImage(named: "AppIcon") {
                                         Image(nsImage: appIcon)
                                             .resizable()
-                                            .frame(width: 36, height: 36)
-                                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                                            .aspectRatio(contentMode: .fit)
+                                            .frame(width: 32, height: 32)
                                     } else {
                                         ZStack {
                                             Circle()
@@ -452,8 +564,12 @@ struct MainVaultView: View {
                                             Button {
                                                 restoreSelectedPhotos()
                                             } label: {
+#if os(macOS)
+                                                Label("Restore", systemImage: "arrow.uturn.backward")
+#else
                                                 Image(systemName: "arrow.uturn.backward")
                                                     .font(.system(size: actionIconFontSize))
+#endif
                                             }
                                             .buttonStyle(.bordered)
                                             .controlSize(.small)
@@ -461,8 +577,12 @@ struct MainVaultView: View {
                                             Button {
                                                 exportSelectedPhotos()
                                             } label: {
+#if os(macOS)
+                                                Label("Export", systemImage: "square.and.arrow.up")
+#else
                                                 Image(systemName: "square.and.arrow.up")
                                                     .font(.system(size: actionIconFontSize))
+#endif
                                             }
                                             .buttonStyle(.bordered)
                                             .controlSize(.small)
@@ -470,8 +590,12 @@ struct MainVaultView: View {
                                             Button(role: .destructive) {
                                                 deleteSelectedPhotos()
                                             } label: {
+#if os(macOS)
+                                                Label("Delete", systemImage: "trash")
+#else
                                                 Image(systemName: "trash")
                                                     .font(.system(size: actionIconFontSize))
+#endif
                                             }
                                             .buttonStyle(.bordered)
                                             .controlSize(.small)
@@ -486,7 +610,22 @@ struct MainVaultView: View {
                                             .frame(maxWidth: 120)
 #if os(iOS)
                                             .submitLabel(.done)
-#endif                                // Compact privacy controls: eye indicator + switch kept together
+#endif
+                                        // Compact privacy controls: eye indicator + switch kept together
+#if os(macOS)
+                                        HStack(spacing: 8) {
+                                            Image(systemName: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
+                                                .font(.system(size: actionIconFontSize))
+                                                .foregroundStyle(.secondary)
+                                            Text("Privacy Mode")
+                                                .font(.subheadline)
+                                            Toggle("", isOn: $privacyModeEnabled)
+                                                .labelsHidden()
+                                                .toggleStyle(.switch)
+                                                .controlSize(.small)
+                                        }
+                                        .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
+#else
                                         HStack(spacing: 6) {
                                             Button {
                                                 privacyModeEnabled.toggle()
@@ -501,6 +640,7 @@ struct MainVaultView: View {
                                                 .toggleStyle(.switch)
                                         }
                                         .help(privacyModeEnabled ? "Thumbnails are hidden (privacy mode)" : "Thumbnails are visible")
+#endif
                                         
                                         Button {
                                             showingPhotosLibrary = true
@@ -521,6 +661,32 @@ struct MainVaultView: View {
                                         }
                                         .buttonStyle(.plain)
                                         .controlSize(.small)
+                                        
+#if os(iOS)
+                                        Button {
+                                            showingCamera = true
+                                        } label: {
+                                            Image(systemName: "camera.fill")
+                                                .font(.system(size: actionIconFontSize - 2))
+                                                .foregroundColor(.white)
+                                                .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.green))
+                                        }
+                                        .buttonStyle(.plain)
+                                        .controlSize(.small)
+#else
+                                        Button {
+                                            showingFilePicker = true
+                                        } label: {
+                                            Label("Capture", systemImage: "camera.fill")
+                                                .padding(.vertical, 6)
+                                                .padding(.horizontal, 10)
+                                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.green))
+                                                .foregroundColor(.white)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .controlSize(.small)
+#endif
                                         
                                         Menu {
 #if os(macOS)
@@ -635,10 +801,23 @@ struct MainVaultView: View {
                                                             .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
                                                     }
                                                     .buttonStyle(.plain)
+                                                    
+#if os(iOS)
+                                                    Button {
+                                                        showingCamera = true
+                                                    } label: {
+                                                        Image(systemName: "camera.fill")
+                                                            .font(.system(size: actionIconFontSize))
+                                                            .foregroundColor(.white)
+                                                            .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.green))
+                                                    }
+                                                    .buttonStyle(.plain)
+#endif
                                                 }
                                                 
                                                 Menu {
-#if os(macOS)
+#if macOS
                                                     Button {
                                                         chooseVaultLocation()
                                                     } label: {
@@ -922,6 +1101,16 @@ struct MainVaultView: View {
             }
             .sheet(isPresented: $showingPhotosLibrary) {
                 PhotosLibraryPicker()
+            }
+#if os(iOS)
+            .sheet(isPresented: $showingCamera) {
+                CameraCaptureView()
+            }
+#endif
+            .onChange(of: showingFilePicker) { newValue in
+                if newValue {
+                    importFilesToVault()
+                }
             }
         }
     }
@@ -1251,3 +1440,104 @@ struct CustomVideoPlayer: UIViewControllerRepresentable {
     }
 }
 #endif
+
+// Camera/Photo Picker for iOS
+#if os(iOS)
+struct CameraCaptureView: UIViewControllerRepresentable {
+    @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var vaultManager: VaultManager
+    
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.sourceType = .camera
+        picker.mediaTypes = ["public.image", "public.movie"]
+        picker.allowsEditing = false
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {
+        // No updates needed
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: CameraCaptureView
+        
+        init(_ parent: CameraCaptureView) {
+            self.parent = parent
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            parent.dismiss()
+            
+            // Show warning about vault-only storage
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                let alert = UIAlertController(
+                    title: "Captured to Vault Only",
+                    message: "This photo/video is stored ONLY in the encrypted vault. It will NOT be in your Photos Library or iCloud Photos. Make sure your vault is backed up!",
+                    preferredStyle: .alert
+                )
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first,
+                   let rootVC = window.rootViewController {
+                    rootVC.present(alert, animated: true)
+                }
+            }
+            
+            DispatchQueue.global(qos: .userInitiated).async {
+                var data: Data?
+                var filename: String
+                var mediaType: MediaType = .image
+                var duration: TimeInterval?
+                
+                if let image = info[.originalImage] as? UIImage,
+                   let imageData = image.jpegData(compressionQuality: 0.9) {
+                    data = imageData
+                    filename = "Capture_\(Date().timeIntervalSince1970).jpg"
+                    mediaType = .image
+                } else if let videoURL = info[.mediaURL] as? URL {
+                    do {
+                        data = try Data(contentsOf: videoURL)
+                        filename = "Video_\(Date().timeIntervalSince1970).mov"
+                        mediaType = .video
+                        
+                        // Get video duration
+                        let asset = AVAsset(url: videoURL)
+                        duration = asset.duration.seconds
+                    } catch {
+                        print("Failed to read video data: \(error)")
+                    }
+                }
+                
+                if let data = data {
+                    let photo = SecurePhoto(
+                        filename: filename,
+                        sourceAlbum: "Captured to Vault",
+                        vaultAlbum: nil,
+                        mediaType: mediaType,
+                        duration: duration
+                    )
+                    
+                    do {
+                        try self.parent.vaultManager.savePhotoToVault(photo, data: data)
+                        print("✅ Captured to vault: \(filename)")
+                    } catch {
+                        print("❌ Failed to save to vault: \(error)")
+                    }
+                }
+            }
+        }
+        
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
+        }
+    }
+}
+#endif
+
