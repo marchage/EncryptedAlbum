@@ -58,5 +58,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>SecretVault needs camera access to capture photos and videos directly to your encrypted vault.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SecretVault needs access to your photo library to hide and restore photos securely.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>SecretVault needs permission to restore photos back to your photo library.</string>
 </dict>
 </plist>
