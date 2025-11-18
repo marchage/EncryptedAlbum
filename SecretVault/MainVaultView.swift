@@ -694,16 +694,17 @@ struct MainVaultView: View {
                                 }
                             }
                         }
-                .padding(.vertical, 8)
-                .padding(.leading, 12)
-                .padding(.trailing, 12)
-                .frame(maxWidth: .infinity)
-                .background(.ultraThinMaterial)
-                .background(GeometryReader { proxy in
-                    Color.clear.preference(key: HeaderHeightKey.self, value: proxy.size.height)
-                })
-                
-                Divider()
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, isLandscape ? 16 : 12)
+                        .background(.ultraThinMaterial)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            GeometryReader { geo in
+                                Color.clear.preference(key: HeaderHeightKey.self, value: geo.size.height)
+                            }
+                        )
+                        
+                        Divider()
                         
                         // Notification banner placed below the header so it doesn't overlap toolbar controls
                         if let note = vaultManager.hideNotification {
@@ -890,6 +891,7 @@ struct MainVaultView: View {
                         // Banner was moved into the VStack above so it doesn't overlap header controls
                     }
                 }
+                .ignoresSafeArea(edges: .horizontal)
                 .scrollDismissesKeyboard(.interactively)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1035,7 +1037,7 @@ struct PhotoThumbnailView: View {
                 loadThumbnail()
             }
         }
-        .onChange(of: privacyModeEnabled) { _, newValue in
+        .onChange(of: privacyModeEnabled) { newValue in
             if !newValue && thumbnailImage == nil {
                 loadThumbnail()
             }
