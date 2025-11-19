@@ -556,7 +556,9 @@ struct PhotosLibraryPicker: View {
     private func hideSelectedPhotos() async {
         guard !selectedAssets.isEmpty else { return }
         // UI state must be mutated on the main thread
-        importing = true
+        await MainActor.run {
+            importing = true
+        }
         
         let assetsToHide = allPhotos.filter { selectedAssets.contains($0.asset.localIdentifier) }
         let totalCount = assetsToHide.count
@@ -676,7 +678,9 @@ struct PhotosLibraryPicker: View {
                     dismiss()
                 }
             } else {
-                importing = false
+                await MainActor.run {
+                    importing = false
+                }
                 dismiss()
             }
         } catch {

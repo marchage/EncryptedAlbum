@@ -217,30 +217,41 @@ class PhotosLibraryService {
     /// - Parameter asset: The PHAsset to fetch
     /// - Returns: Tuple with data, filename, metadata, and type
     func getMediaDataAsync(for asset: PHAsset) async -> (data: Data?, filename: String, dateTaken: Date?, mediaType: MediaType, duration: TimeInterval?, location: SecurePhoto.Location?, isFavorite: Bool?)? {
-        await withCheckedContinuation { continuation in
-            let timeoutTask = Task {
-                try await Task.sleep(nanoseconds: 30_000_000_000) // 30 second timeout
-                if !Task.isCancelled {
-                    print("Timeout fetching media data for asset: \(asset.localIdentifier)")
-                    continuation.resume(returning: nil)
+        // Use Task with timeout pattern for better control
+        let result = await withTaskGroup(of: (data: Data?, filename: String, dateTaken: Date?, mediaType: MediaType, duration: TimeInterval?, location: SecurePhoto.Location?, isFavorite: Bool?)?.self) { group in
+            // Add timeout task
+            group.addTask {
+                try? await Task.sleep(nanoseconds: 30_000_000_000) // 30 second timeout
+                print("⏱️ Timeout (30s) fetching media data for asset: \(asset.localIdentifier)")
+                return nil
+            }
+            
+            // Add actual fetch task
+            group.addTask {
+                await withCheckedContinuation { continuation in
+                    if asset.mediaType == .image {
+                        self.getImageData(for: asset) { data, filename, dateTaken, mediaType, duration, location, isFavorite in
+                            continuation.resume(returning: (data: data, filename: filename, dateTaken: dateTaken, mediaType: mediaType, duration: duration, location: location, isFavorite: isFavorite))
+                        }
+                    } else if asset.mediaType == .video {
+                        self.getVideoData(for: asset) { data, filename, dateTaken, mediaType, duration, location, isFavorite in
+                            continuation.resume(returning: (data: data, filename: filename, dateTaken: dateTaken, mediaType: mediaType, duration: duration, location: location, isFavorite: isFavorite))
+                        }
+                    } else {
+                        continuation.resume(returning: nil)
+                    }
                 }
             }
             
-            if asset.mediaType == .image {
-                getImageData(for: asset) { data, filename, dateTaken, mediaType, duration, location, isFavorite in
-                    timeoutTask.cancel()
-                    continuation.resume(returning: (data: data, filename: filename, dateTaken: dateTaken, mediaType: mediaType, duration: duration, location: location, isFavorite: isFavorite))
-                }
-            } else if asset.mediaType == .video {
-                getVideoData(for: asset) { data, filename, dateTaken, mediaType, duration, location, isFavorite in
-                    timeoutTask.cancel()
-                    continuation.resume(returning: (data: data, filename: filename, dateTaken: dateTaken, mediaType: mediaType, duration: duration, location: location, isFavorite: isFavorite))
-                }
-            } else {
-                timeoutTask.cancel()
-                continuation.resume(returning: nil)
+            // Return the first result (either timeout or actual data)
+            if let firstResult = await group.next() {
+                group.cancelAll() // Cancel the other task
+                return firstResult
             }
+            return nil
         }
+        
+        return result
     }
     
     func getImageData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, SecurePhoto.Location?, Bool?) -> Void) {

@@ -410,14 +410,20 @@ class VaultManager: ObservableObject {
             cachedEncryptionKey = encryptionKey
             cachedHMACKey = hmacKey
 
-            isUnlocked = true
+            await MainActor.run {
+                isUnlocked = true
+            }
             try await loadPhotos()
-            lastActivity = Date()
+            await MainActor.run {
+                lastActivity = Date()
+            }
             startIdleTimer()
 
             // Update legacy properties
-            passwordHash = storedHash.map { String(format: "%02x", $0) }.joined()
-            passwordSalt = storedSalt.base64EncodedString()
+            await MainActor.run {
+                passwordHash = storedHash.map { String(format: "%02x", $0) }.joined()
+                passwordSalt = storedSalt.base64EncodedString()
+            }
         } else {
             failedUnlockAttempts += 1
             throw VaultError.invalidPassword
@@ -495,7 +501,9 @@ class VaultManager: ObservableObject {
     ///   - isFavorite: Favorite status
     /// - Throws: Error if encryption or file writing fails
     func hidePhoto(imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil) async throws {
-        lastActivity = Date()
+        await MainActor.run {
+            lastActivity = Date()
+        }
         
         // Ensure photos directory exists
         let photosURL = try await fileService.createPhotosDirectory(in: vaultBaseURL)
@@ -637,7 +645,9 @@ class VaultManager: ObservableObject {
     /// Permanently deletes a photo or video from the vault.
     /// - Parameter photo: The SecurePhoto to delete
     func deletePhoto(_ photo: SecurePhoto) {
-        lastActivity = Date()
+        Task { @MainActor in
+            lastActivity = Date()
+        }
         // Securely delete files (overwrite before deletion)
         secureDeleteFile(at: URL(fileURLWithPath: photo.encryptedDataPath))
         secureDeleteFile(at: URL(fileURLWithPath: photo.thumbnailPath))
@@ -727,7 +737,9 @@ class VaultManager: ObservableObject {
     /// Restores a photo or video from the vault to the Photos library.
     /// - Parameter photo: The SecurePhoto to restore
     func restorePhotoToLibrary(_ photo: SecurePhoto) async throws {
-        lastActivity = Date()
+        await MainActor.run {
+            lastActivity = Date()
+        }
         
         // Decrypt the photo
         let decryptedData = try await self.decryptPhoto(photo)
@@ -763,7 +775,9 @@ class VaultManager: ObservableObject {
     ///   - restoreToSourceAlbum: Whether to restore to original album
     ///   - toNewAlbum: Optional new album name for all items
     func batchRestorePhotos(_ photos: [SecurePhoto], restoreToSourceAlbum: Bool = false, toNewAlbum: String? = nil) async throws {
-        lastActivity = Date()
+        await MainActor.run {
+            lastActivity = Date()
+        }
         
         // Initialize progress tracking
         await MainActor.run {
