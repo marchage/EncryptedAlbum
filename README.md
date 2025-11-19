@@ -15,30 +15,9 @@ SecretVault is a native macOS and iOS app for securely hiding photos and videos 
 
 ## Development Notes
 
-### iCloud Capabilities & Provisioning
+### Technical Details: iCloud Sync
 
-**Current Limitation**: Due to Apple's restrictions on personal development teams, iCloud capabilities (including cross-device sync) are disabled in this build. The app uses local storage only on iOS devices.
-
-**To enable iCloud sync**:
-1. Join the Apple Developer Program ($99/year)
-2. Re-enable iCloud entitlements in `SecretVault_iOS.entitlements`:
-   ```xml
-   <key>com.apple.developer.icloud-container-identifiers</key>
-   <array>
-       <string>iCloud.biz.front-end.SecretVault</string>
-   </array>
-   <key>com.apple.developer.icloud-services</key>
-   <array>
-       <string>CloudDocuments</string>
-   </array>
-   <key>com.apple.developer.ubiquity-container-identifiers</key>
-   <array>
-       <string>iCloud.biz.front-end.SecretVault</string>
-   </array>
-   ```
-3. The app will automatically detect and use iCloud Drive for storage when available.
-
-**Without iCloud**: The app works perfectly with local storage on each device. Vault data remains secure but doesn't sync between devices.
+Currently the app uses local storage only. To enable iCloud sync between devices, you would need to join Apple's Developer Program and update the app's iCloud settings in the code.
 
 ## Build & Run
 
@@ -92,19 +71,11 @@ xcodebuild \
 - The app uses authenticated encryption (AES-256-GCM) so tampering with vault files is detected.
 - Losing or forgetting the password means the vault contents cannot be recovered.
 
-## iCloud Sync Setup (Currently Disabled)
+## iCloud Sync
 
-**Status**: iCloud sync is currently disabled due to Apple's personal development team restrictions.
+**Note**: iCloud sync is currently turned off. The app works perfectly with local storage on each device - your vault stays secure but doesn't sync between devices.
 
-To enable cross-device synchronization in the future:
-
-1. Join the Apple Developer Program ($99/year)
-2. Re-enable iCloud entitlements (see Development Notes above)
-3. Enable iCloud Drive on both your Mac and iOS devices in Settings > Apple ID > iCloud > iCloud Drive
-4. Grant Photos access on both platforms when prompted
-5. Sign in with the same Apple ID on all devices
-6. The vault will automatically sync encrypted files between devices via iCloud Drive
-7. **Note**: Photos library access is device-specific and won't sync between devices - you'll need to hide photos on each device separately
+If you want to enable syncing between your Mac and iPhone in the future, you'll need to update some settings in the code (see the Development Notes section below for technical details).
 
 ## License
 
