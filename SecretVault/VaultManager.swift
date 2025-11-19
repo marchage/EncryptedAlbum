@@ -566,10 +566,17 @@ class VaultManager: ObservableObject {
             throw NSError(domain: "VaultManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "Media file too large or empty"])
         }
         
-        // Check for duplicates by asset identifier
+        // Thread-safe duplicate check: perform on serial queue to prevent race condition
+        // where multiple threads check for duplicates simultaneously before any have been added
+        var isDuplicate = false
         if let assetId = assetIdentifier {
-            if hiddenPhotos.contains(where: { $0.originalAssetIdentifier == assetId }) {
-                print("Media already hidden: \(filename)")
+            vaultQueue.sync {
+                isDuplicate = hiddenPhotos.contains(where: { $0.originalAssetIdentifier == assetId })
+            }
+            if isDuplicate {
+                #if DEBUG
+                print("Media already hidden: \(filename) (assetId: \(assetId))")
+                #endif
                 return // Skip duplicate
             }
         }
@@ -653,14 +660,13 @@ class VaultManager: ObservableObject {
             isFavorite: isFavorite
         )
 
-        // Save to photos list on the main thread to avoid
-        // "Publishing changes from background threads" warnings and
-        // ensure SwiftUI observers see the update consistently.
-        // Use serial queue to prevent race conditions
+        // Save to photos list on the serial queue to prevent race conditions,
+        // then update UI on main thread. This ensures the duplicate check and
+        // append happen atomically.
         vaultQueue.async {
+            self.hiddenPhotos.append(photo)
+            self.savePhotos()
             DispatchQueue.main.async {
-                self.hiddenPhotos.append(photo)
-                self.savePhotos()
                 self.objectWillChange.send()
             }
         }
