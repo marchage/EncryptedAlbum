@@ -2,10 +2,8 @@
 
 SecretVault is a native macOS and iOS app for securely hiding photos and videos using strong, modern encryption. 
 
-# (Hopefully not) pretend greenfield
-Better not use it yet, features being added left right and center,
-refactores being done, reviews being done after which the whole
-app universe is different, vaults thrown away or format changes for which no migration might exists at the moment, those things.
+# Hopefully not pretend greenfield
+I am not keeping things compatible with previous implementations. When that starts happening I will remove this line.
 
 ## Features
 
