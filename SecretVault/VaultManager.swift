@@ -584,13 +584,13 @@ class VaultManager: ObservableObject {
             // Generate and store HMAC for integrity verification
             let hmac = generateHMAC(for: encrypted, key: passwordHash)
             let hmacPath = photosURL.appendingPathComponent("\(photoId.uuidString).hmac")
-            try hmac.write(to: hmacPath, atomically: true, encoding: .utf8)
+            try hmac.data(using: .utf8)?.write(to: hmacPath, options: .atomic)
         } catch {
             throw NSError(domain: "VaultManager", code: -3, userInfo: [NSLocalizedDescriptionKey: "Failed to save encrypted data: \(error.localizedDescription)"])
         }
         
         // Generate thumbnail with memory management
-        let thumbnail = generateThumbnail(from: imageData, mediaType: mediaType)
+        let thumbnail = generatePhotoThumbnail(from: imageData)
         guard thumbnail.count > 0 else {
             // Clean up encrypted file if thumbnail generation fails
             try? FileManager.default.removeItem(at: encryptedPath)
@@ -1075,8 +1075,6 @@ class VaultManager: ObservableObject {
     
     /// Generates a thumbnail from photo data (synchronous, call from background queue).
     private func generatePhotoThumbnail(from mediaData: Data) -> Data {
-    /// Generates a thumbnail from photo data (synchronous, call from background queue).
-    private func generatePhotoThumbnail(from mediaData: Data) -> Data {
             #if os(macOS)
             guard let image = NSImage(data: mediaData),
                   let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
@@ -1233,18 +1231,26 @@ class VaultManager: ObservableObject {
     
     private func savePhotos() {
         guard let data = try? JSONEncoder().encode(hiddenPhotos) else { return }
+        #if DEBUG
         print("savePhotos: writing \(hiddenPhotos.count) items to \(photosFile.path)")
+        #endif
         try? data.write(to: photosFile)
     }
 
     private func loadPhotos() {
+        #if DEBUG
         print("loadPhotos: reading from \(photosFile.path)")
+        #endif
         guard let data = try? Data(contentsOf: photosFile),
             let photos = try? JSONDecoder().decode([SecurePhoto].self, from: data) else {
+            #if DEBUG
             print("loadPhotos: no data or decode failed")
+            #endif
             return
         }
+        #if DEBUG
         print("loadPhotos: loaded \(photos.count) items")
+        #endif
         hiddenPhotos = photos
     }
     
@@ -1259,21 +1265,31 @@ class VaultManager: ObservableObject {
     }
     
     private func loadSettings() {
+        #if DEBUG
         print("Attempting to load settings from: \(settingsFile.path)")
+        #endif
         guard let data = try? Data(contentsOf: settingsFile),
               let settings = try? JSONDecoder().decode([String: String].self, from: data) else {
+            #if DEBUG
             print("No settings file found or failed to decode")
+            #endif
             return
         }
 
+        #if DEBUG
         print("Loaded settings: \(settings)")
+        #endif
         if let hash = settings["passwordHash"] {
             passwordHash = hash
+            #if DEBUG
             print("Loaded password hash: \(hash.isEmpty ? "empty" : "present")")
+            #endif
         }
         if let salt = settings["passwordSalt"] {
             passwordSalt = salt
+            #if DEBUG
             print("Loaded password salt: \(salt.isEmpty ? "empty" : "present")")
+            #endif
         }
         // On macOS we respect a stored custom vaultBaseURL so users can move
         // the vault. On iOS, the container path is not stable across installs,
@@ -1283,7 +1299,9 @@ class VaultManager: ObservableObject {
         if let basePath = settings["vaultBaseURL"] {
             let url = URL(fileURLWithPath: basePath, isDirectory: true)
             vaultBaseURL = url
+            #if DEBUG
             print("Loaded vault base URL: \(basePath)")
+            #endif
         }
         #endif
     }

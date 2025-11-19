@@ -174,17 +174,17 @@ struct UnlockView: View {
         let context = LAContext()
         let reason = "Unlock your Secret Vault"
         
-        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, error in
-            DispatchQueue.main.async {
+        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { [self] success, error in
+            DispatchQueue.main.async { [self] in
                 if success {
                     // User authenticated successfully - get stored password
-                    if let storedPassword = vaultManager.getBiometricPassword() {
-                        password = storedPassword
-                        unlock()
+                    if let storedPassword = self.vaultManager.getBiometricPassword() {
+                        self.password = storedPassword
+                        self.unlock()
                     }
                 } else {
                     // Authentication failed
-                    vaultManager.recordFailedBiometricAttempt()
+                    self.vaultManager.recordFailedBiometricAttempt()
                     
                     if let error = error as? LAError {
                         switch error.code {
@@ -192,9 +192,9 @@ struct UnlockView: View {
                             // User cancelled or wants to use password
                             break
                         default:
-                            if vaultManager.shouldDisableBiometrics() {
-                                errorMessage = "Too many failed attempts. Use password."
-                                showError = true
+                            if self.vaultManager.shouldDisableBiometrics() {
+                                self.errorMessage = "Too many failed attempts. Use password."
+                                self.showError = true
                             }
                         }
                     }
