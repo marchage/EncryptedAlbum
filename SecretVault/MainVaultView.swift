@@ -26,6 +26,15 @@ struct MainVaultView: View {
     @State private var captureCancelRequested = false
     @State private var captureBytesProcessed: Int64 = 0
     @State private var captureBytesTotal: Int64 = 0
+    @State private var exportInProgress = false
+    @State private var exportStatusMessage = ""
+    @State private var exportDetailMessage = ""
+    @State private var exportItemsProcessed = 0
+    @State private var exportItemsTotal = 0
+    @State private var exportTask: Task<Void, Never>? = nil
+    @State private var exportCancelRequested = false
+    @State private var exportBytesProcessed: Int64 = 0
+    @State private var exportBytesTotal: Int64 = 0
     @State private var didForcePrivacyModeThisSession = false
     @AppStorage("vaultPrivacyModeEnabled") private var privacyModeEnabled: Bool = true
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
@@ -110,6 +119,15 @@ struct MainVaultView: View {
     
     func exportSelectedPhotos() {
 #if os(macOS)
+        guard !exportInProgress else {
+            let alert = NSAlert()
+            alert.messageText = "Export Already Running"
+            alert.informativeText = "Please wait for the current export to finish or cancel it before starting another."
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
@@ -128,54 +146,165 @@ struct MainVaultView: View {
     
     func exportPhotos(to folderURL: URL) {
         let photosToExport = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
-        
-        DispatchQueue.global(qos: .userInitiated).async {
-            Task {
-                var successCount = 0
-                var failureCount = 0
-                var lastError: Error?
-                
-                for photo in photosToExport {
-                    do {
-                        let tempURL = try await vaultManager.decryptPhotoToTemporaryURL(photo)
-                        defer { try? FileManager.default.removeItem(at: tempURL) }
-                        let fileURL = folderURL.appendingPathComponent(photo.filename)
-                        if FileManager.default.fileExists(atPath: fileURL.path) {
-                            try FileManager.default.removeItem(at: fileURL)
-                        }
-                        try FileManager.default.copyItem(at: tempURL, to: fileURL)
-                        print("✅ Exported: \(photo.filename)")
-                        successCount += 1
-                    } catch {
-                        print("❌ Failed to export \(photo.filename): \(error)")
-                        failureCount += 1
-                        lastError = error
-                    }
+        guard !photosToExport.isEmpty else { return }
+        exportTask?.cancel()
+        exportTask = Task(priority: .userInitiated) {
+            await runExportOperation(photos: photosToExport, to: folderURL)
+        }
+    }
+
+    private func runExportOperation(photos: [SecurePhoto], to folderURL: URL) async {
+        guard !photos.isEmpty else {
+            await MainActor.run { exportTask = nil }
+            return
+        }
+
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
+        formatter.countStyle = .file
+
+        await MainActor.run {
+            exportInProgress = true
+            exportItemsTotal = photos.count
+            exportItemsProcessed = 0
+            exportStatusMessage = "Preparing export…"
+            exportDetailMessage = "\(photos.count) item(s)"
+            exportBytesProcessed = 0
+            exportBytesTotal = 0
+            exportCancelRequested = false
+        }
+
+        var successCount = 0
+        var failureCount = 0
+        var firstError: Error?
+        var wasCancelled = false
+        let fileManager = FileManager.default
+
+        for (index, photo) in photos.enumerated() {
+            if Task.isCancelled {
+                wasCancelled = true
+                break
+            }
+
+            await MainActor.run {
+                exportStatusMessage = "Decrypting \(photo.filename)…"
+                exportDetailMessage = detailText(for: index + 1, total: photos.count, sizeDescription: nil)
+                exportItemsProcessed = index
+                exportBytesProcessed = 0
+                exportBytesTotal = 0
+            }
+
+            var destinationURL: URL?
+
+            do {
+                let tempURL = try await vaultManager.decryptPhotoToTemporaryURL(photo)
+                defer { try? fileManager.removeItem(at: tempURL) }
+
+                destinationURL = folderURL.appendingPathComponent(photo.filename)
+
+                if fileManager.fileExists(atPath: destinationURL!.path) {
+                    try fileManager.removeItem(at: destinationURL!)
                 }
-                
+
+                let fileSizeValue = fileSizeValue(for: tempURL)
+                let sizeText = fileSizeValue > 0 ? formatter.string(fromByteCount: fileSizeValue) : nil
+                let detail = detailText(for: index + 1, total: photos.count, sizeDescription: sizeText)
+
                 await MainActor.run {
-                    selectedPhotos.removeAll()
-                    
-#if os(macOS)
-                    // Show result alert
-                    let alert = NSAlert()
-                    if failureCount == 0 {
-                        alert.messageText = "Export Successful"
-                        alert.informativeText = "Successfully exported \(successCount) item(s) to \(folderURL.lastPathComponent)"
-                        alert.alertStyle = .informational
-                    } else if successCount == 0 {
-                        alert.messageText = "Export Failed"
-                        alert.informativeText = "Failed to export \(failureCount) item(s). \(lastError?.localizedDescription ?? "Unknown error")"
-                        alert.alertStyle = .critical
-                    } else {
-                        alert.messageText = "Partial Export"
-                        alert.informativeText = "Exported \(successCount) item(s), but \(failureCount) failed. \(lastError?.localizedDescription ?? "")"
-                        alert.alertStyle = .warning
-                    }
-                    alert.addButton(withTitle: "OK")
-                    alert.runModal()
-#endif
+                    exportStatusMessage = "Exporting \(photo.filename)…"
+                    exportDetailMessage = detail
+                    exportItemsProcessed = index
+                    exportBytesTotal = fileSizeValue
+                    exportBytesProcessed = 0
                 }
+
+                try Task.checkCancellation()
+                try await copyFileWithProgress(from: tempURL, to: destinationURL!, fileSize: fileSizeValue)
+                successCount += 1
+            } catch is CancellationError {
+                wasCancelled = true
+                if let destinationURL = destinationURL {
+                    try? fileManager.removeItem(at: destinationURL)
+                }
+                break
+            } catch {
+                if let destinationURL = destinationURL {
+                    try? fileManager.removeItem(at: destinationURL)
+                }
+                failureCount += 1
+                if firstError == nil {
+                    firstError = error
+                }
+                await MainActor.run {
+                    exportStatusMessage = "Failed \(photo.filename)"
+                    exportDetailMessage = error.localizedDescription
+                }
+            }
+
+            await MainActor.run {
+                exportItemsProcessed = index + 1
+                exportBytesProcessed = exportBytesTotal
+            }
+        }
+
+        if Task.isCancelled {
+            wasCancelled = true
+        }
+
+        await MainActor.run {
+            exportInProgress = false
+            exportItemsProcessed = 0
+            exportItemsTotal = 0
+            exportStatusMessage = ""
+            exportDetailMessage = ""
+            exportBytesProcessed = 0
+            exportBytesTotal = 0
+            exportCancelRequested = false
+            exportTask = nil
+            selectedPhotos.removeAll()
+        }
+
+#if os(macOS)
+        await MainActor.run {
+            presentExportSummary(
+                successCount: successCount,
+                failureCount: failureCount,
+                canceled: wasCancelled,
+                destinationFolderName: folderURL.lastPathComponent,
+                error: firstError
+            )
+        }
+#endif
+    }
+
+    private func fileSizeValue(for url: URL) -> Int64 {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let size = attributes[.size] as? NSNumber else {
+            return 0
+        }
+        return size.int64Value
+    }
+
+    private func copyFileWithProgress(from sourceURL: URL, to destinationURL: URL, fileSize: Int64) async throws {
+        let chunkSize = 1_048_576 // 1 MB
+        let inputHandle = try FileHandle(forReadingFrom: sourceURL)
+        defer { try? inputHandle.close() }
+
+        FileManager.default.createFile(atPath: destinationURL.path, contents: nil)
+        let outputHandle = try FileHandle(forWritingTo: destinationURL)
+        defer { try? outputHandle.close() }
+
+        var totalCopied: Int64 = 0
+
+        while true {
+            try Task.checkCancellation()
+            guard let data = try inputHandle.read(upToCount: chunkSize), !data.isEmpty else {
+                break
+            }
+            try outputHandle.write(contentsOf: data)
+            totalCopied += Int64(data.count)
+            await MainActor.run {
+                exportBytesProcessed = totalCopied
             }
         }
     }
@@ -475,6 +604,34 @@ struct MainVaultView: View {
         alert.addButton(withTitle: "OK")
         alert.runModal()
     }
+
+    @MainActor
+    private func presentExportSummary(successCount: Int, failureCount: Int, canceled: Bool, destinationFolderName: String, error: Error?) {
+        let alert = NSAlert()
+        if canceled {
+            alert.messageText = "Export Canceled"
+            alert.informativeText = "Exported \(successCount) item(s) before canceling."
+            alert.alertStyle = .warning
+        } else if failureCount == 0 {
+            alert.messageText = "Export Successful"
+            alert.informativeText = "Successfully exported \(successCount) item(s) to \(destinationFolderName)."
+            alert.alertStyle = .informational
+        } else if successCount == 0 {
+            alert.messageText = "Export Failed"
+            alert.informativeText = "Failed to export \(failureCount) item(s). \(error?.localizedDescription ?? "Unknown error")"
+            alert.alertStyle = .critical
+        } else {
+            alert.messageText = "Partial Export"
+            var message = "Exported \(successCount) item(s), but \(failureCount) failed."
+            if let description = error?.localizedDescription, !description.isEmpty {
+                message += "\n\(description)"
+            }
+            alert.informativeText = message
+            alert.alertStyle = .warning
+        }
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
 #endif
 
     private func fileSizeString(for url: URL, formatter: ByteCountFormatter) -> String? {
@@ -614,7 +771,7 @@ struct MainVaultView: View {
         } label: {
             Image(systemName: "camera.fill")
         }
-        .disabled(captureInProgress)
+        .disabled(captureInProgress || exportInProgress)
 #endif
 
         Menu {
@@ -721,6 +878,75 @@ struct MainVaultView: View {
         }
         .transition(.opacity)
     }
+
+    private var exportProgressOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.45)
+                .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                if exportItemsTotal > 0 {
+                    ProgressView(value: Double(exportItemsProcessed), total: Double(max(exportItemsTotal, 1)))
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 260)
+                } else {
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 260)
+                }
+
+                if exportBytesTotal > 0 {
+                    ProgressView(value: Double(exportBytesProcessed), total: Double(max(exportBytesTotal, 1)))
+                        .progressViewStyle(.linear)
+                    Text("\(formattedBytes(exportBytesProcessed)) of \(formattedBytes(exportBytesTotal))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else if exportBytesProcessed > 0 {
+                    Text("\(formattedBytes(exportBytesProcessed)) processed…")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                Text(exportStatusMessage.isEmpty ? "Exporting items…" : exportStatusMessage)
+                    .font(.headline)
+
+                if exportItemsTotal > 0 {
+                    Text("\(exportItemsProcessed) of \(exportItemsTotal)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if !exportDetailMessage.isEmpty {
+                    Text(exportDetailMessage)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                if exportCancelRequested {
+                    Text("Cancel requested… finishing current file")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                }
+
+                Button("Cancel Export") {
+                    exportCancelRequested = true
+                    exportStatusMessage = "Canceling export…"
+                    if exportDetailMessage.isEmpty {
+                        exportDetailMessage = "Finishing current file"
+                    }
+                    exportTask?.cancel()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(exportCancelRequested)
+            }
+            .padding(24)
+            .background(.ultraThickMaterial)
+            .cornerRadius(16)
+            .shadow(radius: 18)
+        }
+        .transition(.opacity)
+    }
     
 #if DEBUG
     func resetVaultForDevelopment() {
@@ -784,6 +1010,7 @@ struct MainVaultView: View {
                                     } label: {
                                         Label("Export", systemImage: "square.and.arrow.up")
                                     }
+                                    .disabled(exportInProgress)
 #endif
                                     Button(role: .destructive) {
                                         deleteSelectedPhotos()
@@ -827,7 +1054,7 @@ struct MainVaultView: View {
                                 Label("Capture", systemImage: "camera.fill")
                             }
                             .buttonStyle(.bordered)
-                            .disabled(captureInProgress)
+                            .disabled(captureInProgress || exportInProgress)
                         }
                         .controlSize(.small)
 #endif
@@ -1078,6 +1305,9 @@ struct MainVaultView: View {
         }
             if captureInProgress {
                 captureProgressOverlay
+            }
+            if exportInProgress {
+                exportProgressOverlay
             }
         }
     }
