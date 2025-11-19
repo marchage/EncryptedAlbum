@@ -13,6 +13,19 @@ class FileService {
         self.cryptoService = cryptoService
     }
 
+    // MARK: - Streaming Format
+
+    private struct StreamFileHeader {
+        let version: UInt8
+        let mediaType: MediaType
+        let originalSize: UInt64
+        let chunkSize: UInt32
+    }
+
+    private var streamMagicData: Data {
+        Data(CryptoConstants.streamingMagic.utf8)
+    }
+
     // MARK: - Directory Management
 
     /// Creates the photos directory if it doesn't exist
@@ -46,6 +59,68 @@ class FileService {
         try self.setExtendedAttribute(name: "com.secretvault.hmac", data: hmac, at: fileURL)
     }
 
+    /// Encrypts a file already on disk by streaming chunks to the destination file.
+    func saveStreamEncryptedFile(from sourceURL: URL, filename: String, mediaType: MediaType, to directory: URL, encryptionKey: SymmetricKey, hmacKey _: SymmetricKey, progressHandler: ((Int64) async -> Void)? = nil) async throws {
+        let destinationURL = directory.appendingPathComponent(filename)
+
+        if FileManager.default.fileExists(atPath: destinationURL.path) {
+            throw VaultError.fileAlreadyExists(path: destinationURL.path)
+        }
+
+        let attributes = try FileManager.default.attributesOfItem(atPath: sourceURL.path)
+        let fileSize = attributes[.size] as? NSNumber ?? 0
+
+        FileManager.default.createFile(atPath: destinationURL.path, contents: nil)
+
+        let readHandle = try FileHandle(forReadingFrom: sourceURL)
+        let writeHandle = try FileHandle(forWritingTo: destinationURL)
+
+        defer {
+            try? readHandle.close()
+            try? writeHandle.close()
+        }
+
+        let header = StreamFileHeader(
+            version: CryptoConstants.streamingVersion,
+            mediaType: mediaType,
+            originalSize: fileSize.uint64Value,
+            chunkSize: UInt32(CryptoConstants.streamingChunkSize)
+        )
+
+        do {
+            try writeStreamHeader(header, to: writeHandle)
+
+            let chunkSize = CryptoConstants.streamingChunkSize
+            var totalProcessed: Int64 = 0
+
+            while true {
+                try Task.checkCancellation()
+                guard let chunkData = try readHandle.read(upToCount: chunkSize), !chunkData.isEmpty else {
+                    break
+                }
+
+                let nonce = AES.GCM.Nonce()
+                let sealedBox = try AES.GCM.seal(chunkData, using: encryptionKey, nonce: nonce)
+
+                var chunkLength = UInt32(chunkData.count).littleEndian
+                try writeHandle.write(contentsOf: Data(bytes: &chunkLength, count: MemoryLayout<UInt32>.size))
+
+                let nonceData = nonce.withUnsafeBytes { Data($0) }
+                try writeHandle.write(contentsOf: nonceData)
+                try writeHandle.write(contentsOf: sealedBox.ciphertext)
+                try writeHandle.write(contentsOf: sealedBox.tag)
+
+                totalProcessed += Int64(chunkData.count)
+                if let progressHandler = progressHandler {
+                    await progressHandler(totalProcessed)
+                }
+            }
+        } catch {
+            try? FileManager.default.removeItem(at: destinationURL)
+            throw error
+        }
+    }
+
     /// Loads and decrypts file with integrity verification
     func loadEncryptedFile(filename: String, from directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws -> Data {
         let fileURL = directory.appendingPathComponent(filename)
@@ -53,6 +128,10 @@ class FileService {
         // Check if file exists
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             throw VaultError.fileNotFound(path: fileURL.path)
+        }
+
+        if let streamData = try await decryptStreamFileIfNeeded(at: fileURL, encryptionKey: encryptionKey) {
+            return streamData
         }
 
         // Read encrypted data
@@ -72,6 +151,114 @@ class FileService {
         let decryptedData = try await self.cryptoService.decryptDataWithIntegrity(encryptedData, nonce: nonce, hmac: hmac, encryptionKey: encryptionKey, hmacKey: hmacKey)
 
         return decryptedData
+    }
+
+    private func decryptStreamFileIfNeeded(at fileURL: URL, encryptionKey: SymmetricKey) async throws -> Data? {
+        guard let handle = try? FileHandle(forReadingFrom: fileURL) else {
+            return nil
+        }
+
+        defer { try? handle.close() }
+
+        guard let header = try readStreamHeader(from: handle) else {
+            return nil
+        }
+
+        return try await decryptStreamFile(from: handle, header: header, encryptionKey: encryptionKey)
+    }
+
+    private func writeStreamHeader(_ header: StreamFileHeader, to handle: FileHandle) throws {
+        var data = Data()
+        data.append(streamMagicData)
+        data.append(header.version)
+        data.append(header.mediaType == .video ? 0x02 : 0x01)
+        data.append(contentsOf: [UInt8](repeating: 0, count: 2))
+
+        var originalSize = header.originalSize.littleEndian
+        data.append(Data(bytes: &originalSize, count: MemoryLayout<UInt64>.size))
+
+        var chunkSize = header.chunkSize.littleEndian
+        data.append(Data(bytes: &chunkSize, count: MemoryLayout<UInt32>.size))
+
+        try handle.write(contentsOf: data)
+    }
+
+    private func readStreamHeader(from handle: FileHandle) throws -> StreamFileHeader? {
+        try handle.seek(toOffset: 0)
+        guard let magicData = try handle.read(upToCount: streamMagicData.count), magicData == streamMagicData else {
+            try handle.seek(toOffset: 0)
+            return nil
+        }
+
+        let headerSize = 1 + 1 + 2 + 8 + 4
+        guard let headerData = try handle.read(upToCount: headerSize), headerData.count == headerSize else {
+            throw VaultError.fileReadFailed(path: handle.description, reason: "Incomplete stream header")
+        }
+
+        return headerData.withUnsafeBytes { rawBuffer in
+            let buffer = rawBuffer.bindMemory(to: UInt8.self)
+            let version = buffer[0]
+            let mediaByte = buffer[1]
+            let mediaType: MediaType = mediaByte == 0x02 ? .video : .photo
+            // Skip 2 reserved bytes at offsets 2-3
+            let originalSize = buffer.baseAddress!.advanced(by: 4).withMemoryRebound(to: UInt64.self, capacity: 1) { ptr in
+                UInt64(littleEndian: ptr.pointee)
+            }
+            let chunkSize = buffer.baseAddress!.advanced(by: 12).withMemoryRebound(to: UInt32.self, capacity: 1) { ptr in
+                UInt32(littleEndian: ptr.pointee)
+            }
+
+            return StreamFileHeader(version: version, mediaType: mediaType, originalSize: originalSize, chunkSize: chunkSize)
+        }
+    }
+
+    private func decryptStreamFile(from handle: FileHandle, header: StreamFileHeader, encryptionKey: SymmetricKey) async throws -> Data {
+        var decrypted = Data()
+        if header.originalSize > 0 && header.originalSize < UInt64(Int.max) {
+            decrypted.reserveCapacity(Int(header.originalSize))
+        }
+
+        while true {
+            try Task.checkCancellation()
+            guard let lengthData = try handle.read(upToCount: MemoryLayout<UInt32>.size), !lengthData.isEmpty else {
+                break
+            }
+
+            guard lengthData.count == MemoryLayout<UInt32>.size else {
+                throw VaultError.decryptionFailed(reason: "Corrupted chunk length")
+            }
+
+            let chunkLength = UInt32(littleEndian: lengthData.withUnsafeBytes { $0.load(as: UInt32.self) })
+
+            let nonceData = try readExact(from: handle, count: CryptoConstants.streamingNonceSize)
+            guard let nonce = try? AES.GCM.Nonce(data: nonceData) else {
+                throw VaultError.decryptionFailed(reason: "Invalid chunk nonce")
+            }
+
+            let ciphertext = try readExact(from: handle, count: Int(chunkLength))
+            let tag = try readExact(from: handle, count: CryptoConstants.streamingTagSize)
+
+            let sealedBox = try AES.GCM.SealedBox(nonce: nonce, ciphertext: ciphertext, tag: tag)
+            let chunk = try AES.GCM.open(sealedBox, using: encryptionKey)
+            decrypted.append(chunk)
+        }
+
+        return decrypted
+    }
+
+    private func readExact(from handle: FileHandle, count: Int) throws -> Data {
+        var remaining = count
+        var data = Data(capacity: count)
+
+        while remaining > 0 {
+            guard let chunk = try handle.read(upToCount: remaining), !chunk.isEmpty else {
+                throw VaultError.fileReadFailed(path: handle.description, reason: "Unexpected EOF while reading stream")
+            }
+            data.append(chunk)
+            remaining -= chunk.count
+        }
+
+        return data
     }
 
     /// Securely deletes a file with multiple pass overwrite

@@ -593,23 +593,45 @@ struct PhotosLibraryPicker: View {
                             do {
                                 print("Processing asset: \(photoData.asset.localIdentifier)")
                                 
-                                guard let mediaResult = await PhotosLibraryService.shared.getMediaDataAsync(for: photoData.asset),
-                                      let mediaData = mediaResult.data else {
+                                guard let mediaResult = await PhotosLibraryService.shared.getMediaDataAsync(for: photoData.asset) else {
                                     print("❌ Failed to get media data for asset: \(photoData.asset.localIdentifier)")
                                     return (photoData.asset, false)
                                 }
-                                
-                                try await vaultManager.hidePhoto(
-                                    imageData: mediaData,
-                                    filename: mediaResult.filename,
-                                    dateTaken: mediaResult.dateTaken,
-                                    sourceAlbum: photoData.album,
-                                    assetIdentifier: photoData.asset.localIdentifier,
-                                    mediaType: mediaResult.mediaType,
-                                    duration: mediaResult.duration,
-                                    location: mediaResult.location,
-                                    isFavorite: mediaResult.isFavorite
-                                )
+
+                                defer {
+                                    if mediaResult.shouldDeleteFileWhenFinished, let tempURL = mediaResult.fileURL {
+                                        try? FileManager.default.removeItem(at: tempURL)
+                                    }
+                                }
+
+                                if let fileURL = mediaResult.fileURL {
+                                    try await vaultManager.hidePhoto(
+                                        mediaSource: .fileURL(fileURL),
+                                        filename: mediaResult.filename,
+                                        dateTaken: mediaResult.dateTaken,
+                                        sourceAlbum: photoData.album,
+                                        assetIdentifier: photoData.asset.localIdentifier,
+                                        mediaType: mediaResult.mediaType,
+                                        duration: mediaResult.duration,
+                                        location: mediaResult.location,
+                                        isFavorite: mediaResult.isFavorite
+                                    )
+                                } else if let mediaData = mediaResult.data {
+                                    try await vaultManager.hidePhoto(
+                                        imageData: mediaData,
+                                        filename: mediaResult.filename,
+                                        dateTaken: mediaResult.dateTaken,
+                                        sourceAlbum: photoData.album,
+                                        assetIdentifier: photoData.asset.localIdentifier,
+                                        mediaType: mediaResult.mediaType,
+                                        duration: mediaResult.duration,
+                                        location: mediaResult.location,
+                                        isFavorite: mediaResult.isFavorite
+                                    )
+                                } else {
+                                    print("❌ Media result lacked both data and file URL for asset: \(photoData.asset.localIdentifier)")
+                                    return (photoData.asset, false)
+                                }
                                 
                                 print("✅ \(mediaResult.mediaType == .video ? "Video" : "Photo") added to vault: \(mediaResult.filename)")
                                 return (photoData.asset, true)

@@ -53,43 +53,38 @@ struct CameraCaptureView: UIViewControllerRepresentable {
             }
             
             DispatchQueue.global(qos: .userInitiated).async {
-                var data: Data?
+                var mediaSource: MediaSource?
                 var filename = "Capture_\(Date().timeIntervalSince1970).jpg"
                 var mediaType: MediaType = .photo
                 var duration: TimeInterval?
                 
                 if let image = info[.originalImage] as? UIImage,
                    let imageData = image.jpegData(compressionQuality: 0.9) {
-                    data = imageData
+                    mediaSource = .data(imageData)
                     filename = "Capture_\(Date().timeIntervalSince1970).jpg"
                     mediaType = .photo
                 } else if let videoURL = info[.mediaURL] as? URL {
-                    do {
-                        data = try Data(contentsOf: videoURL)
-                        filename = "Video_\(Date().timeIntervalSince1970).mov"
-                        mediaType = .video
-                        
-                        // Get video duration
-                        let asset = AVAsset(url: videoURL)
-                        if #available(iOS 16.0, macOS 13.0, *) {
-                            Task {
-                                if let loadedDuration = try? await asset.load(.duration) {
-                                    duration = loadedDuration.seconds
-                                }
+                    mediaSource = .fileURL(videoURL)
+                    filename = "Video_\(Date().timeIntervalSince1970).mov"
+                    mediaType = .video
+
+                    let asset = AVAsset(url: videoURL)
+                    if #available(iOS 16.0, macOS 13.0, *) {
+                        Task {
+                            if let loadedDuration = try? await asset.load(.duration) {
+                                duration = loadedDuration.seconds
                             }
-                        } else {
-                            duration = asset.duration.seconds
                         }
-                    } catch {
-                        print("Failed to read video data: \(error)")
+                    } else {
+                        duration = asset.duration.seconds
                     }
                 }
                 
-                if let data = data {
+                if let mediaSource = mediaSource {
                     Task {
                         do {
                             try await self.parent.vaultManager.hidePhoto(
-                                imageData: data,
+                                mediaSource: mediaSource,
                                 filename: filename,
                                 dateTaken: Date(),
                                 sourceAlbum: "Captured to Vault",

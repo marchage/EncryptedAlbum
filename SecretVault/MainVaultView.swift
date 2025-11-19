@@ -383,15 +383,9 @@ struct MainVaultView: View {
 
             do {
                 try Task.checkCancellation()
-                let data = try await readFileDataWithProgress(from: url, expectedSize: fileSizeValue) { bytesRead in
-                    await MainActor.run {
-                        captureBytesProcessed = bytesRead
-                    }
-                }
-                try Task.checkCancellation()
                 let mediaType: MediaType = isVideoFile(url) ? .video : .photo
                 try await vaultManager.hidePhoto(
-                    imageData: data,
+                    mediaSource: .fileURL(url),
                     filename: filename,
                     dateTaken: nil,
                     sourceAlbum: "Captured to Vault",
@@ -399,7 +393,12 @@ struct MainVaultView: View {
                     mediaType: mediaType,
                     duration: nil,
                     location: nil,
-                    isFavorite: nil
+                    isFavorite: nil,
+                    progressHandler: { bytesRead in
+                        await MainActor.run {
+                            captureBytesProcessed = bytesRead
+                        }
+                    }
                 )
                 successCount += 1
             } catch is CancellationError {
@@ -487,34 +486,6 @@ struct MainVaultView: View {
         return parts.joined(separator: " • ")
     }
 
-    private func readFileDataWithProgress(from url: URL, expectedSize: Int64, chunkSize: Int = 8 * 1024 * 1024, progressHandler: @escaping (Int64) async -> Void) async throws -> Data {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-
-        var data = Data()
-        if expectedSize > 0 && expectedSize < Int64(Int.max) {
-            data.reserveCapacity(Int(expectedSize))
-        }
-
-        var totalRead: Int64 = 0
-        while true {
-            try Task.checkCancellation()
-            let chunk: Data = try autoreleasepool {
-                do {
-                    return try handle.read(upToCount: chunkSize) ?? Data()
-                } catch {
-                    throw VaultError.fileReadFailed(path: url.path, reason: error.localizedDescription)
-                }
-            }
-
-            if chunk.isEmpty { break }
-            data.append(chunk)
-            totalRead += Int64(chunk.count)
-            await progressHandler(totalRead)
-        }
-
-        return data
-    }
 
     private func isVideoFile(_ url: URL) -> Bool {
         let videoExtensions: Set<String> = ["mov", "mp4", "m4v", "avi", "mkv", "mpg", "mpeg", "hevc", "webm"]

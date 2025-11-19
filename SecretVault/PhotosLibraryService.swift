@@ -6,11 +6,24 @@ import AppKit
 import UIKit
 #endif
 import CoreLocation
+import AVFoundation
 
 enum LibraryType {
     case personal
     case shared
     case both
+}
+
+struct MediaFetchResult {
+    let data: Data?
+    let fileURL: URL?
+    let filename: String
+    let dateTaken: Date?
+    let mediaType: MediaType
+    let duration: TimeInterval?
+    let location: SecurePhoto.Location?
+    let isFavorite: Bool?
+    let shouldDeleteFileWhenFinished: Bool
 }
 
 /// Service for interacting with the Photos library across platforms.
@@ -213,45 +226,187 @@ class PhotosLibraryService {
         return assets
     }
     
-    /// Retrieves media data for a Photos asset asynchronously.
-    /// - Parameter asset: The PHAsset to fetch
-    /// - Returns: Tuple with data, filename, metadata, and type
-    func getMediaDataAsync(for asset: PHAsset) async -> (data: Data?, filename: String, dateTaken: Date?, mediaType: MediaType, duration: TimeInterval?, location: SecurePhoto.Location?, isFavorite: Bool?)? {
-        // Use Task with timeout pattern for better control
-        let result = await withTaskGroup(of: (data: Data?, filename: String, dateTaken: Date?, mediaType: MediaType, duration: TimeInterval?, location: SecurePhoto.Location?, isFavorite: Bool?)?.self) { group in
-            // Add timeout task
+    /// Retrieves media data for a Photos asset asynchronously, preferring file-backed results for streaming encryption.
+    func getMediaDataAsync(for asset: PHAsset) async -> MediaFetchResult? {
+        let result = await withTaskGroup(of: MediaFetchResult?.self) { group in
             group.addTask {
-                try? await Task.sleep(nanoseconds: 30_000_000_000) // 30 second timeout
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
                 print("⏱️ Timeout (30s) fetching media data for asset: \(asset.localIdentifier)")
                 return nil
             }
-            
-            // Add actual fetch task
+
             group.addTask {
-                await withCheckedContinuation { continuation in
-                    if asset.mediaType == .image {
-                        self.getImageData(for: asset) { data, filename, dateTaken, mediaType, duration, location, isFavorite in
-                            continuation.resume(returning: (data: data, filename: filename, dateTaken: dateTaken, mediaType: mediaType, duration: duration, location: location, isFavorite: isFavorite))
-                        }
-                    } else if asset.mediaType == .video {
-                        self.getVideoData(for: asset) { data, filename, dateTaken, mediaType, duration, location, isFavorite in
-                            continuation.resume(returning: (data: data, filename: filename, dateTaken: dateTaken, mediaType: mediaType, duration: duration, location: location, isFavorite: isFavorite))
-                        }
-                    } else {
-                        continuation.resume(returning: nil)
-                    }
-                }
+                await self.fetchMediaResource(for: asset)
             }
-            
-            // Return the first result (either timeout or actual data)
+
             if let firstResult = await group.next() {
-                group.cancelAll() // Cancel the other task
+                group.cancelAll()
                 return firstResult
             }
             return nil
         }
-        
+
         return result
+    }
+
+    private func fetchMediaResource(for asset: PHAsset) async -> MediaFetchResult? {
+        switch asset.mediaType {
+        case .image:
+            return await fetchPhotoResource(for: asset)
+        case .video:
+            return await fetchVideoResource(for: asset)
+        default:
+            return nil
+        }
+    }
+
+    private func fetchPhotoResource(for asset: PHAsset) async -> MediaFetchResult? {
+        let resources = PHAssetResource.assetResources(for: asset)
+        if let resource = resources.first(where: { $0.type == .photo || $0.type == .fullSizePhoto }) ?? resources.first {
+            let filename = resource.originalFilename.isEmpty ? "photo_\(UUID().uuidString).jpg" : resource.originalFilename
+            do {
+                let tempURL = try await exportResource(resource, suggestedName: filename)
+                return MediaFetchResult(
+                    data: nil,
+                    fileURL: tempURL,
+                    filename: filename,
+                    dateTaken: asset.creationDate,
+                    mediaType: .photo,
+                    duration: nil,
+                    location: asset.location.map { SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) },
+                    isFavorite: asset.isFavorite,
+                    shouldDeleteFileWhenFinished: true
+                )
+            } catch {
+                print("❌ Failed to export photo resource: \(error.localizedDescription)")
+            }
+        }
+
+        return await legacyPhotoResult(for: asset)
+    }
+
+    private func fetchVideoResource(for asset: PHAsset) async -> MediaFetchResult? {
+        do {
+            if let result = try await exportVideoAsset(asset) {
+                return result
+            }
+        } catch {
+            print("❌ Failed to export video resource: \(error.localizedDescription)")
+        }
+
+        return await legacyVideoResult(for: asset)
+    }
+
+    private func exportResource(_ resource: PHAssetResource, suggestedName: String) async throws -> URL {
+        let ext = (suggestedName as NSString).pathExtension
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension(ext.isEmpty ? "dat" : ext)
+
+        let options = PHAssetResourceRequestOptions()
+        options.isNetworkAccessAllowed = true
+
+        try await withCheckedThrowingContinuation { continuation in
+            PHAssetResourceManager.default().writeData(for: resource, toFile: tempURL, options: options) { error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: ())
+                }
+            }
+        }
+
+        return tempURL
+    }
+
+    private func exportVideoAsset(_ asset: PHAsset) async throws -> MediaFetchResult? {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MediaFetchResult?, Error>) in
+            let options = PHVideoRequestOptions()
+            options.isNetworkAccessAllowed = true
+            options.deliveryMode = .highQualityFormat
+
+            PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { avAsset, _, info in
+                if let error = info?[PHImageErrorKey] as? Error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let urlAsset = avAsset as? AVURLAsset else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+
+                do {
+                    let originalName = urlAsset.url.lastPathComponent
+                    let filename = originalName.isEmpty ? "video_\(UUID().uuidString).mov" : originalName
+                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "_" + filename)
+                    try? FileManager.default.removeItem(at: tempURL)
+                    try FileManager.default.copyItem(at: urlAsset.url, to: tempURL)
+
+                    let location = asset.location.map { SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
+                    let result = MediaFetchResult(
+                        data: nil,
+                        fileURL: tempURL,
+                        filename: filename,
+                        dateTaken: asset.creationDate,
+                        mediaType: .video,
+                        duration: asset.duration,
+                        location: location,
+                        isFavorite: asset.isFavorite,
+                        shouldDeleteFileWhenFinished: true
+                    )
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    private func legacyPhotoResult(for asset: PHAsset) async -> MediaFetchResult? {
+        await withCheckedContinuation { continuation in
+            self.getImageData(for: asset) { data, filename, dateTaken, _, duration, location, isFavorite in
+                guard let data = data else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+
+                continuation.resume(returning: MediaFetchResult(
+                    data: data,
+                    fileURL: nil,
+                    filename: filename,
+                    dateTaken: dateTaken,
+                    mediaType: .photo,
+                    duration: duration,
+                    location: location,
+                    isFavorite: isFavorite,
+                    shouldDeleteFileWhenFinished: false
+                ))
+            }
+        }
+    }
+
+    private func legacyVideoResult(for asset: PHAsset) async -> MediaFetchResult? {
+        await withCheckedContinuation { continuation in
+            self.getVideoData(for: asset) { data, filename, dateTaken, _, duration, location, isFavorite in
+                guard let data = data else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+
+                continuation.resume(returning: MediaFetchResult(
+                    data: data,
+                    fileURL: nil,
+                    filename: filename.isEmpty ? "video_\(UUID().uuidString).mov" : filename,
+                    dateTaken: dateTaken,
+                    mediaType: .video,
+                    duration: duration,
+                    location: location,
+                    isFavorite: isFavorite,
+                    shouldDeleteFileWhenFinished: false
+                ))
+            }
+        }
     }
     
     func getImageData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, SecurePhoto.Location?, Bool?) -> Void) {

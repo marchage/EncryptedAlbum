@@ -24,6 +24,13 @@ enum CryptoConstants {
     static let maxThumbnailFileSize: Int64 = 100 * 1024 * 1024  // 100MB
     static let maxSecureDeleteSize: Int64 = 100 * 1024 * 1024  // 100MB
 
+    /// Streaming encryption
+    static let streamingMagic = "SVSTRM01"
+    static let streamingVersion: UInt8 = 1
+    static let streamingChunkSize = 4 * 1024 * 1024  // 4MB chunks
+    static let streamingNonceSize = 12
+    static let streamingTagSize = 16
+
     /// Thumbnail dimensions
     static let maxThumbnailDimension: CGFloat = 300
 
