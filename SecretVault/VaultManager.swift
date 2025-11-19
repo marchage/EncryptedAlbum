@@ -870,6 +870,8 @@ class VaultManager: ObservableObject {
                                 self.restorationProgress.successItems += 1
                             }
 
+                            self.deletePhoto(photo)
+
                         } catch {
                             print("  ❌ Failed to process \(photo.filename): \(error)")
                             await MainActor.run {
@@ -885,23 +887,12 @@ class VaultManager: ObservableObject {
             try await group.waitForAll()
         }
         
-        // Delete all successfully restored photos from vault
         await MainActor.run {
-            let successCount = self.restorationProgress.successItems
-            print("🗑️ Deleting \(successCount) restored photos from vault")
-            
-            // Find successfully restored photos (this is a simplification - in practice you'd track which ones succeeded)
-            // For now, we'll delete all since the progress tracking shows successes
-            // In a real implementation, you'd track successful restores individually
-            
-            // Mark restoration as complete
             self.restorationProgress.isRestoring = false
-            
-            // Show summary
             let total = self.restorationProgress.totalItems
             let success = self.restorationProgress.successItems
             let failed = self.restorationProgress.failedItems
-            print("📊 Restoration complete: \(success)/\(total) successful, \(failed) failed")
+            print("📊 Restoration complete: \(success)/\(total) successful, \(failed) failed (successful items already removed from vault)")
         }
     }
     
