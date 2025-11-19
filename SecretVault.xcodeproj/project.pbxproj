@@ -32,6 +32,8 @@
 		986328E22ECE894300EAE9A9 /* VaultManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328DF2ECE894300EAE9A9 /* VaultManagerTests.swift */; };
 		986328E32ECE894300EAE9A9 /* FileServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328E02ECE894300EAE9A9 /* FileServiceTests.swift */; };
 		986328E42ECE894300EAE9A9 /* CryptoServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */; };
+		986328EC2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */; };
+		986328EE2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328ED2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift */; };
 		98C835F92EC9E6CD000997CF /* PhotosLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */; };
 		98C835FA2EC9E6CD000997CF /* VaultDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C904A396A6B1968CDD78D9 /* VaultDetailView.swift */; };
 		98C835FB2EC9E6CD000997CF /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C068CD08B70A6DBEA00400 /* UnlockView.swift */; };
@@ -53,6 +55,13 @@
 
 /* Begin PBXContainerItemProxy section */
 		986328DA2ECE88F600EAE9A9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9849B4492EB9893C00B17DAC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 981926512EC854B600C67291;
+			remoteInfo = "SecretVault iOS";
+		};
+		986328EF2ECE8CEF00EAE9A9 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9849B4492EB9893C00B17DAC /* Project object */;
 			proxyType = 1;
@@ -83,6 +92,9 @@
 		986328DF2ECE894300EAE9A9 /* VaultManagerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VaultManagerTests.swift; sourceTree = "<group>"; };
 		986328E02ECE894300EAE9A9 /* FileServiceTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FileServiceTests.swift; sourceTree = "<group>"; };
 		986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CryptoServiceTests.swift; sourceTree = "<group>"; };
+		986328E92ECE8CEF00EAE9A9 /* SecretVaultUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SecretVaultUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultUITests.swift; sourceTree = "<group>"; };
+		986328ED2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		9F96EA3625074B045C751E84 /* VaultManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6789012345677 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		A61A2BD7A0514BCA85111D3F /* VaultError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultError.swift; sourceTree = "<group>"; };
@@ -119,6 +131,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		986328E62ECE8CEF00EAE9A9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -127,6 +146,7 @@
 			children = (
 				9849B4532EB9893D00B17DAC /* SecretVault */,
 				986328D72ECE88F600EAE9A9 /* SecretVaultTests */,
+				986328EA2ECE8CEF00EAE9A9 /* SecretVaultUITests */,
 				9849B4522EB9893D00B17DAC /* Products */,
 				986328D12ECE882D00EAE9A9 /* Recovered References */,
 			);
@@ -138,6 +158,7 @@
 				9849B4512EB9893D00B17DAC /* SecretVault.app */,
 				981926522EC854B600C67291 /* SecretVault iOS.app */,
 				986328D62ECE88F600EAE9A9 /* SecretVaultTests.xctest */,
+				986328E92ECE8CEF00EAE9A9 /* SecretVaultUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -201,6 +222,15 @@
 			path = SecretVaultTests;
 			sourceTree = "<group>";
 		};
+		986328EA2ECE8CEF00EAE9A9 /* SecretVaultUITests */ = {
+			isa = PBXGroup;
+			children = (
+				986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */,
+				986328ED2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift */,
+			);
+			path = SecretVaultUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -256,6 +286,24 @@
 			productReference = 986328D62ECE88F600EAE9A9 /* SecretVaultTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		986328E82ECE8CEF00EAE9A9 /* SecretVaultUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 986328F12ECE8CEF00EAE9A9 /* Build configuration list for PBXNativeTarget "SecretVaultUITests" */;
+			buildPhases = (
+				986328E52ECE8CEF00EAE9A9 /* Sources */,
+				986328E62ECE8CEF00EAE9A9 /* Frameworks */,
+				986328E72ECE8CEF00EAE9A9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				986328F02ECE8CEF00EAE9A9 /* PBXTargetDependency */,
+			);
+			name = SecretVaultUITests;
+			productName = SecretVaultUITests;
+			productReference = 986328E92ECE8CEF00EAE9A9 /* SecretVaultUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -273,6 +321,10 @@
 						CreatedOnToolsVersion = 15.2;
 					};
 					986328D52ECE88F600EAE9A9 = {
+						CreatedOnToolsVersion = 15.2;
+						TestTargetID = 981926512EC854B600C67291;
+					};
+					986328E82ECE8CEF00EAE9A9 = {
 						CreatedOnToolsVersion = 15.2;
 						TestTargetID = 981926512EC854B600C67291;
 					};
@@ -294,6 +346,7 @@
 				9849B4502EB9893D00B17DAC /* SecretVault */,
 				981926512EC854B600C67291 /* SecretVault iOS */,
 				986328D52ECE88F600EAE9A9 /* SecretVaultTests */,
+				986328E82ECE8CEF00EAE9A9 /* SecretVaultUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -319,6 +372,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		986328D42ECE88F600EAE9A9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		986328E72ECE8CEF00EAE9A9 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -386,6 +446,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		986328E52ECE8CEF00EAE9A9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				986328EC2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift in Sources */,
+				986328EE2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -393,6 +462,11 @@
 			isa = PBXTargetDependency;
 			target = 981926512EC854B600C67291 /* SecretVault iOS */;
 			targetProxy = 986328DA2ECE88F600EAE9A9 /* PBXContainerItemProxy */;
+		};
+		986328F02ECE8CEF00EAE9A9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 981926512EC854B600C67291 /* SecretVault iOS */;
+			targetProxy = 986328EF2ECE8CEF00EAE9A9 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -685,6 +759,45 @@
 			};
 			name = Release;
 		};
+		986328F22ECE8CEF00EAE9A9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.SecretsVault.SecretVaultUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "SecretVault iOS";
+			};
+			name = Debug;
+		};
+		986328F32ECE8CEF00EAE9A9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.SecretsVault.SecretVaultUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "SecretVault iOS";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -720,6 +833,15 @@
 			buildConfigurations = (
 				986328DC2ECE88F600EAE9A9 /* Debug */,
 				986328DD2ECE88F600EAE9A9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		986328F12ECE8CEF00EAE9A9 /* Build configuration list for PBXNativeTarget "SecretVaultUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				986328F22ECE8CEF00EAE9A9 /* Debug */,
+				986328F32ECE8CEF00EAE9A9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
