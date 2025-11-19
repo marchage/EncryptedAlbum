@@ -743,6 +743,15 @@ class PhotosLibraryService {
     ///   - isFavorite: Optional favorite flag
     ///   - completion: Called on main queue when Photos reports success/failure
     func saveMediaFileToLibrary(_ fileURL: URL, filename: String, mediaType: MediaType, toAlbum albumName: String? = nil, creationDate: Date? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil, completion: @escaping (Bool) -> Void) {
+        // Ensure the file exists before attempting to save
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            print("Failed to save media file to library: File does not exist at \(fileURL.path)")
+            DispatchQueue.main.async {
+                completion(false)
+            }
+            return
+        }
+        
         let resourceType: PHAssetResourceType = (mediaType == .video) ? .video : .photo
         let options = PHAssetResourceCreationOptions()
         if !filename.isEmpty {

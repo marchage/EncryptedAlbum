@@ -767,12 +767,21 @@ class VaultManager: ObservableObject {
             try? FileManager.default.removeItem(at: tempURL)
         }
 
+        try await saveTempFileToLibraryAndDeletePhoto(tempURL: tempURL, photo: photo, targetAlbum: photo.sourceAlbum)
+    }
+    
+    /// Helper method to save a temporary file to Photos library and delete the photo from vault on success.
+    /// - Parameters:
+    ///   - tempURL: The temporary URL of the decrypted media file
+    ///   - photo: The SecurePhoto record
+    ///   - targetAlbum: The target album name (optional)
+    private func saveTempFileToLibraryAndDeletePhoto(tempURL: URL, photo: SecurePhoto, targetAlbum: String?) async throws {
         try await withCheckedThrowingContinuation { continuation in
             PhotosLibraryService.shared.saveMediaFileToLibrary(
                 tempURL,
                 filename: photo.filename,
                 mediaType: photo.mediaType,
-                toAlbum: photo.sourceAlbum,
+                toAlbum: targetAlbum,
                 creationDate: photo.dateTaken,
                 location: photo.location,
                 isFavorite: photo.isFavorite
@@ -847,30 +856,12 @@ class VaultManager: ObservableObject {
                                 try? FileManager.default.removeItem(at: tempURL)
                             }
 
-                            try await withCheckedThrowingContinuation { continuation in
-                                PhotosLibraryService.shared.saveMediaFileToLibrary(
-                                    tempURL,
-                                    filename: photo.filename,
-                                    mediaType: photo.mediaType,
-                                    toAlbum: targetAlbum,
-                                    creationDate: photo.dateTaken,
-                                    location: photo.location,
-                                    isFavorite: photo.isFavorite
-                                ) { success in
-                                    if success {
-                                        continuation.resume(returning: ())
-                                    } else {
-                                        continuation.resume(throwing: VaultError.unknownError(reason: "Failed to save \(photo.filename) to Photos library"))
-                                    }
-                                }
-                            }
+                            try await self.saveTempFileToLibraryAndDeletePhoto(tempURL: tempURL, photo: photo, targetAlbum: targetAlbum)
 
                             await MainActor.run {
                                 self.restorationProgress.processedItems += 1
                                 self.restorationProgress.successItems += 1
                             }
-
-                            self.deletePhoto(photo)
 
                         } catch {
                             print("  ❌ Failed to process \(photo.filename): \(error)")
