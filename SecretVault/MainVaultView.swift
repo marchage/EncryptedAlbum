@@ -7,7 +7,6 @@ import SwiftUI
 
 struct MainVaultView: View {
     @EnvironmentObject var vaultManager: VaultManager
-    @Environment(\.colorScheme) private var colorScheme
 
     private struct RestorationProgressOverlayView: View {
         @ObservedObject var progress: RestorationProgress
@@ -160,14 +159,6 @@ struct MainVaultView: View {
         #else
             return 44
         #endif
-    }
-
-    private var cardBackgroundColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.03)
-    }
-
-    private var cardStrokeColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.06)
     }
 
     var filteredPhotos: [SecurePhoto] {
@@ -1234,14 +1225,8 @@ struct MainVaultView: View {
                                 }
                             }
                             .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(cardBackgroundColor)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .stroke(cardStrokeColor, lineWidth: 1)
-                                    )
-                            )
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
                         }
 
                         VStack(alignment: .leading, spacing: 12) {
@@ -1278,14 +1263,8 @@ struct MainVaultView: View {
                             #endif
                         }
                         .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(cardBackgroundColor)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke(cardStrokeColor, lineWidth: 1)
-                                )
-                        )
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
 
                         if let note = vaultManager.hideNotification {
                             let validPhotos =
