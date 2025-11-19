@@ -186,12 +186,14 @@ struct MainVaultView: View {
                 break
             }
 
+            let expectedSize = photo.fileSize
+            let expectedSizeText = expectedSize > 0 ? formatter.string(fromByteCount: expectedSize) : nil
             await MainActor.run {
                 exportStatusMessage = "Decrypting \(photo.filename)…"
-                exportDetailMessage = detailText(for: index + 1, total: photos.count, sizeDescription: nil)
+                exportDetailMessage = detailText(for: index + 1, total: photos.count, sizeDescription: expectedSizeText)
                 exportItemsProcessed = index
                 exportBytesProcessed = 0
-                exportBytesTotal = 0
+                exportBytesTotal = expectedSize
             }
 
             var destinationURL: URL?
@@ -898,11 +900,15 @@ struct MainVaultView: View {
                 if exportBytesTotal > 0 {
                     ProgressView(value: Double(exportBytesProcessed), total: Double(max(exportBytesTotal, 1)))
                         .progressViewStyle(.linear)
+                        .frame(maxWidth: 260)
                     Text("\(formattedBytes(exportBytesProcessed)) of \(formattedBytes(exportBytesTotal))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                } else if exportBytesProcessed > 0 {
-                    Text("\(formattedBytes(exportBytesProcessed)) processed…")
+                } else {
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 260)
+                    Text(exportBytesProcessed > 0 ? "\(formattedBytes(exportBytesProcessed)) processed…" : "Preparing file size…")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
