@@ -603,7 +603,7 @@ class PhotosLibraryService {
         }
     }
     
-    /// Saves media (photo or video) to the Photos library with metadata.
+    /// Saves media (photo or video) to the Photos library with metadata from in-memory data.
     /// - Parameters:
     ///   - mediaData: Raw media data
     ///   - filename: Filename for the media
@@ -728,6 +728,59 @@ class PhotosLibraryService {
                 DispatchQueue.main.async {
                     completion(success)
                 }
+            }
+        }
+    }
+
+    /// Saves media already materialized on disk to the Photos library.
+    /// - Parameters:
+    ///   - fileURL: Source file URL that should remain valid until completion handler fires
+    ///   - filename: Preferred filename for the Photos asset
+    ///   - mediaType: .photo or .video
+    ///   - albumName: Optional album destination
+    ///   - creationDate: Original capture timestamp
+    ///   - location: Optional GPS metadata
+    ///   - isFavorite: Optional favorite flag
+    ///   - completion: Called on main queue when Photos reports success/failure
+    func saveMediaFileToLibrary(_ fileURL: URL, filename: String, mediaType: MediaType, toAlbum albumName: String? = nil, creationDate: Date? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil, completion: @escaping (Bool) -> Void) {
+        let resourceType: PHAssetResourceType = (mediaType == .video) ? .video : .photo
+        let options = PHAssetResourceCreationOptions()
+        if !filename.isEmpty {
+            options.originalFilename = filename
+        }
+
+        PHPhotoLibrary.shared().performChanges({
+            let creationRequest = PHAssetCreationRequest.forAsset()
+            creationRequest.addResource(with: resourceType, fileURL: fileURL, options: options)
+
+            if let creationDate = creationDate {
+                creationRequest.creationDate = creationDate
+            }
+            if let location = location {
+                creationRequest.location = CLLocation(latitude: location.latitude, longitude: location.longitude)
+            }
+            if let isFavorite = isFavorite {
+                creationRequest.isFavorite = isFavorite
+            }
+
+            if let albumName = albumName, let assetPlaceholder = creationRequest.placeholderForCreatedAsset {
+                let fetchOptions = PHFetchOptions()
+                fetchOptions.predicate = NSPredicate(format: "title = %@", albumName)
+                let collections = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
+
+                if let album = collections.firstObject {
+                    PHAssetCollectionChangeRequest(for: album)?.addAssets([assetPlaceholder] as NSArray)
+                } else {
+                    let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
+                    createAlbumRequest.addAssets([assetPlaceholder] as NSArray)
+                }
+            }
+        }) { success, error in
+            if let error = error {
+                print("Failed to save media file to library: \(error.localizedDescription)")
+            }
+            DispatchQueue.main.async {
+                completion(success)
             }
         }
     }

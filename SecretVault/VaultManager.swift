@@ -762,13 +762,14 @@ class VaultManager: ObservableObject {
             lastActivity = Date()
         }
         
-        // Decrypt the photo
-        let decryptedData = try await self.decryptPhoto(photo)
-        
-        // Save to Photos library (to original album if available) with metadata
-        return try await withCheckedThrowingContinuation { continuation in
-            PhotosLibraryService.shared.saveMediaToLibrary(
-                decryptedData,
+        let tempURL = try await self.decryptPhotoToTemporaryURL(photo)
+        defer {
+            try? FileManager.default.removeItem(at: tempURL)
+        }
+
+        try await withCheckedThrowingContinuation { continuation in
+            PhotosLibraryService.shared.saveMediaFileToLibrary(
+                tempURL,
                 filename: photo.filename,
                 mediaType: photo.mediaType,
                 toAlbum: photo.sourceAlbum,
@@ -778,8 +779,6 @@ class VaultManager: ObservableObject {
             ) { success in
                 if success {
                     print("Media restored to library with metadata: \(photo.filename)")
-                    
-                    // Delete from vault (deletePhoto already handles main thread dispatch)
                     self.deletePhoto(photo)
                     continuation.resume(returning: ())
                 } else {
@@ -837,14 +836,20 @@ class VaultManager: ObservableObject {
                     // Process photos sequentially in each group to avoid overwhelming the Photos library
                     for photo in photosInGroup {
                         do {
+                            try Task.checkCancellation()
                             print("  🔓 Decrypting: \(photo.filename) (\(photo.mediaType.rawValue))")
-                            let decryptedData = try await self.decryptPhoto(photo)
-                            print("  ✅ Decrypted successfully: \(photo.filename) - \(decryptedData.count) bytes")
-                            
-                            // Save to Photos library
+                            let tempURL = try await self.decryptPhotoToTemporaryURL(photo)
+                            print("  ✅ Decrypted successfully: \(photo.filename) -> \(tempURL.lastPathComponent)")
+
+                            try Task.checkCancellation()
+
+                            defer {
+                                try? FileManager.default.removeItem(at: tempURL)
+                            }
+
                             try await withCheckedThrowingContinuation { continuation in
-                                PhotosLibraryService.shared.saveMediaToLibrary(
-                                    decryptedData,
+                                PhotosLibraryService.shared.saveMediaFileToLibrary(
+                                    tempURL,
                                     filename: photo.filename,
                                     mediaType: photo.mediaType,
                                     toAlbum: targetAlbum,
@@ -859,13 +864,12 @@ class VaultManager: ObservableObject {
                                     }
                                 }
                             }
-                            
-                            // Update progress on success
+
                             await MainActor.run {
                                 self.restorationProgress.processedItems += 1
                                 self.restorationProgress.successItems += 1
                             }
-                            
+
                         } catch {
                             print("  ❌ Failed to process \(photo.filename): \(error)")
                             await MainActor.run {
