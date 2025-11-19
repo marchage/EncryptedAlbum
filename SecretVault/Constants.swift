@@ -54,6 +54,8 @@ enum FileConstants {
     static let thumbnailFileExtension = "jpg"
     static let encryptedThumbnailSuffix = "_thumb.enc"
     static let thumbnailSuffix = "_thumb.jpg"
+    static let tempWorkingDirectoryName = "SecretVaultTemp"
+    static let decryptedTempPrefix = "sv-decrypted"
 }
 
 /// Security validation constants

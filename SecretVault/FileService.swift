@@ -8,9 +8,43 @@ import Photos
 /// Service responsible for all file system operations in the vault
 class FileService {
     private let cryptoService: CryptoService
+    private let tempDirectory: URL
 
     init(cryptoService: CryptoService) {
         self.cryptoService = cryptoService
+        let baseTemp = FileManager.default.temporaryDirectory.appendingPathComponent(FileConstants.tempWorkingDirectoryName, isDirectory: true)
+        if !FileManager.default.fileExists(atPath: baseTemp.path) {
+            try? FileManager.default.createDirectory(at: baseTemp, withIntermediateDirectories: true)
+        }
+        self.tempDirectory = baseTemp
+    }
+
+    /// Removes stale working files that may have been left behind after crashes or aborted operations.
+    func cleanupTemporaryArtifacts(olderThan: TimeInterval = 24 * 60 * 60) {
+        let fm = FileManager.default
+        guard let contents = try? fm.contentsOfDirectory(at: tempDirectory, includingPropertiesForKeys: [.contentModificationDateKey], options: []) else {
+            return
+        }
+
+        let cutoff = Date().addingTimeInterval(-olderThan)
+        for url in contents {
+            guard let values = try? url.resourceValues(forKeys: [.contentModificationDateKey]),
+                  let modified = values.contentModificationDate else {
+                continue
+            }
+
+            if modified < cutoff {
+                try? fm.removeItem(at: url)
+            }
+        }
+    }
+
+    private func makeTemporaryFileURL(preferredExtension: String?) -> URL {
+        let filename = "\(FileConstants.decryptedTempPrefix)-\(UUID().uuidString)"
+        if let ext = preferredExtension, !ext.isEmpty {
+            return tempDirectory.appendingPathComponent(filename).appendingPathExtension(ext)
+        }
+        return tempDirectory.appendingPathComponent(filename)
     }
 
     // MARK: - Streaming Format
@@ -130,30 +164,32 @@ class FileService {
             throw VaultError.fileNotFound(path: fileURL.path)
         }
 
-        if let streamData = try await decryptStreamFileIfNeeded(at: fileURL, encryptionKey: encryptionKey) {
+        if let streamData = try await decryptStreamFileDataIfNeeded(at: fileURL, encryptionKey: encryptionKey) {
             return streamData
         }
 
-        // Read encrypted data
-        let encryptedData = try Data(contentsOf: fileURL)
-
-        // Read nonce from extended attribute
-        guard let nonce = try self.getExtendedAttribute(name: "com.secretvault.nonce", at: fileURL) else {
-            throw VaultError.fileReadFailed(path: fileURL.path, reason: "Missing nonce")
-        }
-
-        // Read HMAC from extended attribute
-        guard let hmac = try self.getExtendedAttribute(name: "com.secretvault.hmac", at: fileURL) else {
-            throw VaultError.fileReadFailed(path: fileURL.path, reason: "Missing HMAC")
-        }
-
-        // Decrypt with integrity verification
-        let decryptedData = try await self.cryptoService.decryptDataWithIntegrity(encryptedData, nonce: nonce, hmac: hmac, encryptionKey: encryptionKey, hmacKey: hmacKey)
-
-        return decryptedData
+        return try await decryptLegacyFile(at: fileURL, encryptionKey: encryptionKey, hmacKey: hmacKey)
     }
 
-    private func decryptStreamFileIfNeeded(at fileURL: URL, encryptionKey: SymmetricKey) async throws -> Data? {
+    /// Decrypts an encrypted file to a temporary location on disk, returning the URL for downstream streaming uses.
+    func decryptEncryptedFileToTemporaryURL(filename: String, originalExtension: String?, from directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey, progressHandler: ((Int64) -> Void)? = nil) async throws -> URL {
+        let fileURL = directory.appendingPathComponent(filename)
+
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            throw VaultError.fileNotFound(path: fileURL.path)
+        }
+
+        if let tempURL = try await decryptStreamFileToTempURLIfNeeded(at: fileURL, encryptionKey: encryptionKey, preferredExtension: originalExtension, progressHandler: progressHandler) {
+            return tempURL
+        }
+
+        let data = try await decryptLegacyFile(at: fileURL, encryptionKey: encryptionKey, hmacKey: hmacKey)
+        let tempURL = makeTemporaryFileURL(preferredExtension: originalExtension)
+        try data.write(to: tempURL, options: .atomic)
+        return tempURL
+    }
+
+    private func decryptStreamFileDataIfNeeded(at fileURL: URL, encryptionKey: SymmetricKey) async throws -> Data? {
         guard let handle = try? FileHandle(forReadingFrom: fileURL) else {
             return nil
         }
@@ -164,7 +200,39 @@ class FileService {
             return nil
         }
 
-        return try await decryptStreamFile(from: handle, header: header, encryptionKey: encryptionKey)
+        var decrypted = Data()
+        if header.originalSize > 0 && header.originalSize < UInt64(Int.max) {
+            decrypted.reserveCapacity(Int(header.originalSize))
+        }
+
+        try await processStreamFile(from: handle, header: header, encryptionKey: encryptionKey, chunkHandler: { chunk in
+            decrypted.append(chunk)
+        })
+
+        return decrypted
+    }
+
+    private func decryptStreamFileToTempURLIfNeeded(at fileURL: URL, encryptionKey: SymmetricKey, preferredExtension: String?, progressHandler: ((Int64) -> Void)?) async throws -> URL? {
+        guard let handle = try? FileHandle(forReadingFrom: fileURL) else {
+            return nil
+        }
+
+        defer { try? handle.close() }
+
+        guard let header = try readStreamHeader(from: handle) else {
+            return nil
+        }
+
+        let tempURL = makeTemporaryFileURL(preferredExtension: preferredExtension)
+        FileManager.default.createFile(atPath: tempURL.path, contents: nil)
+        let writeHandle = try FileHandle(forWritingTo: tempURL)
+        defer { try? writeHandle.close() }
+
+        try await processStreamFile(from: handle, header: header, encryptionKey: encryptionKey, chunkHandler: { chunk in
+            try writeHandle.write(contentsOf: chunk)
+        }, progressHandler: progressHandler)
+
+        return tempURL
     }
 
     private func writeStreamHeader(_ header: StreamFileHeader, to handle: FileHandle) throws {
@@ -212,11 +280,8 @@ class FileService {
         }
     }
 
-    private func decryptStreamFile(from handle: FileHandle, header: StreamFileHeader, encryptionKey: SymmetricKey) async throws -> Data {
-        var decrypted = Data()
-        if header.originalSize > 0 && header.originalSize < UInt64(Int.max) {
-            decrypted.reserveCapacity(Int(header.originalSize))
-        }
+    private func processStreamFile(from handle: FileHandle, header: StreamFileHeader, encryptionKey: SymmetricKey, chunkHandler: (Data) throws -> Void, progressHandler: ((Int64) -> Void)? = nil) async throws {
+        var totalProcessed: Int64 = 0
 
         while true {
             try Task.checkCancellation()
@@ -240,10 +305,25 @@ class FileService {
 
             let sealedBox = try AES.GCM.SealedBox(nonce: nonce, ciphertext: ciphertext, tag: tag)
             let chunk = try AES.GCM.open(sealedBox, using: encryptionKey)
-            decrypted.append(chunk)
+
+            try chunkHandler(chunk)
+            totalProcessed += Int64(chunk.count)
+            progressHandler?(totalProcessed)
+        }
+    }
+
+    private func decryptLegacyFile(at fileURL: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws -> Data {
+        let encryptedData = try Data(contentsOf: fileURL)
+
+        guard let nonce = try self.getExtendedAttribute(name: "com.secretvault.nonce", at: fileURL) else {
+            throw VaultError.fileReadFailed(path: fileURL.path, reason: "Missing nonce")
         }
 
-        return decrypted
+        guard let hmac = try self.getExtendedAttribute(name: "com.secretvault.hmac", at: fileURL) else {
+            throw VaultError.fileReadFailed(path: fileURL.path, reason: "Missing HMAC")
+        }
+
+        return try await self.cryptoService.decryptDataWithIntegrity(encryptedData, nonce: nonce, hmac: hmac, encryptionKey: encryptionKey, hmacKey: hmacKey)
     }
 
     private func readExact(from handle: FileHandle, count: Int) throws -> Data {

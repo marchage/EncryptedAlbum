@@ -136,9 +136,13 @@ struct MainVaultView: View {
                 
                 for photo in photosToExport {
                     do {
-                        let decryptedData = try await vaultManager.decryptPhoto(photo)
+                        let tempURL = try await vaultManager.decryptPhotoToTemporaryURL(photo)
+                        defer { try? FileManager.default.removeItem(at: tempURL) }
                         let fileURL = folderURL.appendingPathComponent(photo.filename)
-                        try decryptedData.write(to: fileURL)
+                        if FileManager.default.fileExists(atPath: fileURL.path) {
+                            try FileManager.default.removeItem(at: fileURL)
+                        }
+                        try FileManager.default.copyItem(at: tempURL, to: fileURL)
                         print("✅ Exported: \(photo.filename)")
                         successCount += 1
                     } catch {
@@ -1342,10 +1346,7 @@ struct PhotoViewerSheet: View {
     private func loadVideo() {
         Task {
             do {
-                let decryptedData = try await vaultManager.decryptPhoto(photo)
-                // Write decrypted video to temp file
-                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(photo.id.uuidString + ".mov")
-                try decryptedData.write(to: tempURL)
+                let tempURL = try await vaultManager.decryptPhotoToTemporaryURL(photo)
                 await MainActor.run {
                     self.videoURL = tempURL
                 }

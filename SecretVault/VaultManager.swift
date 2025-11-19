@@ -212,6 +212,7 @@ class VaultManager: ObservableObject {
         passwordService = PasswordService(cryptoService: cryptoService, securityService: securityService)
         fileService = FileService(cryptoService: cryptoService)
         vaultState = VaultState()
+        fileService.cleanupTemporaryArtifacts()
 
         // Determine vault base directory based on platform
         #if os(macOS)
@@ -608,6 +609,21 @@ class VaultManager: ObservableObject {
         // Use FileService to load and decrypt the encrypted file
         let filename = URL(fileURLWithPath: photo.encryptedDataPath).lastPathComponent
         return try await fileService.loadEncryptedFile(filename: filename, from: URL(fileURLWithPath: photo.encryptedDataPath).deletingLastPathComponent(), encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
+    }
+
+    func decryptPhotoToTemporaryURL(_ photo: SecurePhoto, progressHandler: ((Int64) -> Void)? = nil) async throws -> URL {
+        let filename = URL(fileURLWithPath: photo.encryptedDataPath).lastPathComponent
+        let directory = URL(fileURLWithPath: photo.encryptedDataPath).deletingLastPathComponent()
+        let originalExtension = URL(fileURLWithPath: photo.filename).pathExtension
+        let preferredExtension = originalExtension.isEmpty ? nil : originalExtension
+        return try await fileService.decryptEncryptedFileToTemporaryURL(
+            filename: filename,
+            originalExtension: preferredExtension,
+            from: directory,
+            encryptionKey: cachedEncryptionKey!,
+            hmacKey: cachedHMACKey!,
+            progressHandler: progressHandler
+        )
     }
 
     func decryptThumbnail(for photo: SecurePhoto) async throws -> Data {
