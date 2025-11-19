@@ -660,14 +660,24 @@ class VaultManager: ObservableObject {
             isFavorite: isFavorite
         )
 
-        // Save to photos list on the serial queue to prevent race conditions,
-        // then update UI on main thread. This ensures the duplicate check and
-        // append happen atomically.
-        vaultQueue.async {
+        // Thread-safe update: The duplicate check above uses vaultQueue.sync, so by the time
+        // we get here, we've already verified this isn't a duplicate. Now we just need to
+        // add it on the main thread (for @Published) and save on background queue.
+        DispatchQueue.main.async {
+            // Double-check for duplicates on main thread as final safety measure
+            if let assetId = assetIdentifier,
+               self.hiddenPhotos.contains(where: { $0.originalAssetIdentifier == assetId }) {
+                #if DEBUG
+                print("Duplicate detected in final check, skipping: \(filename)")
+                #endif
+                return
+            }
+            
             self.hiddenPhotos.append(photo)
-            self.savePhotos()
-            DispatchQueue.main.async {
-                self.objectWillChange.send()
+            
+            // Save to disk on background queue
+            self.vaultQueue.async {
+                self.savePhotos()
             }
         }
     }
