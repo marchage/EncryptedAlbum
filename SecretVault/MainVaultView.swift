@@ -26,6 +26,7 @@ struct MainVaultView: View {
     @State private var captureCancelRequested = false
     @State private var captureBytesProcessed: Int64 = 0
     @State private var captureBytesTotal: Int64 = 0
+    @State private var didForcePrivacyModeThisSession = false
     @AppStorage("vaultPrivacyModeEnabled") private var privacyModeEnabled: Bool = true
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
 #if os(iOS)
@@ -1032,6 +1033,11 @@ struct MainVaultView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onAppear {
+            if !didForcePrivacyModeThisSession {
+                // Ensure privacy mode starts enabled on each fresh app launch.
+                privacyModeEnabled = true
+                didForcePrivacyModeThisSession = true
+            }
             print("DEBUG MainVaultView.onAppear: hiddenPhotos.count = \(vaultManager.hiddenPhotos.count)")
             print("DEBUG MainVaultView.onAppear: isUnlocked = \(vaultManager.isUnlocked)")
             print("DEBUG MainVaultView.onAppear: filteredPhotos.count = \(filteredPhotos.count)")
