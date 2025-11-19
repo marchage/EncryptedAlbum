@@ -24,6 +24,8 @@ struct MainVaultView: View {
     @State private var captureItemsTotal = 0
     @State private var captureTask: Task<Void, Never>? = nil
     @State private var captureCancelRequested = false
+    @State private var captureBytesProcessed: Int64 = 0
+    @State private var captureBytesTotal: Int64 = 0
     @AppStorage("vaultPrivacyModeEnabled") private var privacyModeEnabled: Bool = true
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
 #if os(iOS)
@@ -327,6 +329,8 @@ struct MainVaultView: View {
             captureStatusMessage = "Preparing import…"
             captureDetailMessage = "\(urls.count) item(s)"
             captureCancelRequested = false
+            captureBytesProcessed = 0
+            captureBytesTotal = 0
         }
 
         var successCount = 0
@@ -345,18 +349,26 @@ struct MainVaultView: View {
             let sizeText = fileSizeString(for: url, formatter: formatter)
             let detail = detailText(for: index + 1, total: urls.count, sizeDescription: sizeText)
 
+            var fileSizeValue: Int64 = 0
             if let attributes = try? fileManager.attributesOfItem(atPath: url.path),
-               let fileSize = attributes[.size] as? NSNumber,
-               fileSize.int64Value > CryptoConstants.maxMediaFileSize {
+               let fileSizeNumber = attributes[.size] as? NSNumber {
+                fileSizeValue = fileSizeNumber.int64Value
+            }
+
+            if fileSizeValue > CryptoConstants.maxMediaFileSize {
                 failureCount += 1
                 if firstError == nil {
-                    let humanSize = formatter.string(fromByteCount: fileSize.int64Value)
-                    firstError = "\(filename) exceeds the 5GB limit (\(humanSize))."
+                    let humanSize = formatter.string(fromByteCount: fileSizeValue)
+                    let limitString = formatter.string(fromByteCount: CryptoConstants.maxMediaFileSize)
+                    firstError = "\(filename) exceeds the \(limitString) limit (\(humanSize))."
                 }
                 await MainActor.run {
                     captureStatusMessage = "Skipping \(filename)…"
-                    captureDetailMessage = "File exceeds 5GB limit"
+                    let limitString = formatter.string(fromByteCount: CryptoConstants.maxMediaFileSize)
+                    captureDetailMessage = "File exceeds \(limitString) limit"
                     captureItemsProcessed = index + 1
+                    captureBytesTotal = fileSizeValue
+                    captureBytesProcessed = fileSizeValue
                 }
                 continue
             }
@@ -365,11 +377,17 @@ struct MainVaultView: View {
                 captureStatusMessage = "Encrypting \(filename)…"
                 captureDetailMessage = detail
                 captureItemsProcessed = index
+                captureBytesTotal = fileSizeValue
+                captureBytesProcessed = 0
             }
 
             do {
                 try Task.checkCancellation()
-                let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+                let data = try await readFileDataWithProgress(from: url, expectedSize: fileSizeValue) { bytesRead in
+                    await MainActor.run {
+                        captureBytesProcessed = bytesRead
+                    }
+                }
                 try Task.checkCancellation()
                 let mediaType: MediaType = isVideoFile(url) ? .video : .photo
                 try await vaultManager.hidePhoto(
@@ -396,6 +414,7 @@ struct MainVaultView: View {
 
             await MainActor.run {
                 captureItemsProcessed = index + 1
+                captureBytesProcessed = captureBytesTotal
             }
         }
 
@@ -411,6 +430,8 @@ struct MainVaultView: View {
             captureItemsTotal = 0
             captureTask = nil
             captureCancelRequested = false
+            captureBytesProcessed = 0
+            captureBytesTotal = 0
         }
 
         await presentCaptureSummary(
@@ -466,9 +487,45 @@ struct MainVaultView: View {
         return parts.joined(separator: " • ")
     }
 
+    private func readFileDataWithProgress(from url: URL, expectedSize: Int64, chunkSize: Int = 8 * 1024 * 1024, progressHandler: @escaping (Int64) async -> Void) async throws -> Data {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+
+        var data = Data()
+        if expectedSize > 0 && expectedSize < Int64(Int.max) {
+            data.reserveCapacity(Int(expectedSize))
+        }
+
+        var totalRead: Int64 = 0
+        while true {
+            try Task.checkCancellation()
+            let chunk: Data = try autoreleasepool {
+                do {
+                    return try handle.read(upToCount: chunkSize) ?? Data()
+                } catch {
+                    throw VaultError.fileReadFailed(path: url.path, reason: error.localizedDescription)
+                }
+            }
+
+            if chunk.isEmpty { break }
+            data.append(chunk)
+            totalRead += Int64(chunk.count)
+            await progressHandler(totalRead)
+        }
+
+        return data
+    }
+
     private func isVideoFile(_ url: URL) -> Bool {
         let videoExtensions: Set<String> = ["mov", "mp4", "m4v", "avi", "mkv", "mpg", "mpeg", "hevc", "webm"]
         return videoExtensions.contains(url.pathExtension.lowercased())
+    }
+
+    private func formattedBytes(_ value: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: value)
     }
     
     func chooseVaultLocation() {
@@ -636,6 +693,18 @@ struct MainVaultView: View {
                         .frame(maxWidth: 260)
                 }
 
+                if captureBytesTotal > 0 {
+                    ProgressView(value: Double(captureBytesProcessed), total: Double(max(captureBytesTotal, 1)))
+                        .progressViewStyle(.linear)
+                    Text("\(formattedBytes(captureBytesProcessed)) of \(formattedBytes(captureBytesTotal))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else if captureBytesProcessed > 0 {
+                    Text("\(formattedBytes(captureBytesProcessed)) processed…")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
                 Text(captureStatusMessage.isEmpty ? "Encrypting items…" : captureStatusMessage)
                     .font(.headline)
 
@@ -665,6 +734,7 @@ struct MainVaultView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                .disabled(captureCancelRequested)
             }
             .padding(24)
             .background(.ultraThickMaterial)

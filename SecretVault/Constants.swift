@@ -20,7 +20,7 @@ enum CryptoConstants {
     static let hkdfInfoHMAC = "SecretVault-HMAC"
 
     /// File size limits
-    static let maxMediaFileSize: Int64 = 5 * 1024 * 1024 * 1024  // 5000MB (~5GB)
+    static let maxMediaFileSize: Int64 = 500 * 1024 * 1024 * 1024  // 5000MB (~500GB)
     static let maxThumbnailFileSize: Int64 = 100 * 1024 * 1024  // 100MB
     static let maxSecureDeleteSize: Int64 = 100 * 1024 * 1024  // 100MB
 
