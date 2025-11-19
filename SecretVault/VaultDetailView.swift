@@ -5,6 +5,134 @@ import Photos
 import AppKit
 #endif
 
+struct VaultDetailView: View {
+    @EnvironmentObject var vaultManager: VaultManager
+    @State private var showingPhotoPicker = false
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Vault")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                
+                Spacer()
+                
+                Button(action: {
+                    showingPhotoPicker = true
+                }) {
+                    Label("Add Photos", systemImage: "plus")
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut("n", modifiers: .command)
+            }
+            .padding()
+            .background(.ultraThinMaterial)
+            
+            Divider()
+            
+            // Content
+            if vaultManager.hiddenPhotos.isEmpty {
+                VStack(spacing: 20) {
+                    Image(systemName: "photo.on.rectangle.angled")
+                        .font(.system(size: 64))
+                        .foregroundStyle(.secondary)
+                    
+                    Text("No hidden photos yet")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    
+                    Text("Click 'Add Photos' to hide some photos from your library.")
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    
+                    Button("Add Photos") {
+                        showingPhotoPicker = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 16)], spacing: 16) {
+                        ForEach(vaultManager.hiddenPhotos) { photo in
+                            VaultPhotoView(photo: photo)
+                        }
+                    }
+                    .padding()
+                }
+            }
+        }
+        .sheet(isPresented: $showingPhotoPicker) {
+            PhotosLibraryPicker()
+        }
+    }
+}
+
+struct VaultPhotoView: View {
+    let photo: SecurePhoto
+    @State private var thumbnail: Image?
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let image = thumbnail {
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(height: 120)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(height: 120)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(photo.filename)
+                    .font(.caption)
+                    .lineLimit(1)
+                
+                Text(photo.dateAdded, style: .date)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.bottom, 8)
+        }
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .onAppear {
+            loadThumbnail()
+        }
+    }
+    
+    private func loadThumbnail() {
+        Task {
+            do {
+                let thumbnailData = try await VaultManager.shared.decryptThumbnail(for: photo)
+                if !thumbnailData.isEmpty {
+                    #if os(macOS)
+                    if let nsImage = NSImage(data: thumbnailData) {
+                        await MainActor.run {
+                            thumbnail = Image(nsImage: nsImage)
+                        }
+                    }
+                    #else
+                    if let uiImage = UIImage(data: thumbnailData) {
+                        await MainActor.run {
+                            thumbnail = Image(uiImage: uiImage)
+                        }
+                    }
+                    #endif
+                }
+            } catch {
+                // Thumbnail decryption failed, keep placeholder
+                print("Failed to load thumbnail for \(photo.filename): \(error)")
+            }
+        }
+    }
+}
 struct PhotosLibraryPicker: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var vaultManager: VaultManager
@@ -19,6 +147,7 @@ struct PhotosLibraryPicker: View {
     @State private var selectedAlbumFilter: String? = nil
     // Fallback: Force treat all albums as Shared Library when PhotoKit can't distinguish
     @State private var forceSharedLibrary = false
+    @State private var keyMonitor: Any? = nil
     
     var filteredPhotos: [(album: String, asset: PHAsset)] {
         if let filter = selectedAlbumFilter {
@@ -430,104 +559,135 @@ struct PhotosLibraryPicker: View {
         importing = true
         
         let assetsToHide = allPhotos.filter { selectedAssets.contains($0.asset.localIdentifier) }
+        let totalCount = assetsToHide.count
         
-        // Process assets with limited concurrency to avoid loading many large files into memory at once
-        let maxConcurrentOperations = 2
-        var successfulAssets: [PHAsset] = []
+        // Add overall timeout to prevent hanging
+        let timeoutTask = Task {
+            try await Task.sleep(nanoseconds: 300_000_000_000) // 5 minute overall timeout
+            if !Task.isCancelled {
+                print("⚠️ Overall hide operation timed out after 5 minutes")
+                await MainActor.run {
+                    importing = false
+                    dismiss()
+                }
+            }
+        }
         
-        // Process assets in batches to limit concurrency
-        for batch in assetsToHide.chunked(into: maxConcurrentOperations) {
-            await withTaskGroup(of: (PHAsset, Bool).self) { group in
-                for photoData in batch {
-                    group.addTask {
-                        do {
-                            guard let mediaResult = await PhotosLibraryService.shared.getMediaDataAsync(for: photoData.asset),
-                                  let mediaData = mediaResult.data else {
-                                print("Failed to get media data for asset: \(photoData.asset.localIdentifier)")
+        defer {
+            timeoutTask.cancel()
+        }
+        
+        do {
+            // Process assets with limited concurrency to avoid loading many large files into memory at once
+            let maxConcurrentOperations = 2
+            var successfulAssets: [PHAsset] = []
+            var processedCount = 0
+            
+            // Process assets in batches to limit concurrency
+            for batch in assetsToHide.chunked(into: maxConcurrentOperations) {
+                try await withTaskGroup(of: (PHAsset, Bool).self) { group in
+                    for photoData in batch {
+                        group.addTask {
+                            do {
+                                print("Processing asset: \(photoData.asset.localIdentifier)")
+                                
+                                guard let mediaResult = await PhotosLibraryService.shared.getMediaDataAsync(for: photoData.asset),
+                                      let mediaData = mediaResult.data else {
+                                    print("❌ Failed to get media data for asset: \(photoData.asset.localIdentifier)")
+                                    return (photoData.asset, false)
+                                }
+                                
+                                try await vaultManager.hidePhoto(
+                                    imageData: mediaData,
+                                    filename: mediaResult.filename,
+                                    dateTaken: mediaResult.dateTaken,
+                                    sourceAlbum: photoData.album,
+                                    assetIdentifier: photoData.asset.localIdentifier,
+                                    mediaType: mediaResult.mediaType,
+                                    duration: mediaResult.duration,
+                                    location: mediaResult.location,
+                                    isFavorite: mediaResult.isFavorite
+                                )
+                                
+                                print("✅ \(mediaResult.mediaType == .video ? "Video" : "Photo") added to vault: \(mediaResult.filename)")
+                                return (photoData.asset, true)
+                            } catch {
+                                print("❌ Failed to add media to vault: \(error.localizedDescription)")
                                 return (photoData.asset, false)
                             }
-                            
-                            try await vaultManager.hidePhoto(
-                                imageData: mediaData,
-                                filename: mediaResult.filename,
-                                dateTaken: mediaResult.dateTaken,
-                                sourceAlbum: photoData.album,
-                                assetIdentifier: photoData.asset.localIdentifier,
-                                mediaType: mediaResult.mediaType,
-                                duration: mediaResult.duration,
-                                location: mediaResult.location,
-                                isFavorite: mediaResult.isFavorite
-                            )
-                            
-                            print("\(mediaResult.mediaType == .video ? "Video" : "Photo") added to vault: \(mediaResult.filename)")
-                            return (photoData.asset, true)
-                        } catch {
-                            print("Failed to add media to vault: \(error.localizedDescription)")
-                            return (photoData.asset, false)
                         }
                     }
+                    
+                    // Collect results from this batch
+                    for await (asset, success) in group {
+                        processedCount += 1
+                        if success {
+                            successfulAssets.append(asset)
+                        }
+                        print("Progress: \(processedCount)/\(totalCount) items processed")
+                    }
                 }
-                
-                // Collect results from this batch
-                for await (asset, success) in group {
+            }
+            
+            timeoutTask.cancel()
+            
+            // Batch delete all successfully vaulted photos at once
+            // Deduplicate by localIdentifier in case the same PHAsset was
+            // encountered multiple times through different album groupings.
+            let uniqueSuccessfulAssets: [PHAsset]
+            if !successfulAssets.isEmpty {
+                var seenIds = Set<String>()
+                uniqueSuccessfulAssets = successfulAssets.filter { asset in
+                    let id = asset.localIdentifier
+                    if seenIds.contains(id) { return false }
+                    seenIds.insert(id)
+                    return true
+                }
+            } else {
+                uniqueSuccessfulAssets = []
+            }
+
+            // UI updates and Photos deletions must run on main
+            if !uniqueSuccessfulAssets.isEmpty {
+                PhotosLibraryService.shared.batchDeleteAssets(uniqueSuccessfulAssets) { success in
                     if success {
-                        successfulAssets.append(asset)
+                        print("Successfully deleted \(uniqueSuccessfulAssets.count) photos from library")
+                    } else {
+                        print("Failed to delete some photos from library")
                     }
-                }
-            }
-        }
-        
-        // Batch delete all successfully vaulted photos at once
-        // Deduplicate by localIdentifier in case the same PHAsset was
-        // encountered multiple times through different album groupings.
-        let uniqueSuccessfulAssets: [PHAsset]
-        if !successfulAssets.isEmpty {
-            var seenIds = Set<String>()
-            uniqueSuccessfulAssets = successfulAssets.filter { asset in
-                let id = asset.localIdentifier
-                if seenIds.contains(id) { return false }
-                seenIds.insert(id)
-                return true
-            }
-        } else {
-            uniqueSuccessfulAssets = []
-        }
 
-        // UI updates and Photos deletions must run on main
-        if !uniqueSuccessfulAssets.isEmpty {
-            PhotosLibraryService.shared.batchDeleteAssets(uniqueSuccessfulAssets) { success in
-                if success {
-                    print("Successfully deleted \(uniqueSuccessfulAssets.count) photos from library")
-                } else {
-                    print("Failed to delete some photos from library")
-                }
-
-                // Find the SecurePhoto records that correspond to the successfully processed PHAssets
-                let ids = Set(uniqueSuccessfulAssets.map { $0.localIdentifier })
-                let newlyHidden = vaultManager.hiddenPhotos.filter { photo in
-                    if let original = photo.originalAssetIdentifier {
-                        return ids.contains(original)
+                    // Find the SecurePhoto records that correspond to the successfully processed PHAssets
+                    let ids = Set(uniqueSuccessfulAssets.map { $0.localIdentifier })
+                    let newlyHidden = vaultManager.hiddenPhotos.filter { photo in
+                        if let original = photo.originalAssetIdentifier {
+                            return ids.contains(original)
+                        }
+                        return false
                     }
-                    return false
-                }
 
+                    importing = false
+
+                    // Notify main UI with undo-capable notification and dismiss the picker
+                    vaultManager.hideNotification = HideNotification(
+                        message: "Hidden \(uniqueSuccessfulAssets.count) item(s). Moved to Recently Deleted.",
+                        type: .success,
+                        photos: newlyHidden
+                    )
+                    dismiss()
+                }
+            } else {
                 importing = false
-
-                // Notify main UI with undo-capable notification and dismiss the picker
-                vaultManager.hideNotification = HideNotification(
-                    message: "Hidden \(uniqueSuccessfulAssets.count) item(s). Moved to Recently Deleted.",
-                    type: .success,
-                    photos: newlyHidden
-                )
                 dismiss()
             }
-        } else {
-            importing = false
-            dismiss()
-        }
+        } catch {
+            print("❌ Hide operation failed with error: \(error.localizedDescription)")
+            timeoutTask.cancel()
+            await MainActor.run {
+                importing = false
+                dismiss()
+            }
+            }
     }
-
-    @State private var keyMonitor: Any? = nil
 }
 
 struct PhotoAssetView: View {
@@ -593,7 +753,6 @@ struct PhotoAssetView: View {
 }
 
 // MARK: - Helper Extensions
-
 extension Array {
     func chunked(into size: Int) -> [[Element]] {
         stride(from: 0, to: count, by: size).map {

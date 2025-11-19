@@ -218,15 +218,26 @@ class PhotosLibraryService {
     /// - Returns: Tuple with data, filename, metadata, and type
     func getMediaDataAsync(for asset: PHAsset) async -> (data: Data?, filename: String, dateTaken: Date?, mediaType: MediaType, duration: TimeInterval?, location: SecurePhoto.Location?, isFavorite: Bool?)? {
         await withCheckedContinuation { continuation in
+            let timeoutTask = Task {
+                try await Task.sleep(nanoseconds: 30_000_000_000) // 30 second timeout
+                if !Task.isCancelled {
+                    print("Timeout fetching media data for asset: \(asset.localIdentifier)")
+                    continuation.resume(returning: nil)
+                }
+            }
+            
             if asset.mediaType == .image {
                 getImageData(for: asset) { data, filename, dateTaken, mediaType, duration, location, isFavorite in
+                    timeoutTask.cancel()
                     continuation.resume(returning: (data: data, filename: filename, dateTaken: dateTaken, mediaType: mediaType, duration: duration, location: location, isFavorite: isFavorite))
                 }
             } else if asset.mediaType == .video {
                 getVideoData(for: asset) { data, filename, dateTaken, mediaType, duration, location, isFavorite in
+                    timeoutTask.cancel()
                     continuation.resume(returning: (data: data, filename: filename, dateTaken: dateTaken, mediaType: mediaType, duration: duration, location: location, isFavorite: isFavorite))
                 }
             } else {
+                timeoutTask.cancel()
                 continuation.resume(returning: nil)
             }
         }

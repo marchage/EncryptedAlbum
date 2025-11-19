@@ -746,10 +746,8 @@ class VaultManager: ObservableObject {
                 if success {
                     print("Media restored to library with metadata: \(photo.filename)")
                     
-                    // Delete from vault
-                    DispatchQueue.main.async {
-                        self.deletePhoto(photo)
-                    }
+                    // Delete from vault (deletePhoto already handles main thread dispatch)
+                    self.deletePhoto(photo)
                     continuation.resume(returning: ())
                 } else {
                     print("Failed to restore media to library: \(photo.filename)")
@@ -1323,10 +1321,15 @@ class VaultManager: ObservableObject {
     /// Loads photos from disk
     private func loadPhotos() async throws {
         guard let data = try? Data(contentsOf: photosFile) else {
-            hiddenPhotos = []
+            await MainActor.run {
+                hiddenPhotos = []
+            }
             return
         }
 
-        hiddenPhotos = try JSONDecoder().decode([SecurePhoto].self, from: data)
+        let decodedPhotos = try JSONDecoder().decode([SecurePhoto].self, from: data)
+        await MainActor.run {
+            hiddenPhotos = decodedPhotos
+        }
     }
 }
