@@ -17,6 +17,13 @@ struct MainVaultView: View {
     @State private var photosToRestore: [SecurePhoto] = []
     @State private var showingCamera = false
     @State private var showingFilePicker = false
+    @State private var captureInProgress = false
+    @State private var captureProgressValue: Double = 0
+    @State private var captureStatusMessage = ""
+    @State private var captureDetailMessage = ""
+    @State private var captureItemsProcessed = 0
+    @State private var captureItemsTotal = 0
+    @State private var captureTask: Task<Void, Never>? = nil
     @AppStorage("vaultPrivacyModeEnabled") private var privacyModeEnabled: Bool = true
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
 #if os(iOS)
@@ -247,6 +254,16 @@ struct MainVaultView: View {
     
     func importFilesToVault() {
 #if os(macOS)
+        guard !captureInProgress else {
+            showingFilePicker = false
+            let alert = NSAlert()
+            alert.messageText = "Import Already Running"
+            alert.informativeText = "Please wait for the current import to finish or cancel it before starting another."
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
         // vaultManager.touchActivity() - removed
         
         let warningAlert = NSAlert()
@@ -275,58 +292,163 @@ struct MainVaultView: View {
             guard response == .OK else { return }
             
             let urls = panel.urls
-            DispatchQueue.global(qos: .userInitiated).async {
-                var successCount = 0
-                var failureCount = 0
-                
-                for url in urls {
-                    do {
-                        let data = try Data(contentsOf: url)
-                        let filename = url.lastPathComponent
-                        
-                        let isVideo = url.pathExtension.lowercased() == "mov" ||
-                                     url.pathExtension.lowercased() == "mp4" ||
-                                     url.pathExtension.lowercased() == "m4v"
-                        
-                        Task {
-                            try await vaultManager.hidePhoto(
-                                imageData: data,
-                                filename: filename,
-                                sourceAlbum: "Captured to Vault",
-                                mediaType: isVideo ? .video : .photo,
-                                duration: nil
-                            )
-                        }
-                        
-                        print("✅ Imported to vault: \(filename)")
-                        successCount += 1
-                    } catch {
-                        print("❌ Failed to import \(url.lastPathComponent): \(error)")
-                        failureCount += 1
-                    }
-                }
-                
-                DispatchQueue.main.async {
-                    let alert = NSAlert()
-                    if failureCount == 0 {
-                        alert.messageText = "Import Successful"
-                        alert.informativeText = "Imported \(successCount) item(s) directly to encrypted vault."
-                        alert.alertStyle = .informational
-                    } else if successCount == 0 {
-                        alert.messageText = "Import Failed"
-                        alert.informativeText = "Failed to import \(failureCount) item(s)."
-                        alert.alertStyle = .critical
-                    } else {
-                        alert.messageText = "Partial Import"
-                        alert.informativeText = "Imported \(successCount) item(s), but \(failureCount) failed."
-                        alert.alertStyle = .warning
-                    }
-                    alert.addButton(withTitle: "OK")
-                    alert.runModal()
-                }
-            }
+            startDirectCaptureImport(with: urls)
         }
 #endif
+    }
+
+    private func startDirectCaptureImport(with urls: [URL]) {
+#if os(macOS)
+        guard !urls.isEmpty else { return }
+        captureTask?.cancel()
+        captureTask = Task(priority: .userInitiated) {
+            await runDirectCaptureImport(urls: urls)
+        }
+#endif
+    }
+
+#if os(macOS)
+    private func runDirectCaptureImport(urls: [URL]) async {
+        guard !urls.isEmpty else {
+            await MainActor.run {
+                captureTask = nil
+            }
+            return
+        }
+
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
+        formatter.countStyle = .file
+
+        await MainActor.run {
+            captureInProgress = true
+            captureItemsTotal = urls.count
+            captureItemsProcessed = 0
+            captureProgressValue = 0
+            captureStatusMessage = "Preparing import…"
+            captureDetailMessage = "\(urls.count) item(s)"
+        }
+
+        var successCount = 0
+        var failureCount = 0
+        var firstError: String?
+        var wasCancelled = false
+
+        for (index, url) in urls.enumerated() {
+            if Task.isCancelled {
+                wasCancelled = true
+                break
+            }
+
+            let filename = url.lastPathComponent
+            let sizeText = fileSizeString(for: url, formatter: formatter)
+            let detail = detailText(for: index + 1, total: urls.count, sizeDescription: sizeText)
+
+            await MainActor.run {
+                captureStatusMessage = "Encrypting \(filename)…"
+                captureDetailMessage = detail
+                captureProgressValue = Double(index) / Double(max(urls.count, 1))
+                captureItemsProcessed = index
+            }
+
+            do {
+                let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+                let mediaType: MediaType = isVideoFile(url) ? .video : .photo
+                try await vaultManager.hidePhoto(
+                    imageData: data,
+                    filename: filename,
+                    dateTaken: nil,
+                    sourceAlbum: "Captured to Vault",
+                    assetIdentifier: nil,
+                    mediaType: mediaType,
+                    duration: nil,
+                    location: nil,
+                    isFavorite: nil
+                )
+                successCount += 1
+            } catch {
+                failureCount += 1
+                if firstError == nil {
+                    firstError = "\(filename): \(error.localizedDescription)"
+                }
+            }
+
+            await MainActor.run {
+                captureItemsProcessed = index + 1
+                captureProgressValue = Double(index + 1) / Double(max(urls.count, 1))
+            }
+        }
+
+        if Task.isCancelled {
+            wasCancelled = true
+        }
+
+        await MainActor.run {
+            captureInProgress = false
+            captureProgressValue = 0
+            captureDetailMessage = ""
+            captureStatusMessage = ""
+            captureItemsProcessed = 0
+            captureItemsTotal = 0
+            captureTask = nil
+        }
+
+        await presentCaptureSummary(
+            successCount: successCount,
+            failureCount: failureCount,
+            canceled: wasCancelled,
+            errorMessage: firstError
+        )
+    }
+
+    @MainActor
+    private func presentCaptureSummary(successCount: Int, failureCount: Int, canceled: Bool, errorMessage: String?) {
+        let alert = NSAlert()
+        if canceled {
+            alert.messageText = "Import Canceled"
+            alert.informativeText = "Encrypted \(successCount) item(s) before canceling."
+            alert.alertStyle = .warning
+        } else if failureCount == 0 {
+            alert.messageText = "Import Complete"
+            alert.informativeText = "Encrypted \(successCount) item(s) into the vault."
+            alert.alertStyle = .informational
+        } else if successCount == 0 {
+            alert.messageText = "Import Failed"
+            alert.informativeText = errorMessage ?? "Unable to import the selected files."
+            alert.alertStyle = .critical
+        } else {
+            alert.messageText = "Import Completed with Issues"
+            var summary = "Imported \(successCount) item(s); \(failureCount) failed."
+            if let errorMessage = errorMessage, !errorMessage.isEmpty {
+                summary += "\n\(errorMessage)"
+            }
+            alert.informativeText = summary
+            alert.alertStyle = .warning
+        }
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+#endif
+
+    private func fileSizeString(for url: URL, formatter: ByteCountFormatter) -> String? {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let size = attributes[.size] as? NSNumber else {
+            return nil
+        }
+        return formatter.string(fromByteCount: size.int64Value)
+    }
+
+    private func detailText(for index: Int, total: Int, sizeDescription: String?) -> String {
+        var parts: [String] = ["Item \(index) of \(total)"]
+        if let sizeDescription = sizeDescription {
+            parts.append(sizeDescription)
+        }
+        return parts.joined(separator: " • ")
+    }
+
+    private func isVideoFile(_ url: URL) -> Bool {
+        let videoExtensions: Set<String> = ["mov", "mp4", "m4v", "avi", "mkv", "mpg", "mpeg", "hevc", "webm"]
+        return videoExtensions.contains(url.pathExtension.lowercased())
     }
     
     func chooseVaultLocation() {
@@ -437,6 +559,7 @@ struct MainVaultView: View {
         } label: {
             Image(systemName: "camera.fill")
         }
+        .disabled(captureInProgress)
 #endif
 
         Menu {
@@ -475,6 +598,45 @@ struct MainVaultView: View {
         } label: {
             Image(systemName: "ellipsis.circle")
         }
+    }
+
+    private var captureProgressOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.45)
+                .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                ProgressView(value: captureProgressValue, total: 1)
+                    .progressViewStyle(.linear)
+                    .frame(maxWidth: 260)
+
+                Text(captureStatusMessage.isEmpty ? "Encrypting items…" : captureStatusMessage)
+                    .font(.headline)
+
+                if captureItemsTotal > 0 {
+                    Text("\(captureItemsProcessed) of \(captureItemsTotal)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if !captureDetailMessage.isEmpty {
+                    Text(captureDetailMessage)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                Button("Cancel Import") {
+                    captureTask?.cancel()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+            .padding(24)
+            .background(.ultraThickMaterial)
+            .cornerRadius(16)
+            .shadow(radius: 18)
+        }
+        .transition(.opacity)
     }
     
 #if DEBUG
@@ -515,8 +677,9 @@ struct MainVaultView: View {
 #endif
     
     var body: some View {
-        NavigationStack {
-            ScrollView {
+        ZStack {
+            NavigationStack {
+                ScrollView {
                 VStack(spacing: 16) {
                     if !selectedPhotos.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
@@ -581,6 +744,7 @@ struct MainVaultView: View {
                                 Label("Capture", systemImage: "camera.fill")
                             }
                             .buttonStyle(.bordered)
+                            .disabled(captureInProgress)
                         }
                         .controlSize(.small)
 #endif
@@ -764,36 +928,36 @@ struct MainVaultView: View {
                 }
                 .padding()
                 .frame(maxWidth: .infinity)
-            }
-            .navigationTitle("Hidden Items")
+                }
+                .navigationTitle("Hidden Items")
 #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     toolbarActions
                 }
             }
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search hidden items")
+                .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search hidden items")
 #else
-            .toolbar {
+                .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
                     toolbarActions
                 }
             }
-            .searchable(text: $searchText, prompt: "Search hidden items")
+                .searchable(text: $searchText, prompt: "Search hidden items")
 #endif
-            .scrollDismissesKeyboard(.interactively)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
+                .scrollDismissesKeyboard(.interactively)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onAppear {
             print("DEBUG MainVaultView.onAppear: hiddenPhotos.count = \(vaultManager.hiddenPhotos.count)")
             print("DEBUG MainVaultView.onAppear: isUnlocked = \(vaultManager.isUnlocked)")
             print("DEBUG MainVaultView.onAppear: filteredPhotos.count = \(filteredPhotos.count)")
             selectedPhotos.removeAll()
             setupKeyboardShortcuts()
             // vaultManager.touchActivity() - removed
-        }
-        .alert("Restore Items", isPresented: $showingRestoreOptions) {
+            }
+            .alert("Restore Items", isPresented: $showingRestoreOptions) {
             Button("Restore to Original Albums") {
                 Task { await restoreToOriginalAlbums() }
             }
@@ -806,22 +970,26 @@ struct MainVaultView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("How would you like to restore \(photosToRestore.count) item(s)?")
-        }
-        .sheet(item: $selectedPhoto) { photo in
+            }
+            .sheet(item: $selectedPhoto) { photo in
             PhotoViewerSheet(photo: photo)
-        }
-        .sheet(isPresented: $showingPhotosLibrary) {
+            }
+            .sheet(isPresented: $showingPhotosLibrary) {
             PhotosLibraryPicker()
-        }
+            }
 #if os(iOS)
-        .sheet(isPresented: $showingCamera) {
+            .sheet(isPresented: $showingCamera) {
             CameraCaptureView()
                 .ignoresSafeArea()
-        }
+            }
 #endif
-        .onChange(of: showingFilePicker) { newValue in
+            .onChange(of: showingFilePicker) { newValue in
             if newValue {
                 importFilesToVault()
+            }
+        }
+            if captureInProgress {
+                captureProgressOverlay
             }
         }
     }

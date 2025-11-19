@@ -533,15 +533,19 @@ class VaultManager: ObservableObject {
         let encryptedThumbnailPath = photosURL.appendingPathComponent("\(photoId.uuidString)_thumb.enc")
         
         // Generate thumbnail first
-        let thumbnail: Data
+        var thumbnail: Data
         if mediaType == .video {
             thumbnail = generateVideoThumbnail(from: imageData)
         } else {
             thumbnail = generatePhotoThumbnail(from: imageData)
         }
         
+        if thumbnail.isEmpty {
+            thumbnail = fallbackThumbnail(for: mediaType)
+        }
+        
         guard thumbnail.count > 0 else {
-            throw VaultError.thumbnailGenerationFailed(reason: "Thumbnail generation returned empty data")
+            throw VaultError.thumbnailGenerationFailed(reason: "Thumbnail generation returned empty data even after fallback")
         }
         
         // Save thumbnail
@@ -1011,7 +1015,7 @@ class VaultManager: ObservableObject {
     /// Generates a thumbnail from video data (synchronous, call from background queue).
     private func generateVideoThumbnail(from videoData: Data) -> Data {
         // Check video data size
-        guard videoData.count > 0 && videoData.count < 500 * 1024 * 1024 else { // 500MB limit
+        guard videoData.count > 0 && videoData.count <= CryptoConstants.maxMediaFileSize else {
             #if DEBUG
             print("Video data size invalid: \(videoData.count) bytes")
             #endif
@@ -1116,6 +1120,59 @@ class VaultManager: ObservableObject {
         
         // Return empty data if thumbnail generation fails
         return Data()
+    }
+
+    /// Generates a generic placeholder thumbnail when we cannot derive one from the media data.
+    private func fallbackThumbnail(for mediaType: MediaType) -> Data {
+        #if os(macOS)
+        let size = NSSize(width: 280, height: 280)
+        let image = NSImage(size: size)
+        image.lockFocus()
+
+        // Background gradient for quick visual differentiation
+        let background = NSGradient(colors: [NSColor(calibratedRed: 0.21, green: 0.24, blue: 0.28, alpha: 1),
+                                            NSColor(calibratedRed: 0.34, green: 0.37, blue: 0.42, alpha: 1)])
+        background?.draw(in: NSBezierPath(rect: NSRect(origin: .zero, size: size)), angle: 90)
+
+        let symbolName = mediaType == .video ? "play.circle" : "photo"
+        if let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) {
+            let symbolRect = NSRect(x: (size.width - 96) / 2, y: (size.height - 96) / 2, width: 96, height: 96)
+            NSColor.white.set()
+            symbol.draw(in: symbolRect)
+        }
+
+        image.unlockFocus()
+
+        guard let tiffData = image.tiffRepresentation,
+              let bitmapImage = NSBitmapImageRep(data: tiffData),
+              let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) else {
+            return Data()
+        }
+        return jpegData
+        #else
+        let size = CGSize(width: 280, height: 280)
+        UIGraphicsBeginImageContextWithOptions(size, true, 1.0)
+        defer { UIGraphicsEndImageContext() }
+
+        let context = UIGraphicsGetCurrentContext()
+        let colors = [UIColor(red: 0.21, green: 0.24, blue: 0.28, alpha: 1).cgColor,
+                      UIColor(red: 0.34, green: 0.37, blue: 0.42, alpha: 1).cgColor]
+        let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1])
+        context?.drawLinearGradient(gradient!, start: CGPoint(x: 0, y: 0), end: CGPoint(x: 0, y: size.height), options: [])
+
+        let symbolName = mediaType == .video ? "play.circle" : "photo"
+        if let image = UIImage(systemName: symbolName) {
+            let rect = CGRect(x: (size.width - 96) / 2, y: (size.height - 96) / 2, width: 96, height: 96)
+            UIColor.white.set()
+            image.draw(in: rect)
+        }
+
+        guard let rendered = UIGraphicsGetImageFromCurrentImageContext(),
+              let data = rendered.jpegData(compressionQuality: 0.85) else {
+            return Data()
+        }
+        return data
+        #endif
     }
     
     private func savePhotos() {
