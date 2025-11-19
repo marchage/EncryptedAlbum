@@ -145,12 +145,19 @@ struct PhotosLibraryPicker: View {
     @State private var selectedAssets: Set<String> = []
     @State private var hasAccess = false
     @State private var importing = false
+    @State private var importStatusMessage = "Preparing import…"
+    @State private var importDetailMessage = ""
+    @State private var importItemsProcessed = 0
+    @State private var importItemsTotal = 0
+    @State private var importBytesProcessed: Int64 = 0
+    @State private var importBytesTotal: Int64 = 0
     @State private var selectedLibrary: LibraryType = .personal
     @State private var isLoading = false
     @State private var selectedAlbumFilter: String? = nil
     // Fallback: Force treat all albums as Shared Library when PhotoKit can't distinguish
     @State private var forceSharedLibrary = false
     @State private var keyMonitor: Any? = nil
+    private typealias IndexedAsset = (index: Int, album: String, asset: PHAsset)
 
     var filteredPhotos: [(album: String, asset: PHAsset)] {
         if let filter = selectedAlbumFilter {
@@ -451,19 +458,65 @@ struct PhotosLibraryPicker: View {
         .overlay {
             if importing {
                 ZStack {
-                    Color.black.opacity(0.5)
+                    Color.black.opacity(0.45)
+                        .ignoresSafeArea()
                     VStack(spacing: 12) {
-                        ProgressView()
-                            .scaleEffect(1.3)
-                        Text("Hiding \(selectedAssets.count) items...")
-                            .font(.subheadline)
-                        Text("Please wait...")
-                            .font(.caption)
+                        if importItemsTotal > 0 {
+                            ProgressView(
+                                value: Double(importItemsProcessed),
+                                total: Double(max(importItemsTotal, 1))
+                            )
+                            .progressViewStyle(.linear)
+                            .frame(maxWidth: UIConstants.progressCardWidth)
+                        } else {
+                            ProgressView()
+                                .progressViewStyle(.linear)
+                                .frame(maxWidth: UIConstants.progressCardWidth)
+                        }
+
+                        if importBytesTotal > 0 {
+                            ProgressView(
+                                value: Double(importBytesProcessed),
+                                total: Double(max(importBytesTotal, 1))
+                            )
+                            .progressViewStyle(.linear)
+                            .frame(maxWidth: UIConstants.progressCardWidth)
+                            Text("\(formattedBytes(importBytesProcessed)) of \(formattedBytes(importBytesTotal))")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ProgressView()
+                                .progressViewStyle(.linear)
+                                .frame(maxWidth: UIConstants.progressCardWidth)
+                            Text(
+                                importBytesProcessed > 0
+                                    ? "\(formattedBytes(importBytesProcessed)) processed…" : "Preparing file size…"
+                            )
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
+                        }
+
+                        Text(importStatusMessage.isEmpty ? "Encrypting items…" : importStatusMessage)
+                            .font(.headline)
+
+                        if importItemsTotal > 0 {
+                            Text("\(importItemsProcessed) of \(importItemsTotal)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if !importDetailMessage.isEmpty {
+                            Text(importDetailMessage)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
                     }
-                    .padding(28)
+                    .padding(24)
+                    .frame(maxWidth: UIConstants.progressCardWidth)
                     .background(.ultraThickMaterial)
-                    .cornerRadius(12)
+                    .cornerRadius(16)
+                    .shadow(radius: 18)
                 }
             }
         }
@@ -567,13 +620,28 @@ struct PhotosLibraryPicker: View {
 
     private func hideSelectedPhotos() async {
         guard !selectedAssets.isEmpty else { return }
-        // UI state must be mutated on the main thread
         await MainActor.run {
             importing = true
+            resetImportProgressState()
         }
 
         let assetsToHide = allPhotos.filter { selectedAssets.contains($0.asset.localIdentifier) }
         let totalCount = assetsToHide.count
+
+        guard totalCount > 0 else {
+            await MainActor.run {
+                importing = false
+                resetImportProgressState()
+            }
+            dismiss()
+            return
+        }
+
+        await MainActor.run {
+            importItemsTotal = totalCount
+            importStatusMessage = "Preparing import…"
+            importDetailMessage = "\(totalCount) item(s)"
+        }
 
         // Add overall timeout to prevent hanging
         let timeoutTask = Task {
@@ -582,6 +650,7 @@ struct PhotosLibraryPicker: View {
                 print("⚠️ Overall hide operation timed out after 5 minutes")
                 await MainActor.run {
                     importing = false
+                    resetImportProgressState()
                     dismiss()
                 }
             }
@@ -596,67 +665,16 @@ struct PhotosLibraryPicker: View {
         var successfulAssets: [PHAsset] = []
         var processedCount = 0
 
+        let indexedAssets: [IndexedAsset] = assetsToHide.enumerated().map {
+            (index: $0.offset, album: $0.element.album, asset: $0.element.asset)
+        }
+
         // Process assets in batches to limit concurrency
-        for batch in assetsToHide.chunked(into: maxConcurrentOperations) {
+        for batch in indexedAssets.chunked(into: maxConcurrentOperations) {
             await withTaskGroup(of: (PHAsset, Bool).self) { group in
-                for photoData in batch {
+                for entry in batch {
                     group.addTask {
-                        do {
-                            print("Processing asset: \(photoData.asset.localIdentifier)")
-
-                            guard
-                                let mediaResult = await PhotosLibraryService.shared.getMediaDataAsync(
-                                    for: photoData.asset)
-                            else {
-                                print("❌ Failed to get media data for asset: \(photoData.asset.localIdentifier)")
-                                return (photoData.asset, false)
-                            }
-
-                            defer {
-                                if mediaResult.shouldDeleteFileWhenFinished, let tempURL = mediaResult.fileURL {
-                                    try? FileManager.default.removeItem(at: tempURL)
-                                }
-                            }
-
-                            if let fileURL = mediaResult.fileURL {
-                                try await vaultManager.hidePhoto(
-                                    mediaSource: .fileURL(fileURL),
-                                    filename: mediaResult.filename,
-                                    dateTaken: mediaResult.dateTaken,
-                                    sourceAlbum: photoData.album,
-                                    assetIdentifier: photoData.asset.localIdentifier,
-                                    mediaType: mediaResult.mediaType,
-                                    duration: mediaResult.duration,
-                                    location: mediaResult.location,
-                                    isFavorite: mediaResult.isFavorite
-                                )
-                            } else if let mediaData = mediaResult.data {
-                                try await vaultManager.hidePhoto(
-                                    imageData: mediaData,
-                                    filename: mediaResult.filename,
-                                    dateTaken: mediaResult.dateTaken,
-                                    sourceAlbum: photoData.album,
-                                    assetIdentifier: photoData.asset.localIdentifier,
-                                    mediaType: mediaResult.mediaType,
-                                    duration: mediaResult.duration,
-                                    location: mediaResult.location,
-                                    isFavorite: mediaResult.isFavorite
-                                )
-                            } else {
-                                print(
-                                    "❌ Media result lacked both data and file URL for asset: \(photoData.asset.localIdentifier)"
-                                )
-                                return (photoData.asset, false)
-                            }
-
-                            print(
-                                "✅ \(mediaResult.mediaType == .video ? "Video" : "Photo") added to vault: \(mediaResult.filename)"
-                            )
-                            return (photoData.asset, true)
-                        } catch {
-                            print("❌ Failed to add media to vault: \(error.localizedDescription)")
-                            return (photoData.asset, false)
-                        }
+                        await processImport(entry: entry, totalCount: totalCount)
                     }
                 }
 
@@ -665,6 +683,9 @@ struct PhotosLibraryPicker: View {
                     processedCount += 1
                     if success {
                         successfulAssets.append(asset)
+                    }
+                    await MainActor.run {
+                        importItemsProcessed = processedCount
                     }
                     print("Progress: \(processedCount)/\(totalCount) items processed")
                 }
@@ -708,6 +729,7 @@ struct PhotosLibraryPicker: View {
                 }
 
                 importing = false
+                resetImportProgressState()
 
                 // Notify main UI with undo-capable notification and dismiss the picker
                 vaultManager.hideNotification = HideNotification(
@@ -720,9 +742,152 @@ struct PhotosLibraryPicker: View {
         } else {
             await MainActor.run {
                 importing = false
+                resetImportProgressState()
             }
             dismiss()
         }
+    }
+
+    private func processImport(entry: IndexedAsset, totalCount: Int) async -> (PHAsset, Bool) {
+        let asset = entry.asset
+        let itemNumber = entry.index + 1
+
+        print("Processing asset: \(asset.localIdentifier)")
+
+        guard let mediaResult = await PhotosLibraryService.shared.getMediaDataAsync(for: asset) else {
+            print("❌ Failed to get media data for asset: \(asset.localIdentifier)")
+            await MainActor.run {
+                importStatusMessage = "Failed to fetch item"
+                importDetailMessage = "Item \(itemNumber) unavailable"
+                importBytesProcessed = 0
+                importBytesTotal = 0
+            }
+            return (asset, false)
+        }
+
+        let fileSizeValue = estimatedSize(for: mediaResult)
+        let sizeDescription = readableByteString(for: fileSizeValue)
+
+        await MainActor.run {
+            importStatusMessage = "Encrypting \(mediaResult.filename)…"
+            importDetailMessage = detailText(for: itemNumber, total: totalCount, sizeDescription: sizeDescription)
+            importBytesTotal = fileSizeValue
+            importBytesProcessed = 0
+        }
+
+        let cleanupURL = mediaResult.shouldDeleteFileWhenFinished ? mediaResult.fileURL : nil
+        let progressHandler: ((Int64) async -> Void)? = mediaResult.fileURL != nil ? { bytesRead in
+            await MainActor.run {
+                importBytesProcessed = bytesRead
+            }
+        } : nil
+
+        do {
+            let mediaSource: MediaSource
+            if let fileURL = mediaResult.fileURL {
+                mediaSource = .fileURL(fileURL)
+            } else if let mediaData = mediaResult.data {
+                mediaSource = .data(mediaData)
+            } else {
+                print("❌ Media result lacked both data and file URL for asset: \(asset.localIdentifier)")
+                await MainActor.run {
+                    importStatusMessage = "Failed \(mediaResult.filename)"
+                    importDetailMessage = "Missing media data"
+                }
+                return (asset, false)
+            }
+
+            defer {
+                if let cleanupURL = cleanupURL {
+                    try? FileManager.default.removeItem(at: cleanupURL)
+                }
+            }
+
+            try await vaultManager.hidePhoto(
+                mediaSource: mediaSource,
+                filename: mediaResult.filename,
+                dateTaken: mediaResult.dateTaken,
+                sourceAlbum: entry.album,
+                assetIdentifier: asset.localIdentifier,
+                mediaType: mediaResult.mediaType,
+                duration: mediaResult.duration,
+                location: mediaResult.location,
+                isFavorite: mediaResult.isFavorite,
+                progressHandler: progressHandler
+            )
+
+            await MainActor.run {
+                if progressHandler == nil && fileSizeValue > 0 {
+                    importBytesProcessed = fileSizeValue
+                }
+            }
+
+            print(
+                "✅ \(mediaResult.mediaType == .video ? "Video" : "Photo") added to vault: \(mediaResult.filename)"
+            )
+            return (asset, true)
+        } catch {
+            print("❌ Failed to add media to vault: \(error.localizedDescription)")
+            await MainActor.run {
+                importStatusMessage = "Failed \(mediaResult.filename)"
+                importDetailMessage = error.localizedDescription
+                importBytesProcessed = 0
+                importBytesTotal = 0
+            }
+            return (asset, false)
+        }
+    }
+
+    private func estimatedSize(for mediaResult: MediaFetchResult) -> Int64 {
+        if let fileURL = mediaResult.fileURL {
+            return fileSizeValue(for: fileURL)
+        }
+        if let data = mediaResult.data {
+            return Int64(data.count)
+        }
+        return 0
+    }
+
+    private func fileSizeValue(for url: URL) -> Int64 {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+            let size = attributes[.size] as? NSNumber
+        else {
+            return 0
+        }
+        return size.int64Value
+    }
+
+    private func detailText(for itemNumber: Int, total: Int, sizeDescription: String?) -> String {
+        var parts: [String] = ["Item \(itemNumber) of \(total)"]
+        if let sizeDescription {
+            parts.append(sizeDescription)
+        }
+        return parts.joined(separator: " • ")
+    }
+
+    private func readableByteString(for value: Int64) -> String? {
+        guard value > 0 else { return nil }
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: value)
+    }
+
+    private func formattedBytes(_ value: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: max(value, 0))
+    }
+
+    @MainActor
+    private func resetImportProgressState() {
+        importStatusMessage = ""
+        importDetailMessage = ""
+        importItemsProcessed = 0
+        importItemsTotal = 0
+        importBytesProcessed = 0
+        importBytesTotal = 0
     }
 }
 

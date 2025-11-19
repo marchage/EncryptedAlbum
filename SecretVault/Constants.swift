@@ -64,3 +64,8 @@ enum SecurityConstants {
     static let minRandomEntropy = 0.8
     static let cryptoTestData = "SecretVault crypto validation test data"
 }
+
+/// Shared UI layout metrics
+enum UIConstants {
+    static let progressCardWidth: CGFloat = 320
+}

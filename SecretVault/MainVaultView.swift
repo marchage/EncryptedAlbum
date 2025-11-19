@@ -21,11 +21,11 @@ struct MainVaultView: View {
                     if progress.totalItems > 0 {
                         ProgressView(value: Double(progress.processedItems), total: Double(max(progress.totalItems, 1)))
                             .progressViewStyle(.linear)
-                            .frame(maxWidth: 260)
+                            .frame(maxWidth: UIConstants.progressCardWidth)
                     } else {
                         ProgressView()
                             .progressViewStyle(.linear)
-                            .frame(maxWidth: 260)
+                            .frame(maxWidth: UIConstants.progressCardWidth)
                     }
 
                     if progress.currentBytesTotal > 0 {
@@ -34,7 +34,7 @@ struct MainVaultView: View {
                             total: Double(max(progress.currentBytesTotal, 1))
                         )
                         .progressViewStyle(.linear)
-                        .frame(maxWidth: 260)
+                        .frame(maxWidth: UIConstants.progressCardWidth)
                         Text(
                             "\(formattedBytes(progress.currentBytesProcessed)) of \(formattedBytes(progress.currentBytesTotal))"
                         )
@@ -43,14 +43,14 @@ struct MainVaultView: View {
                     } else if progress.currentBytesProcessed > 0 {
                         ProgressView()
                             .progressViewStyle(.linear)
-                            .frame(maxWidth: 260)
+                            .frame(maxWidth: UIConstants.progressCardWidth)
                         Text("\(formattedBytes(progress.currentBytesProcessed)) processed…")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     } else {
                         ProgressView()
                             .progressViewStyle(.linear)
-                            .frame(maxWidth: 260)
+                            .frame(maxWidth: UIConstants.progressCardWidth)
                         Text("Preparing file size…")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -92,6 +92,7 @@ struct MainVaultView: View {
                     .disabled(progress.cancelRequested)
                 }
                 .padding(24)
+                .frame(maxWidth: UIConstants.progressCardWidth)
                 .background(.ultraThickMaterial)
                 .cornerRadius(16)
                 .shadow(radius: 18)
@@ -994,16 +995,17 @@ struct MainVaultView: View {
                 if captureItemsTotal > 0 {
                     ProgressView(value: Double(captureItemsProcessed), total: Double(max(captureItemsTotal, 1)))
                         .progressViewStyle(.linear)
-                        .frame(maxWidth: 260)
+                        .frame(maxWidth: UIConstants.progressCardWidth)
                 } else {
                     ProgressView()
                         .progressViewStyle(.linear)
-                        .frame(maxWidth: 260)
+                        .frame(maxWidth: UIConstants.progressCardWidth)
                 }
 
                 if captureBytesTotal > 0 {
                     ProgressView(value: Double(captureBytesProcessed), total: Double(max(captureBytesTotal, 1)))
                         .progressViewStyle(.linear)
+                        .frame(maxWidth: UIConstants.progressCardWidth)
                     Text("\(formattedBytes(captureBytesProcessed)) of \(formattedBytes(captureBytesTotal))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -1045,6 +1047,7 @@ struct MainVaultView: View {
                 .disabled(captureCancelRequested)
             }
             .padding(24)
+            .frame(maxWidth: UIConstants.progressCardWidth)
             .background(.ultraThickMaterial)
             .cornerRadius(16)
             .shadow(radius: 18)
@@ -1061,24 +1064,24 @@ struct MainVaultView: View {
                 if exportItemsTotal > 0 {
                     ProgressView(value: Double(exportItemsProcessed), total: Double(max(exportItemsTotal, 1)))
                         .progressViewStyle(.linear)
-                        .frame(maxWidth: 260)
+                        .frame(maxWidth: UIConstants.progressCardWidth)
                 } else {
                     ProgressView()
                         .progressViewStyle(.linear)
-                        .frame(maxWidth: 260)
+                        .frame(maxWidth: UIConstants.progressCardWidth)
                 }
 
                 if exportBytesTotal > 0 {
                     ProgressView(value: Double(exportBytesProcessed), total: Double(max(exportBytesTotal, 1)))
                         .progressViewStyle(.linear)
-                        .frame(maxWidth: 260)
+                        .frame(maxWidth: UIConstants.progressCardWidth)
                     Text("\(formattedBytes(exportBytesProcessed)) of \(formattedBytes(exportBytesTotal))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 } else {
                     ProgressView()
                         .progressViewStyle(.linear)
-                        .frame(maxWidth: 260)
+                        .frame(maxWidth: UIConstants.progressCardWidth)
                     Text(
                         exportBytesProcessed > 0
                             ? "\(formattedBytes(exportBytesProcessed)) processed…" : "Preparing file size…"
@@ -1121,6 +1124,7 @@ struct MainVaultView: View {
                 .disabled(exportCancelRequested)
             }
             .padding(24)
+            .frame(maxWidth: UIConstants.progressCardWidth)
             .background(.ultraThickMaterial)
             .cornerRadius(16)
             .shadow(radius: 18)
