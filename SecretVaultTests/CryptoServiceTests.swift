@@ -127,20 +127,23 @@ final class CryptoServiceTests: XCTestCase {
         let encryptionKey = SymmetricKey(size: .bits256)
         let hmacKey = SymmetricKey(size: .bits256)
         
-        var (encrypted, nonce, hmac) = try await sut.encryptDataWithIntegrity(
+        let (encrypted, nonce, hmac) = try await sut.encryptDataWithIntegrity(
             data,
             encryptionKey: encryptionKey,
             hmacKey: hmacKey
         )
         
+        // Create a mutable copy explicitly to avoid potential issues with tuple destructuring mutation
+        var tamperedEncrypted = Data(encrypted)
+        
         // Tamper with encrypted data
-        if let firstByte = encrypted.first {
-            encrypted[0] = firstByte ^ 0xFF
+        if !tamperedEncrypted.isEmpty {
+            tamperedEncrypted[0] = tamperedEncrypted[0] ^ 0xFF
         }
         
         do {
             _ = try await sut.decryptDataWithIntegrity(
-                encrypted,
+                tamperedEncrypted,
                 nonce: nonce,
                 hmac: hmac,
                 encryptionKey: encryptionKey,
@@ -161,22 +164,25 @@ final class CryptoServiceTests: XCTestCase {
         let encryptionKey = SymmetricKey(size: .bits256)
         let hmacKey = SymmetricKey(size: .bits256)
         
-        var (encrypted, nonce, hmac) = try await sut.encryptDataWithIntegrity(
+        let (encrypted, nonce, hmac) = try await sut.encryptDataWithIntegrity(
             data,
             encryptionKey: encryptionKey,
             hmacKey: hmacKey
         )
         
+        // Create a mutable copy explicitly
+        var tamperedHMAC = hmac
+        
         // Tamper with HMAC
-        if let firstByte = hmac.first {
-            hmac[0] = firstByte ^ 0xFF
+        if !tamperedHMAC.isEmpty {
+            tamperedHMAC[0] ^= 0xFF
         }
         
         do {
             _ = try await sut.decryptDataWithIntegrity(
                 encrypted,
                 nonce: nonce,
-                hmac: hmac,
+                hmac: tamperedHMAC,
                 encryptionKey: encryptionKey,
                 hmacKey: hmacKey
             )

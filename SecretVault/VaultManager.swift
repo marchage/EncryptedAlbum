@@ -454,7 +454,7 @@ class VaultManager: ObservableObject {
     /// - Returns: `true` if unlock successful, `false` otherwise
     func unlock(password: String) async throws {
         // Rate limiting: exponential backoff on failed attempts
-        if let lastAttempt = lastUnlockAttemptTime {
+        if failedUnlockAttempts > 0, let lastAttempt = lastUnlockAttemptTime {
             let requiredDelay = calculateUnlockDelay()
             let elapsed = Date().timeIntervalSince(lastAttempt)
 
