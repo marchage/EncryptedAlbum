@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var vaultManager: VaultManager
-    
+
     var body: some View {
         ZStack {
             if vaultManager.hasPassword() {
@@ -16,8 +16,8 @@ struct ContentView: View {
             }
         }
         #if os(macOS)
-        .frame(minWidth: 900, minHeight: 600)
+            .frame(minWidth: 900, minHeight: 600)
         #endif
-        .id(vaultManager.viewRefreshId) // Force view recreation when refreshId changes
+        .id(vaultManager.viewRefreshId)  // Force view recreation when refreshId changes
     }
 }

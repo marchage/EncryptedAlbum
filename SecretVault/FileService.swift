@@ -1,8 +1,9 @@
-import Foundation
 import CryptoKit
+import Foundation
+
 #if os(iOS)
-import UIKit
-import Photos
+    import UIKit
+    import Photos
 #endif
 
 /// Service responsible for all file system operations in the vault
@@ -12,7 +13,8 @@ class FileService {
 
     init(cryptoService: CryptoService) {
         self.cryptoService = cryptoService
-        let baseTemp = FileManager.default.temporaryDirectory.appendingPathComponent(FileConstants.tempWorkingDirectoryName, isDirectory: true)
+        let baseTemp = FileManager.default.temporaryDirectory.appendingPathComponent(
+            FileConstants.tempWorkingDirectoryName, isDirectory: true)
         if !FileManager.default.fileExists(atPath: baseTemp.path) {
             try? FileManager.default.createDirectory(at: baseTemp, withIntermediateDirectories: true)
         }
@@ -22,14 +24,18 @@ class FileService {
     /// Removes stale working files that may have been left behind after crashes or aborted operations.
     func cleanupTemporaryArtifacts(olderThan: TimeInterval = 24 * 60 * 60) {
         let fm = FileManager.default
-        guard let contents = try? fm.contentsOfDirectory(at: tempDirectory, includingPropertiesForKeys: [.contentModificationDateKey], options: []) else {
+        guard
+            let contents = try? fm.contentsOfDirectory(
+                at: tempDirectory, includingPropertiesForKeys: [.contentModificationDateKey], options: [])
+        else {
             return
         }
 
         let cutoff = Date().addingTimeInterval(-olderThan)
         for url in contents {
             guard let values = try? url.resourceValues(forKeys: [.contentModificationDateKey]),
-                  let modified = values.contentModificationDate else {
+                let modified = values.contentModificationDate
+            else {
                 continue
             }
 
@@ -72,7 +78,9 @@ class FileService {
     // MARK: - File Operations
 
     /// Saves encrypted data to file with integrity protection
-    func saveEncryptedFile(data: Data, filename: String, to directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws {
+    func saveEncryptedFile(
+        data: Data, filename: String, to directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey
+    ) async throws {
         let fileURL = directory.appendingPathComponent(filename)
 
         // Check if file already exists
@@ -81,7 +89,8 @@ class FileService {
         }
 
         // Encrypt data with integrity
-        let (encryptedData, nonce, hmac) = try await self.cryptoService.encryptDataWithIntegrity(data, encryptionKey: encryptionKey, hmacKey: hmacKey)
+        let (encryptedData, nonce, hmac) = try await self.cryptoService.encryptDataWithIntegrity(
+            data, encryptionKey: encryptionKey, hmacKey: hmacKey)
 
         // Write encrypted data
         try encryptedData.write(to: fileURL, options: .atomic)
@@ -94,7 +103,10 @@ class FileService {
     }
 
     /// Encrypts a file already on disk by streaming chunks to the destination file.
-    func saveStreamEncryptedFile(from sourceURL: URL, filename: String, mediaType: MediaType, to directory: URL, encryptionKey: SymmetricKey, hmacKey _: SymmetricKey, progressHandler: ((Int64) async -> Void)? = nil) async throws {
+    func saveStreamEncryptedFile(
+        from sourceURL: URL, filename: String, mediaType: MediaType, to directory: URL, encryptionKey: SymmetricKey,
+        hmacKey _: SymmetricKey, progressHandler: ((Int64) async -> Void)? = nil
+    ) async throws {
         let destinationURL = directory.appendingPathComponent(filename)
 
         if FileManager.default.fileExists(atPath: destinationURL.path) {
@@ -156,7 +168,9 @@ class FileService {
     }
 
     /// Loads and decrypts file with integrity verification
-    func loadEncryptedFile(filename: String, from directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws -> Data {
+    func loadEncryptedFile(filename: String, from directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey)
+        async throws -> Data
+    {
         let fileURL = directory.appendingPathComponent(filename)
 
         // Check if file exists
@@ -172,14 +186,20 @@ class FileService {
     }
 
     /// Decrypts an encrypted file to a temporary location on disk, returning the URL for downstream streaming uses.
-    func decryptEncryptedFileToTemporaryURL(filename: String, originalExtension: String?, from directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey, progressHandler: ((Int64) -> Void)? = nil) async throws -> URL {
+    func decryptEncryptedFileToTemporaryURL(
+        filename: String, originalExtension: String?, from directory: URL, encryptionKey: SymmetricKey,
+        hmacKey: SymmetricKey, progressHandler: ((Int64) -> Void)? = nil
+    ) async throws -> URL {
         let fileURL = directory.appendingPathComponent(filename)
 
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             throw VaultError.fileNotFound(path: fileURL.path)
         }
 
-        if let tempURL = try await decryptStreamFileToTempURLIfNeeded(at: fileURL, encryptionKey: encryptionKey, preferredExtension: originalExtension, progressHandler: progressHandler) {
+        if let tempURL = try await decryptStreamFileToTempURLIfNeeded(
+            at: fileURL, encryptionKey: encryptionKey, preferredExtension: originalExtension,
+            progressHandler: progressHandler)
+        {
             return tempURL
         }
 
@@ -205,14 +225,18 @@ class FileService {
             decrypted.reserveCapacity(Int(header.originalSize))
         }
 
-        try await processStreamFile(from: handle, header: header, encryptionKey: encryptionKey, chunkHandler: { chunk in
-            decrypted.append(chunk)
-        })
+        try await processStreamFile(
+            from: handle, header: header, encryptionKey: encryptionKey,
+            chunkHandler: { chunk in
+                decrypted.append(chunk)
+            })
 
         return decrypted
     }
 
-    private func decryptStreamFileToTempURLIfNeeded(at fileURL: URL, encryptionKey: SymmetricKey, preferredExtension: String?, progressHandler: ((Int64) -> Void)?) async throws -> URL? {
+    private func decryptStreamFileToTempURLIfNeeded(
+        at fileURL: URL, encryptionKey: SymmetricKey, preferredExtension: String?, progressHandler: ((Int64) -> Void)?
+    ) async throws -> URL? {
         guard let handle = try? FileHandle(forReadingFrom: fileURL) else {
             return nil
         }
@@ -229,9 +253,11 @@ class FileService {
         defer { try? writeHandle.close() }
 
         do {
-            try await processStreamFile(from: handle, header: header, encryptionKey: encryptionKey, chunkHandler: { chunk in
-                try writeHandle.write(contentsOf: chunk)
-            }, progressHandler: progressHandler)
+            try await processStreamFile(
+                from: handle, header: header, encryptionKey: encryptionKey,
+                chunkHandler: { chunk in
+                    try writeHandle.write(contentsOf: chunk)
+                }, progressHandler: progressHandler)
             return tempURL
         } catch {
             try? FileManager.default.removeItem(at: tempURL)
@@ -283,10 +309,14 @@ class FileService {
             return UInt32(littleEndian: value)
         }
 
-        return StreamFileHeader(version: version, mediaType: mediaType, originalSize: originalSize, chunkSize: chunkSize)
+        return StreamFileHeader(
+            version: version, mediaType: mediaType, originalSize: originalSize, chunkSize: chunkSize)
     }
 
-    private func processStreamFile(from handle: FileHandle, header: StreamFileHeader, encryptionKey: SymmetricKey, chunkHandler: (Data) throws -> Void, progressHandler: ((Int64) -> Void)? = nil) async throws {
+    private func processStreamFile(
+        from handle: FileHandle, header: StreamFileHeader, encryptionKey: SymmetricKey,
+        chunkHandler: (Data) throws -> Void, progressHandler: ((Int64) -> Void)? = nil
+    ) async throws {
         var totalProcessed: Int64 = 0
 
         while true {
@@ -318,7 +348,9 @@ class FileService {
         }
     }
 
-    private func decryptLegacyFile(at fileURL: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws -> Data {
+    private func decryptLegacyFile(at fileURL: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws
+        -> Data
+    {
         let encryptedData = try Data(contentsOf: fileURL)
 
         guard let nonce = try self.getExtendedAttribute(name: "com.secretvault.nonce", at: fileURL) else {
@@ -329,7 +361,8 @@ class FileService {
             throw VaultError.fileReadFailed(path: fileURL.path, reason: "Missing HMAC")
         }
 
-        return try await self.cryptoService.decryptDataWithIntegrity(encryptedData, nonce: nonce, hmac: hmac, encryptionKey: encryptionKey, hmacKey: hmacKey)
+        return try await self.cryptoService.decryptDataWithIntegrity(
+            encryptedData, nonce: nonce, hmac: hmac, encryptionKey: encryptionKey, hmacKey: hmacKey)
     }
 
     private func readExact(from handle: FileHandle, count: Int) throws -> Data {
@@ -388,59 +421,70 @@ class FileService {
 
     // MARK: - Thumbnail Operations
 
-#if os(iOS)
-    /// Generates and saves thumbnail for an image
-    func generateAndSaveThumbnail(for imageData: Data, filename: String, to directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws {
-        guard let image = UIImage(data: imageData) else {
-            throw VaultError.invalidFileFormat(reason: "Invalid image data")
+    #if os(iOS)
+        /// Generates and saves thumbnail for an image
+        func generateAndSaveThumbnail(
+            for imageData: Data, filename: String, to directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey
+        ) async throws {
+            guard let image = UIImage(data: imageData) else {
+                throw VaultError.invalidFileFormat(reason: "Invalid image data")
+            }
+
+            let thumbnail = try self.generateThumbnail(from: image)
+            guard
+                let thumbnailData = thumbnail.jpegData(compressionQuality: CryptoConstants.thumbnailCompressionQuality)
+            else {
+                throw VaultError.invalidFileFormat(reason: "Failed to compress thumbnail")
+            }
+
+            let thumbnailFilename = filename.replacingOccurrences(
+                of: ".\(FileConstants.encryptedFileExtension)", with: FileConstants.encryptedThumbnailSuffix)
+            try await self.saveEncryptedFile(
+                data: thumbnailData, filename: thumbnailFilename, to: directory, encryptionKey: encryptionKey,
+                hmacKey: hmacKey)
         }
 
-        let thumbnail = try self.generateThumbnail(from: image)
-        guard let thumbnailData = thumbnail.jpegData(compressionQuality: CryptoConstants.thumbnailCompressionQuality) else {
-            throw VaultError.invalidFileFormat(reason: "Failed to compress thumbnail")
+        /// Loads and decrypts thumbnail
+        func loadThumbnail(filename: String, from directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey)
+            async throws -> UIImage?
+        {
+            let thumbnailFilename = filename.replacingOccurrences(
+                of: ".\(FileConstants.encryptedFileExtension)", with: FileConstants.encryptedThumbnailSuffix)
+            let thumbnailData = try await self.loadEncryptedFile(
+                filename: thumbnailFilename, from: directory, encryptionKey: encryptionKey, hmacKey: hmacKey)
+
+            guard let image = UIImage(data: thumbnailData) else {
+                return nil
+            }
+
+            return image
         }
 
-        let thumbnailFilename = filename.replacingOccurrences(of: ".\(FileConstants.encryptedFileExtension)", with: FileConstants.encryptedThumbnailSuffix)
-        try await self.saveEncryptedFile(data: thumbnailData, filename: thumbnailFilename, to: directory, encryptionKey: encryptionKey, hmacKey: hmacKey)
-    }
+        private func generateThumbnail(from image: UIImage) throws -> UIImage {
+            let size = image.size
 
-    /// Loads and decrypts thumbnail
-    func loadThumbnail(filename: String, from directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws -> UIImage? {
-        let thumbnailFilename = filename.replacingOccurrences(of: ".\(FileConstants.encryptedFileExtension)", with: FileConstants.encryptedThumbnailSuffix)
-        let thumbnailData = try await self.loadEncryptedFile(filename: thumbnailFilename, from: directory, encryptionKey: encryptionKey, hmacKey: hmacKey)
+            let maxDimension = CryptoConstants.maxThumbnailDimension
+            let aspectRatio = size.width / size.height
 
-        guard let image = UIImage(data: thumbnailData) else {
-            return nil
+            var newSize: CGSize
+            if size.width > size.height {
+                newSize = CGSize(width: maxDimension, height: maxDimension / aspectRatio)
+            } else {
+                newSize = CGSize(width: maxDimension * aspectRatio, height: maxDimension)
+            }
+
+            UIGraphicsBeginImageContextWithOptions(newSize, false, 0.0)
+            defer { UIGraphicsEndImageContext() }
+
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+
+            guard let thumbnail = UIGraphicsGetImageFromCurrentImageContext() else {
+                throw VaultError.invalidFileFormat(reason: "Failed to generate thumbnail")
+            }
+
+            return thumbnail
         }
-
-        return image
-    }
-
-    private func generateThumbnail(from image: UIImage) throws -> UIImage {
-        let size = image.size
-
-        let maxDimension = CryptoConstants.maxThumbnailDimension
-        let aspectRatio = size.width / size.height
-
-        var newSize: CGSize
-        if size.width > size.height {
-            newSize = CGSize(width: maxDimension, height: maxDimension / aspectRatio)
-        } else {
-            newSize = CGSize(width: maxDimension * aspectRatio, height: maxDimension)
-        }
-
-        UIGraphicsBeginImageContextWithOptions(newSize, false, 0.0)
-        defer { UIGraphicsEndImageContext() }
-
-        image.draw(in: CGRect(origin: .zero, size: newSize))
-
-        guard let thumbnail = UIGraphicsGetImageFromCurrentImageContext() else {
-            throw VaultError.invalidFileFormat(reason: "Failed to generate thumbnail")
-        }
-
-        return thumbnail
-    }
-#endif
+    #endif
 
     // MARK: - Extended Attributes
 
@@ -456,7 +500,7 @@ class FileService {
     private func getExtendedAttribute(name: String, at url: URL) throws -> Data? {
         let bufferSize = getxattr(url.path, name, nil, 0, 0, 0)
         if bufferSize == -1 {
-            return nil // Attribute doesn't exist
+            return nil  // Attribute doesn't exist
         }
 
         var buffer = [UInt8](repeating: 0, count: bufferSize)
@@ -486,7 +530,8 @@ class FileService {
 
     /// Lists all files in directory
     func listFiles(in directory: URL) throws -> [URL] {
-        let contents = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [])
+        let contents = try FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: nil, options: [])
         return contents.filter { $0.pathExtension == FileConstants.encryptedFileExtension }
     }
 }

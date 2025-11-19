@@ -1,5 +1,5 @@
-import Foundation
 import CryptoKit
+import Foundation
 
 /// Service responsible for password management and validation
 class PasswordService {
@@ -52,7 +52,8 @@ class PasswordService {
 
                         continuation.resume(returning: (hash, salt))
                     } catch {
-                        continuation.resume(throwing: VaultError.keyDerivationFailed(reason: error.localizedDescription))
+                        continuation.resume(
+                            throwing: VaultError.keyDerivationFailed(reason: error.localizedDescription))
                     }
                 }
             }
@@ -91,7 +92,8 @@ class PasswordService {
     /// Retrieves stored password hash and salt
     func retrievePasswordCredentials() throws -> (hash: Data, salt: Data)? {
         guard let hash = try securityService.retrieveFromKeychain(for: passwordHashKey),
-              let salt = try securityService.retrieveFromKeychain(for: passwordSaltKey) else {
+            let salt = try securityService.retrieveFromKeychain(for: passwordSaltKey)
+        else {
             return nil
         }
         return (hash, salt)
@@ -106,7 +108,10 @@ class PasswordService {
     // MARK: - Password Change
 
     /// Changes the vault password
-    func changePassword(from oldPassword: String, to newPassword: String, vaultURL: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws {
+    func changePassword(
+        from oldPassword: String, to newPassword: String, vaultURL: URL, encryptionKey: SymmetricKey,
+        hmacKey: SymmetricKey
+    ) async throws {
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
                 Task {
@@ -120,7 +125,8 @@ class PasswordService {
                             return
                         }
 
-                        let oldPasswordValid = try await self.verifyPassword(oldPassword, against: storedHash, salt: storedSalt)
+                        let oldPasswordValid = try await self.verifyPassword(
+                            oldPassword, against: storedHash, salt: storedSalt)
                         guard oldPasswordValid else {
                             continuation.resume(throwing: VaultError.invalidPassword)
                             return
@@ -189,7 +195,8 @@ class PasswordService {
         let sequential = ["abcdefghijklmnopqrstuvwxyz", "0123456789"]
         for seq in sequential {
             for i in 0...(seq.count - 3) {
-                let substring = String(seq[seq.index(seq.startIndex, offsetBy: i)...seq.index(seq.startIndex, offsetBy: i + 2)])
+                let substring = String(
+                    seq[seq.index(seq.startIndex, offsetBy: i)...seq.index(seq.startIndex, offsetBy: i + 2)])
                 if password.lowercased().contains(substring) {
                     score -= 1
                     feedback.append("Avoid sequential characters")

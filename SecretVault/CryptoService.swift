@@ -1,6 +1,6 @@
-import Foundation
-import CryptoKit
 import CommonCrypto
+import CryptoKit
+import Foundation
 
 /// Service responsible for all cryptographic operations in the vault
 class CryptoService {
@@ -82,7 +82,9 @@ class CryptoService {
     }
 
     /// Encrypts data with HMAC for integrity verification
-    func encryptDataWithIntegrity(_ data: Data, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws -> (encryptedData: Data, nonce: Data, hmac: Data) {
+    func encryptDataWithIntegrity(_ data: Data, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws -> (
+        encryptedData: Data, nonce: Data, hmac: Data
+    ) {
         let (encryptedData, nonce) = try await encryptData(data, key: encryptionKey)
         let hmac = await generateHMAC(for: encryptedData, key: hmacKey)
         return (encryptedData, nonce, hmac)
@@ -101,9 +103,10 @@ class CryptoService {
                     }
 
                     // Split ciphertext and tag
-                    let tagSize = 16 // AES-GCM tag is always 16 bytes
+                    let tagSize = 16  // AES-GCM tag is always 16 bytes
                     guard encryptedData.count >= tagSize else {
-                        continuation.resume(throwing: VaultError.decryptionFailed(reason: "Invalid encrypted data format"))
+                        continuation.resume(
+                            throwing: VaultError.decryptionFailed(reason: "Invalid encrypted data format"))
                         return
                     }
 
@@ -121,7 +124,9 @@ class CryptoService {
     }
 
     /// Decrypts data and verifies HMAC integrity
-    func decryptDataWithIntegrity(_ encryptedData: Data, nonce: Data, hmac: Data, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws -> Data {
+    func decryptDataWithIntegrity(
+        _ encryptedData: Data, nonce: Data, hmac: Data, encryptionKey: SymmetricKey, hmacKey: SymmetricKey
+    ) async throws -> Data {
         // First verify HMAC
         try await verifyHMAC(hmac, for: encryptedData, key: hmacKey)
 
@@ -169,7 +174,9 @@ class CryptoService {
                 }
 
                 guard result == errSecSuccess else {
-                    continuation.resume(throwing: VaultError.randomGenerationFailed(reason: "SecRandomCopyBytes failed with code \(result)"))
+                    continuation.resume(
+                        throwing: VaultError.randomGenerationFailed(
+                            reason: "SecRandomCopyBytes failed with code \(result)"))
                     return
                 }
 

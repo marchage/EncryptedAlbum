@@ -1,8 +1,8 @@
-import SwiftUI
-import Foundation
-import CryptoKit
 import AVFoundation
+import CryptoKit
+import Foundation
 import LocalAuthentication
+import SwiftUI
 
 // MARK: - Data Extensions
 
@@ -142,11 +142,11 @@ struct SecurePhoto: Identifiable, Codable {
     var dateAdded: Date
     var dateTaken: Date?
     var sourceAlbum: String?
-    var vaultAlbum: String? // Custom album within the vault
+    var vaultAlbum: String?  // Custom album within the vault
     var fileSize: Int64
-    var originalAssetIdentifier: String? // To track the original Photos library asset
-    var mediaType: MediaType // Photo or video
-    var duration: TimeInterval? // For videos
+    var originalAssetIdentifier: String?  // To track the original Photos library asset
+    var mediaType: MediaType  // Photo or video
+    var duration: TimeInterval?  // For videos
 
     // Metadata preservation
     var location: Location?
@@ -157,7 +157,12 @@ struct SecurePhoto: Identifiable, Codable {
         let longitude: Double
     }
 
-    init(id: UUID = UUID(), encryptedDataPath: String, thumbnailPath: String, encryptedThumbnailPath: String? = nil, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, vaultAlbum: String? = nil, fileSize: Int64 = 0, originalAssetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: Location? = nil, isFavorite: Bool? = nil) {
+    init(
+        id: UUID = UUID(), encryptedDataPath: String, thumbnailPath: String, encryptedThumbnailPath: String? = nil,
+        filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, vaultAlbum: String? = nil,
+        fileSize: Int64 = 0, originalAssetIdentifier: String? = nil, mediaType: MediaType = .photo,
+        duration: TimeInterval? = nil, location: Location? = nil, isFavorite: Bool? = nil
+    ) {
         self.id = id
         self.encryptedDataPath = encryptedDataPath
         self.thumbnailPath = thumbnailPath
@@ -193,12 +198,12 @@ class VaultManager: ObservableObject {
     @Published var isUnlocked = false
     @Published var showUnlockPrompt = false
     @Published var passwordHash: String = ""
-    @Published var passwordSalt: String = "" // Salt for password hashing
+    @Published var passwordSalt: String = ""  // Salt for password hashing
     @Published var restorationProgress = RestorationProgress()
     @Published var vaultBaseURL: URL = URL(fileURLWithPath: "/tmp")
     @Published var hideNotification: HideNotification? = nil
     @Published var lastActivity: Date = Date()
-    @Published var viewRefreshId = UUID() // Force view refresh when needed
+    @Published var viewRefreshId = UUID()  // Force view refresh when needed
 
     /// Idle timeout in seconds before automatically locking the vault when unlocked.
     /// Default is 600 seconds (10 minutes).
@@ -210,7 +215,8 @@ class VaultManager: ObservableObject {
     private var failedBiometricAttempts: Int = 0
     private let maxBiometricAttempts: Int = CryptoConstants.biometricMaxAttempts
 
-    private lazy var photosURL: URL = vaultBaseURL.appendingPathComponent(FileConstants.photosDirectoryName, isDirectory: true)
+    private lazy var photosURL: URL = vaultBaseURL.appendingPathComponent(
+        FileConstants.photosDirectoryName, isDirectory: true)
     private lazy var photosFile: URL = vaultBaseURL.appendingPathComponent(FileConstants.photosMetadataFileName)
     private lazy var settingsFile: URL = vaultBaseURL.appendingPathComponent(FileConstants.settingsFileName)
     private var idleTimer: Timer?
@@ -234,48 +240,50 @@ class VaultManager: ObservableObject {
 
         // Determine vault base directory based on platform
         #if os(macOS)
-        // macOS: Use Application Support or custom location
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        let defaultBaseDirectory: URL
+            // macOS: Use Application Support or custom location
+            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            let defaultBaseDirectory: URL
 
-        if let appSupport = appSupport {
-            defaultBaseDirectory = appSupport
-        } else {
-            // Fallback to documents directory if Application Support is unavailable
-            guard let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-                fatalError("Unable to access file system")
+            if let appSupport = appSupport {
+                defaultBaseDirectory = appSupport
+            } else {
+                // Fallback to documents directory if Application Support is unavailable
+                guard let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+                else {
+                    fatalError("Unable to access file system")
+                }
+                defaultBaseDirectory = documents
             }
-            defaultBaseDirectory = documents
-        }
 
-        // Load previously chosen vault base URL if available
-        let resolvedBaseURL: URL
-        if let storedBaseURL = VaultManager.loadStoredVaultBaseURL() {
-            resolvedBaseURL = storedBaseURL
-        } else {
-            resolvedBaseURL = defaultBaseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
-        }
-        vaultBaseURL = resolvedBaseURL
-        print("macOS vault base URL: \(vaultBaseURL.path)")
+            // Load previously chosen vault base URL if available
+            let resolvedBaseURL: URL
+            if let storedBaseURL = VaultManager.loadStoredVaultBaseURL() {
+                resolvedBaseURL = storedBaseURL
+            } else {
+                resolvedBaseURL = defaultBaseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
+            }
+            vaultBaseURL = resolvedBaseURL
+            print("macOS vault base URL: \(vaultBaseURL.path)")
         #else
-        // iOS: Use iCloud Drive if available, otherwise local documents
-        let fileManager = FileManager.default
-        var baseURL: URL
+            // iOS: Use iCloud Drive if available, otherwise local documents
+            let fileManager = FileManager.default
+            var baseURL: URL
 
-        if let iCloudURL = fileManager.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents") {
-            // iCloud is available
-            baseURL = iCloudURL.appendingPathComponent("SecretVault", isDirectory: true)
-            print("Using iCloud Drive for vault storage: \(baseURL.path)")
-        } else {
-            // Fallback to local documents
-            guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-                fatalError("Unable to access file system")
+            if let iCloudURL = fileManager.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents")
+            {
+                // iCloud is available
+                baseURL = iCloudURL.appendingPathComponent("SecretVault", isDirectory: true)
+                print("Using iCloud Drive for vault storage: \(baseURL.path)")
+            } else {
+                // Fallback to local documents
+                guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                    fatalError("Unable to access file system")
+                }
+                baseURL = documentsURL.appendingPathComponent("SecretVault", isDirectory: true)
+                print("Using local storage for vault (iCloud not available): \(baseURL.path)")
             }
-            baseURL = documentsURL.appendingPathComponent("SecretVault", isDirectory: true)
-            print("Using local storage for vault (iCloud not available): \(baseURL.path)")
-        }
 
-        vaultBaseURL = baseURL
+            vaultBaseURL = baseURL
         #endif
 
         // Create directories
@@ -330,48 +338,49 @@ class VaultManager: ObservableObject {
                 // This will need to be handled by the UI layer
                 // For now, we'll show a simple alert if possible
                 #if os(macOS)
-                let alert = NSAlert()
-                alert.messageText = "Authenticate to Continue"
-                alert.informativeText = "Enter your SecretVault password to proceed with this sensitive operation."
-                alert.alertStyle = .warning
+                    let alert = NSAlert()
+                    alert.messageText = "Authenticate to Continue"
+                    alert.informativeText = "Enter your SecretVault password to proceed with this sensitive operation."
+                    alert.alertStyle = .warning
 
-                let textField = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
-                textField.placeholderString = "Vault Password"
-                alert.accessoryView = textField
+                    let textField = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
+                    textField.placeholderString = "Vault Password"
+                    alert.accessoryView = textField
 
-                alert.addButton(withTitle: "Continue")
-                alert.addButton(withTitle: "Cancel")
+                    alert.addButton(withTitle: "Continue")
+                    alert.addButton(withTitle: "Cancel")
 
-                let response = alert.runModal()
-                guard response == .alertFirstButtonReturn else {
-                    completion(false)
-                    return
-                }
+                    let response = alert.runModal()
+                    guard response == .alertFirstButtonReturn else {
+                        completion(false)
+                        return
+                    }
 
-                let enteredPassword = textField.stringValue
-                                // Reuse the same salted hashing logic as `unlock(password:)` so that
-                                // step-up authentication behaves identically to a normal unlock.
-                                guard let passwordData = enteredPassword.data(using: .utf8),
-                                            let saltData = Data(base64Encoded: self.passwordSalt) else {
-                                        completion(false)
-                                        return
-                                }
+                    let enteredPassword = textField.stringValue
+                    // Reuse the same salted hashing logic as `unlock(password:)` so that
+                    // step-up authentication behaves identically to a normal unlock.
+                    guard let passwordData = enteredPassword.data(using: .utf8),
+                        let saltData = Data(base64Encoded: self.passwordSalt)
+                    else {
+                        completion(false)
+                        return
+                    }
 
-                                var combinedData = Data()
-                                combinedData.append(passwordData)
-                                combinedData.append(saltData)
-                                let hash = SHA256.hash(data: combinedData)
-                                let enteredHash = hash.compactMap { String(format: "%02x", $0) }.joined()
-                                completion(enteredHash == self.passwordHash)
+                    var combinedData = Data()
+                    combinedData.append(passwordData)
+                    combinedData.append(saltData)
+                    let hash = SHA256.hash(data: combinedData)
+                    let enteredHash = hash.compactMap { String(format: "%02x", $0) }.joined()
+                    completion(enteredHash == self.passwordHash)
                 #else
-                // On iOS, we'll need to use a different approach - perhaps a modal view
-                // For now, just fail the authentication
-                completion(false)
+                    // On iOS, we'll need to use a different approach - perhaps a modal view
+                    // For now, just fail the authentication
+                    completion(false)
                 #endif
             }
         }
     }
-    
+
     // MARK: - Password Management
 
     /// Sets up the vault password with proper validation and secure hashing.
@@ -444,7 +453,7 @@ class VaultManager: ObservableObject {
                 passwordHash = storedHash.map { String(format: "%02x", $0) }.joined()
                 passwordSalt = storedSalt.base64EncodedString()
             }
-            
+
             // Save updated settings to disk
             saveSettings()
         } else {
@@ -458,11 +467,15 @@ class VaultManager: ObservableObject {
     ///   - currentPassword: Current password for verification
     ///   - newPassword: New password to set
     ///   - progressHandler: Optional callback with progress updates
-    func changePassword(currentPassword: String, newPassword: String, progressHandler: ((String) -> Void)? = nil) async throws {
-        try await passwordService.changePassword(from: currentPassword, to: newPassword, vaultURL: vaultBaseURL, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
+    func changePassword(currentPassword: String, newPassword: String, progressHandler: ((String) -> Void)? = nil)
+        async throws
+    {
+        try await passwordService.changePassword(
+            from: currentPassword, to: newPassword, vaultURL: vaultBaseURL, encryptionKey: cachedEncryptionKey!,
+            hmacKey: cachedHMACKey!)
         progressHandler?("Password changed successfully")
     }
-    
+
     func hasPassword() -> Bool {
         return !passwordHash.isEmpty
     }
@@ -471,7 +484,7 @@ class VaultManager: ObservableObject {
     private func calculateUnlockDelay() -> TimeInterval {
         let baseDelay = CryptoConstants.rateLimitBaseDelay
         let maxDelay = CryptoConstants.rateLimitMaxDelay
-        
+
         // Exponential backoff: baseDelay ^ failedAttempts, capped at maxDelay
         let delay = min(pow(baseDelay, Double(failedUnlockAttempts)), maxDelay)
         return delay
@@ -494,7 +507,7 @@ class VaultManager: ObservableObject {
                 timer.invalidate()
                 return
             }
-            
+
             guard self.isUnlocked else {
                 timer.invalidate()
                 self.idleTimer = nil
@@ -510,9 +523,13 @@ class VaultManager: ObservableObject {
             RunLoop.main.add(idleTimer, forMode: .common)
         }
     }
-    
+
     /// Encrypts and stores a photo or video in the vault using either in-memory data or a file URL.
-    func hidePhoto(mediaSource: MediaSource, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil, progressHandler: ((Int64) async -> Void)? = nil) async throws {
+    func hidePhoto(
+        mediaSource: MediaSource, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil,
+        assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil,
+        location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil, progressHandler: ((Int64) async -> Void)? = nil
+    ) async throws {
         await MainActor.run {
             lastActivity = Date()
         }
@@ -539,7 +556,7 @@ class VaultManager: ObservableObject {
             }
             if isDuplicate {
                 #if DEBUG
-                print("Media already hidden: \(filename) (assetId: \(assetId))")
+                    print("Media already hidden: \(filename) (assetId: \(assetId))")
                 #endif
                 return
             }
@@ -556,20 +573,27 @@ class VaultManager: ObservableObject {
         }
 
         guard !thumbnail.isEmpty else {
-            throw VaultError.thumbnailGenerationFailed(reason: "Thumbnail generation returned empty data even after fallback")
+            throw VaultError.thumbnailGenerationFailed(
+                reason: "Thumbnail generation returned empty data even after fallback")
         }
 
         try thumbnail.write(to: thumbnailPath, options: .atomic)
 
         let thumbnailFilename = "\(photoId.uuidString)_thumb.enc"
-        try await fileService.saveEncryptedFile(data: thumbnail, filename: thumbnailFilename, to: photosURL, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
+        try await fileService.saveEncryptedFile(
+            data: thumbnail, filename: thumbnailFilename, to: photosURL, encryptionKey: cachedEncryptionKey!,
+            hmacKey: cachedHMACKey!)
 
         let encryptedFilename = "\(photoId.uuidString).enc"
         switch mediaSource {
         case .data(let data):
-            try await fileService.saveEncryptedFile(data: data, filename: encryptedFilename, to: photosURL, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
+            try await fileService.saveEncryptedFile(
+                data: data, filename: encryptedFilename, to: photosURL, encryptionKey: cachedEncryptionKey!,
+                hmacKey: cachedHMACKey!)
         case .fileURL(let url):
-            try await fileService.saveStreamEncryptedFile(from: url, filename: encryptedFilename, mediaType: mediaType, to: photosURL, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!, progressHandler: progressHandler)
+            try await fileService.saveStreamEncryptedFile(
+                from: url, filename: encryptedFilename, mediaType: mediaType, to: photosURL,
+                encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!, progressHandler: progressHandler)
         }
 
         let photo = SecurePhoto(
@@ -589,9 +613,10 @@ class VaultManager: ObservableObject {
 
         DispatchQueue.main.async {
             if let assetId = assetIdentifier,
-               self.hiddenPhotos.contains(where: { $0.originalAssetIdentifier == assetId }) {
+                self.hiddenPhotos.contains(where: { $0.originalAssetIdentifier == assetId })
+            {
                 #if DEBUG
-                print("Duplicate detected in final check, skipping: \(filename)")
+                    print("Duplicate detected in final check, skipping: \(filename)")
                 #endif
                 return
             }
@@ -604,7 +629,11 @@ class VaultManager: ObservableObject {
     }
 
     /// Backward-compatible helper that encrypts in-memory data by wrapping it in a MediaSource.
-    func hidePhoto(imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil) async throws {
+    func hidePhoto(
+        imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil,
+        assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil,
+        location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil
+    ) async throws {
         try await hidePhoto(
             mediaSource: .data(imageData),
             filename: filename,
@@ -618,7 +647,7 @@ class VaultManager: ObservableObject {
             progressHandler: nil
         )
     }
-    
+
     /// Decrypts a photo or video from the vault.
     /// - Parameter photo: The SecurePhoto record to decrypt
     /// - Returns: Decrypted media data
@@ -626,10 +655,13 @@ class VaultManager: ObservableObject {
     func decryptPhoto(_ photo: SecurePhoto) async throws -> Data {
         // Use FileService to load and decrypt the encrypted file
         let filename = URL(fileURLWithPath: photo.encryptedDataPath).lastPathComponent
-        return try await fileService.loadEncryptedFile(filename: filename, from: URL(fileURLWithPath: photo.encryptedDataPath).deletingLastPathComponent(), encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
+        return try await fileService.loadEncryptedFile(
+            filename: filename, from: URL(fileURLWithPath: photo.encryptedDataPath).deletingLastPathComponent(),
+            encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
     }
 
-    func decryptPhotoToTemporaryURL(_ photo: SecurePhoto, progressHandler: ((Int64) -> Void)? = nil) async throws -> URL {
+    func decryptPhotoToTemporaryURL(_ photo: SecurePhoto, progressHandler: ((Int64) -> Void)? = nil) async throws -> URL
+    {
         let filename = URL(fileURLWithPath: photo.encryptedDataPath).lastPathComponent
         let directory = URL(fileURLWithPath: photo.encryptedDataPath).deletingLastPathComponent()
         let originalExtension = URL(fileURLWithPath: photo.filename).pathExtension
@@ -649,14 +681,21 @@ class VaultManager: ObservableObject {
         if let encryptedThumbnailPath = photo.encryptedThumbnailPath {
             let url = URL(fileURLWithPath: encryptedThumbnailPath)
             if !FileManager.default.fileExists(atPath: url.path) {
-                print("[VaultManager] decryptThumbnail: encrypted thumbnail missing for id=\(photo.id). Falling back to legacy thumbnail if available.")
+                print(
+                    "[VaultManager] decryptThumbnail: encrypted thumbnail missing for id=\(photo.id). Falling back to legacy thumbnail if available."
+                )
             } else {
                 do {
                     // Use FileService to load and decrypt the encrypted thumbnail
                     let filename = URL(fileURLWithPath: encryptedThumbnailPath).lastPathComponent
-                    return try await fileService.loadEncryptedFile(filename: filename, from: URL(fileURLWithPath: encryptedThumbnailPath).deletingLastPathComponent(), encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
+                    return try await fileService.loadEncryptedFile(
+                        filename: filename,
+                        from: URL(fileURLWithPath: encryptedThumbnailPath).deletingLastPathComponent(),
+                        encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
                 } catch {
-                    print("[VaultManager] decryptThumbnail: error reading encrypted thumbnail for id=\(photo.id): \(error). Falling back to legacy thumbnail if available.")
+                    print(
+                        "[VaultManager] decryptThumbnail: error reading encrypted thumbnail for id=\(photo.id): \(error). Falling back to legacy thumbnail if available."
+                    )
                 }
             }
         }
@@ -667,20 +706,24 @@ class VaultManager: ObservableObject {
             do {
                 let data = try Data(contentsOf: legacyURL)
                 if data.isEmpty {
-                    print("[VaultManager] decryptThumbnail: legacy thumbnail data empty for id=\(photo.id), thumb=\(photo.thumbnailPath)")
+                    print(
+                        "[VaultManager] decryptThumbnail: legacy thumbnail data empty for id=\(photo.id), thumb=\(photo.thumbnailPath)"
+                    )
                 }
                 return data
             } catch {
                 print("[VaultManager] decryptThumbnail: error reading legacy thumbnail for id=\(photo.id): \(error)")
             }
         } else {
-            print("[VaultManager] decryptThumbnail: legacy thumbnail file missing for id=\(photo.id) at path=\(photo.thumbnailPath)")
+            print(
+                "[VaultManager] decryptThumbnail: legacy thumbnail file missing for id=\(photo.id) at path=\(photo.thumbnailPath)"
+            )
         }
 
         // As a last resort, return empty Data so the UI can show a placeholder.
         return Data()
     }
-    
+
     /// Permanently deletes a photo or video from the vault.
     /// - Parameter photo: The SecurePhoto to delete
     func deletePhoto(_ photo: SecurePhoto) {
@@ -693,19 +736,19 @@ class VaultManager: ObservableObject {
         if let encryptedThumbnailPath = photo.encryptedThumbnailPath {
             secureDeleteFile(at: URL(fileURLWithPath: encryptedThumbnailPath))
         }
-        
+
         // Remove from list on main thread
         DispatchQueue.main.async {
             self.hiddenPhotos.removeAll { $0.id == photo.id }
             self.savePhotos()
         }
     }
-    
+
     /// Securely deletes a file by overwriting it before removal.
     /// - Parameter url: URL of the file to delete
     private func secureDeleteFile(at url: URL) {
         guard FileManager.default.fileExists(atPath: url.path) else { return }
-        
+
         do {
             // Get file size
             let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
@@ -713,10 +756,10 @@ class VaultManager: ObservableObject {
                 try? FileManager.default.removeItem(at: url)
                 return
             }
-            
+
             // Limit overwrite to reasonable size (100MB max)
             let sizeToOverwrite = min(fileSize, 100 * 1024 * 1024)
-            
+
             // Multiple pass secure deletion (Gutmann method inspired)
             // Pass 1: Random data
             try overwriteFile(at: url, with: .random, size: sizeToOverwrite)
@@ -724,17 +767,17 @@ class VaultManager: ObservableObject {
             try overwriteFile(at: url, with: .complementRandom, size: sizeToOverwrite)
             // Pass 3: Random data again
             try overwriteFile(at: url, with: .random, size: sizeToOverwrite)
-            
+
             // Now delete the file
             try FileManager.default.removeItem(at: url)
         } catch {
             #if DEBUG
-            print("Secure deletion failed, using standard deletion: \(error)")
+                print("Secure deletion failed, using standard deletion: \(error)")
             #endif
             try? FileManager.default.removeItem(at: url)
         }
     }
-    
+
     /// Overwrite patterns for secure file deletion
     private enum OverwritePattern {
         case random
@@ -742,11 +785,11 @@ class VaultManager: ObservableObject {
         case zeros
         case ones
     }
-    
+
     /// Overwrites a file with the specified pattern
     private func overwriteFile(at url: URL, with pattern: OverwritePattern, size: Int64) throws {
         var overwriteData = Data(count: Int(size))
-        
+
         switch pattern {
         case .random:
             // Fill with cryptographically secure random data
@@ -766,26 +809,28 @@ class VaultManager: ObservableObject {
             // Fill with 0xFF
             overwriteData = Data(repeating: 0xFF, count: Int(size))
         }
-        
+
         try overwriteData.write(to: url, options: .atomic)
-        
+
         // Securely zero the overwrite data
         overwriteData.secureZero()
     }
-    
+
     /// Restores a single photo or video by delegating to the batch restore workflow so that
     /// users get consistent progress reporting and cancellation support.
     /// - Parameter photo: The SecurePhoto to restore
     func restorePhotoToLibrary(_ photo: SecurePhoto) async throws {
         try await batchRestorePhotos([photo], restoreToSourceAlbum: true)
     }
-    
+
     /// Helper method to save a temporary file to Photos library and delete the photo from vault on success.
     /// - Parameters:
     ///   - tempURL: The temporary URL of the decrypted media file
     ///   - photo: The SecurePhoto record
     ///   - targetAlbum: The target album name (optional)
-    private func saveTempFileToLibraryAndDeletePhoto(tempURL: URL, photo: SecurePhoto, targetAlbum: String?) async throws {
+    private func saveTempFileToLibraryAndDeletePhoto(tempURL: URL, photo: SecurePhoto, targetAlbum: String?)
+        async throws
+    {
         try await withCheckedThrowingContinuation { continuation in
             PhotosLibraryService.shared.saveMediaFileToLibrary(
                 tempURL,
@@ -808,13 +853,15 @@ class VaultManager: ObservableObject {
             }
         }
     }
-    
+
     /// Restores multiple photos/videos from the vault to the Photos library.
     /// - Parameters:
     ///   - photos: Array of SecurePhoto items to restore
     ///   - restoreToSourceAlbum: Whether to restore to original album
     ///   - toNewAlbum: Optional new album name for all items
-    func batchRestorePhotos(_ photos: [SecurePhoto], restoreToSourceAlbum: Bool = false, toNewAlbum: String? = nil) async throws {
+    func batchRestorePhotos(_ photos: [SecurePhoto], restoreToSourceAlbum: Bool = false, toNewAlbum: String? = nil)
+        async throws
+    {
         await MainActor.run {
             lastActivity = Date()
         }
@@ -832,10 +879,10 @@ class VaultManager: ObservableObject {
             self.restorationProgress.detailMessage = "\(photos.count) item(s)"
             self.restorationProgress.cancelRequested = false
         }
-        
+
         // Group photos by target album to batch them efficiently
         var albumGroups: [String?: [SecurePhoto]] = [:]
-        
+
         for photo in photos {
             var targetAlbum: String? = nil
             if let newAlbum = toNewAlbum {
@@ -843,13 +890,13 @@ class VaultManager: ObservableObject {
             } else if restoreToSourceAlbum {
                 targetAlbum = photo.sourceAlbum
             }
-            
+
             if albumGroups[targetAlbum] == nil {
                 albumGroups[targetAlbum] = []
             }
             albumGroups[targetAlbum]?.append(photo)
         }
-        
+
         print("🔄 Starting batch restore of \(photos.count) items grouped into \(albumGroups.count) albums")
         var wasCancelled = false
 
@@ -875,7 +922,9 @@ class VaultManager: ObservableObject {
             let summary = "\(success)/\(total) restored" + (failed > 0 ? " • \(failed) failed" : "")
             self.restorationProgress.statusMessage = restoreCancelled ? "Restore canceled" : "Restore complete"
             self.restorationProgress.detailMessage = summary
-            print("📊 Restoration complete: \(success)/\(total) successful, \(failed) failed (successful items already removed from vault)")
+            print(
+                "📊 Restoration complete: \(success)/\(total) successful, \(failed) failed (successful items already removed from vault)"
+            )
         }
 
         if restoreCancelled {
@@ -894,9 +943,10 @@ class VaultManager: ObservableObject {
             let sizeDescription = formattedSizeString(for: photo.fileSize, formatter: formatter)
             await MainActor.run {
                 self.restorationProgress.statusMessage = "Decrypting \(photo.filename)…"
-                self.restorationProgress.detailMessage = self.restorationDetailText(for: photo.filename,
-                                                                                    albumName: albumLabel,
-                                                                                    sizeDescription: sizeDescription)
+                self.restorationProgress.detailMessage = self.restorationDetailText(
+                    for: photo.filename,
+                    albumName: albumLabel,
+                    sizeDescription: sizeDescription)
                 self.restorationProgress.currentBytesTotal = max(photo.fileSize, 0)
                 self.restorationProgress.currentBytesProcessed = 0
             }
@@ -924,7 +974,8 @@ class VaultManager: ObservableObject {
                     self.restorationProgress.currentBytesProcessed = self.restorationProgress.currentBytesTotal
                 }
 
-                try await self.saveTempFileToLibraryAndDeletePhoto(tempURL: tempURL, photo: photo, targetAlbum: targetAlbum)
+                try await self.saveTempFileToLibraryAndDeletePhoto(
+                    tempURL: tempURL, photo: photo, targetAlbum: targetAlbum)
 
                 await MainActor.run {
                     self.restorationProgress.processedItems += 1
@@ -965,24 +1016,25 @@ class VaultManager: ObservableObject {
 
     private func fileSize(at url: URL) -> Int64 {
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
-              let size = attributes[.size] as? NSNumber else {
+            let size = attributes[.size] as? NSNumber
+        else {
             return 0
         }
         return size.int64Value
     }
-    
+
     /// Removes duplicate photos from the vault based on asset identifiers.
     func removeDuplicates() {
         DispatchQueue.global(qos: .userInitiated).async {
             var seen = Set<String>()
             var uniquePhotos: [SecurePhoto] = []
             var duplicatesToDelete: [SecurePhoto] = []
-            
+
             // Access hiddenPhotos on main thread first
             let currentPhotos = DispatchQueue.main.sync {
                 return self.hiddenPhotos
             }
-            
+
             for photo in currentPhotos {
                 if let assetId = photo.originalAssetIdentifier {
                     if seen.contains(assetId) {
@@ -996,7 +1048,7 @@ class VaultManager: ObservableObject {
                     uniquePhotos.append(photo)
                 }
             }
-            
+
             // Delete duplicate files
             for photo in duplicatesToDelete {
                 try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.encryptedDataPath))
@@ -1005,7 +1057,7 @@ class VaultManager: ObservableObject {
                     try? FileManager.default.removeItem(at: URL(fileURLWithPath: encryptedThumbnailPath))
                 }
             }
-            
+
             DispatchQueue.main.async {
                 self.hiddenPhotos = uniquePhotos
                 self.savePhotos()
@@ -1014,7 +1066,7 @@ class VaultManager: ObservableObject {
             }
         }
     }
-    
+
     /// Generates a thumbnail from media data asynchronously.
     /// - Parameters:
     ///   - mediaData: Raw media data
@@ -1022,14 +1074,14 @@ class VaultManager: ObservableObject {
     ///   - completion: Called with thumbnail data when ready
     private func generateThumbnail(from mediaData: Data, mediaType: MediaType, completion: @escaping (Data) -> Void) {
         // Check input data size
-        guard mediaData.count > 0 && mediaData.count < 100 * 1024 * 1024 else { // 100MB limit for thumbnails
-            completion(Data()) // Return empty data to indicate failure
+        guard mediaData.count > 0 && mediaData.count < 100 * 1024 * 1024 else {  // 100MB limit for thumbnails
+            completion(Data())  // Return empty data to indicate failure
             return
         }
-        
+
         DispatchQueue.global(qos: .userInitiated).async {
             let thumbnailData: Data
-            
+
             if mediaType == .video {
                 // For videos, extract a frame as thumbnail
                 thumbnailData = self.generateVideoThumbnail(from: mediaData)
@@ -1037,7 +1089,7 @@ class VaultManager: ObservableObject {
                 // For photos, resize the image
                 thumbnailData = self.generatePhotoThumbnail(from: mediaData)
             }
-            
+
             DispatchQueue.main.async {
                 completion(thumbnailData)
             }
@@ -1056,92 +1108,94 @@ class VaultManager: ObservableObject {
             return generatePhotoThumbnail(fromFileURL: url)
         }
     }
-    
+
     /// Generates a thumbnail from photo data (synchronous, call from background queue).
     private func generatePhotoThumbnail(from mediaData: Data) -> Data {
-#if os(macOS)
-        guard let image = NSImage(data: mediaData) else {
-            return Data()
-        }
-        return renderPhotoThumbnail(from: image)
-#else
-        guard let image = UIImage(data: mediaData) else {
-            return Data()
-        }
-        return renderPhotoThumbnail(from: image)
-#endif
+        #if os(macOS)
+            guard let image = NSImage(data: mediaData) else {
+                return Data()
+            }
+            return renderPhotoThumbnail(from: image)
+        #else
+            guard let image = UIImage(data: mediaData) else {
+                return Data()
+            }
+            return renderPhotoThumbnail(from: image)
+        #endif
     }
 
     private func generatePhotoThumbnail(fromFileURL url: URL) -> Data {
-#if os(macOS)
-        guard let image = NSImage(contentsOf: url) else {
-            return Data()
-        }
-        return renderPhotoThumbnail(from: image)
-#else
-        guard let image = UIImage(contentsOfFile: url.path) else {
-            return Data()
-        }
-        return renderPhotoThumbnail(from: image)
-#endif
+        #if os(macOS)
+            guard let image = NSImage(contentsOf: url) else {
+                return Data()
+            }
+            return renderPhotoThumbnail(from: image)
+        #else
+            guard let image = UIImage(contentsOfFile: url.path) else {
+                return Data()
+            }
+            return renderPhotoThumbnail(from: image)
+        #endif
     }
 
-#if os(macOS)
-    private func renderPhotoThumbnail(from image: NSImage) -> Data {
-        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            return Data()
+    #if os(macOS)
+        private func renderPhotoThumbnail(from image: NSImage) -> Data {
+            guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+                return Data()
+            }
+
+            let maxSize: CGFloat = 300
+            let width = CGFloat(cgImage.width)
+            let height = CGFloat(cgImage.height)
+
+            guard width > 0 && height > 0 else { return Data() }
+
+            let scale = min(maxSize / width, maxSize / height, 1.0)
+            let newSize = NSSize(width: width * scale, height: height * scale)
+
+            let thumbnail = NSImage(size: newSize)
+            thumbnail.lockFocus()
+            image.draw(in: NSRect(origin: .zero, size: newSize))
+            thumbnail.unlockFocus()
+
+            guard let tiffData = thumbnail.tiffRepresentation,
+                let bitmapImage = NSBitmapImageRep(data: tiffData),
+                let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8])
+            else {
+                return Data()
+            }
+
+            return jpegData
         }
+    #else
+        private func renderPhotoThumbnail(from image: UIImage) -> Data {
+            let maxSize: CGFloat = 300
+            let size = image.size
 
-        let maxSize: CGFloat = 300
-        let width = CGFloat(cgImage.width)
-        let height = CGFloat(cgImage.height)
+            guard size.width > 0 && size.height > 0 else { return Data() }
 
-        guard width > 0 && height > 0 else { return Data() }
+            let scale = min(maxSize / size.width, maxSize / size.height, 1.0)
+            let newSize = CGSize(width: size.width * scale, height: size.height * scale)
 
-        let scale = min(maxSize / width, maxSize / height, 1.0)
-        let newSize = NSSize(width: width * scale, height: height * scale)
+            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+            defer { UIGraphicsEndImageContext() }
 
-        let thumbnail = NSImage(size: newSize)
-        thumbnail.lockFocus()
-        image.draw(in: NSRect(origin: .zero, size: newSize))
-        thumbnail.unlockFocus()
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+            guard let resizedImage = UIGraphicsGetImageFromCurrentImageContext(),
+                let jpegData = resizedImage.jpegData(compressionQuality: 0.8)
+            else {
+                return Data()
+            }
 
-        guard let tiffData = thumbnail.tiffRepresentation,
-              let bitmapImage = NSBitmapImageRep(data: tiffData),
-              let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) else {
-            return Data()
+            return jpegData
         }
+    #endif
 
-        return jpegData
-    }
-#else
-    private func renderPhotoThumbnail(from image: UIImage) -> Data {
-        let maxSize: CGFloat = 300
-        let size = image.size
-
-        guard size.width > 0 && size.height > 0 else { return Data() }
-
-        let scale = min(maxSize / size.width, maxSize / size.height, 1.0)
-        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
-
-        UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
-        defer { UIGraphicsEndImageContext() }
-
-        image.draw(in: CGRect(origin: .zero, size: newSize))
-        guard let resizedImage = UIGraphicsGetImageFromCurrentImageContext(),
-              let jpegData = resizedImage.jpegData(compressionQuality: 0.8) else {
-            return Data()
-        }
-
-        return jpegData
-    }
-#endif
-    
     /// Generates a thumbnail from video data (synchronous, call from background queue).
     private func generateVideoThumbnail(from videoData: Data) -> Data {
         guard videoData.count > 0 && videoData.count <= CryptoConstants.maxMediaFileSize else {
             #if DEBUG
-            print("Video data size invalid: \(videoData.count) bytes")
+                print("Video data size invalid: \(videoData.count) bytes")
             #endif
             return Data()
         }
@@ -1156,7 +1210,7 @@ class VaultManager: ObservableObject {
             return generateVideoThumbnail(fromAsset: asset)
         } catch {
             #if DEBUG
-            print("Failed to generate video thumbnail: \(error)")
+                print("Failed to generate video thumbnail: \(error)")
             #endif
         }
 
@@ -1171,7 +1225,7 @@ class VaultManager: ObservableObject {
     private func generateVideoThumbnail(fromAsset asset: AVAsset) -> Data {
         guard asset.tracks(withMediaType: .video).count > 0 else {
             #if DEBUG
-            print("No video tracks found in asset")
+                print("No video tracks found in asset")
             #endif
             return Data()
         }
@@ -1185,175 +1239,186 @@ class VaultManager: ObservableObject {
 
         guard let cgImage = try? imageGenerator.copyCGImage(at: time, actualTime: nil) else {
             #if DEBUG
-            print("Failed to generate CGImage from video")
+                print("Failed to generate CGImage from video")
             #endif
             return Data()
         }
 
-#if os(macOS)
-        let image = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+        #if os(macOS)
+            let image = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
 
-        let maxSize: CGFloat = 300
-        let width = CGFloat(cgImage.width)
-        let height = CGFloat(cgImage.height)
+            let maxSize: CGFloat = 300
+            let width = CGFloat(cgImage.width)
+            let height = CGFloat(cgImage.height)
 
-        guard width > 0 && height > 0 else { return Data() }
+            guard width > 0 && height > 0 else { return Data() }
 
-        let scale = min(maxSize / width, maxSize / height, 1.0)
-        let newSize = NSSize(width: width * scale, height: height * scale)
+            let scale = min(maxSize / width, maxSize / height, 1.0)
+            let newSize = NSSize(width: width * scale, height: height * scale)
 
-        let thumbnail = NSImage(size: newSize)
-        thumbnail.lockFocus()
-        image.draw(in: NSRect(origin: .zero, size: newSize))
-        thumbnail.unlockFocus()
+            let thumbnail = NSImage(size: newSize)
+            thumbnail.lockFocus()
+            image.draw(in: NSRect(origin: .zero, size: newSize))
+            thumbnail.unlockFocus()
 
-        guard let tiffData = thumbnail.tiffRepresentation,
-              let bitmapImage = NSBitmapImageRep(data: tiffData),
-              let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) else {
-            return Data()
-        }
+            guard let tiffData = thumbnail.tiffRepresentation,
+                let bitmapImage = NSBitmapImageRep(data: tiffData),
+                let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8])
+            else {
+                return Data()
+            }
 
-        return jpegData
-#else
-        let image = UIImage(cgImage: cgImage)
+            return jpegData
+        #else
+            let image = UIImage(cgImage: cgImage)
 
-        let maxSize: CGFloat = 300
-        let size = image.size
+            let maxSize: CGFloat = 300
+            let size = image.size
 
-        guard size.width > 0 && size.height > 0 else { return Data() }
+            guard size.width > 0 && size.height > 0 else { return Data() }
 
-        let scale = min(maxSize / size.width, maxSize / size.height, 1.0)
-        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+            let scale = min(maxSize / size.width, maxSize / size.height, 1.0)
+            let newSize = CGSize(width: size.width * scale, height: size.height * scale)
 
-        UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
-        defer { UIGraphicsEndImageContext() }
+            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+            defer { UIGraphicsEndImageContext() }
 
-        image.draw(in: CGRect(origin: .zero, size: newSize))
-        guard let resizedImage = UIGraphicsGetImageFromCurrentImageContext(),
-              let jpegData = resizedImage.jpegData(compressionQuality: 0.8) else {
-            return Data()
-        }
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+            guard let resizedImage = UIGraphicsGetImageFromCurrentImageContext(),
+                let jpegData = resizedImage.jpegData(compressionQuality: 0.8)
+            else {
+                return Data()
+            }
 
-        return jpegData
-#endif
+            return jpegData
+        #endif
     }
 
     /// Generates a generic placeholder thumbnail when we cannot derive one from the media data.
     private func fallbackThumbnail(for mediaType: MediaType) -> Data {
         #if os(macOS)
-        let size = NSSize(width: 280, height: 280)
-        let image = NSImage(size: size)
-        image.lockFocus()
+            let size = NSSize(width: 280, height: 280)
+            let image = NSImage(size: size)
+            image.lockFocus()
 
-        // Background gradient for quick visual differentiation
-        let background = NSGradient(colors: [NSColor(calibratedRed: 0.21, green: 0.24, blue: 0.28, alpha: 1),
-                                            NSColor(calibratedRed: 0.34, green: 0.37, blue: 0.42, alpha: 1)])
-        background?.draw(in: NSBezierPath(rect: NSRect(origin: .zero, size: size)), angle: 90)
+            // Background gradient for quick visual differentiation
+            let background = NSGradient(colors: [
+                NSColor(calibratedRed: 0.21, green: 0.24, blue: 0.28, alpha: 1),
+                NSColor(calibratedRed: 0.34, green: 0.37, blue: 0.42, alpha: 1),
+            ])
+            background?.draw(in: NSBezierPath(rect: NSRect(origin: .zero, size: size)), angle: 90)
 
-        let symbolName = mediaType == .video ? "play.circle" : "photo"
-        if let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) {
-            let symbolRect = NSRect(x: (size.width - 96) / 2, y: (size.height - 96) / 2, width: 96, height: 96)
-            NSColor.white.set()
-            symbol.draw(in: symbolRect)
-        }
+            let symbolName = mediaType == .video ? "play.circle" : "photo"
+            if let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) {
+                let symbolRect = NSRect(x: (size.width - 96) / 2, y: (size.height - 96) / 2, width: 96, height: 96)
+                NSColor.white.set()
+                symbol.draw(in: symbolRect)
+            }
 
-        image.unlockFocus()
+            image.unlockFocus()
 
-        guard let tiffData = image.tiffRepresentation,
-              let bitmapImage = NSBitmapImageRep(data: tiffData),
-              let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) else {
-            return Data()
-        }
-        return jpegData
+            guard let tiffData = image.tiffRepresentation,
+                let bitmapImage = NSBitmapImageRep(data: tiffData),
+                let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8])
+            else {
+                return Data()
+            }
+            return jpegData
         #else
-        let size = CGSize(width: 280, height: 280)
-        UIGraphicsBeginImageContextWithOptions(size, true, 1.0)
-        defer { UIGraphicsEndImageContext() }
+            let size = CGSize(width: 280, height: 280)
+            UIGraphicsBeginImageContextWithOptions(size, true, 1.0)
+            defer { UIGraphicsEndImageContext() }
 
-        let context = UIGraphicsGetCurrentContext()
-        let colors = [UIColor(red: 0.21, green: 0.24, blue: 0.28, alpha: 1).cgColor,
-                      UIColor(red: 0.34, green: 0.37, blue: 0.42, alpha: 1).cgColor]
-        let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1])
-        context?.drawLinearGradient(gradient!, start: CGPoint(x: 0, y: 0), end: CGPoint(x: 0, y: size.height), options: [])
+            let context = UIGraphicsGetCurrentContext()
+            let colors = [
+                UIColor(red: 0.21, green: 0.24, blue: 0.28, alpha: 1).cgColor,
+                UIColor(red: 0.34, green: 0.37, blue: 0.42, alpha: 1).cgColor,
+            ]
+            let gradient = CGGradient(
+                colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1])
+            context?.drawLinearGradient(
+                gradient!, start: CGPoint(x: 0, y: 0), end: CGPoint(x: 0, y: size.height), options: [])
 
-        let symbolName = mediaType == .video ? "play.circle" : "photo"
-        if let image = UIImage(systemName: symbolName) {
-            let rect = CGRect(x: (size.width - 96) / 2, y: (size.height - 96) / 2, width: 96, height: 96)
-            UIColor.white.set()
-            image.draw(in: rect)
-        }
+            let symbolName = mediaType == .video ? "play.circle" : "photo"
+            if let image = UIImage(systemName: symbolName) {
+                let rect = CGRect(x: (size.width - 96) / 2, y: (size.height - 96) / 2, width: 96, height: 96)
+                UIColor.white.set()
+                image.draw(in: rect)
+            }
 
-        guard let rendered = UIGraphicsGetImageFromCurrentImageContext(),
-              let data = rendered.jpegData(compressionQuality: 0.85) else {
-            return Data()
-        }
-        return data
+            guard let rendered = UIGraphicsGetImageFromCurrentImageContext(),
+                let data = rendered.jpegData(compressionQuality: 0.85)
+            else {
+                return Data()
+            }
+            return data
         #endif
     }
-    
+
     private func savePhotos() {
         guard let data = try? JSONEncoder().encode(hiddenPhotos) else { return }
         #if DEBUG
-        print("savePhotos: writing \(hiddenPhotos.count) items to \(photosFile.path)")
+            print("savePhotos: writing \(hiddenPhotos.count) items to \(photosFile.path)")
         #endif
         try? data.write(to: photosFile)
     }
-    
+
     func saveSettings() {
         // Ensure vault directory exists before saving
         do {
             try FileManager.default.createDirectory(at: vaultBaseURL, withIntermediateDirectories: true)
         } catch {
             #if DEBUG
-            print("Failed to create vault directory: \(error)")
+                print("Failed to create vault directory: \(error)")
             #endif
             return
         }
-        
+
         var settings: [String: String] = [
             "passwordHash": passwordHash,
-            "passwordSalt": passwordSalt
+            "passwordSalt": passwordSalt,
         ]
         settings["vaultBaseURL"] = vaultBaseURL.path
-        
+
         do {
             let data = try JSONEncoder().encode(settings)
             try data.write(to: settingsFile, options: .atomic)
             #if DEBUG
-            print("Successfully saved settings to: \(settingsFile.path)")
+                print("Successfully saved settings to: \(settingsFile.path)")
             #endif
         } catch {
             #if DEBUG
-            print("Failed to save settings: \(error)")
+                print("Failed to save settings: \(error)")
             #endif
         }
     }
-    
+
     private func loadSettings() {
         #if DEBUG
-        print("Attempting to load settings from: \(settingsFile.path)")
+            print("Attempting to load settings from: \(settingsFile.path)")
         #endif
         guard let data = try? Data(contentsOf: settingsFile),
-              let settings = try? JSONDecoder().decode([String: String].self, from: data) else {
+            let settings = try? JSONDecoder().decode([String: String].self, from: data)
+        else {
             #if DEBUG
-            print("No settings file found or failed to decode")
+                print("No settings file found or failed to decode")
             #endif
             return
         }
 
         #if DEBUG
-        print("Loaded settings: \(settings)")
+            print("Loaded settings: \(settings)")
         #endif
         if let hash = settings["passwordHash"] {
             passwordHash = hash
             #if DEBUG
-            print("Loaded password hash: \(hash.isEmpty ? "empty" : "present")")
+                print("Loaded password hash: \(hash.isEmpty ? "empty" : "present")")
             #endif
         }
         if let salt = settings["passwordSalt"] {
             passwordSalt = salt
             #if DEBUG
-            print("Loaded password salt: \(salt.isEmpty ? "empty" : "present")")
+                print("Loaded password salt: \(salt.isEmpty ? "empty" : "present")")
             #endif
         }
         // On macOS we respect a stored custom vaultBaseURL so users can move
@@ -1361,13 +1426,13 @@ class VaultManager: ObservableObject {
         // so we ignore the stored path and always use the current Documents
         // location determined during init.
         #if os(macOS)
-        if let basePath = settings["vaultBaseURL"] {
-            let url = URL(fileURLWithPath: basePath, isDirectory: true)
-            vaultBaseURL = url
-            #if DEBUG
-            print("Loaded vault base URL: \(basePath)")
-            #endif
-        }
+            if let basePath = settings["vaultBaseURL"] {
+                let url = URL(fileURLWithPath: basePath, isDirectory: true)
+                vaultBaseURL = url
+                #if DEBUG
+                    print("Loaded vault base URL: \(basePath)")
+                #endif
+            }
         #endif
     }
 
@@ -1381,25 +1446,26 @@ class VaultManager: ObservableObject {
         let settingsFile = appDirectory.appendingPathComponent("settings.json")
 
         guard let data = try? Data(contentsOf: settingsFile),
-              let settings = try? JSONDecoder().decode([String: String].self, from: data),
-              let basePath = settings["vaultBaseURL"] else {
+            let settings = try? JSONDecoder().decode([String: String].self, from: data),
+            let basePath = settings["vaultBaseURL"]
+        else {
             return nil
         }
 
         return URL(fileURLWithPath: basePath, isDirectory: true)
     }
-    
+
     // MARK: - Biometric Authentication Helpers
 
     func saveBiometricPassword(_ password: String) {
         #if DEBUG
-        print("💾 Saving biometric password (length: \(password.count))")
+            print("💾 Saving biometric password (length: \(password.count))")
         #endif
         do {
             try securityService.storeBiometricPassword(password)
         } catch {
             #if DEBUG
-            print("Failed to store biometric password: \(error)")
+                print("Failed to store biometric password: \(error)")
             #endif
         }
     }
@@ -1407,73 +1473,75 @@ class VaultManager: ObservableObject {
     func getBiometricPassword() -> String? {
         let password = try? securityService.retrieveBiometricPassword()
         #if DEBUG
-        if let password = password {
-            print("🔐 Retrieved biometric password: exists (length: \(password.count))")
-        } else {
-            print("🔐 Retrieved biometric password: nil")
-        }
+            if let password = password {
+                print("🔐 Retrieved biometric password: exists (length: \(password.count))")
+            } else {
+                print("🔐 Retrieved biometric password: nil")
+            }
         #endif
         return password
     }
-    
+
     /// Validates crypto operations by performing encryption/decryption round-trip test.
     /// - Returns: `true` if validation successful, `false` otherwise
     func validateCryptoOperations() async -> Bool {
         let testData = "SecretVault crypto validation test data".data(using: .utf8)!
-        
+
         // Test encryption
         do {
-            let (encryptedData, nonce, hmac) = try await cryptoService.encryptDataWithIntegrity(testData, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
+            let (encryptedData, nonce, hmac) = try await cryptoService.encryptDataWithIntegrity(
+                testData, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
             guard !encryptedData.isEmpty else {
                 #if DEBUG
-                print("Crypto validation failed: encryption returned empty data")
+                    print("Crypto validation failed: encryption returned empty data")
                 #endif
                 return false
             }
-            
+
             // Test decryption
-            let decrypted = try await cryptoService.decryptDataWithIntegrity(encryptedData, nonce: nonce, hmac: hmac, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
+            let decrypted = try await cryptoService.decryptDataWithIntegrity(
+                encryptedData, nonce: nonce, hmac: hmac, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
             guard !decrypted.isEmpty else {
                 #if DEBUG
-                print("Crypto validation failed: decryption returned empty data")
+                    print("Crypto validation failed: decryption returned empty data")
                 #endif
                 return false
             }
-            
+
             // Verify round-trip integrity
             guard decrypted == testData else {
                 #if DEBUG
-                print("Crypto validation failed: decrypted data doesn't match original")
+                    print("Crypto validation failed: decrypted data doesn't match original")
                 #endif
                 return false
             }
         } catch {
             #if DEBUG
-            print("Crypto validation failed: \(error)")
+                print("Crypto validation failed: \(error)")
             #endif
             return false
         }
-        
+
         // Test key derivation consistency
         guard await validateKeyDerivationConsistency() else {
             #if DEBUG
-            print("Crypto validation failed: key derivation consistency check")
+                print("Crypto validation failed: key derivation consistency check")
             #endif
             return false
         }
-        
+
         #if DEBUG
-        print("Crypto validation successful")
+            print("Crypto validation successful")
         #endif
         return true
     }
-    
+
     /// Validates that cached keys are available and valid
     private func validateKeyDerivationConsistency() async -> Bool {
         // Check that we have cached keys
         guard cachedEncryptionKey != nil && cachedHMACKey != nil else {
             #if DEBUG
-            print("Key validation failed: cached keys not available")
+                print("Key validation failed: cached keys not available")
             #endif
             return false
         }
@@ -1481,30 +1549,33 @@ class VaultManager: ObservableObject {
         // Test that cached keys work for basic crypto operations
         let testData = "key validation test".data(using: .utf8)!
         do {
-            let (encryptedData, nonce, hmac) = try await cryptoService.encryptDataWithIntegrity(testData, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
-            let decrypted = try await cryptoService.decryptDataWithIntegrity(encryptedData, nonce: nonce, hmac: hmac, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
+            let (encryptedData, nonce, hmac) = try await cryptoService.encryptDataWithIntegrity(
+                testData, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
+            let decrypted = try await cryptoService.decryptDataWithIntegrity(
+                encryptedData, nonce: nonce, hmac: hmac, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
             guard decrypted == testData else {
                 #if DEBUG
-                print("Key validation failed: round-trip test failed")
+                    print("Key validation failed: round-trip test failed")
                 #endif
                 return false
             }
         } catch {
             #if DEBUG
-            print("Key validation failed: crypto operation failed - \(error)")
+                print("Key validation failed: crypto operation failed - \(error)")
             #endif
             return false
         }
 
         return true
     }
-    
+
     // MARK: - New Refactored Methods
 
     /// Validates the integrity of stored vault data including settings and photo metadata
     /// - Returns: Array of validation errors, empty if all checks pass
     func validateVaultIntegrity() async throws {
-        try await securityService.validateVaultIntegrity(vaultURL: vaultBaseURL, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!, expectedMetadata: nil)
+        try await securityService.validateVaultIntegrity(
+            vaultURL: vaultBaseURL, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!, expectedMetadata: nil)
     }
 
     /// Performs comprehensive security health checks on the vault

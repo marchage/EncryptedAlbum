@@ -1,7 +1,7 @@
+import CryptoKit
 import Foundation
 import LocalAuthentication
 import Security
-import CryptoKit
 
 /// Service responsible for security validation and health checks
 class SecurityService {
@@ -35,7 +35,9 @@ class SecurityService {
 
                 // Check attempt count
                 if self.biometricAttemptCount >= CryptoConstants.biometricMaxAttempts {
-                    continuation.resume(throwing: VaultError.tooManyBiometricAttempts(maxAttempts: CryptoConstants.biometricMaxAttempts))
+                    continuation.resume(
+                        throwing: VaultError.tooManyBiometricAttempts(maxAttempts: CryptoConstants.biometricMaxAttempts)
+                    )
                     return
                 }
 
@@ -59,7 +61,8 @@ class SecurityService {
                 self.lastBiometricAttempt = Date()
                 self.biometricAttemptCount += 1
 
-                context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, error in
+                context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) {
+                    success, error in
                     if success {
                         self.resetBiometricRateLimit()
                         continuation.resume(returning: ())
@@ -107,14 +110,14 @@ class SecurityService {
                         report.memorySecurityHealthy = try await self.validateMemorySecurity()
 
                         // Overall health
-                        report.overallHealthy = report.randomGenerationHealthy &&
-                                               report.cryptoOperationsHealthy &&
-                                               report.fileSystemSecure &&
-                                               report.memorySecurityHealthy
+                        report.overallHealthy =
+                            report.randomGenerationHealthy && report.cryptoOperationsHealthy && report.fileSystemSecure
+                            && report.memorySecurityHealthy
 
                         continuation.resume(returning: report)
                     } catch {
-                        continuation.resume(throwing: VaultError.securityHealthCheckFailed(reason: error.localizedDescription))
+                        continuation.resume(
+                            throwing: VaultError.securityHealthCheckFailed(reason: error.localizedDescription))
                     }
                 }
             }
@@ -155,7 +158,7 @@ class SecurityService {
             entropy -= probability * log2(probability)
         }
 
-        return entropy / 8.0 // Normalize to 0-1 range
+        return entropy / 8.0  // Normalize to 0-1 range
     }
 
     private func validateCryptoOperations() async throws -> Bool {
@@ -172,19 +175,19 @@ class SecurityService {
     private func validateFileSystemSecurity() async throws -> Bool {
         // Check if we're running on a jailbroken device (iOS)
         #if os(iOS)
-        let jailbreakPaths = [
-            "/Applications/Cydia.app",
-            "/Library/MobileSubstrate/MobileSubstrate.dylib",
-            "/bin/bash",
-            "/usr/sbin/sshd",
-            "/etc/apt"
-        ]
+            let jailbreakPaths = [
+                "/Applications/Cydia.app",
+                "/Library/MobileSubstrate/MobileSubstrate.dylib",
+                "/bin/bash",
+                "/usr/sbin/sshd",
+                "/etc/apt",
+            ]
 
-        for path in jailbreakPaths {
-            if FileManager.default.fileExists(atPath: path) {
-                return false
+            for path in jailbreakPaths {
+                if FileManager.default.fileExists(atPath: path) {
+                    return false
+                }
             }
-        }
         #endif
 
         return true
@@ -206,27 +209,34 @@ class SecurityService {
     // MARK: - Vault Integrity Validation
 
     /// Validates the integrity of the entire vault
-    func validateVaultIntegrity(vaultURL: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey, expectedMetadata: Data?) async throws {
+    func validateVaultIntegrity(
+        vaultURL: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey, expectedMetadata: Data?
+    ) async throws {
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
                 do {
                     // Check vault directory exists
                     var isDirectory: ObjCBool = false
-                    guard FileManager.default.fileExists(atPath: vaultURL.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+                    guard FileManager.default.fileExists(atPath: vaultURL.path, isDirectory: &isDirectory),
+                        isDirectory.boolValue
+                    else {
                         continuation.resume(throwing: VaultError.vaultCorrupted(reason: "Vault directory not found"))
                         return
                     }
 
                     // Check photos directory exists
                     let photosURL = vaultURL.appendingPathComponent(FileConstants.photosDirectoryName)
-                    guard FileManager.default.fileExists(atPath: photosURL.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+                    guard FileManager.default.fileExists(atPath: photosURL.path, isDirectory: &isDirectory),
+                        isDirectory.boolValue
+                    else {
                         continuation.resume(throwing: VaultError.vaultCorrupted(reason: "Photos directory not found"))
                         return
                     }
 
                     // Validate metadata if provided
                     if let expectedMetadata = expectedMetadata {
-                        try self.validateMetadataIntegrity(expectedMetadata, encryptionKey: encryptionKey, hmacKey: hmacKey)
+                        try self.validateMetadataIntegrity(
+                            expectedMetadata, encryptionKey: encryptionKey, hmacKey: hmacKey)
                     }
 
                     continuation.resume(returning: ())
@@ -239,7 +249,8 @@ class SecurityService {
         }
     }
 
-    private func validateMetadataIntegrity(_ metadata: Data, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) throws {
+    private func validateMetadataIntegrity(_ metadata: Data, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) throws
+    {
         // This would validate the metadata structure and integrity
         // Implementation depends on how metadata is stored
         // For now, just check it's valid JSON
@@ -256,7 +267,7 @@ class SecurityService {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
         ]
 
         // Delete existing item
@@ -275,7 +286,7 @@ class SecurityService {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
         ]
 
         var result: AnyObject?
@@ -296,7 +307,7 @@ class SecurityService {
     func deleteFromKeychain(for key: String) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key
+            kSecAttrAccount as String: key,
         ]
 
         let status = SecItemDelete(query as CFDictionary)

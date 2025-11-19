@@ -1,12 +1,13 @@
+import AVFoundation
+import CoreLocation
 import Foundation
 import Photos
+
 #if os(macOS)
-import AppKit
+    import AppKit
 #elseif os(iOS)
-import UIKit
+    import UIKit
 #endif
-import CoreLocation
-import AVFoundation
 
 enum LibraryType {
     case personal
@@ -40,14 +41,14 @@ enum PhotosLibraryServiceError: LocalizedError {
 /// Service for interacting with the Photos library across platforms.
 class PhotosLibraryService {
     static let shared = PhotosLibraryService()
-    
+
     private init() {}
-    
+
     /// Requests read/write access to the Photos library.
     /// - Parameter completion: Called with true if access granted, false otherwise
     func requestAccess(completion: @escaping (Bool) -> Void) {
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-        
+
         switch status {
         case .authorized, .limited:
             DispatchQueue.main.async {
@@ -65,16 +66,16 @@ class PhotosLibraryService {
             }
         }
     }
-    
+
     /// Fetches all albums from the Photos library.
     /// - Parameter libraryType: Type of library to fetch from (.personal, .shared, or .both)
     /// - Returns: Array of tuples containing album name and collection
     func getAllAlbums(libraryType: LibraryType = .both) -> [(name: String, collection: PHAssetCollection)] {
         var albums: [(String, PHAssetCollection)] = []
-        var seenIds = Set<String>() // Avoid duplicates across different fetches
-        
+        var seenIds = Set<String>()  // Avoid duplicates across different fetches
+
         NSLog("📚 getAllAlbums called with libraryType: \(libraryType)")
-        
+
         // Explicitly fetch Hidden album FIRST (most important) - always from personal library
         if libraryType == .personal || libraryType == .both {
             let hiddenAlbum = PHAssetCollection.fetchAssetCollections(
@@ -82,7 +83,7 @@ class PhotosLibraryService {
                 subtype: .smartAlbumAllHidden,
                 options: nil
             )
-            
+
             hiddenAlbum.enumerateObjects { collection, _, _ in
                 let countOptions = PHFetchOptions()
                 if #available(macOS 13.0, *) {
@@ -90,7 +91,7 @@ class PhotosLibraryService {
                 }
                 let assetCount = PHAsset.fetchAssets(in: collection, options: countOptions).count
                 NSLog("Found Hidden album with \(assetCount) items")
-                
+
                 var name = collection.localizedTitle ?? "Hidden"
                 if libraryType == .both {
                     name = "👤 " + name
@@ -98,30 +99,32 @@ class PhotosLibraryService {
                 albums.append((name, collection))
             }
         }
-        
+
         // Fetch user albums and filter based on library type
         let userAlbums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: nil)
         userAlbums.enumerateObjects { collection, _, _ in
             let albumName = collection.localizedTitle ?? "Untitled"
             let subtypeRaw = collection.assetCollectionSubtype.rawValue
             NSLog("  🧭 Album subtype raw=\(subtypeRaw) name='\(albumName)'")
-            
+
             // Determine if this is a "shared" album (either cloud shared album OR from shared library)
             let isCloudSharedAlbum = collection.assetCollectionSubtype == .albumCloudShared
             let isFromSharedLibrary = isCloudSharedAlbum || self.isFromSharedLibrary(collection)
-            
-            NSLog("  📁 Album '\(albumName)': cloudShared=\(isCloudSharedAlbum), assetFromShared=\(self.isFromSharedLibrary(collection)), final isShared=\(isFromSharedLibrary)")
-            
+
+            NSLog(
+                "  📁 Album '\(albumName)': cloudShared=\(isCloudSharedAlbum), assetFromShared=\(self.isFromSharedLibrary(collection)), final isShared=\(isFromSharedLibrary)"
+            )
+
             // Apply library type filter
             if libraryType == .personal && isFromSharedLibrary {
                 NSLog("    ⛔ Skipped (personal filter, album is shared)")
-                return // Skip shared albums in personal view
+                return  // Skip shared albums in personal view
             }
             if libraryType == .shared && !isFromSharedLibrary {
                 NSLog("    ⛔ Skipped (shared filter, album is personal)")
-                return // Skip personal albums in shared view
+                return  // Skip personal albums in shared view
             }
-            
+
             // Add album with appropriate prefix
             var name = albumName
             if libraryType == .both {
@@ -135,13 +138,14 @@ class PhotosLibraryService {
                 NSLog("    🔁 Skipped duplicate id=\(collection.localIdentifier)")
             }
         }
-        
+
         // Explicit fetch of Cloud Shared Albums (albums you explicitly share with people)
-        let cloudShared = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .albumCloudShared, options: nil)
+        let cloudShared = PHAssetCollection.fetchAssetCollections(
+            with: .album, subtype: .albumCloudShared, options: nil)
         cloudShared.enumerateObjects { collection, _, _ in
             let albumName = collection.localizedTitle ?? "Shared Album"
-            let isShared = true // By definition
-            
+            let isShared = true  // By definition
+
             if libraryType == .personal && isShared {
                 NSLog("    ⛔ Skipped cloud shared in personal view: \(albumName)")
                 return
@@ -156,13 +160,13 @@ class PhotosLibraryService {
                 }
             }
         }
-        
+
         // Smart albums
         let smartAlbums = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .any, options: nil)
         smartAlbums.enumerateObjects { collection, _, _ in
             // Check if from shared library
             let isFromSharedLibrary = self.isFromSharedLibrary(collection)
-            
+
             // Apply library type filter
             if libraryType == .personal && isFromSharedLibrary {
                 return
@@ -170,51 +174,51 @@ class PhotosLibraryService {
             if libraryType == .shared && !isFromSharedLibrary {
                 return
             }
-            
+
             var name = collection.localizedTitle ?? "Untitled"
             if libraryType == .both {
                 name = (isFromSharedLibrary ? "📤 " : "👤 ") + name
             }
-            
+
             // Avoid duplicating Hidden album
             if !seenIds.contains(collection.localIdentifier) {
                 albums.append((name, collection))
                 seenIds.insert(collection.localIdentifier)
             }
         }
-        
+
         return albums.sorted { (a, b) in a.0 < b.0 }
     }
-    
+
     private func isFromSharedLibrary(_ collection: PHAssetCollection) -> Bool {
         // Check if the album's assets are from iCloud Shared Photo Library
         if #available(macOS 13.0, *) {
             let fetchOptions = PHFetchOptions()
-            fetchOptions.fetchLimit = 5 // Check first 5 assets to be sure
+            fetchOptions.fetchLimit = 5  // Check first 5 assets to be sure
             let assets = PHAsset.fetchAssets(in: collection, options: fetchOptions)
-            
+
             var sharedCount = 0
             var totalCount = 0
-            
+
             assets.enumerateObjects { asset, _, _ in
                 totalCount += 1
                 let sourceType = asset.sourceType
-                
+
                 // Check if this is a shared library asset
                 // sourceType values: 1 = typeUserLibrary, 2 = typeCloudShared, 8 = typeiTunesSynced
                 if sourceType == .typeCloudShared {
                     sharedCount += 1
                 }
             }
-            
+
             // If majority of assets are from shared library, consider the album as shared
             let isShared = sharedCount > 0 && (Double(sharedCount) / Double(totalCount)) > 0.5
             return isShared
         }
-        
+
         return false
     }
-    
+
     /// Gets all photo and video assets from a collection.
     /// - Parameter collection: The asset collection to fetch from
     /// - Returns: Array of PHAsset items
@@ -226,17 +230,17 @@ class PhotosLibraryService {
         if #available(macOS 13.0, *), collection.assetCollectionSubtype == .smartAlbumAllHidden {
             fetchOptions.includeHiddenAssets = true
         }
-        
+
         let result = PHAsset.fetchAssets(in: collection, options: fetchOptions)
         result.enumerateObjects { asset, _, _ in
             if asset.mediaType == .image || asset.mediaType == .video {
                 assets.append(asset)
             }
         }
-        
+
         return assets
     }
-    
+
     /// Retrieves media data for a Photos asset asynchronously, preferring file-backed results for streaming encryption.
     func getMediaDataAsync(for asset: PHAsset) async -> MediaFetchResult? {
         let result = await withTaskGroup(of: MediaFetchResult?.self) { group in
@@ -273,8 +277,10 @@ class PhotosLibraryService {
 
     private func fetchPhotoResource(for asset: PHAsset) async -> MediaFetchResult? {
         let resources = PHAssetResource.assetResources(for: asset)
-        if let resource = resources.first(where: { $0.type == .photo || $0.type == .fullSizePhoto }) ?? resources.first {
-            let filename = resource.originalFilename.isEmpty ? "photo_\(UUID().uuidString).jpg" : resource.originalFilename
+        if let resource = resources.first(where: { $0.type == .photo || $0.type == .fullSizePhoto }) ?? resources.first
+        {
+            let filename =
+                resource.originalFilename.isEmpty ? "photo_\(UUID().uuidString).jpg" : resource.originalFilename
             do {
                 let tempURL = try await exportResource(resource, suggestedName: filename)
                 return MediaFetchResult(
@@ -284,7 +290,9 @@ class PhotosLibraryService {
                     dateTaken: asset.creationDate,
                     mediaType: .photo,
                     duration: nil,
-                    location: asset.location.map { SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) },
+                    location: asset.location.map {
+                        SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude)
+                    },
                     isFavorite: asset.isFavorite,
                     shouldDeleteFileWhenFinished: true
                 )
@@ -350,11 +358,14 @@ class PhotosLibraryService {
                 do {
                     let originalName = urlAsset.url.lastPathComponent
                     let filename = originalName.isEmpty ? "video_\(UUID().uuidString).mov" : originalName
-                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "_" + filename)
+                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(
+                        UUID().uuidString + "_" + filename)
                     try? FileManager.default.removeItem(at: tempURL)
                     try FileManager.default.copyItem(at: urlAsset.url, to: tempURL)
 
-                    let location = asset.location.map { SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
+                    let location = asset.location.map {
+                        SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude)
+                    }
                     let result = MediaFetchResult(
                         data: nil,
                         fileURL: tempURL,
@@ -382,17 +393,18 @@ class PhotosLibraryService {
                     return
                 }
 
-                continuation.resume(returning: MediaFetchResult(
-                    data: data,
-                    fileURL: nil,
-                    filename: filename,
-                    dateTaken: dateTaken,
-                    mediaType: .photo,
-                    duration: duration,
-                    location: location,
-                    isFavorite: isFavorite,
-                    shouldDeleteFileWhenFinished: false
-                ))
+                continuation.resume(
+                    returning: MediaFetchResult(
+                        data: data,
+                        fileURL: nil,
+                        filename: filename,
+                        dateTaken: dateTaken,
+                        mediaType: .photo,
+                        duration: duration,
+                        location: location,
+                        isFavorite: isFavorite,
+                        shouldDeleteFileWhenFinished: false
+                    ))
             }
         }
     }
@@ -405,41 +417,45 @@ class PhotosLibraryService {
                     return
                 }
 
-                continuation.resume(returning: MediaFetchResult(
-                    data: data,
-                    fileURL: nil,
-                    filename: filename.isEmpty ? "video_\(UUID().uuidString).mov" : filename,
-                    dateTaken: dateTaken,
-                    mediaType: .video,
-                    duration: duration,
-                    location: location,
-                    isFavorite: isFavorite,
-                    shouldDeleteFileWhenFinished: false
-                ))
+                continuation.resume(
+                    returning: MediaFetchResult(
+                        data: data,
+                        fileURL: nil,
+                        filename: filename.isEmpty ? "video_\(UUID().uuidString).mov" : filename,
+                        dateTaken: dateTaken,
+                        mediaType: .video,
+                        duration: duration,
+                        location: location,
+                        isFavorite: isFavorite,
+                        shouldDeleteFileWhenFinished: false
+                    ))
             }
         }
     }
-    
-    func getImageData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, SecurePhoto.Location?, Bool?) -> Void) {
+
+    func getImageData(
+        for asset: PHAsset,
+        completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, SecurePhoto.Location?, Bool?) -> Void
+    ) {
         let options = PHImageRequestOptions()
         options.isSynchronous = false
         options.deliveryMode = .highQualityFormat
         options.isNetworkAccessAllowed = true
-        
-        var hasCalledCompletion = false // Ensure we only call completion once
-        
+
+        var hasCalledCompletion = false  // Ensure we only call completion once
+
         PHImageManager.default().requestImageDataAndOrientation(for: asset, options: options) { data, _, _, info in
             // Check if we already called completion (PHImageManager may call this multiple times)
             guard !hasCalledCompletion else {
                 print("⚠️ Ignoring duplicate callback for asset \(asset.localIdentifier)")
                 return
             }
-            
+
             // Check for errors or cancellation
             if let error = info?[PHImageErrorKey] as? Error {
                 print("❌ PHImageManager error for asset \(asset.localIdentifier): \(error.localizedDescription)")
             }
-            
+
             if let isCancelled = info?[PHImageCancelledKey] as? Bool, isCancelled {
                 print("⚠️ Image request was cancelled for asset \(asset.localIdentifier)")
                 hasCalledCompletion = true
@@ -448,40 +464,45 @@ class PhotosLibraryService {
                 }
                 return
             }
-            
+
             let resources = PHAssetResource.assetResources(for: asset)
             let filename = resources.first?.originalFilename ?? "photo_\(UUID().uuidString).jpg"
             let dateTaken = asset.creationDate
-            
+
             // Extract metadata
-            let location = asset.location.map { SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
+            let location = asset.location.map {
+                SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude)
+            }
             let isFavorite = asset.isFavorite
-            
+
             // Log result
             if let data = data {
                 print("✅ Successfully retrieved image data for \(filename): \(data.count) bytes")
             } else {
                 print("❌ Image data is nil for asset \(asset.localIdentifier), filename: \(filename)")
             }
-            
+
             hasCalledCompletion = true
             DispatchQueue.main.async {
                 completion(data, filename, dateTaken, .photo, nil, location, isFavorite)
             }
         }
     }
-    
-    func getVideoData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, SecurePhoto.Location?, Bool?) -> Void) {
+
+    func getVideoData(
+        for asset: PHAsset,
+        completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, SecurePhoto.Location?, Bool?) -> Void
+    ) {
         let options = PHVideoRequestOptions()
         options.isNetworkAccessAllowed = true
         options.deliveryMode = .highQualityFormat
-        
+
         PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { avAsset, _, info in
             // Check for errors
             if let error = info?[PHImageErrorKey] as? Error {
                 print("❌ Video request error for asset \(asset.localIdentifier): \(error.localizedDescription)")
             }
-            
+
             guard let urlAsset = avAsset as? AVURLAsset else {
                 print("❌ Failed to get AVURLAsset for video \(asset.localIdentifier)")
                 DispatchQueue.main.async {
@@ -489,20 +510,22 @@ class PhotosLibraryService {
                 }
                 return
             }
-            
+
             do {
                 let data = try Data(contentsOf: urlAsset.url)
                 let resources = PHAssetResource.assetResources(for: asset)
                 let filename = resources.first?.originalFilename ?? "video_\(UUID().uuidString).mov"
                 let dateTaken = asset.creationDate
                 let duration = asset.duration
-                
+
                 // Extract metadata
-                let location = asset.location.map { SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
+                let location = asset.location.map {
+                    SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude)
+                }
                 let isFavorite = asset.isFavorite
-                
+
                 print("✅ Successfully retrieved video data for \(filename): \(data.count) bytes")
-                
+
                 DispatchQueue.main.async {
                     completion(data, filename, dateTaken, .video, duration, location, isFavorite)
                 }
@@ -514,7 +537,7 @@ class PhotosLibraryService {
             }
         }
     }
-    
+
     func hideAssetInLibrary(_ asset: PHAsset, completion: @escaping (Bool) -> Void) {
         PHPhotoLibrary.shared().performChanges({
             let request = PHAssetChangeRequest(for: asset)
@@ -528,7 +551,7 @@ class PhotosLibraryService {
             }
         }
     }
-    
+
     /// Permanently deletes an asset from the Photos library.
     /// - Parameters:
     ///   - asset: The PHAsset to delete
@@ -545,7 +568,7 @@ class PhotosLibraryService {
             }
         }
     }
-    
+
     /// Deletes multiple assets from the Photos library in a single transaction.
     /// - Parameters:
     ///   - assets: Array of PHAssets to delete
@@ -562,36 +585,39 @@ class PhotosLibraryService {
             }
         }
     }
-    
-    func saveImageToLibrary(_ imageData: Data, filename: String, toAlbum albumName: String? = nil, completion: @escaping (Bool) -> Void) {
+
+    func saveImageToLibrary(
+        _ imageData: Data, filename: String, toAlbum albumName: String? = nil, completion: @escaping (Bool) -> Void
+    ) {
         // Validate that we can create an image from the data
         #if os(macOS)
-        guard NSImage(data: imageData) != nil else {
-            DispatchQueue.main.async {
-                completion(false)
+            guard NSImage(data: imageData) != nil else {
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+                return
             }
-            return
-        }
         #else
-        guard UIImage(data: imageData) != nil else {
-            DispatchQueue.main.async {
-                completion(false)
+            guard UIImage(data: imageData) != nil else {
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+                return
             }
-            return
-        }
         #endif
-        
+
         PHPhotoLibrary.shared().performChanges({
             let creationRequest = PHAssetCreationRequest.forAsset()
             creationRequest.addResource(with: .photo, data: imageData, options: nil)
-            
+
             // Add to album if specified
             if let albumName = albumName, let assetPlaceholder = creationRequest.placeholderForCreatedAsset {
                 // Try to find existing album
                 let fetchOptions = PHFetchOptions()
                 fetchOptions.predicate = NSPredicate(format: "title = %@", albumName)
-                let collections = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
-                
+                let collections = PHAssetCollection.fetchAssetCollections(
+                    with: .album, subtype: .any, options: fetchOptions)
+
                 if let album = collections.firstObject {
                     // Add to existing album
                     if let albumChangeRequest = PHAssetCollectionChangeRequest(for: album) {
@@ -599,7 +625,8 @@ class PhotosLibraryService {
                     }
                 } else {
                     // Create new album and add photo
-                    let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
+                    let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(
+                        withTitle: albumName)
                     // Add the asset to the newly created album
                     createAlbumRequest.addAssets([assetPlaceholder] as NSArray)
                 }
@@ -613,7 +640,7 @@ class PhotosLibraryService {
             }
         }
     }
-    
+
     /// Saves media (photo or video) to the Photos library with metadata from in-memory data.
     /// - Parameters:
     ///   - mediaData: Raw media data
@@ -624,35 +651,41 @@ class PhotosLibraryService {
     ///   - location: GPS coordinates
     ///   - isFavorite: Favorite status
     ///   - completion: Called with true if successful
-    func saveMediaToLibrary(_ mediaData: Data, filename: String, mediaType: MediaType, toAlbum albumName: String? = nil, creationDate: Date? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil, completion: @escaping (Bool) -> Void) {
+    func saveMediaToLibrary(
+        _ mediaData: Data, filename: String, mediaType: MediaType, toAlbum albumName: String? = nil,
+        creationDate: Date? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil,
+        completion: @escaping (Bool) -> Void
+    ) {
         // For videos, we need to save to a temporary file first
         if mediaType == .video {
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
             do {
                 try mediaData.write(to: tempURL)
-                
+
                 PHPhotoLibrary.shared().performChanges({
                     let creationRequest = PHAssetCreationRequest.forAsset()
                     creationRequest.addResource(with: .video, fileURL: tempURL, options: nil)
-                    
+
                     // Set metadata
                     if let creationDate = creationDate {
                         creationRequest.creationDate = creationDate
                     }
                     if let location = location {
-                        creationRequest.location = CLLocation(latitude: location.latitude, longitude: location.longitude)
+                        creationRequest.location = CLLocation(
+                            latitude: location.latitude, longitude: location.longitude)
                     }
                     if let isFavorite = isFavorite {
                         creationRequest.isFavorite = isFavorite
                     }
-                    
+
                     // Add to album if specified
                     if let albumName = albumName, let assetPlaceholder = creationRequest.placeholderForCreatedAsset {
                         // Try to find existing album
                         let fetchOptions = PHFetchOptions()
                         fetchOptions.predicate = NSPredicate(format: "title = %@", albumName)
-                        let collections = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
-                        
+                        let collections = PHAssetCollection.fetchAssetCollections(
+                            with: .album, subtype: .any, options: fetchOptions)
+
                         if let album = collections.firstObject {
                             // Add to existing album
                             if let albumChangeRequest = PHAssetCollectionChangeRequest(for: album) {
@@ -660,14 +693,15 @@ class PhotosLibraryService {
                             }
                         } else {
                             // Create new album and add video
-                            let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
+                            let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(
+                                withTitle: albumName)
                             createAlbumRequest.addAssets([assetPlaceholder] as NSArray)
                         }
                     }
                 }) { success, error in
                     // Clean up temp file
                     try? FileManager.default.removeItem(at: tempURL)
-                    
+
                     if let error = error {
                         print("Failed to save video to library: \(error.localizedDescription)")
                     }
@@ -684,25 +718,25 @@ class PhotosLibraryService {
         } else {
             // For photos, save with metadata
             #if os(macOS)
-            guard NSImage(data: mediaData) != nil else {
-                DispatchQueue.main.async {
-                    completion(false)
+                guard NSImage(data: mediaData) != nil else {
+                    DispatchQueue.main.async {
+                        completion(false)
+                    }
+                    return
                 }
-                return
-            }
             #else
-            guard UIImage(data: mediaData) != nil else {
-                DispatchQueue.main.async {
-                    completion(false)
+                guard UIImage(data: mediaData) != nil else {
+                    DispatchQueue.main.async {
+                        completion(false)
+                    }
+                    return
                 }
-                return
-            }
             #endif
-            
+
             PHPhotoLibrary.shared().performChanges({
                 let creationRequest = PHAssetCreationRequest.forAsset()
                 creationRequest.addResource(with: .photo, data: mediaData, options: nil)
-                
+
                 // Set metadata
                 if let creationDate = creationDate {
                     creationRequest.creationDate = creationDate
@@ -713,14 +747,15 @@ class PhotosLibraryService {
                 if let isFavorite = isFavorite {
                     creationRequest.isFavorite = isFavorite
                 }
-                
+
                 // Add to album if specified
                 if let albumName = albumName, let assetPlaceholder = creationRequest.placeholderForCreatedAsset {
                     // Try to find existing album
                     let fetchOptions = PHFetchOptions()
                     fetchOptions.predicate = NSPredicate(format: "title = %@", albumName)
-                    let collections = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
-                    
+                    let collections = PHAssetCollection.fetchAssetCollections(
+                        with: .album, subtype: .any, options: fetchOptions)
+
                     if let album = collections.firstObject {
                         // Add to existing album
                         if let albumChangeRequest = PHAssetCollectionChangeRequest(for: album) {
@@ -728,7 +763,8 @@ class PhotosLibraryService {
                         }
                     } else {
                         // Create new album and add photo
-                        let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
+                        let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(
+                            withTitle: albumName)
                         createAlbumRequest.addAssets([assetPlaceholder] as NSArray)
                     }
                 }
@@ -753,7 +789,11 @@ class PhotosLibraryService {
     ///   - location: Optional GPS metadata
     ///   - isFavorite: Optional favorite flag
     ///   - completion: Called on main queue when Photos reports success/failure
-    func saveMediaFileToLibrary(_ fileURL: URL, filename: String, mediaType: MediaType, toAlbum albumName: String? = nil, creationDate: Date? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil, completion: @escaping (Bool, Error?) -> Void) {
+    func saveMediaFileToLibrary(
+        _ fileURL: URL, filename: String, mediaType: MediaType, toAlbum albumName: String? = nil,
+        creationDate: Date? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil,
+        completion: @escaping (Bool, Error?) -> Void
+    ) {
         // Ensure the file exists before attempting to save
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             print("Failed to save media file to library: File does not exist at \(fileURL.path)")
@@ -762,7 +802,7 @@ class PhotosLibraryService {
             }
             return
         }
-        
+
         let resourceType: PHAssetResourceType = (mediaType == .video) ? .video : .photo
         let options = PHAssetResourceCreationOptions()
         if !filename.isEmpty {
@@ -786,12 +826,14 @@ class PhotosLibraryService {
             if let albumName = albumName, let assetPlaceholder = creationRequest.placeholderForCreatedAsset {
                 let fetchOptions = PHFetchOptions()
                 fetchOptions.predicate = NSPredicate(format: "title = %@", albumName)
-                let collections = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
+                let collections = PHAssetCollection.fetchAssetCollections(
+                    with: .album, subtype: .any, options: fetchOptions)
 
                 if let album = collections.firstObject {
                     PHAssetCollectionChangeRequest(for: album)?.addAssets([assetPlaceholder] as NSArray)
                 } else {
-                    let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
+                    let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(
+                        withTitle: albumName)
                     createAlbumRequest.addAssets([assetPlaceholder] as NSArray)
                 }
             }
@@ -804,9 +846,14 @@ class PhotosLibraryService {
             }
         }
     }
-    
+
     // Batch save multiple media items to library - prevents duplicate album creation
-    func batchSaveMediaToLibrary(_ mediaItems: [(data: Data, filename: String, mediaType: MediaType, creationDate: Date?, location: SecurePhoto.Location?, isFavorite: Bool?)], toAlbum albumName: String? = nil, completion: @escaping (Int) -> Void) {
+    func batchSaveMediaToLibrary(
+        _ mediaItems: [(
+            data: Data, filename: String, mediaType: MediaType, creationDate: Date?, location: SecurePhoto.Location?,
+            isFavorite: Bool?
+        )], toAlbum albumName: String? = nil, completion: @escaping (Int) -> Void
+    ) {
         // Write all videos to temp files first
         var tempVideoFiles: [(url: URL, filename: String)] = []
         for item in mediaItems where item.mediaType == .video {
@@ -818,30 +865,32 @@ class PhotosLibraryService {
                 print("Failed to write temp video file: \(error)")
             }
         }
-        
+
         // Perform all changes in a single transaction
         PHPhotoLibrary.shared().performChanges({
             var albumRequest: PHAssetCollectionChangeRequest? = nil
-            
+
             // Find or create album once
             if let albumName = albumName {
                 let fetchOptions = PHFetchOptions()
                 fetchOptions.predicate = NSPredicate(format: "title = %@", albumName)
-                let collections = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
-                
+                let collections = PHAssetCollection.fetchAssetCollections(
+                    with: .album, subtype: .any, options: fetchOptions)
+
                 if let existingAlbum = collections.firstObject {
                     albumRequest = PHAssetCollectionChangeRequest(for: existingAlbum)
                 } else {
-                    let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
+                    let createAlbumRequest = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(
+                        withTitle: albumName)
                     albumRequest = createAlbumRequest
                 }
             }
-            
+
             // Add all assets
             var successCount = 0
             for item in mediaItems {
                 let creationRequest = PHAssetCreationRequest.forAsset()
-                
+
                 // Add media resource
                 if item.mediaType == .video {
                     if let tempFile = tempVideoFiles.first(where: { $0.filename == item.filename }) {
@@ -852,7 +901,7 @@ class PhotosLibraryService {
                 } else {
                     creationRequest.addResource(with: .photo, data: item.data, options: nil)
                 }
-                
+
                 // Set metadata
                 if let creationDate = item.creationDate {
                     creationRequest.creationDate = creationDate
@@ -863,20 +912,20 @@ class PhotosLibraryService {
                 if let isFavorite = item.isFavorite {
                     creationRequest.isFavorite = isFavorite
                 }
-                
+
                 // Add to album
                 if let assetPlaceholder = creationRequest.placeholderForCreatedAsset {
                     albumRequest?.addAssets([assetPlaceholder] as NSArray)
                     successCount += 1
                 }
             }
-            
+
         }) { success, error in
             // Clean up temp video files
             for tempFile in tempVideoFiles {
                 try? FileManager.default.removeItem(at: tempFile.url)
             }
-            
+
             if let error = error {
                 print("Failed to batch save media to library: \(error.localizedDescription)")
                 DispatchQueue.main.async {
