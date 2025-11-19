@@ -195,7 +195,8 @@ class VaultManager: ObservableObject {
     // MARK: - Step-up Authentication
 
     /// Performs a step-up authentication check for sensitive vault operations.
-    /// Uses biometrics/device auth when available, otherwise falls back to password verification.
+    /// Uses biometrics/device auth when available, otherwise falls back to password verification
+    /// using the same salted-hash verification as the main unlock flow.
     func requireStepUpAuthentication(completion: @escaping (Bool) -> Void) {
         // If there is no password yet, no need for step-up auth.
         guard !passwordHash.isEmpty else {
@@ -238,8 +239,20 @@ class VaultManager: ObservableObject {
                 }
 
                 let enteredPassword = textField.stringValue
-                let enteredHash = enteredPassword.data(using: .utf8)?.base64EncodedString() ?? ""
-                completion(enteredHash == self.passwordHash)
+                                // Reuse the same salted hashing logic as `unlock(password:)` so that
+                                // step-up authentication behaves identically to a normal unlock.
+                                guard let passwordData = enteredPassword.data(using: .utf8),
+                                            let saltData = Data(base64Encoded: self.passwordSalt) else {
+                                        completion(false)
+                                        return
+                                }
+
+                                var combinedData = Data()
+                                combinedData.append(passwordData)
+                                combinedData.append(saltData)
+                                let hash = SHA256.hash(data: combinedData)
+                                let enteredHash = hash.compactMap { String(format: "%02x", $0) }.joined()
+                                completion(enteredHash == self.passwordHash)
                 #else
                 // On iOS, we'll need to use a different approach - perhaps a modal view
                 // For now, just fail the authentication
