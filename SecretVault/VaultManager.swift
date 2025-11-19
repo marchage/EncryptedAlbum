@@ -4,6 +4,7 @@ import CryptoKit
 import Foundation
 import LocalAuthentication
 import SwiftUI
+import Photos
 
 // MARK: - Data Extensions
 
@@ -120,6 +121,38 @@ class RestorationProgress: ObservableObject {
     }
 }
 
+// Import progress tracking
+class ImportProgress: ObservableObject {
+    @Published var isImporting = false
+    @Published var totalItems = 0
+    @Published var processedItems = 0
+    @Published var successItems = 0
+    @Published var failedItems = 0
+    @Published var currentBytesProcessed: Int64 = 0
+    @Published var currentBytesTotal: Int64 = 0
+    @Published var statusMessage: String = ""
+    @Published var detailMessage: String = ""
+    @Published var cancelRequested = false
+
+    var progress: Double {
+        guard totalItems > 0 else { return 0 }
+        return Double(processedItems) / Double(totalItems)
+    }
+
+    func reset() {
+        isImporting = false
+        totalItems = 0
+        processedItems = 0
+        successItems = 0
+        failedItems = 0
+        currentBytesProcessed = 0
+        currentBytesTotal = 0
+        statusMessage = ""
+        detailMessage = ""
+        cancelRequested = false
+    }
+}
+
 // Notification types for hide/restore operations
 enum HideNotificationType {
     case success
@@ -201,7 +234,9 @@ class VaultManager: ObservableObject {
     @Published var showUnlockPrompt = false
     @Published var passwordHash: String = ""
     @Published var passwordSalt: String = ""  // Salt for password hashing
+    @Published var securityVersion: Int = 1   // 1 = Legacy (Key as Hash), 2 = Secure (Verifier)
     @Published var restorationProgress = RestorationProgress()
+    @Published var importProgress = ImportProgress()
     @Published var vaultBaseURL: URL = URL(fileURLWithPath: "/tmp")
     @Published var hideNotification: HideNotification? = nil
     @Published var lastActivity: Date = Date()
@@ -399,6 +434,7 @@ class VaultManager: ObservableObject {
 
         passwordHash = hash.map { String(format: "%02x", $0) }.joined()
         passwordSalt = salt.base64EncodedString()
+        securityVersion = 2 // New setups are always V2
 
         cachedMasterKey = nil
         cachedEncryptionKey = nil
@@ -432,7 +468,30 @@ class VaultManager: ObservableObject {
             throw VaultError.vaultNotInitialized
         }
 
-        let isValid = try await passwordService.verifyPassword(password, against: storedHash, salt: storedSalt)
+        // Check security version and verify accordingly
+        let isValid: Bool
+        if securityVersion < 2 {
+            // Legacy verification (V1)
+            isValid = try await passwordService.verifyLegacyPassword(password, against: storedHash, salt: storedSalt)
+            
+            if isValid {
+                // MIGRATE TO V2
+                print("🔒 Migrating vault security to V2 (Verifier-based)...")
+                let (newVerifier, _) = try await passwordService.hashPassword(password) // Uses new verifier logic
+                // Salt remains the same to avoid re-encrypting data (we just change the stored verifier)
+                try passwordService.storePasswordHash(newVerifier, salt: storedSalt)
+                
+                await MainActor.run {
+                    self.passwordHash = newVerifier.map { String(format: "%02x", $0) }.joined()
+                    self.securityVersion = 2
+                }
+                saveSettings()
+                print("✅ Migration complete. Encryption key removed from storage.")
+            }
+        } else {
+            // Standard verification (V2)
+            isValid = try await passwordService.verifyPassword(password, against: storedHash, salt: storedSalt)
+        }
 
         if isValid {
             // Success - reset counters and derive keys
@@ -455,7 +514,11 @@ class VaultManager: ObservableObject {
 
             // Update legacy properties for backward compatibility
             await MainActor.run {
-                passwordHash = storedHash.map { String(format: "%02x", $0) }.joined()
+                // If we just migrated, passwordHash is already updated above.
+                // If not, we update it here just in case.
+                if securityVersion >= 2 {
+                     // In V2, storedHash is the verifier, which is safe to expose to UI if needed (though ideally we wouldn't)
+                }
                 passwordSalt = storedSalt.base64EncodedString()
             }
 
@@ -475,9 +538,81 @@ class VaultManager: ObservableObject {
     func changePassword(currentPassword: String, newPassword: String, progressHandler: ((String) -> Void)? = nil)
         async throws
     {
-        try await passwordService.changePassword(
-            from: currentPassword, to: newPassword, vaultURL: vaultBaseURL, encryptionKey: cachedEncryptionKey!,
-            hmacKey: cachedHMACKey!)
+        await MainActor.run { lastActivity = Date() }
+        
+        // 1. Prepare: Verify old password and generate new keys
+        progressHandler?("Verifying and generating keys...")
+        let (newVerifier, newSalt, newEncryptionKey, newHMACKey) = try await passwordService.preparePasswordChange(
+            currentPassword: currentPassword,
+            newPassword: newPassword
+        )
+        
+        guard let oldEncryptionKey = cachedEncryptionKey, let oldHMACKey = cachedHMACKey else {
+            throw VaultError.vaultNotInitialized
+        }
+        
+        // 2. Re-encrypt all photos
+        let photos = hiddenPhotos // Capture current list
+        let total = photos.count
+        
+        for (index, photo) in photos.enumerated() {
+            progressHandler?("Re-encrypting item \(index + 1) of \(total)...")
+            
+            let photosDir = vaultBaseURL.appendingPathComponent(FileConstants.photosDirectoryName)
+            let filename = URL(fileURLWithPath: photo.encryptedDataPath).lastPathComponent
+            
+            // Re-encrypt main file
+            try await fileService.reEncryptFile(
+                filename: filename,
+                directory: photosDir,
+                mediaType: photo.mediaType,
+                oldEncryptionKey: oldEncryptionKey,
+                oldHMACKey: oldHMACKey,
+                newEncryptionKey: newEncryptionKey,
+                newHMACKey: newHMACKey
+            )
+            
+            // Re-encrypt thumbnail
+            let thumbFilename = URL(fileURLWithPath: photo.encryptedThumbnailPath ?? photo.thumbnailPath).lastPathComponent
+            // Check if it's actually an encrypted thumbnail (ends in .enc)
+            if thumbFilename.hasSuffix(FileConstants.encryptedFileExtension) {
+                try await fileService.reEncryptFile(
+                    filename: thumbFilename,
+                    directory: photosDir,
+                    mediaType: .photo, // Thumbnails are always images
+                    oldEncryptionKey: oldEncryptionKey,
+                    oldHMACKey: oldHMACKey,
+                    newEncryptionKey: newEncryptionKey,
+                    newHMACKey: newHMACKey
+                )
+            } else {
+                // If it was a legacy unencrypted thumbnail, we should probably encrypt it now?
+                // For now, we leave it as is or handle it if we want to enforce full encryption.
+                // Let's stick to re-encrypting what is already encrypted.
+            }
+        }
+        
+        // 3. Commit: Store new password verifier and salt
+        progressHandler?("Saving new password...")
+        try passwordService.storePasswordHash(newVerifier, salt: newSalt)
+        
+        // 4. Update local state
+        await MainActor.run {
+            self.passwordHash = newVerifier.map { String(format: "%02x", $0) }.joined()
+            self.passwordSalt = newSalt.base64EncodedString()
+            self.securityVersion = 2
+        }
+        
+        // 5. Update cached keys
+        cachedEncryptionKey = newEncryptionKey
+        cachedHMACKey = newHMACKey
+        
+        // 6. Save settings
+        saveSettings()
+        
+        // 7. Update biometric password
+        saveBiometricPassword(newPassword)
+        
         progressHandler?("Password changed successfully")
     }
 
@@ -1382,6 +1517,7 @@ class VaultManager: ObservableObject {
         var settings: [String: String] = [
             "passwordHash": passwordHash,
             "passwordSalt": passwordSalt,
+            "securityVersion": String(securityVersion)
         ]
         settings["vaultBaseURL"] = vaultBaseURL.path
 
@@ -1426,6 +1562,14 @@ class VaultManager: ObservableObject {
                 print("Loaded password salt: \(salt.isEmpty ? "empty" : "present")")
             #endif
         }
+        
+        if let versionString = settings["securityVersion"], let version = Int(versionString) {
+            securityVersion = version
+        } else {
+            // Default to 1 (Legacy) if missing
+            securityVersion = 1
+        }
+        
         // On macOS we respect a stored custom vaultBaseURL so users can move
         // the vault. On iOS, the container path is not stable across installs,
         // so we ignore the stored path and always use the current Documents
@@ -1606,6 +1750,208 @@ class VaultManager: ObservableObject {
         let decodedPhotos = try JSONDecoder().decode([SecurePhoto].self, from: data)
         await MainActor.run {
             hiddenPhotos = decodedPhotos
+        }
+    }
+}
+
+// MARK: - Import Operations
+
+extension VaultManager {
+    /// Imports assets from Photo Library into the vault
+    func importAssets(_ assets: [PHAsset]) async {
+        guard !assets.isEmpty else { return }
+        
+        await MainActor.run {
+            importProgress.reset()
+            importProgress.isImporting = true
+            importProgress.totalItems = assets.count
+            importProgress.statusMessage = "Preparing import…"
+            importProgress.detailMessage = "\(assets.count) item(s)"
+        }
+
+        // Add overall timeout to prevent hanging
+        let timeoutTask = Task {
+            try await Task.sleep(nanoseconds: 300_000_000_000)  // 5 minute overall timeout
+            if !Task.isCancelled {
+                print("⚠️ Overall hide operation timed out after 5 minutes")
+                await MainActor.run {
+                    importProgress.isImporting = false
+                    importProgress.statusMessage = "Import timed out"
+                }
+            }
+        }
+
+        defer {
+            timeoutTask.cancel()
+        }
+
+        // Process assets with limited concurrency
+        let maxConcurrentOperations = 2
+        var successfulAssets: [PHAsset] = []
+        var processedCount = 0
+
+        // Create indexed list for tracking
+        let indexedAssets = assets.enumerated().map { (index: $0.offset, asset: $0.element) }
+
+        // Process assets in batches
+        for batch in indexedAssets.chunked(into: maxConcurrentOperations) {
+            if await MainActor.run(body: { importProgress.cancelRequested }) { break }
+            
+            await withTaskGroup(of: (PHAsset, Bool).self) { group in
+                for (index, asset) in batch {
+                    group.addTask {
+                        await self.processSingleImport(asset: asset, index: index, total: assets.count)
+                    }
+                }
+
+                // Collect results
+                for await (asset, success) in group {
+                    processedCount += 1
+                    if success {
+                        successfulAssets.append(asset)
+                    }
+                    await MainActor.run {
+                        importProgress.processedItems = processedCount
+                        if success {
+                            importProgress.successItems += 1
+                        } else {
+                            importProgress.failedItems += 1
+                        }
+                    }
+                }
+            }
+        }
+
+        timeoutTask.cancel()
+
+        // Batch delete successfully vaulted photos
+        if !successfulAssets.isEmpty {
+            await MainActor.run {
+                importProgress.statusMessage = "Cleaning up library…"
+            }
+            
+            // Deduplicate assets
+            let uniqueAssets = Array(Set(successfulAssets))
+            
+            await withCheckedContinuation { continuation in
+                PhotosLibraryService.shared.batchDeleteAssets(uniqueAssets) { success in
+                    if success {
+                        print("Successfully deleted \(uniqueAssets.count) photos from library")
+                    } else {
+                        print("Failed to delete some photos from library")
+                    }
+                    continuation.resume()
+                }
+            }
+            
+            // Notify UI
+            let ids = Set(uniqueAssets.map { $0.localIdentifier })
+            let newlyHidden = hiddenPhotos.filter { photo in
+                if let original = photo.originalAssetIdentifier {
+                    return ids.contains(original)
+                }
+                return false
+            }
+            
+            await MainActor.run {
+                hideNotification = HideNotification(
+                    message: "Hidden \(uniqueAssets.count) item(s). Moved to Recently Deleted.",
+                    type: .success,
+                    photos: newlyHidden
+                )
+            }
+        }
+
+        await MainActor.run {
+            importProgress.isImporting = false
+            importProgress.statusMessage = "Import complete"
+        }
+    }
+
+    private func processSingleImport(asset: PHAsset, index: Int, total: Int) async -> (PHAsset, Bool) {
+        let itemNumber = index + 1
+        
+        guard let mediaResult = await PhotosLibraryService.shared.getMediaDataAsync(for: asset) else {
+            print("❌ Failed to get media data for asset: \(asset.localIdentifier)")
+            await MainActor.run {
+                importProgress.detailMessage = "Failed to fetch item \(itemNumber)"
+            }
+            return (asset, false)
+        }
+
+        let fileSizeValue = estimatedSize(for: mediaResult)
+        let sizeDescription = ByteCountFormatter.string(fromByteCount: fileSizeValue, countStyle: .file)
+
+        await MainActor.run {
+            importProgress.statusMessage = "Encrypting \(mediaResult.filename)…"
+            importProgress.detailMessage = "Item \(itemNumber) of \(total) • \(sizeDescription)"
+            importProgress.currentBytesTotal = fileSizeValue
+            importProgress.currentBytesProcessed = 0
+        }
+
+        let cleanupURL = mediaResult.shouldDeleteFileWhenFinished ? mediaResult.fileURL : nil
+        let progressHandler: ((Int64) async -> Void)? = mediaResult.fileURL != nil ? { bytesRead in
+            await MainActor.run {
+                self.importProgress.currentBytesProcessed = bytesRead
+            }
+        } : nil
+
+        do {
+            let mediaSource: MediaSource
+            if let fileURL = mediaResult.fileURL {
+                mediaSource = .fileURL(fileURL)
+            } else if let mediaData = mediaResult.data {
+                mediaSource = .data(mediaData)
+            } else {
+                return (asset, false)
+            }
+
+            defer {
+                if let cleanupURL = cleanupURL {
+                    try? FileManager.default.removeItem(at: cleanupURL)
+                }
+            }
+
+            try await hidePhoto(
+                mediaSource: mediaSource,
+                filename: mediaResult.filename,
+                dateTaken: mediaResult.dateTaken,
+                sourceAlbum: nil, // We could pass this if we want to preserve album structure
+                assetIdentifier: asset.localIdentifier,
+                mediaType: mediaResult.mediaType,
+                duration: mediaResult.duration,
+                location: mediaResult.location,
+                isFavorite: mediaResult.isFavorite,
+                progressHandler: progressHandler
+            )
+
+            return (asset, true)
+        } catch {
+            print("❌ Failed to add media to vault: \(error.localizedDescription)")
+            return (asset, false)
+        }
+    }
+
+    private func estimatedSize(for mediaResult: MediaFetchResult) -> Int64 {
+        if let fileURL = mediaResult.fileURL {
+            return (try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? Int64) ?? 0
+        }
+        if let data = mediaResult.data {
+            return Int64(data.count)
+        }
+        return 0
+    }
+}
+
+// MARK: - Helper Extensions
+
+extension Array {
+    /// Splits the array into chunks of the specified size.
+    /// - Parameter size: The size of each chunk
+    /// - Returns: An array of arrays, each containing up to `size` elements
+    func chunked(into size: Int) -> [[Element]] {
+        stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
         }
     }
 }

@@ -63,6 +63,57 @@ class CryptoService {
         }
     }
 
+    // MARK: - Verifier Derivation
+
+    /// Derives a password verifier for secure storage (separate from encryption keys)
+    func deriveVerifier(password: String, salt: Data) async throws -> Data {
+        return try await withCheckedThrowingContinuation { continuation in
+            queue.async {
+                guard let passwordData = password.data(using: .utf8) else {
+                    continuation.resume(throwing: VaultError.keyDerivationFailed(reason: "Invalid password encoding"))
+                    return
+                }
+
+                // Derive master key using PBKDF2 (Same as deriveKeys)
+                var derivedKey = [UInt8](repeating: 0, count: CryptoConstants.masterKeySize)
+                let saltBytes = [UInt8](salt)
+
+                let result = derivedKey.withUnsafeMutableBytes { derivedKeyPtr in
+                    saltBytes.withUnsafeBytes { saltPtr in
+                        passwordData.withUnsafeBytes { passwordPtr in
+                            CCKeyDerivationPBKDF(
+                                CCPBKDFAlgorithm(kCCPBKDF2),
+                                passwordPtr.baseAddress, passwordPtr.count,
+                                saltPtr.baseAddress, saltPtr.count,
+                                CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
+                                UInt32(CryptoConstants.pbkdf2Iterations),
+                                derivedKeyPtr.baseAddress, derivedKeyPtr.count
+                            )
+                        }
+                    }
+                }
+
+                guard result == kCCSuccess else {
+                    continuation.resume(throwing: VaultError.keyDerivationFailed(reason: "PBKDF2 derivation failed"))
+                    return
+                }
+
+                let masterKey = SymmetricKey(data: Data(derivedKey))
+
+                // Derive verifier using HKDF
+                let verifierKey = HKDF<SHA256>.deriveKey(
+                    inputKeyMaterial: masterKey,
+                    salt: salt,
+                    info: Data(CryptoConstants.hkdfInfoVerifier.utf8),
+                    outputByteCount: 32
+                )
+
+                let verifier = verifierKey.withUnsafeBytes { Data($0) }
+                continuation.resume(returning: verifier)
+            }
+        }
+    }
+
     // MARK: - Encryption
 
     /// Encrypts data using AES-GCM

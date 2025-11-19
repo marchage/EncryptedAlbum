@@ -18,6 +18,7 @@ enum CryptoConstants {
     static let pbkdf2Iterations = 1000
     static let hkdfInfoEncryption = "SecretVault-Encryption"
     static let hkdfInfoHMAC = "SecretVault-HMAC"
+    static let hkdfInfoVerifier = "SecretVault-Verifier"
 
     /// File size limits
     static let maxMediaFileSize: Int64 = 500 * 1024 * 1024 * 1024  // 5000MB (~500GB)

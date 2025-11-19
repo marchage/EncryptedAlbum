@@ -534,4 +534,54 @@ class FileService {
             at: directory, includingPropertiesForKeys: nil, options: [])
         return contents.filter { $0.pathExtension == FileConstants.encryptedFileExtension }
     }
+
+    // MARK: - Re-encryption
+
+    /// Re-encrypts a file with new keys by decrypting to a temp file and re-encrypting.
+    /// Handles both legacy and streaming formats.
+    func reEncryptFile(
+        filename: String,
+        directory: URL,
+        mediaType: MediaType,
+        oldEncryptionKey: SymmetricKey,
+        oldHMACKey: SymmetricKey,
+        newEncryptionKey: SymmetricKey,
+        newHMACKey: SymmetricKey
+    ) async throws {
+        let fileURL = directory.appendingPathComponent(filename)
+
+        // 1. Decrypt to temporary file using OLD keys
+        // We use the existing decryptEncryptedFileToTemporaryURL which handles both legacy and stream formats
+        let tempURL = try await decryptEncryptedFileToTemporaryURL(
+            filename: filename,
+            originalExtension: nil, // We don't care about extension for the temp file
+            from: directory,
+            encryptionKey: oldEncryptionKey,
+            hmacKey: oldHMACKey
+        )
+
+        defer {
+            try? FileManager.default.removeItem(at: tempURL)
+        }
+
+        // 2. Encrypt from temporary file to a new destination file using NEW keys
+        // We use a temporary destination filename to ensure atomicity
+        let newFilename = filename + ".reencrypt"
+        let newFileURL = directory.appendingPathComponent(newFilename)
+
+        // Ensure we don't have a stale file there
+        try? FileManager.default.removeItem(at: newFileURL)
+
+        try await saveStreamEncryptedFile(
+            from: tempURL,
+            filename: newFilename,
+            mediaType: mediaType,
+            to: directory,
+            encryptionKey: newEncryptionKey,
+            hmacKey: newHMACKey
+        )
+
+        // 3. Atomic Swap: Replace the old file with the new one
+        _ = try FileManager.default.replaceItemAt(fileURL, withItemAt: newFileURL, backupItemName: nil, options: .usingNewMetadataOnly)
+    }
 }

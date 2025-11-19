@@ -325,15 +325,66 @@ class SecurityService {
         guard let passwordData = password.data(using: .utf8) else {
             throw VaultError.unknownError(reason: "Failed to encode password")
         }
-        try storeInKeychain(data: passwordData, for: biometricPasswordKey)
+        
+        // Create access control that requires biometric authentication
+        var error: Unmanaged<CFError>?
+        guard let accessControl = SecAccessControlCreateWithFlags(
+            kCFAllocatorDefault,
+            kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
+            .biometryAny, // Requires FaceID/TouchID
+            &error
+        ) else {
+            throw VaultError.unknownError(reason: "Failed to create access control: \(error?.takeRetainedValue().localizedDescription ?? "Unknown error")")
+        }
+        
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: biometricPasswordKey,
+            kSecValueData as String: passwordData,
+            kSecAttrAccessControl as String: accessControl
+        ]
+
+        // Delete existing item
+        SecItemDelete(query as CFDictionary)
+
+        // Add new item
+        let status = SecItemAdd(query as CFDictionary, nil)
+        guard status == errSecSuccess else {
+            throw VaultError.unknownError(reason: "Keychain storage failed with status \(status)")
+        }
     }
 
     /// Retrieves the stored biometric password
+    /// This will trigger the system biometric prompt
     func retrieveBiometricPassword() throws -> String? {
-        guard let passwordData = try retrieveFromKeychain(for: biometricPasswordKey) else {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: biometricPasswordKey,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+            // Note: We don't need to specify access control here, the system enforces it based on the item's attributes
+            // However, we might need to provide a prompt string
+            kSecUseOperationPrompt as String: "Authenticate to unlock SecretVault"
+        ]
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        if status == errSecItemNotFound {
             return nil
         }
-        return String(data: passwordData, encoding: .utf8)
+        
+        if status == errSecUserCanceled || status == errSecAuthFailed {
+             // User cancelled or failed biometrics
+             return nil
+        }
+
+        guard status == errSecSuccess, let data = result as? Data else {
+            // Don't throw for retrieval errors, just return nil to fall back to password
+            return nil
+        }
+
+        return String(data: data, encoding: .utf8)
     }
 
     /// Clears the stored biometric password

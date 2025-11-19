@@ -144,13 +144,7 @@ struct PhotosLibraryPicker: View {
     @State private var allPhotos: [(album: String, asset: PHAsset)] = []
     @State private var selectedAssets: Set<String> = []
     @State private var hasAccess = false
-    @State private var importing = false
-    @State private var importStatusMessage = "Preparing import…"
-    @State private var importDetailMessage = ""
-    @State private var importItemsProcessed = 0
-    @State private var importItemsTotal = 0
-    @State private var importBytesProcessed: Int64 = 0
-    @State private var importBytesTotal: Int64 = 0
+    // Import state is now managed by VaultManager
     @State private var selectedLibrary: LibraryType = .personal
     @State private var isLoading = false
     @State private var selectedAlbumFilter: String? = nil
@@ -456,15 +450,15 @@ struct PhotosLibraryPicker: View {
         }
         // Notify main view and dismiss when hiding completes instead of showing an alert here.
         .overlay {
-            if importing {
+            if vaultManager.importProgress.isImporting {
                 ZStack {
                     Color.black.opacity(0.45)
                         .ignoresSafeArea()
                     VStack(spacing: 12) {
-                        if importItemsTotal > 0 {
+                        if vaultManager.importProgress.totalItems > 0 {
                             ProgressView(
-                                value: Double(importItemsProcessed),
-                                total: Double(max(importItemsTotal, 1))
+                                value: Double(vaultManager.importProgress.processedItems),
+                                total: Double(max(vaultManager.importProgress.totalItems, 1))
                             )
                             .progressViewStyle(.linear)
                             .frame(maxWidth: UIConstants.progressCardWidth)
@@ -474,14 +468,14 @@ struct PhotosLibraryPicker: View {
                                 .frame(maxWidth: UIConstants.progressCardWidth)
                         }
 
-                        if importBytesTotal > 0 {
+                        if vaultManager.importProgress.currentBytesTotal > 0 {
                             ProgressView(
-                                value: Double(importBytesProcessed),
-                                total: Double(max(importBytesTotal, 1))
+                                value: Double(vaultManager.importProgress.currentBytesProcessed),
+                                total: Double(max(vaultManager.importProgress.currentBytesTotal, 1))
                             )
                             .progressViewStyle(.linear)
                             .frame(maxWidth: UIConstants.progressCardWidth)
-                            Text("\(formattedBytes(importBytesProcessed)) of \(formattedBytes(importBytesTotal))")
+                            Text("\(formattedBytes(vaultManager.importProgress.currentBytesProcessed)) of \(formattedBytes(vaultManager.importProgress.currentBytesTotal))")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         } else {
@@ -489,24 +483,24 @@ struct PhotosLibraryPicker: View {
                                 .progressViewStyle(.linear)
                                 .frame(maxWidth: UIConstants.progressCardWidth)
                             Text(
-                                importBytesProcessed > 0
-                                    ? "\(formattedBytes(importBytesProcessed)) processed…" : "Preparing file size…"
+                                vaultManager.importProgress.currentBytesProcessed > 0
+                                    ? "\(formattedBytes(vaultManager.importProgress.currentBytesProcessed)) processed…" : "Preparing file size…"
                             )
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         }
 
-                        Text(importStatusMessage.isEmpty ? "Encrypting items…" : importStatusMessage)
+                        Text(vaultManager.importProgress.statusMessage.isEmpty ? "Encrypting items…" : vaultManager.importProgress.statusMessage)
                             .font(.headline)
 
-                        if importItemsTotal > 0 {
-                            Text("\(importItemsProcessed) of \(importItemsTotal)")
+                        if vaultManager.importProgress.totalItems > 0 {
+                            Text("\(vaultManager.importProgress.processedItems) of \(vaultManager.importProgress.totalItems)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
 
-                        if !importDetailMessage.isEmpty {
-                            Text(importDetailMessage)
+                        if !vaultManager.importProgress.detailMessage.isEmpty {
+                            Text(vaultManager.importProgress.detailMessage)
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
@@ -620,257 +614,16 @@ struct PhotosLibraryPicker: View {
 
     private func hideSelectedPhotos() async {
         guard !selectedAssets.isEmpty else { return }
-        await MainActor.run {
-            importing = true
-            resetImportProgressState()
-        }
-
-        let assetsToHide = allPhotos.filter { selectedAssets.contains($0.asset.localIdentifier) }
-        let totalCount = assetsToHide.count
-
-        guard totalCount > 0 else {
-            await MainActor.run {
-                importing = false
-                resetImportProgressState()
-            }
-            dismiss()
-            return
-        }
-
-        await MainActor.run {
-            importItemsTotal = totalCount
-            importStatusMessage = "Preparing import…"
-            importDetailMessage = "\(totalCount) item(s)"
-        }
-
-        // Add overall timeout to prevent hanging
-        let timeoutTask = Task {
-            try await Task.sleep(nanoseconds: 300_000_000_000)  // 5 minute overall timeout
-            if !Task.isCancelled {
-                print("⚠️ Overall hide operation timed out after 5 minutes")
-                await MainActor.run {
-                    importing = false
-                    resetImportProgressState()
-                    dismiss()
-                }
-            }
-        }
-
-        defer {
-            timeoutTask.cancel()
-        }
-
-        // Process assets with limited concurrency to avoid loading many large files into memory at once
-        let maxConcurrentOperations = 2
-        var successfulAssets: [PHAsset] = []
-        var processedCount = 0
-
-        let indexedAssets: [IndexedAsset] = assetsToHide.enumerated().map {
-            (index: $0.offset, album: $0.element.album, asset: $0.element.asset)
-        }
-
-        // Process assets in batches to limit concurrency
-        for batch in indexedAssets.chunked(into: maxConcurrentOperations) {
-            await withTaskGroup(of: (PHAsset, Bool).self) { group in
-                for entry in batch {
-                    group.addTask {
-                        await processImport(entry: entry, totalCount: totalCount)
-                    }
-                }
-
-                // Collect results from this batch
-                for await (asset, success) in group {
-                    processedCount += 1
-                    if success {
-                        successfulAssets.append(asset)
-                    }
-                    await MainActor.run {
-                        importItemsProcessed = processedCount
-                    }
-                    print("Progress: \(processedCount)/\(totalCount) items processed")
-                }
-            }
-        }
-
-        timeoutTask.cancel()
-
-        // Batch delete all successfully vaulted photos at once
-        // Deduplicate by localIdentifier in case the same PHAsset was
-        // encountered multiple times through different album groupings.
-        let uniqueSuccessfulAssets: [PHAsset]
-        if !successfulAssets.isEmpty {
-            var seenIds = Set<String>()
-            uniqueSuccessfulAssets = successfulAssets.filter { asset in
-                let id = asset.localIdentifier
-                if seenIds.contains(id) { return false }
-                seenIds.insert(id)
-                return true
-            }
-        } else {
-            uniqueSuccessfulAssets = []
-        }
-
-        // UI updates and Photos deletions must run on main
-        if !uniqueSuccessfulAssets.isEmpty {
-            PhotosLibraryService.shared.batchDeleteAssets(uniqueSuccessfulAssets) { success in
-                if success {
-                    print("Successfully deleted \(uniqueSuccessfulAssets.count) photos from library")
-                } else {
-                    print("Failed to delete some photos from library")
-                }
-
-                // Find the SecurePhoto records that correspond to the successfully processed PHAssets
-                let ids = Set(uniqueSuccessfulAssets.map { $0.localIdentifier })
-                let newlyHidden = vaultManager.hiddenPhotos.filter { photo in
-                    if let original = photo.originalAssetIdentifier {
-                        return ids.contains(original)
-                    }
-                    return false
-                }
-
-                importing = false
-                resetImportProgressState()
-
-                // Notify main UI with undo-capable notification and dismiss the picker
-                vaultManager.hideNotification = HideNotification(
-                    message: "Hidden \(uniqueSuccessfulAssets.count) item(s). Moved to Recently Deleted.",
-                    type: .success,
-                    photos: newlyHidden
-                )
-                dismiss()
-            }
-        } else {
-            await MainActor.run {
-                importing = false
-                resetImportProgressState()
-            }
-            dismiss()
-        }
-    }
-
-    private func processImport(entry: IndexedAsset, totalCount: Int) async -> (PHAsset, Bool) {
-        let asset = entry.asset
-        let itemNumber = entry.index + 1
-
-        print("Processing asset: \(asset.localIdentifier)")
-
-        guard let mediaResult = await PhotosLibraryService.shared.getMediaDataAsync(for: asset) else {
-            print("❌ Failed to get media data for asset: \(asset.localIdentifier)")
-            await MainActor.run {
-                importStatusMessage = "Failed to fetch item"
-                importDetailMessage = "Item \(itemNumber) unavailable"
-                importBytesProcessed = 0
-                importBytesTotal = 0
-            }
-            return (asset, false)
-        }
-
-        let fileSizeValue = estimatedSize(for: mediaResult)
-        let sizeDescription = readableByteString(for: fileSizeValue)
-
-        await MainActor.run {
-            importStatusMessage = "Encrypting \(mediaResult.filename)…"
-            importDetailMessage = detailText(for: itemNumber, total: totalCount, sizeDescription: sizeDescription)
-            importBytesTotal = fileSizeValue
-            importBytesProcessed = 0
-        }
-
-        let cleanupURL = mediaResult.shouldDeleteFileWhenFinished ? mediaResult.fileURL : nil
-        let progressHandler: ((Int64) async -> Void)? = mediaResult.fileURL != nil ? { bytesRead in
-            await MainActor.run {
-                importBytesProcessed = bytesRead
-            }
-        } : nil
-
-        do {
-            let mediaSource: MediaSource
-            if let fileURL = mediaResult.fileURL {
-                mediaSource = .fileURL(fileURL)
-            } else if let mediaData = mediaResult.data {
-                mediaSource = .data(mediaData)
-            } else {
-                print("❌ Media result lacked both data and file URL for asset: \(asset.localIdentifier)")
-                await MainActor.run {
-                    importStatusMessage = "Failed \(mediaResult.filename)"
-                    importDetailMessage = "Missing media data"
-                }
-                return (asset, false)
-            }
-
-            defer {
-                if let cleanupURL = cleanupURL {
-                    try? FileManager.default.removeItem(at: cleanupURL)
-                }
-            }
-
-            try await vaultManager.hidePhoto(
-                mediaSource: mediaSource,
-                filename: mediaResult.filename,
-                dateTaken: mediaResult.dateTaken,
-                sourceAlbum: entry.album,
-                assetIdentifier: asset.localIdentifier,
-                mediaType: mediaResult.mediaType,
-                duration: mediaResult.duration,
-                location: mediaResult.location,
-                isFavorite: mediaResult.isFavorite,
-                progressHandler: progressHandler
-            )
-
-            await MainActor.run {
-                if progressHandler == nil && fileSizeValue > 0 {
-                    importBytesProcessed = fileSizeValue
-                }
-            }
-
-            print(
-                "✅ \(mediaResult.mediaType == .video ? "Video" : "Photo") added to vault: \(mediaResult.filename)"
-            )
-            return (asset, true)
-        } catch {
-            print("❌ Failed to add media to vault: \(error.localizedDescription)")
-            await MainActor.run {
-                importStatusMessage = "Failed \(mediaResult.filename)"
-                importDetailMessage = error.localizedDescription
-                importBytesProcessed = 0
-                importBytesTotal = 0
-            }
-            return (asset, false)
-        }
-    }
-
-    private func estimatedSize(for mediaResult: MediaFetchResult) -> Int64 {
-        if let fileURL = mediaResult.fileURL {
-            return fileSizeValue(for: fileURL)
-        }
-        if let data = mediaResult.data {
-            return Int64(data.count)
-        }
-        return 0
-    }
-
-    private func fileSizeValue(for url: URL) -> Int64 {
-        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
-            let size = attributes[.size] as? NSNumber
-        else {
-            return 0
-        }
-        return size.int64Value
-    }
-
-    private func detailText(for itemNumber: Int, total: Int, sizeDescription: String?) -> String {
-        var parts: [String] = ["Item \(itemNumber) of \(total)"]
-        if let sizeDescription {
-            parts.append(sizeDescription)
-        }
-        return parts.joined(separator: " • ")
-    }
-
-    private func readableByteString(for value: Int64) -> String? {
-        guard value > 0 else { return nil }
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: value)
+        
+        let assetsToHide = allPhotos
+            .filter { selectedAssets.contains($0.asset.localIdentifier) }
+            .map { $0.asset }
+        
+        // Delegate to VaultManager
+        await vaultManager.importAssets(assetsToHide)
+        
+        // Dismiss when done
+        dismiss()
     }
 
     private func formattedBytes(_ value: Int64) -> String {
@@ -878,16 +631,6 @@ struct PhotosLibraryPicker: View {
         formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
         formatter.countStyle = .file
         return formatter.string(fromByteCount: max(value, 0))
-    }
-
-    @MainActor
-    private func resetImportProgressState() {
-        importStatusMessage = ""
-        importDetailMessage = ""
-        importItemsProcessed = 0
-        importItemsTotal = 0
-        importBytesProcessed = 0
-        importBytesTotal = 0
     }
 }
 
@@ -954,13 +697,6 @@ struct PhotoAssetView: View {
 }
 
 // MARK: - Helper Extensions
-extension Array {
-    func chunked(into size: Int) -> [[Element]] {
-        stride(from: 0, to: count, by: size).map {
-            Array(self[$0..<Swift.min($0 + size, count)])
-        }
-    }
-}
 
 extension String {
     /// Returns an appropriate SF Symbol icon name for an album.

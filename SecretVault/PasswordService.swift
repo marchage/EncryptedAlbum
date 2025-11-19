@@ -44,13 +44,9 @@ class PasswordService {
                 Task {
                     do {
                         let salt = try await self.cryptoService.generateSalt()
-                        let (encryptionKey, _) = try await self.cryptoService.deriveKeys(password: password, salt: salt)
-
-                        // Use the encryption key as the password hash
-                        // In a real implementation, you might want to use a dedicated KDF for password hashing
-                        let hash = encryptionKey.withUnsafeBytes { Data($0) }
-
-                        continuation.resume(returning: (hash, salt))
+                        // Use the dedicated verifier derivation
+                        let verifier = try await self.cryptoService.deriveVerifier(password: password, salt: salt)
+                        continuation.resume(returning: (verifier, salt))
                     } catch {
                         continuation.resume(
                             throwing: VaultError.keyDerivationFailed(reason: error.localizedDescription))
@@ -60,16 +56,32 @@ class PasswordService {
         }
     }
 
-    /// Verifies a password against a stored hash
+    /// Verifies a password against a stored hash (Verifier)
     func verifyPassword(_ password: String, against hash: Data, salt: Data) async throws -> Bool {
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
                 Task {
                     do {
-                        let (computedKey, _) = try await self.cryptoService.deriveKeys(password: password, salt: salt)
-                        let computedHash = computedKey.withUnsafeBytes { Data($0) }
+                        let computedVerifier = try await self.cryptoService.deriveVerifier(password: password, salt: salt)
+                        continuation.resume(returning: computedVerifier == hash)
+                    } catch {
+                        continuation.resume(returning: false)
+                    }
+                }
+            }
+        }
+    }
 
-                        continuation.resume(returning: computedHash == hash)
+    /// Verifies a password against a stored legacy hash (Encryption Key)
+    /// Used for migration from V1 to V2 security
+    func verifyLegacyPassword(_ password: String, against storedKey: Data, salt: Data) async throws -> Bool {
+        return try await withCheckedThrowingContinuation { continuation in
+            queue.async {
+                Task {
+                    do {
+                        let (computedKey, _) = try await self.cryptoService.deriveKeys(password: password, salt: salt)
+                        let computedKeyData = computedKey.withUnsafeBytes { Data($0) }
+                        continuation.resume(returning: computedKeyData == storedKey)
                     } catch {
                         continuation.resume(returning: false)
                     }
@@ -147,6 +159,53 @@ class PasswordService {
                         // This is a complex operation that should be done carefully
 
                         continuation.resume(returning: ())
+                    } catch let error as VaultError {
+                        continuation.resume(throwing: error)
+                    } catch {
+                        continuation.resume(throwing: VaultError.unknownError(reason: error.localizedDescription))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Password Change Preparation
+
+    /// Prepares for a password change by verifying the old password and generating new keys/verifier.
+    /// Does NOT store anything. This allows the caller (VaultManager) to re-encrypt data before committing the change.
+    func preparePasswordChange(currentPassword: String, newPassword: String) async throws -> (
+        newVerifier: Data, newSalt: Data, newEncryptionKey: SymmetricKey, newHMACKey: SymmetricKey
+    ) {
+        return try await withCheckedThrowingContinuation { continuation in
+            queue.async {
+                Task {
+                    do {
+                        // 1. Validate new password strength/rules
+                        try self.validatePassword(newPassword)
+
+                        // 2. Verify old password
+                        guard let (storedHash, storedSalt) = try self.retrievePasswordCredentials() else {
+                            continuation.resume(throwing: VaultError.vaultNotInitialized)
+                            return
+                        }
+
+                        // We need to handle both V1 and V2 verification here to be safe,
+                        // though VaultManager should have migrated us to V2 on unlock.
+                        // Assuming V2 for simplicity as migration is enforced on unlock.
+                        let oldPasswordValid = try await self.verifyPassword(
+                            currentPassword, against: storedHash, salt: storedSalt)
+                        
+                        guard oldPasswordValid else {
+                            continuation.resume(throwing: VaultError.invalidPassword)
+                            return
+                        }
+
+                        // 3. Generate new salt and keys
+                        let newSalt = try await self.cryptoService.generateSalt()
+                        let newVerifier = try await self.cryptoService.deriveVerifier(password: newPassword, salt: newSalt)
+                        let (newEncryptionKey, newHMACKey) = try await self.cryptoService.deriveKeys(password: newPassword, salt: newSalt)
+
+                        continuation.resume(returning: (newVerifier, newSalt, newEncryptionKey, newHMACKey))
                     } catch let error as VaultError {
                         continuation.resume(throwing: error)
                     } catch {
