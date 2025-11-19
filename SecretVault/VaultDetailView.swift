@@ -69,7 +69,7 @@ struct PhotosLibraryPicker: View {
                                 selectedAlbumFilter = album
                             } label: {
                                 HStack {
-                                    Image(systemName: albumIcon(for: album))
+                                    Image(systemName: album.albumIcon)
                                         .frame(width: 20)
                                     Text(album)
                                         .lineLimit(1)
@@ -337,37 +337,6 @@ struct PhotosLibraryPicker: View {
         allPhotos.filter { $0.album == album }.count
     }
     
-    private func albumIcon(for album: String) -> String {
-        // Special icons for known albums
-        if album.contains("Hidden") {
-            return "eye.slash.fill"
-        } else if album.contains("Favorites") || album.contains("❤️") {
-            return "heart.fill"
-        } else if album.contains("Recent") {
-            return "clock.fill"
-        } else if album.contains("Screenshot") {
-            return "camera.viewfinder"
-        } else if album.contains("Selfie") {
-            return "person.crop.circle.fill"
-        } else if album.contains("Video") {
-            return "video.fill"
-        } else if album.contains("Portrait") {
-            return "person.fill"
-        } else if album.contains("Live Photo") {
-            return "livephoto"
-        } else if album.contains("Panorama") {
-            return "pano.fill"
-        } else if album.contains("Burst") {
-            return "square.stack.3d.up.fill"
-        } else if album.contains("📤") {
-            return "person.2.fill"
-        } else if album.contains("👤") {
-            return "person.fill"
-        } else {
-            return "photo.on.rectangle"
-        }
-    }
-    
     private var groupedPhotos: [(album: String, photos: [(album: String, asset: PHAsset)])] {
         Dictionary(grouping: filteredPhotos) { $0.album }
             .map { (album: $0.key, photos: $0.value) }
@@ -627,3 +596,37 @@ struct PhotoAssetView: View {
     }
 }
 
+// MARK: - Helper Extensions
+
+extension String {
+    /// Returns an appropriate SF Symbol icon name for an album.
+    var albumIcon: String {
+        if contains("Hidden") {
+            return "eye.slash.fill"
+        } else if contains("Favorites") || contains("❤️") {
+            return "heart.fill"
+        } else if contains("Recent") {
+            return "clock.fill"
+        } else if contains("Screenshot") {
+            return "camera.viewfinder"
+        } else if contains("Selfie") {
+            return "person.crop.circle.fill"
+        } else if contains("Video") {
+            return "video.fill"
+        } else if contains("Portrait") {
+            return "person.fill"
+        } else if contains("Live Photo") {
+            return "livephoto"
+        } else if contains("Panorama") {
+            return "pano.fill"
+        } else if contains("Burst") {
+            return "square.stack.3d.up.fill"
+        } else if contains("📤") {
+            return "person.2.fill"
+        } else if contains("👤") {
+            return "person.fill"
+        } else {
+            return "photo.on.rectangle"
+        }
+    }
+}

@@ -13,11 +13,14 @@ enum LibraryType {
     case both
 }
 
+/// Service for interacting with the Photos library across platforms.
 class PhotosLibraryService {
     static let shared = PhotosLibraryService()
     
     private init() {}
     
+    /// Requests read/write access to the Photos library.
+    /// - Parameter completion: Called with true if access granted, false otherwise
     func requestAccess(completion: @escaping (Bool) -> Void) {
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         
@@ -39,6 +42,9 @@ class PhotosLibraryService {
         }
     }
     
+    /// Fetches all albums from the Photos library.
+    /// - Parameter libraryType: Type of library to fetch from (.personal, .shared, or .both)
+    /// - Returns: Array of tuples containing album name and collection
     func getAllAlbums(libraryType: LibraryType = .both) -> [(name: String, collection: PHAssetCollection)] {
         var albums: [(String, PHAssetCollection)] = []
         var seenIds = Set<String>() // Avoid duplicates across different fetches
@@ -185,6 +191,9 @@ class PhotosLibraryService {
         return false
     }
     
+    /// Gets all photo and video assets from a collection.
+    /// - Parameter collection: The asset collection to fetch from
+    /// - Returns: Array of PHAsset items
     func getAssets(from collection: PHAssetCollection) -> [PHAsset] {
         var assets: [PHAsset] = []
         let fetchOptions = PHFetchOptions()
@@ -204,6 +213,10 @@ class PhotosLibraryService {
         return assets
     }
     
+    /// Retrieves media data for a Photos asset.
+    /// - Parameters:
+    ///   - asset: The PHAsset to fetch
+    ///   - completion: Called with data, filename, metadata, and type
     func getMediaData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, SecurePhoto.Location?, Bool?) -> Void) {
         if asset.mediaType == .video {
             getVideoData(for: asset, completion: completion)
@@ -283,6 +296,10 @@ class PhotosLibraryService {
         }
     }
     
+    /// Permanently deletes an asset from the Photos library.
+    /// - Parameters:
+    ///   - asset: The PHAsset to delete
+    ///   - completion: Called with true if successful
     func deleteAssetFromLibrary(_ asset: PHAsset, completion: @escaping (Bool) -> Void) {
         PHPhotoLibrary.shared().performChanges({
             PHAssetChangeRequest.deleteAssets([asset] as NSArray)
@@ -296,6 +313,10 @@ class PhotosLibraryService {
         }
     }
     
+    /// Deletes multiple assets from the Photos library in a single transaction.
+    /// - Parameters:
+    ///   - assets: Array of PHAssets to delete
+    ///   - completion: Called with true if successful
     func batchDeleteAssets(_ assets: [PHAsset], completion: @escaping (Bool) -> Void) {
         PHPhotoLibrary.shared().performChanges({
             PHAssetChangeRequest.deleteAssets(assets as NSArray)
@@ -360,7 +381,16 @@ class PhotosLibraryService {
         }
     }
     
-    // Save media (photo or video) to library with metadata restoration
+    /// Saves media (photo or video) to the Photos library with metadata.
+    /// - Parameters:
+    ///   - mediaData: Raw media data
+    ///   - filename: Filename for the media
+    ///   - mediaType: Type of media (.photo or .video)
+    ///   - albumName: Optional album to save to
+    ///   - creationDate: Original creation date
+    ///   - location: GPS coordinates
+    ///   - isFavorite: Favorite status
+    ///   - completion: Called with true if successful
     func saveMediaToLibrary(_ mediaData: Data, filename: String, mediaType: MediaType, toAlbum albumName: String? = nil, creationDate: Date? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil, completion: @escaping (Bool) -> Void) {
         // For videos, we need to save to a temporary file first
         if mediaType == .video {

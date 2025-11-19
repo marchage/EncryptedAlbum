@@ -4,6 +4,13 @@ import CryptoKit
 import AVFoundation
 import LocalAuthentication
 
+// MARK: - Constants
+
+private enum KeychainKeys {
+    static let biometricPassword = "SecretVault.BiometricPassword"
+    static let legacyPasswordService = "com.secretvault.password"
+}
+
 // MARK: - Data Models
 
 enum MediaType: String, Codable {
@@ -91,6 +98,7 @@ class VaultManager: ObservableObject {
     @Published var isUnlocked = false
     @Published var showUnlockPrompt = false
     @Published var passwordHash: String = ""
+    @Published var passwordSalt: String = "" // Salt for password hashing
     @Published var restorationProgress = RestorationProgress()
     @Published var vaultBaseURL: URL = URL(fileURLWithPath: "/tmp")
     @Published var hideNotification: HideNotification? = nil
@@ -105,6 +113,7 @@ class VaultManager: ObservableObject {
     private lazy var photosFile: URL = vaultBaseURL.appendingPathComponent("hidden_photos.json")
     private lazy var settingsFile: URL = vaultBaseURL.appendingPathComponent("settings.json")
     private var idleTimer: Timer?
+    private let vaultQueue = DispatchQueue(label: "com.secretvault.vaultQueue", qos: .userInitiated)
     
     private init() {
         // Determine vault base directory based on platform
@@ -234,27 +243,83 @@ class VaultManager: ObservableObject {
         }
     }
     
-    /// Sets up the vault password. Returns `true` on success, `false` if the password
-    /// was rejected (e.g. empty). This enforces a defensive check so callers cannot
-    /// accidentally persist an empty password.
+    /// Sets up the vault password with proper validation and secure hashing.
+    /// - Parameter password: The password to set (must be 8-128 characters)
+    /// - Returns: `true` on success, `false` if validation fails
     @discardableResult
     func setupPassword(_ password: String) -> Bool {
-        // Defensive validation: never allow an empty password to be persisted.
+        // Defensive validation: enforce password requirements
         guard !password.isEmpty else {
             print("VaultManager: refused to set empty password")
             return false
         }
+        
+        guard password.count >= 8 else {
+            print("VaultManager: password too short (minimum 8 characters)")
+            return false
+        }
+        
+        guard password.count <= 128 else {
+            print("VaultManager: password too long (maximum 128 characters)")
+            return false
+        }
 
-        let hash = password.data(using: .utf8)?.base64EncodedString() ?? ""
-        passwordHash = hash
+        // Generate a new random salt for this password
+        let saltData = generateSalt()
+        passwordSalt = saltData.base64EncodedString()
+        
+        // Hash password with salt using SHA-256
+        guard let passwordData = password.data(using: .utf8) else {
+            print("VaultManager: failed to encode password")
+            return false
+        }
+        
+        var combinedData = Data()
+        combinedData.append(passwordData)
+        combinedData.append(saltData)
+        
+        let hash = SHA256.hash(data: combinedData)
+        let hashString = hash.compactMap { String(format: "%02x", $0) }.joined()
+        
+        passwordHash = hashString
         saveSettings()
         // Store password for biometric unlock
         saveBiometricPassword(password)
         return true
     }
     
+    /// Generates a cryptographically secure random salt.
+    /// - Returns: 32 bytes of random data
+    private func generateSalt() -> Data {
+        var saltData = Data(count: 32)
+        _ = saltData.withUnsafeMutableBytes { bytes in
+            SecRandomCopyBytes(kSecRandomDefault, 32, bytes.baseAddress!)
+        }
+        return saltData
+    }
+    
+    /// Attempts to unlock the vault with the provided password.
+    /// - Parameter password: The password to verify
+    /// - Returns: `true` if unlock successful, `false` otherwise
     func unlock(password: String) -> Bool {
-        let testHash = password.data(using: .utf8)?.base64EncodedString() ?? ""
+        guard let passwordData = password.data(using: .utf8) else {
+            return false
+        }
+        
+        // Retrieve the stored salt
+        guard let saltData = Data(base64Encoded: passwordSalt) else {
+            print("VaultManager: failed to decode salt")
+            return false
+        }
+        
+        // Hash the entered password with the stored salt
+        var combinedData = Data()
+        combinedData.append(passwordData)
+        combinedData.append(saltData)
+        
+        let hash = SHA256.hash(data: combinedData)
+        let testHash = hash.compactMap { String(format: "%02x", $0) }.joined()
+        
         if testHash == passwordHash {
             isUnlocked = true
             loadPhotos()
@@ -286,9 +351,17 @@ class VaultManager: ObservableObject {
     /// Starts or restarts the idle timer that auto-locks after `idleTimeout`.
     private func startIdleTimer() {
         idleTimer?.invalidate()
-        idleTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            guard self.isUnlocked else { return }
+        idleTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                return
+            }
+            
+            guard self.isUnlocked else {
+                timer.invalidate()
+                self.idleTimer = nil
+                return
+            }
 
             let elapsed = Date().timeIntervalSince(self.lastActivity)
             if elapsed > self.idleTimeout {
@@ -300,6 +373,18 @@ class VaultManager: ObservableObject {
         }
     }
     
+    /// Encrypts and stores a photo or video in the vault.
+    /// - Parameters:
+    ///   - imageData: Raw media data to encrypt
+    ///   - filename: Original filename
+    ///   - dateTaken: Creation date of the media
+    ///   - sourceAlbum: Original album name
+    ///   - assetIdentifier: Photos library asset identifier
+    ///   - mediaType: Type of media (.photo or .video)
+    ///   - duration: Duration for videos
+    ///   - location: GPS coordinates
+    ///   - isFavorite: Favorite status
+    /// - Throws: Error if encryption or file writing fails
     func hidePhoto(imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil) throws {
         touchActivity()
         
@@ -387,13 +472,20 @@ class VaultManager: ObservableObject {
         // Save to photos list on the main thread to avoid
         // "Publishing changes from background threads" warnings and
         // ensure SwiftUI observers see the update consistently.
-        DispatchQueue.main.async {
-            self.hiddenPhotos.append(photo)
-            self.savePhotos()
-            self.objectWillChange.send()
+        // Use serial queue to prevent race conditions
+        vaultQueue.async {
+            DispatchQueue.main.async {
+                self.hiddenPhotos.append(photo)
+                self.savePhotos()
+                self.objectWillChange.send()
+            }
         }
     }
     
+    /// Decrypts a photo or video from the vault.
+    /// - Parameter photo: The SecurePhoto record to decrypt
+    /// - Returns: Decrypted media data
+    /// - Throws: Error if file reading or decryption fails
     func decryptPhoto(_ photo: SecurePhoto) throws -> Data {
         let url = URL(fileURLWithPath: photo.encryptedDataPath)
         let encryptedData = try Data(contentsOf: url)
@@ -444,6 +536,8 @@ class VaultManager: ObservableObject {
         return Data()
     }
     
+    /// Permanently deletes a photo or video from the vault.
+    /// - Parameter photo: The SecurePhoto to delete
     func deletePhoto(_ photo: SecurePhoto) {
         touchActivity()
         // Delete files
@@ -460,6 +554,8 @@ class VaultManager: ObservableObject {
         }
     }
     
+    /// Restores a photo or video from the vault to the Photos library.
+    /// - Parameter photo: The SecurePhoto to restore
     func restorePhotoToLibrary(_ photo: SecurePhoto) {
         touchActivity()
         DispatchQueue.global(qos: .userInitiated).async {
@@ -494,6 +590,11 @@ class VaultManager: ObservableObject {
         }
     }
     
+    /// Restores multiple photos/videos from the vault to the Photos library.
+    /// - Parameters:
+    ///   - photos: Array of SecurePhoto items to restore
+    ///   - restoreToSourceAlbum: Whether to restore to original album
+    ///   - toNewAlbum: Optional new album name for all items
     func batchRestorePhotos(_ photos: [SecurePhoto], restoreToSourceAlbum: Bool = false, toNewAlbum: String? = nil) {
         touchActivity()
         // Initialize progress tracking
@@ -612,6 +713,7 @@ class VaultManager: ObservableObject {
         }
     }
     
+    /// Removes duplicate photos from the vault based on asset identifiers.
     func removeDuplicates() {
         DispatchQueue.global(qos: .userInitiated).async {
             var seen = Set<String>()
@@ -659,7 +761,10 @@ class VaultManager: ObservableObject {
         
         do {
             // Derive a key from the password using SHA-256
-            let passwordData = password.data(using: .utf8) ?? Data()
+            guard let passwordData = password.data(using: .utf8) else {
+                print("Encryption failed: invalid password encoding")
+                return Data()
+            }
             let key = SHA256.hash(data: passwordData)
             let symmetricKey = SymmetricKey(data: key)
             
@@ -688,7 +793,10 @@ class VaultManager: ObservableObject {
         
         do {
             // Derive the same key from password
-            let passwordData = password.data(using: .utf8) ?? Data()
+            guard let passwordData = password.data(using: .utf8) else {
+                print("Decryption failed: invalid password encoding")
+                return Data()
+            }
             let key = SHA256.hash(data: passwordData)
             let symmetricKey = SymmetricKey(data: key)
             
@@ -703,17 +811,39 @@ class VaultManager: ObservableObject {
         }
     }
     
-    private func generateThumbnail(from mediaData: Data, mediaType: MediaType) -> Data {
+    /// Generates a thumbnail from media data asynchronously.
+    /// - Parameters:
+    ///   - mediaData: Raw media data
+    ///   - mediaType: Type of media (.photo or .video)
+    ///   - completion: Called with thumbnail data when ready
+    private func generateThumbnail(from mediaData: Data, mediaType: MediaType, completion: @escaping (Data) -> Void) {
         // Check input data size
         guard mediaData.count > 0 && mediaData.count < 100 * 1024 * 1024 else { // 100MB limit for thumbnails
-            return Data() // Return empty data to indicate failure
+            completion(Data()) // Return empty data to indicate failure
+            return
         }
         
-        if mediaType == .video {
-            // For videos, extract a frame as thumbnail
-            return generateVideoThumbnail(from: mediaData)
-        } else {
-            // For photos, resize the image
+        DispatchQueue.global(qos: .userInitiated).async {
+            let thumbnailData: Data
+            
+            if mediaType == .video {
+                // For videos, extract a frame as thumbnail
+                thumbnailData = self.generateVideoThumbnail(from: mediaData)
+            } else {
+                // For photos, resize the image
+                thumbnailData = self.generatePhotoThumbnail(from: mediaData)
+            }
+            
+            DispatchQueue.main.async {
+                completion(thumbnailData)
+            }
+        }
+    }
+    
+    /// Generates a thumbnail from photo data (synchronous, call from background queue).
+    private func generatePhotoThumbnail(from mediaData: Data) -> Data {
+    /// Generates a thumbnail from photo data (synchronous, call from background queue).
+    private func generatePhotoThumbnail(from mediaData: Data) -> Data {
             #if os(macOS)
             guard let image = NSImage(data: mediaData),
                   let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
@@ -767,9 +897,9 @@ class VaultManager: ObservableObject {
             
             return jpegData
             #endif
-        }
     }
     
+    /// Generates a thumbnail from video data (synchronous, call from background queue).
     private func generateVideoThumbnail(from videoData: Data) -> Data {
         // Check video data size
         guard videoData.count > 0 && videoData.count < 500 * 1024 * 1024 else { // 500MB limit
@@ -886,7 +1016,10 @@ class VaultManager: ObservableObject {
     }
     
     func saveSettings() {
-        var settings: [String: String] = ["passwordHash": passwordHash]
+        var settings: [String: String] = [
+            "passwordHash": passwordHash,
+            "passwordSalt": passwordSalt
+        ]
         settings["vaultBaseURL"] = vaultBaseURL.path
         guard let data = try? JSONEncoder().encode(settings) else { return }
         try? data.write(to: settingsFile)
@@ -904,6 +1037,10 @@ class VaultManager: ObservableObject {
         if let hash = settings["passwordHash"] {
             passwordHash = hash
             print("Loaded password hash: \(hash.isEmpty ? "empty" : "present")")
+        }
+        if let salt = settings["passwordSalt"] {
+            passwordSalt = salt
+            print("Loaded password salt: \(salt.isEmpty ? "empty" : "present")")
         }
         // On macOS we respect a stored custom vaultBaseURL so users can move
         // the vault. On iOS, the container path is not stable across installs,
@@ -939,12 +1076,10 @@ class VaultManager: ObservableObject {
     // MARK: - Biometric Authentication Helpers
     
     func saveBiometricPassword(_ password: String) {
-        let keychainKey = "SecretVault.BiometricPassword"
-        
         // Delete any existing item first
         let deleteQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: keychainKey
+            kSecAttrAccount as String: KeychainKeys.biometricPassword
         ]
         SecItemDelete(deleteQuery as CFDictionary)
         
@@ -953,7 +1088,7 @@ class VaultManager: ObservableObject {
         
         let addQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: keychainKey,
+            kSecAttrAccount as String: KeychainKeys.biometricPassword,
             kSecValueData as String: passwordData,
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         ]
@@ -962,11 +1097,9 @@ class VaultManager: ObservableObject {
     }
     
     func getBiometricPassword() -> String? {
-        let keychainKey = "SecretVault.BiometricPassword"
-        
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: keychainKey,
+            kSecAttrAccount as String: KeychainKeys.biometricPassword,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
@@ -986,6 +1119,7 @@ class VaultManager: ObservableObject {
     func resetVaultCompletely() {
         // Clear all data and reset to initial state
         passwordHash = ""
+        passwordSalt = ""
         isUnlocked = false
         hiddenPhotos = []
         showUnlockPrompt = false
