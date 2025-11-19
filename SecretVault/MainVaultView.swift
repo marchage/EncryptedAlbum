@@ -417,6 +417,66 @@ struct MainVaultView: View {
         }
 #endif
     }
+
+    @ViewBuilder
+    private var toolbarActions: some View {
+        Button {
+            showingPhotosLibrary = true
+        } label: {
+            Image(systemName: "square.and.arrow.down")
+        }
+
+#if os(iOS)
+        Button {
+            showingCamera = true
+        } label: {
+            Image(systemName: "camera.fill")
+        }
+#else
+        Button {
+            showingFilePicker = true
+        } label: {
+            Image(systemName: "camera.fill")
+        }
+#endif
+
+        Menu {
+#if os(macOS)
+            Button {
+                chooseVaultLocation()
+            } label: {
+                Label("Choose Vault Folder…", systemImage: "folder")
+            }
+
+            Divider()
+#endif
+
+            Button {
+                vaultManager.removeDuplicates()
+            } label: {
+                Label("Remove Duplicates", systemImage: "trash.slash")
+            }
+
+            Divider()
+
+            Button {
+                vaultManager.lock()
+            } label: {
+                Label("Lock Vault", systemImage: "lock.fill")
+            }
+
+#if DEBUG
+            Divider()
+            Button(role: .destructive) {
+                resetVaultForDevelopment()
+            } label: {
+                Label("🔧 Reset Vault (Dev)", systemImage: "trash.circle")
+            }
+#endif
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+    }
     
 #if DEBUG
     func resetVaultForDevelopment() {
@@ -461,29 +521,35 @@ struct MainVaultView: View {
                 VStack(spacing: 16) {
                     if !selectedPhotos.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("\(selectedPhotos.count) selected")
-                                .font(.headline)
                             HStack(spacing: 12) {
-                                Button {
-                                    restoreSelectedPhotos()
-                                } label: {
-                                    Label("Restore", systemImage: "arrow.uturn.backward")
-                                }
+                                Text("\(selectedPhotos.count) selected")
+                                    .font(.headline)
+                                    .lineLimit(1)
+                                    .layoutPriority(1)
+                                Spacer(minLength: 8)
+                                HStack(spacing: 8) {
+                                    Button {
+                                        restoreSelectedPhotos()
+                                    } label: {
+                                        Label("Restore", systemImage: "arrow.uturn.backward")
+                                    }
 #if os(macOS)
-                                Button {
-                                    exportSelectedPhotos()
-                                } label: {
-                                    Label("Export", systemImage: "square.and.arrow.up")
-                                }
+                                    Button {
+                                        exportSelectedPhotos()
+                                    } label: {
+                                        Label("Export", systemImage: "square.and.arrow.up")
+                                    }
 #endif
-                                Button(role: .destructive) {
-                                    deleteSelectedPhotos()
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Button(role: .destructive) {
+                                        deleteSelectedPhotos()
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
                                 }
+                                .lineLimit(1)
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.small)
                         }
                         .padding()
                         .background(.ultraThinMaterial)
@@ -501,6 +567,7 @@ struct MainVaultView: View {
                                 .labelsHidden()
                         }
 
+#if os(macOS)
                         HStack(spacing: 12) {
                             Button {
                                 showingPhotosLibrary = true
@@ -509,61 +576,15 @@ struct MainVaultView: View {
                             }
                             .buttonStyle(.bordered)
 
-#if os(iOS)
-                            Button {
-                                showingCamera = true
-                            } label: {
-                                Label("Capture", systemImage: "camera.fill")
-                            }
-                            .buttonStyle(.bordered)
-#else
                             Button {
                                 showingFilePicker = true
                             } label: {
                                 Label("Capture", systemImage: "camera.fill")
                             }
                             .buttonStyle(.bordered)
-#endif
-
-                            Menu {
-#if os(macOS)
-                                Button {
-                                    chooseVaultLocation()
-                                } label: {
-                                    Label("Choose Vault Folder…", systemImage: "folder")
-                                }
-
-                                Divider()
-#endif
-
-                                Button {
-                                    vaultManager.removeDuplicates()
-                                } label: {
-                                    Label("Remove Duplicates", systemImage: "trash.slash")
-                                }
-
-                                Divider()
-
-                                Button {
-                                    vaultManager.lock()
-                                } label: {
-                                    Label("Lock Vault", systemImage: "lock.fill")
-                                }
-
-#if DEBUG
-                                Divider()
-                                Button(role: .destructive) {
-                                    resetVaultForDevelopment()
-                                } label: {
-                                    Label("🔧 Reset Vault (Dev)", systemImage: "trash.circle")
-                                }
-#endif
-                            } label: {
-                                Label("More", systemImage: "ellipsis")
-                            }
-                            .buttonStyle(.bordered)
                         }
                         .controlSize(.small)
+#endif
                     }
                     .padding()
                     .background(.ultraThinMaterial)
@@ -746,68 +767,22 @@ struct MainVaultView: View {
                 .frame(maxWidth: .infinity)
             }
             .navigationTitle("Hidden Items")
+#if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    Button {
-                        showingPhotosLibrary = true
-                    } label: {
-                        Image(systemName: "square.and.arrow.down")
-                    }
-
-#if os(iOS)
-                    Button {
-                        showingCamera = true
-                    } label: {
-                        Image(systemName: "camera.fill")
-                    }
-#else
-                    Button {
-                        showingFilePicker = true
-                    } label: {
-                        Image(systemName: "camera.fill")
-                    }
-#endif
-
-                    Menu {
-#if os(macOS)
-                        Button {
-                            chooseVaultLocation()
-                        } label: {
-                            Label("Choose Vault Folder…", systemImage: "folder")
-                        }
-
-                        Divider()
-#endif
-
-                        Button {
-                            vaultManager.removeDuplicates()
-                        } label: {
-                            Label("Remove Duplicates", systemImage: "trash.slash")
-                        }
-
-                        Divider()
-
-                        Button {
-                            vaultManager.lock()
-                        } label: {
-                            Label("Lock Vault", systemImage: "lock.fill")
-                        }
-
-#if DEBUG
-                        Divider()
-                        Button(role: .destructive) {
-                            resetVaultForDevelopment()
-                        } label: {
-                            Label("🔧 Reset Vault (Dev)", systemImage: "trash.circle")
-                        }
-#endif
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
+                    toolbarActions
                 }
             }
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search hidden items")
+#else
+            .toolbar {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    toolbarActions
+                }
+            }
+            .searchable(text: $searchText, prompt: "Search hidden items")
+#endif
             .scrollDismissesKeyboard(.interactively)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
