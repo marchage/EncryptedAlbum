@@ -266,7 +266,7 @@ class VaultManager: ObservableObject {
     private var cachedEncryptionKey: SymmetricKey?
     private var cachedHMACKey: SymmetricKey?
 
-    private init() {
+    init(customBaseURL: URL? = nil) {
         // Initialize services
         cryptoService = CryptoService()
         securityService = SecurityService(cryptoService: cryptoService)
@@ -278,53 +278,57 @@ class VaultManager: ObservableObject {
             self?.objectWillChange.send()
         }
 
-        // Determine vault base directory based on platform
-        #if os(macOS)
-            // macOS: Use Application Support or custom location
-            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            let defaultBaseDirectory: URL
+        if let customURL = customBaseURL {
+            vaultBaseURL = customURL
+        } else {
+            // Determine vault base directory based on platform
+            #if os(macOS)
+                // macOS: Use Application Support or custom location
+                let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+                let defaultBaseDirectory: URL
 
-            if let appSupport = appSupport {
-                defaultBaseDirectory = appSupport
-            } else {
-                // Fallback to documents directory if Application Support is unavailable
-                guard let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-                else {
-                    fatalError("Unable to access file system")
+                if let appSupport = appSupport {
+                    defaultBaseDirectory = appSupport
+                } else {
+                    // Fallback to documents directory if Application Support is unavailable
+                    guard let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+                    else {
+                        fatalError("Unable to access file system")
+                    }
+                    defaultBaseDirectory = documents
                 }
-                defaultBaseDirectory = documents
-            }
 
-            // Load previously chosen vault base URL if available
-            let resolvedBaseURL: URL
-            if let storedBaseURL = VaultManager.loadStoredVaultBaseURL() {
-                resolvedBaseURL = storedBaseURL
-            } else {
-                resolvedBaseURL = defaultBaseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
-            }
-            vaultBaseURL = resolvedBaseURL
-            print("macOS vault base URL: \(vaultBaseURL.path)")
-        #else
-            // iOS: Use iCloud Drive if available, otherwise local documents
-            let fileManager = FileManager.default
-            var baseURL: URL
-
-            if let iCloudURL = fileManager.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents")
-            {
-                // iCloud is available
-                baseURL = iCloudURL.appendingPathComponent("SecretVault", isDirectory: true)
-                print("Using iCloud Drive for vault storage: \(baseURL.path)")
-            } else {
-                // Fallback to local documents
-                guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-                    fatalError("Unable to access file system")
+                // Load previously chosen vault base URL if available
+                let resolvedBaseURL: URL
+                if let storedBaseURL = VaultManager.loadStoredVaultBaseURL() {
+                    resolvedBaseURL = storedBaseURL
+                } else {
+                    resolvedBaseURL = defaultBaseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
                 }
-                baseURL = documentsURL.appendingPathComponent("SecretVault", isDirectory: true)
-                print("Using local storage for vault (iCloud not available): \(baseURL.path)")
-            }
+                vaultBaseURL = resolvedBaseURL
+                print("macOS vault base URL: \(vaultBaseURL.path)")
+            #else
+                // iOS: Use iCloud Drive if available, otherwise local documents
+                let fileManager = FileManager.default
+                var baseURL: URL
 
-            vaultBaseURL = baseURL
-        #endif
+                if let iCloudURL = fileManager.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents")
+                {
+                    // iCloud is available
+                    baseURL = iCloudURL.appendingPathComponent("SecretVault", isDirectory: true)
+                    print("Using iCloud Drive for vault storage: \(baseURL.path)")
+                } else {
+                    // Fallback to local documents
+                    guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                        fatalError("Unable to access file system")
+                    }
+                    baseURL = documentsURL.appendingPathComponent("SecretVault", isDirectory: true)
+                    print("Using local storage for vault (iCloud not available): \(baseURL.path)")
+                }
+
+                vaultBaseURL = baseURL
+            #endif
+        }
 
         // Create directories
         do {
@@ -1797,21 +1801,21 @@ extension VaultManager {
         for batch in indexedAssets.chunked(into: maxConcurrentOperations) {
             if await MainActor.run(body: { importProgress.cancelRequested }) { break }
             
-            await withTaskGroup(of: (PHAsset, Bool).self) { group in
+            let batchSuccessful = await withTaskGroup(of: (PHAsset, Bool).self) { group -> [PHAsset] in
                 for (index, asset) in batch {
                     group.addTask {
                         await self.processSingleImport(asset: asset, index: index, total: assets.count)
                     }
                 }
 
+                var batchAssets: [PHAsset] = []
                 // Collect results
                 for await (asset, success) in group {
-                    processedCount += 1
                     if success {
-                        successfulAssets.append(asset)
+                        batchAssets.append(asset)
                     }
                     await MainActor.run {
-                        importProgress.processedItems = processedCount
+                        importProgress.processedItems += 1
                         if success {
                             importProgress.successItems += 1
                         } else {
@@ -1819,7 +1823,9 @@ extension VaultManager {
                         }
                     }
                 }
+                return batchAssets
             }
+            successfulAssets.append(contentsOf: batchSuccessful)
         }
 
         timeoutTask.cancel()

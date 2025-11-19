@@ -37,6 +37,11 @@
 		9FA39564407F407B82E34796 /* PasswordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28CF564BDC0E4C9F891A9910 /* PasswordService.swift */; };
 		B60166E7D2AD4B09B005BB47 /* VaultError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A61A2BD7A0514BCA85111D3F /* VaultError.swift */; };
 		4F5E1087AAB34BAD93E89C2A /* VaultState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC21B534704407E965288CF /* VaultState.swift */; };
+		98CE31F22ECE81A00047972B /* SecretVaultTests.xctest */ = {isa = PBXBuildFile; fileRef = 98CE31F12ECE81A00047972B /* SecretVaultTests.xctest */; };
+		98CE31F42ECE81A00047972B /* SecretVaultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CE31F42ECE81A00047972B /* SecretVaultTests.swift */; };
+		98CE32012ECE82000047972B /* CryptoServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CE32012ECE82000047972B /* CryptoServiceTests.swift */; };
+		98CE32022ECE82000047972B /* FileServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CE32022ECE82000047972B /* FileServiceTests.swift */; };
+		98CE32032ECE82000047972B /* VaultManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98CE32032ECE82000047972B /* VaultManagerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -69,6 +74,11 @@
 		28CF564BDC0E4C9F891A9910 /* PasswordService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordService.swift; sourceTree = "<group>"; };
 		A61A2BD7A0514BCA85111D3F /* VaultError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultError.swift; sourceTree = "<group>"; };
 		8CC21B534704407E965288CF /* VaultState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultState.swift; sourceTree = "<group>"; };
+		98CE31F22ECE81A00047972B /* SecretVaultTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SecretVaultTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		98CE31F42ECE81A00047972B /* SecretVaultTests.swift in Sources */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultTests.swift; sourceTree = "<group>"; };
+		98CE32012ECE82000047972B /* CryptoServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoServiceTests.swift; sourceTree = "<group>"; };
+		98CE32022ECE82000047972B /* FileServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileServiceTests.swift; sourceTree = "<group>"; };
+		98CE32032ECE82000047972B /* VaultManagerTests.swift in Sources */ = {isa = PBXFileReference; fileRef = 98CE32032ECE82000047972B /* VaultManagerTests.swift */; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,6 +96,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		98CE31EF2ECE81A00047972B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -93,6 +110,7 @@
 			isa = PBXGroup;
 			children = (
 				9849B4532EB9893D00B17DAC /* SecretVault */,
+				98CE31F32ECE81A00047972B /* SecretVaultTests */,
 				9849B4522EB9893D00B17DAC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -102,6 +120,7 @@
 			children = (
 				9849B4512EB9893D00B17DAC /* SecretVault.app */,
 				981926522EC854B600C67291 /* SecretVault iOS.app */,
+				98CE31F22ECE81A00047972B /* SecretVaultTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -145,6 +164,17 @@
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
+		98CE31F32ECE81A00047972B /* SecretVaultTests */ = {
+			isa = PBXGroup;
+			children = (
+				98CE31F42ECE81A00047972B /* SecretVaultTests.swift */,
+				98CE32012ECE82000047972B /* CryptoServiceTests.swift */,
+				98CE32022ECE82000047972B /* FileServiceTests.swift */,
+				98CE32032ECE82000047972B /* VaultManagerTests.swift */,
+			);
+			path = SecretVaultTests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -182,6 +212,23 @@
 			productReference = 9849B4512EB9893D00B17DAC /* SecretVault.app */;
 			productType = "com.apple.product-type.application";
 		};
+		98CE31FA2ECE81A00047972B /* SecretVaultTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 98CE31F62ECE81A00047972B /* Build configuration list for PBXNativeTarget "SecretVaultTests" */;
+			buildPhases = (
+				98CE31EE2ECE81A00047972B /* Sources */,
+				98CE31EF2ECE81A00047972B /* Frameworks */,
+				98CE31F02ECE81A00047972B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SecretVaultTests;
+			productName = SecretVaultTests;
+			productReference = 98CE31F12ECE81A00047972B /* SecretVaultTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -197,6 +244,10 @@
 					};
 					9849B4502EB9893D00B17DAC = {
 						CreatedOnToolsVersion = 15.2;
+					};
+					98CE31FA2ECE81A00047972B = {
+						CreatedOnToolsVersion = 15.2;
+						TestTargetID = 981926512EC854B600C67291;
 					};
 				};
 			};
@@ -215,6 +266,7 @@
 			targets = (
 				9849B4502EB9893D00B17DAC /* SecretVault */,
 				981926512EC854B600C67291 /* SecretVault iOS */,
+				98CE31FA2ECE81A00047972B /* SecretVaultTests */,
 			);
 		};
 /* End PBXProject section */
@@ -236,6 +288,13 @@
 			files = (
 				9849B45C2EB9893F00B17DAC /* Preview Assets.xcassets in Resources */,
 				9849B4592EB9893F00B17DAC /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		98CE31F02ECE81A00047972B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -276,300 +335,28 @@
 				F9B0EAD109417F32CF3B7D50 /* UnlockView.swift in Sources */,
 				AA11BB2233CC44DD55EE66FF /* SetupPasswordView.swift in Sources */,
 				CC33DD4455EE66FF77AA88BB /* MainVaultView.swift in Sources */,
-				E48BBB324071974C8BE48D0D /* VaultManager.swift in Sources */,
-				9849B4552EB9893D00B17DAC /* SecretVaultApp.swift in Sources */,
-				A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */,
-				0A1A2C90CFC24033BB978D99 /* Constants.swift in Sources */,
-				72601657C5564D06A303EECF /* CryptoService.swift in Sources */,
-				DD69BC27985C4D09BA6690A2 /* FileService.swift in Sources */,
-				9FA39564407F407B82E34796 /* PasswordService.swift in Sources */,
-				AB219FCE33BC4485A762BDA6 /* SecurityService.swift in Sources */,
-				B60166E7D2AD4B09B005BB47 /* VaultError.swift in Sources */,
-				4F5E1087AAB34BAD93E89C2A /* VaultState.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		98CE31EE2ECE81A00047972B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				98CE31F42ECE81A00047972B /* SecretVaultTests.swift in Sources */,
+				98CE32012ECE82000047972B /* CryptoServiceTests.swift in Sources */,
+				98CE32022ECE82000047972B /* FileServiceTests.swift in Sources */,
+				98CE32032ECE82000047972B /* VaultManagerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin XCBuildConfiguration section */
-		9819265D2EC854B800C67291 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-			CODE_SIGN_ENTITLEMENTS = SecretVault/SecretVault_iOS.entitlements;
-			CODE_SIGN_STYLE = Automatic;
-			CURRENT_PROJECT_VERSION = 1;
-			DEVELOPMENT_ASSET_PATHS = "\"SecretVault/Preview Content\"";
-			DEVELOPMENT_TEAM = TDWHVYP98Z;
-			ENABLE_PREVIEWS = YES;
-			GENERATE_INFOPLIST_FILE = YES;
-			INFOPLIST_FILE = SecretVault/Info_iOS.plist;
-			INFOPLIST_KEY_CFBundleDisplayName = SecretVault;
-			INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.SecretVault.iOS";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
+/* Begin PBXContainerItemProxy section */
+		98CE31F62ECE81A00047972B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9849B4492EB9893C00B17DAC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 981926512EC854B600C67291;
+			remoteInfo = "SecretVault iOS";
 		};
-		9819265E2EC854B800C67291 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = SecretVault/SecretVault_iOS.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SecretVault/Preview Content\"";
-				DEVELOPMENT_TEAM = TDWHVYP98Z;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = SecretVault/Info_iOS.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = SecretVault;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.SecretVault.iOS";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
-		9849B45E2EB9893F00B17DAC /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.7;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = macosx;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
-		9849B45F2EB9893F00B17DAC /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.7;
-				MTL_ENABLE_DEBUG_INFO = NO;
-				MTL_FAST_MATH = YES;
-				SDKROOT = macosx;
-				SWIFT_COMPILATION_MODE = wholemodule;
-			};
-			name = Release;
-		};
-		9849B4612EB9893F00B17DAC /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = SecretVault/SecretVault.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SecretVault/Preview Content\"";
-				DEVELOPMENT_TEAM = TDWHVYP98Z;
-				ENABLE_HARDENED_RUNTIME = YES;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = SecretVault/Info.plist;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.SecretVault";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-			};
-			name = Debug;
-		};
-		9849B4622EB9893F00B17DAC /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = SecretVault/SecretVault.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SecretVault/Preview Content\"";
-				DEVELOPMENT_TEAM = TDWHVYP98Z;
-				ENABLE_HARDENED_RUNTIME = YES;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = SecretVault/Info.plist;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.SecretVault";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-			};
-			name = Release;
-		};
-/* End XCBuildConfiguration section */
-
-/* Begin XCConfigurationList section */
-		9819265F2EC854B800C67291 /* Build configuration list for PBXNativeTarget "SecretVault iOS" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				9819265D2EC854B800C67291 /* Debug */,
-				9819265E2EC854B800C67291 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		9849B44C2EB9893C00B17DAC /* Build configuration list for PBXProject "SecretVault" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				9849B45E2EB9893F00B17DAC /* Debug */,
-				9849B45F2EB9893F00B17DAC /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		9849B4602EB9893F00B17DAC /* Build configuration list for PBXNativeTarget "SecretVault" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				9849B4612EB9893F00B17DAC /* Debug */,
-				9849B4622EB9893F00B17DAC /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-/* End XCConfigurationList section */
 	};
-	rootObject = 9849B4492EB9893C00B17DAC /* Project object */;
-}
