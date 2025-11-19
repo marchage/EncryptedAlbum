@@ -109,6 +109,12 @@ class VaultManager: ObservableObject {
     /// Default is 600 seconds (10 minutes).
     let idleTimeout: TimeInterval = 600
     
+    // Rate limiting for unlock attempts
+    private var failedUnlockAttempts: Int = 0
+    private var lastUnlockAttemptTime: Date?
+    private var failedBiometricAttempts: Int = 0
+    private let maxBiometricAttempts: Int = 3
+    
     private lazy var photosURL: URL = vaultBaseURL.appendingPathComponent("photos", isDirectory: true)
     private lazy var photosFile: URL = vaultBaseURL.appendingPathComponent("hidden_photos.json")
     private lazy var settingsFile: URL = vaultBaseURL.appendingPathComponent("settings.json")
@@ -298,17 +304,49 @@ class VaultManager: ObservableObject {
         return saltData
     }
     
+    /// Generates HMAC for data integrity verification.
+    /// - Parameters:
+    ///   - data: Data to generate HMAC for
+    ///   - key: Key used for HMAC
+    /// - Returns: HMAC as hex string
+    private func generateHMAC(for data: Data, key: String) -> String {
+        guard let keyData = key.data(using: .utf8) else { return "" }
+        let symmetricKey = SymmetricKey(data: SHA256.hash(data: keyData))
+        let hmac = HMAC<SHA256>.authenticationCode(for: data, using: symmetricKey)
+        return Data(hmac).map { String(format: "%02x", $0) }.joined()
+    }
+    
     /// Attempts to unlock the vault with the provided password.
     /// - Parameter password: The password to verify
     /// - Returns: `true` if unlock successful, `false` otherwise
     func unlock(password: String) -> Bool {
+        // Rate limiting: exponential backoff on failed attempts
+        if let lastAttempt = lastUnlockAttemptTime {
+            let requiredDelay = calculateUnlockDelay()
+            let elapsed = Date().timeIntervalSince(lastAttempt)
+            
+            if elapsed < requiredDelay {
+                let remaining = Int(requiredDelay - elapsed)
+                #if DEBUG
+                print("Rate limited: wait \(remaining) more seconds")
+                #endif
+                return false
+            }
+        }
+        
+        lastUnlockAttemptTime = Date()
+        
         guard let passwordData = password.data(using: .utf8) else {
+            failedUnlockAttempts += 1
             return false
         }
         
         // Retrieve the stored salt
         guard let saltData = Data(base64Encoded: passwordSalt) else {
+            #if DEBUG
             print("VaultManager: failed to decode salt")
+            #endif
+            failedUnlockAttempts += 1
             return false
         }
         
@@ -321,6 +359,10 @@ class VaultManager: ObservableObject {
         let testHash = hash.compactMap { String(format: "%02x", $0) }.joined()
         
         if testHash == passwordHash {
+            // Success - reset counters
+            failedUnlockAttempts = 0
+            failedBiometricAttempts = 0
+            
             isUnlocked = true
             loadPhotos()
             // Update stored password for biometric unlock
@@ -329,7 +371,33 @@ class VaultManager: ObservableObject {
             startIdleTimer()
             return true
         }
+        
+        failedUnlockAttempts += 1
         return false
+    }
+    
+    /// Calculates delay before next unlock attempt based on failed attempts.
+    /// - Returns: Required delay in seconds (exponential backoff)
+    private func calculateUnlockDelay() -> TimeInterval {
+        switch failedUnlockAttempts {
+        case 0...2: return 0
+        case 3: return 5
+        case 4: return 10
+        case 5: return 30
+        case 6: return 60
+        default: return 300 // 5 minutes for 7+ failed attempts
+        }
+    }
+    
+    /// Checks if biometric authentication should be disabled due to too many failures.
+    /// - Returns: `true` if biometrics should be disabled
+    func shouldDisableBiometrics() -> Bool {
+        return failedBiometricAttempts >= maxBiometricAttempts
+    }
+    
+    /// Records a failed biometric authentication attempt.
+    func recordFailedBiometricAttempt() {
+        failedBiometricAttempts += 1
     }
     
     func lock() {
@@ -337,6 +405,102 @@ class VaultManager: ObservableObject {
         hiddenPhotos = []
         idleTimer?.invalidate()
         idleTimer = nil
+    }
+    
+    /// Changes the vault password and re-encrypts all data.
+    /// - Parameters:
+    ///   - currentPassword: Current password for verification
+    ///   - newPassword: New password to set
+    ///   - progressHandler: Optional callback with progress updates
+    /// - Returns: `true` if successful, `false` otherwise
+    func changePassword(currentPassword: String, newPassword: String, progressHandler: ((String) -> Void)? = nil) -> Bool {
+        // Verify current password
+        guard unlock(password: currentPassword) else {
+            #if DEBUG
+            print("Failed to verify current password")
+            #endif
+            return false
+        }
+        
+        // Validate new password
+        guard !newPassword.isEmpty, newPassword.count >= 8, newPassword.count <= 128 else {
+            #if DEBUG
+            print("New password validation failed")
+            #endif
+            return false
+        }
+        
+        progressHandler?("Re-encrypting vault...")
+        
+        // Store old password hash for decryption
+        let oldPasswordHash = passwordHash
+        
+        // Generate new salt and hash
+        let saltData = generateSalt()
+        passwordSalt = saltData.base64EncodedString()
+        
+        guard let passwordData = newPassword.data(using: .utf8) else {
+            return false
+        }
+        
+        var combinedData = Data()
+        combinedData.append(passwordData)
+        combinedData.append(saltData)
+        
+        let hash = SHA256.hash(data: combinedData)
+        passwordHash = hash.compactMap { String(format: "%02x", $0) }.joined()
+        
+        // Re-encrypt all photos with new password
+        let totalPhotos = hiddenPhotos.count
+        var processedCount = 0
+        
+        for photo in hiddenPhotos {
+            autoreleasepool {
+                do {
+                    // Decrypt with old password
+                    let encryptedPath = URL(fileURLWithPath: photo.encryptedDataPath)
+                    let encryptedData = try Data(contentsOf: encryptedPath)
+                    let decrypted = decryptImage(encryptedData, password: oldPasswordHash)
+                    
+                    guard !decrypted.isEmpty else {
+                        #if DEBUG
+                        print("Failed to decrypt photo: \(photo.filename)")
+                        #endif
+                        return
+                    }
+                    
+                    // Re-encrypt with new password
+                    let reencrypted = encryptImage(decrypted, password: passwordHash)
+                    try reencrypted.write(to: encryptedPath, options: .atomic)
+                    
+                    // Re-encrypt thumbnail if it exists
+                    if let encThumbPath = photo.encryptedThumbnailPath {
+                        let thumbURL = URL(fileURLWithPath: encThumbPath)
+                        if FileManager.default.fileExists(atPath: thumbURL.path) {
+                            let encThumbData = try Data(contentsOf: thumbURL)
+                            let decThumb = decryptImage(encThumbData, password: oldPasswordHash)
+                            let reencThumb = encryptImage(decThumb, password: passwordHash)
+                            try reencThumb.write(to: thumbURL, options: .atomic)
+                        }
+                    }
+                    
+                    processedCount += 1
+                    progressHandler?("Re-encrypted \(processedCount)/\(totalPhotos) items")
+                    
+                } catch {
+                    #if DEBUG
+                    print("Error re-encrypting photo: \(error)")
+                    #endif
+                }
+            }
+        }
+        
+        // Save new settings
+        saveSettings()
+        saveBiometricPassword(newPassword)
+        
+        progressHandler?("Password changed successfully")
+        return true
     }
     
     func hasPassword() -> Bool {
@@ -416,6 +580,11 @@ class VaultManager: ObservableObject {
         
         do {
             try encrypted.write(to: encryptedPath, options: .atomic)
+            
+            // Generate and store HMAC for integrity verification
+            let hmac = generateHMAC(for: encrypted, key: passwordHash)
+            let hmacPath = photosURL.appendingPathComponent("\(photoId.uuidString).hmac")
+            try hmac.write(to: hmacPath, atomically: true, encoding: .utf8)
         } catch {
             throw NSError(domain: "VaultManager", code: -3, userInfo: [NSLocalizedDescriptionKey: "Failed to save encrypted data: \(error.localizedDescription)"])
         }
@@ -489,9 +658,26 @@ class VaultManager: ObservableObject {
     func decryptPhoto(_ photo: SecurePhoto) throws -> Data {
         let url = URL(fileURLWithPath: photo.encryptedDataPath)
         let encryptedData = try Data(contentsOf: url)
+        
+        // Verify HMAC for integrity
+        let hmacPath = url.deletingPathExtension().appendingPathExtension("hmac")
+        if FileManager.default.fileExists(atPath: hmacPath.path) {
+            if let storedHMAC = try? String(contentsOf: hmacPath, encoding: .utf8) {
+                let calculatedHMAC = generateHMAC(for: encryptedData, key: passwordHash)
+                if storedHMAC != calculatedHMAC {
+                    #if DEBUG
+                    print("[VaultManager] HMAC verification failed for id=\(photo.id) - file may be corrupted or tampered")
+                    #endif
+                    throw NSError(domain: "VaultManager", code: -100, userInfo: [NSLocalizedDescriptionKey: "File integrity check failed"])
+                }
+            }
+        }
+        
         let decrypted = decryptImage(encryptedData, password: passwordHash)
         if decrypted.isEmpty {
+            #if DEBUG
             print("[VaultManager] decryptPhoto: decrypted data is empty for id=\(photo.id), path=\(photo.encryptedDataPath)")
+            #endif
         }
         return decrypted
     }
@@ -540,17 +726,50 @@ class VaultManager: ObservableObject {
     /// - Parameter photo: The SecurePhoto to delete
     func deletePhoto(_ photo: SecurePhoto) {
         touchActivity()
-        // Delete files
-        try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.encryptedDataPath))
-        try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.thumbnailPath))
+        // Securely delete files (overwrite before deletion)
+        secureDeleteFile(at: URL(fileURLWithPath: photo.encryptedDataPath))
+        secureDeleteFile(at: URL(fileURLWithPath: photo.thumbnailPath))
         if let encryptedThumbnailPath = photo.encryptedThumbnailPath {
-            try? FileManager.default.removeItem(at: URL(fileURLWithPath: encryptedThumbnailPath))
+            secureDeleteFile(at: URL(fileURLWithPath: encryptedThumbnailPath))
         }
         
         // Remove from list on main thread
         DispatchQueue.main.async {
             self.hiddenPhotos.removeAll { $0.id == photo.id }
             self.savePhotos()
+        }
+    }
+    
+    /// Securely deletes a file by overwriting it before removal.
+    /// - Parameter url: URL of the file to delete
+    private func secureDeleteFile(at url: URL) {
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        
+        do {
+            // Get file size
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            guard let fileSize = attributes[.size] as? Int64 else {
+                try? FileManager.default.removeItem(at: url)
+                return
+            }
+            
+            // Limit overwrite to reasonable size (100MB max)
+            let sizeToOverwrite = min(fileSize, 100 * 1024 * 1024)
+            
+            // Overwrite with random data
+            var randomData = Data(count: Int(sizeToOverwrite))
+            _ = randomData.withUnsafeMutableBytes { bytes in
+                SecRandomCopyBytes(kSecRandomDefault, Int(sizeToOverwrite), bytes.baseAddress!)
+            }
+            try randomData.write(to: url, options: .atomic)
+            
+            // Now delete the file
+            try FileManager.default.removeItem(at: url)
+        } catch {
+            #if DEBUG
+            print("Secure deletion failed, using standard deletion: \(error)")
+            #endif
+            try? FileManager.default.removeItem(at: url)
         }
     }
     
@@ -755,14 +974,18 @@ class VaultManager: ObservableObject {
     private func encryptImage(_ data: Data, password: String) -> Data {
         // Check input data size
         guard data.count > 0 && data.count < 500 * 1024 * 1024 else { // 500MB limit
+            #if DEBUG
             print("Encryption failed: data too large or empty")
+            #endif
             return Data()
         }
         
         do {
             // Derive a key from the password using SHA-256
             guard let passwordData = password.data(using: .utf8) else {
+                #if DEBUG
                 print("Encryption failed: invalid password encoding")
+                #endif
                 return Data()
             }
             let key = SHA256.hash(data: passwordData)
@@ -773,13 +996,17 @@ class VaultManager: ObservableObject {
             
             // Combine nonce + ciphertext + tag for storage
             guard let combined = sealedBox.combined else {
+                #if DEBUG
                 print("Failed to get combined data from sealed box")
+                #endif
                 return Data()
             }
             
             return combined
         } catch {
+            #if DEBUG
             print("Encryption failed: \(error)")
+            #endif
             return Data()
         }
     }
@@ -787,14 +1014,18 @@ class VaultManager: ObservableObject {
     private func decryptImage(_ data: Data, password: String) -> Data {
         // Check input data size
         guard data.count > 0 && data.count < 500 * 1024 * 1024 else { // 500MB limit
+            #if DEBUG
             print("Decryption failed: data too large or empty")
+            #endif
             return Data()
         }
         
         do {
             // Derive the same key from password
             guard let passwordData = password.data(using: .utf8) else {
+                #if DEBUG
                 print("Decryption failed: invalid password encoding")
+                #endif
                 return Data()
             }
             let key = SHA256.hash(data: passwordData)
@@ -806,7 +1037,9 @@ class VaultManager: ObservableObject {
             
             return decrypted
         } catch {
+            #if DEBUG
             print("Decryption failed: \(error)")
+            #endif
             return Data()
         }
     }

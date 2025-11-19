@@ -10,6 +10,7 @@ struct UnlockView: View {
     @EnvironmentObject var vaultManager: VaultManager
     @State private var password = ""
     @State private var showError = false
+    @State private var errorMessage = "Incorrect password"
     @State private var biometricType: LABiometryType = .none
     
     var body: some View {
@@ -96,13 +97,13 @@ struct UnlockView: View {
                     }
                 
                 if showError {
-                    Text("Incorrect password")
+                    Text(errorMessage)
                         .foregroundStyle(.red)
                         .font(.callout)
                 }
                 
                 HStack(spacing: 12) {
-                    if biometricType != .none {
+                    if biometricType != .none && !vaultManager.shouldDisableBiometrics() {
                         Button {
                             authenticateWithBiometrics()
                         } label: {
@@ -120,7 +121,7 @@ struct UnlockView: View {
                         unlock()
                     } label: {
                         Text("Unlock")
-                            .frame(width: biometricType != .none ? 145 : 200)
+                            .frame(width: biometricType != .none && !vaultManager.shouldDisableBiometrics() ? 145 : 200)
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
@@ -148,8 +149,8 @@ struct UnlockView: View {
         #endif
         .onAppear {
             checkBiometricAvailability()
-            // Auto-trigger biometric authentication if available
-            if biometricType != .none {
+            // Auto-trigger biometric authentication if available and not disabled
+            if biometricType != .none && !vaultManager.shouldDisableBiometrics() {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     authenticateWithBiometrics()
                 }
@@ -183,13 +184,18 @@ struct UnlockView: View {
                     }
                 } else {
                     // Authentication failed
+                    vaultManager.recordFailedBiometricAttempt()
+                    
                     if let error = error as? LAError {
                         switch error.code {
                         case .userCancel, .userFallback:
                             // User cancelled or wants to use password
                             break
                         default:
-                            showError = true
+                            if vaultManager.shouldDisableBiometrics() {
+                                errorMessage = "Too many failed attempts. Use password."
+                                showError = true
+                            }
                         }
                     }
                 }
@@ -200,7 +206,13 @@ struct UnlockView: View {
     private func unlock() {
         if vaultManager.unlock(password: password) {
             showError = false
+            errorMessage = "Incorrect password"
         } else {
+            if vaultManager.shouldDisableBiometrics() {
+                errorMessage = "Too many attempts. Please wait before trying again."
+            } else {
+                errorMessage = "Incorrect password"
+            }
             showError = true
             password = ""
         }
