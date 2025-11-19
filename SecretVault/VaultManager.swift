@@ -419,11 +419,14 @@ class VaultManager: ObservableObject {
             }
             startIdleTimer()
 
-            // Update legacy properties
+            // Update legacy properties for backward compatibility
             await MainActor.run {
                 passwordHash = storedHash.map { String(format: "%02x", $0) }.joined()
                 passwordSalt = storedSalt.base64EncodedString()
             }
+            
+            // Save updated settings to disk
+            saveSettings()
         } else {
             failedUnlockAttempts += 1
             throw VaultError.invalidPassword
