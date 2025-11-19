@@ -437,12 +437,14 @@ struct MainVaultView: View {
             captureBytesTotal = 0
         }
 
-        await presentCaptureSummary(
-            successCount: successCount,
-            failureCount: failureCount,
-            canceled: wasCancelled,
-            errorMessage: firstError
-        )
+        await MainActor.run {
+            presentCaptureSummary(
+                successCount: successCount,
+                failureCount: failureCount,
+                canceled: wasCancelled,
+                errorMessage: firstError
+            )
+        }
     }
 
     @MainActor
@@ -1250,6 +1252,7 @@ struct PhotoViewerSheet: View {
     @EnvironmentObject var vaultManager: VaultManager
     @State private var fullImage: Image?
     @State private var videoURL: URL?
+    @State private var decryptTask: Task<Void, Never>?
     
     var body: some View {
         VStack(spacing: 0) {
@@ -1275,6 +1278,7 @@ struct PhotoViewerSheet: View {
                 Spacer()
                 
                 Button {
+                    cancelDecryptTask()
                     dismiss()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
@@ -1316,14 +1320,17 @@ struct PhotoViewerSheet: View {
             }
         }
         .onDisappear {
+            cancelDecryptTask()
             cleanupVideo()
         }
     }
     
     private func loadFullImage() {
-        Task {
+        cancelDecryptTask()
+        decryptTask = Task {
             do {
                 let decryptedData = try await vaultManager.decryptPhoto(photo)
+                try Task.checkCancellation()
 #if os(macOS)
                 if let image = NSImage(data: decryptedData) {
                     await MainActor.run {
@@ -1337,21 +1344,33 @@ struct PhotoViewerSheet: View {
                     }
                 }
 #endif
+            } catch is CancellationError {
+                // Cancellation is expected when the viewer is dismissed mid-decrypt
             } catch {
                 print("Failed to decrypt photo: \(error)")
+            }
+            await MainActor.run {
+                decryptTask = nil
             }
         }
     }
     
     private func loadVideo() {
-        Task {
+        cancelDecryptTask()
+        decryptTask = Task {
             do {
                 let tempURL = try await vaultManager.decryptPhotoToTemporaryURL(photo)
+                try Task.checkCancellation()
                 await MainActor.run {
                     self.videoURL = tempURL
                 }
+            } catch is CancellationError {
+                // Expected when the viewer is dismissed; partial temp files are cleaned up downstream
             } catch {
                 print("Failed to decrypt video: \(error)")
+            }
+            await MainActor.run {
+                decryptTask = nil
             }
         }
     }
@@ -1360,6 +1379,12 @@ struct PhotoViewerSheet: View {
         if let url = videoURL {
             try? FileManager.default.removeItem(at: url)
         }
+        videoURL = nil
+    }
+
+    private func cancelDecryptTask() {
+        decryptTask?.cancel()
+        decryptTask = nil
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {

@@ -228,11 +228,15 @@ class FileService {
         let writeHandle = try FileHandle(forWritingTo: tempURL)
         defer { try? writeHandle.close() }
 
-        try await processStreamFile(from: handle, header: header, encryptionKey: encryptionKey, chunkHandler: { chunk in
-            try writeHandle.write(contentsOf: chunk)
-        }, progressHandler: progressHandler)
-
-        return tempURL
+        do {
+            try await processStreamFile(from: handle, header: header, encryptionKey: encryptionKey, chunkHandler: { chunk in
+                try writeHandle.write(contentsOf: chunk)
+            }, progressHandler: progressHandler)
+            return tempURL
+        } catch {
+            try? FileManager.default.removeItem(at: tempURL)
+            throw error
+        }
     }
 
     private func writeStreamHeader(_ header: StreamFileHeader, to handle: FileHandle) throws {
@@ -263,21 +267,23 @@ class FileService {
             throw VaultError.fileReadFailed(path: handle.description, reason: "Incomplete stream header")
         }
 
-        return headerData.withUnsafeBytes { rawBuffer in
-            let buffer = rawBuffer.bindMemory(to: UInt8.self)
-            let version = buffer[0]
-            let mediaByte = buffer[1]
-            let mediaType: MediaType = mediaByte == 0x02 ? .video : .photo
-            // Skip 2 reserved bytes at offsets 2-3
-            let originalSize = buffer.baseAddress!.advanced(by: 4).withMemoryRebound(to: UInt64.self, capacity: 1) { ptr in
-                UInt64(littleEndian: ptr.pointee)
-            }
-            let chunkSize = buffer.baseAddress!.advanced(by: 12).withMemoryRebound(to: UInt32.self, capacity: 1) { ptr in
-                UInt32(littleEndian: ptr.pointee)
-            }
+        let version = headerData[0]
+        let mediaByte = headerData[1]
+        let mediaType: MediaType = mediaByte == 0x02 ? .video : .photo
 
-            return StreamFileHeader(version: version, mediaType: mediaType, originalSize: originalSize, chunkSize: chunkSize)
+        let originalSize: UInt64 = headerData[4..<12].withUnsafeBytes { rawBuffer in
+            var value: UInt64 = 0
+            memcpy(&value, rawBuffer.baseAddress!, MemoryLayout<UInt64>.size)
+            return UInt64(littleEndian: value)
         }
+
+        let chunkSize: UInt32 = headerData[12..<16].withUnsafeBytes { rawBuffer in
+            var value: UInt32 = 0
+            memcpy(&value, rawBuffer.baseAddress!, MemoryLayout<UInt32>.size)
+            return UInt32(littleEndian: value)
+        }
+
+        return StreamFileHeader(version: version, mediaType: mediaType, originalSize: originalSize, chunkSize: chunkSize)
     }
 
     private func processStreamFile(from handle: FileHandle, header: StreamFileHeader, encryptionKey: SymmetricKey, chunkHandler: (Data) throws -> Void, progressHandler: ((Int64) -> Void)? = nil) async throws {
@@ -370,7 +376,7 @@ class FileService {
         fileHandle.write(inverseData)
 
         // Pass 3: Random data again
-        let randomData2 = try Data(count: fileSize)
+        let randomData2 = Data(count: fileSize)
         fileHandle.seek(toFileOffset: 0)
         fileHandle.write(randomData2)
 

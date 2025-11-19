@@ -113,8 +113,8 @@ struct VaultPhotoView: View {
                 let thumbnailData = try await VaultManager.shared.decryptThumbnail(for: photo)
                 if !thumbnailData.isEmpty {
                     #if os(macOS)
-                    if let nsImage = NSImage(data: thumbnailData) {
-                        await MainActor.run {
+                    await MainActor.run {
+                        if let nsImage = NSImage(data: thumbnailData) {
                             thumbnail = Image(nsImage: nsImage)
                         }
                     }
@@ -579,15 +579,14 @@ struct PhotosLibraryPicker: View {
             timeoutTask.cancel()
         }
         
-        do {
-            // Process assets with limited concurrency to avoid loading many large files into memory at once
-            let maxConcurrentOperations = 2
-            var successfulAssets: [PHAsset] = []
-            var processedCount = 0
-            
-            // Process assets in batches to limit concurrency
-            for batch in assetsToHide.chunked(into: maxConcurrentOperations) {
-                try await withTaskGroup(of: (PHAsset, Bool).self) { group in
+        // Process assets with limited concurrency to avoid loading many large files into memory at once
+        let maxConcurrentOperations = 2
+        var successfulAssets: [PHAsset] = []
+        var processedCount = 0
+        
+        // Process assets in batches to limit concurrency
+        for batch in assetsToHide.chunked(into: maxConcurrentOperations) {
+            await withTaskGroup(of: (PHAsset, Bool).self) { group in
                     for photoData in batch {
                         group.addTask {
                             do {
@@ -650,69 +649,61 @@ struct PhotosLibraryPicker: View {
                         }
                         print("Progress: \(processedCount)/\(totalCount) items processed")
                     }
-                }
             }
-            
-            timeoutTask.cancel()
-            
-            // Batch delete all successfully vaulted photos at once
-            // Deduplicate by localIdentifier in case the same PHAsset was
-            // encountered multiple times through different album groupings.
-            let uniqueSuccessfulAssets: [PHAsset]
-            if !successfulAssets.isEmpty {
-                var seenIds = Set<String>()
-                uniqueSuccessfulAssets = successfulAssets.filter { asset in
-                    let id = asset.localIdentifier
-                    if seenIds.contains(id) { return false }
-                    seenIds.insert(id)
-                    return true
-                }
-            } else {
-                uniqueSuccessfulAssets = []
+        }
+        
+        timeoutTask.cancel()
+        
+        // Batch delete all successfully vaulted photos at once
+        // Deduplicate by localIdentifier in case the same PHAsset was
+        // encountered multiple times through different album groupings.
+        let uniqueSuccessfulAssets: [PHAsset]
+        if !successfulAssets.isEmpty {
+            var seenIds = Set<String>()
+            uniqueSuccessfulAssets = successfulAssets.filter { asset in
+                let id = asset.localIdentifier
+                if seenIds.contains(id) { return false }
+                seenIds.insert(id)
+                return true
             }
+        } else {
+            uniqueSuccessfulAssets = []
+        }
 
-            // UI updates and Photos deletions must run on main
-            if !uniqueSuccessfulAssets.isEmpty {
-                PhotosLibraryService.shared.batchDeleteAssets(uniqueSuccessfulAssets) { success in
-                    if success {
-                        print("Successfully deleted \(uniqueSuccessfulAssets.count) photos from library")
-                    } else {
-                        print("Failed to delete some photos from library")
-                    }
-
-                    // Find the SecurePhoto records that correspond to the successfully processed PHAssets
-                    let ids = Set(uniqueSuccessfulAssets.map { $0.localIdentifier })
-                    let newlyHidden = vaultManager.hiddenPhotos.filter { photo in
-                        if let original = photo.originalAssetIdentifier {
-                            return ids.contains(original)
-                        }
-                        return false
-                    }
-
-                    importing = false
-
-                    // Notify main UI with undo-capable notification and dismiss the picker
-                    vaultManager.hideNotification = HideNotification(
-                        message: "Hidden \(uniqueSuccessfulAssets.count) item(s). Moved to Recently Deleted.",
-                        type: .success,
-                        photos: newlyHidden
-                    )
-                    dismiss()
+        // UI updates and Photos deletions must run on main
+        if !uniqueSuccessfulAssets.isEmpty {
+            PhotosLibraryService.shared.batchDeleteAssets(uniqueSuccessfulAssets) { success in
+                if success {
+                    print("Successfully deleted \(uniqueSuccessfulAssets.count) photos from library")
+                } else {
+                    print("Failed to delete some photos from library")
                 }
-            } else {
-                await MainActor.run {
-                    importing = false
+
+                // Find the SecurePhoto records that correspond to the successfully processed PHAssets
+                let ids = Set(uniqueSuccessfulAssets.map { $0.localIdentifier })
+                let newlyHidden = vaultManager.hiddenPhotos.filter { photo in
+                    if let original = photo.originalAssetIdentifier {
+                        return ids.contains(original)
+                    }
+                    return false
                 }
+
+                importing = false
+
+                // Notify main UI with undo-capable notification and dismiss the picker
+                vaultManager.hideNotification = HideNotification(
+                    message: "Hidden \(uniqueSuccessfulAssets.count) item(s). Moved to Recently Deleted.",
+                    type: .success,
+                    photos: newlyHidden
+                )
                 dismiss()
             }
-        } catch {
-            print("❌ Hide operation failed with error: \(error.localizedDescription)")
-            timeoutTask.cancel()
+        } else {
             await MainActor.run {
                 importing = false
-                dismiss()
             }
-            }
+            dismiss()
+        }
     }
 }
 
