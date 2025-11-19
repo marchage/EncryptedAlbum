@@ -172,3 +172,5 @@ enum VaultError: LocalizedError {
         }
     }
 }
+
+extension VaultError: Equatable {}

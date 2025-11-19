@@ -161,7 +161,7 @@ final class CryptoServiceTests: XCTestCase {
         let encryptionKey = SymmetricKey(size: .bits256)
         let hmacKey = SymmetricKey(size: .bits256)
         
-        let (encrypted, nonce, var hmac) = try await sut.encryptDataWithIntegrity(
+        var (encrypted, nonce, hmac) = try await sut.encryptDataWithIntegrity(
             data,
             encryptionKey: encryptionKey,
             hmacKey: hmacKey
