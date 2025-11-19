@@ -861,20 +861,16 @@ class VaultManager: ObservableObject {
         var wasCancelled = false
 
         do {
-            try await withThrowingTaskGroup(of: Void.self) { group in
-                for (targetAlbum, photosInGroup) in albumGroups {
-                    group.addTask {
-                        print("📁 Processing group: \(targetAlbum ?? "Library") with \(photosInGroup.count) items")
-                        try await self.processRestoreGroup(photosInGroup,
-                                                           targetAlbum: targetAlbum)
-                    }
-                }
-                try await group.waitForAll()
+            for (targetAlbum, photosInGroup) in albumGroups {
+                try Task.checkCancellation()
+                print("📁 Processing group: \(targetAlbum ?? "Library") with \(photosInGroup.count) items")
+                try await self.processRestoreGroup(photosInGroup, targetAlbum: targetAlbum)
             }
         } catch is CancellationError {
             wasCancelled = true
         }
 
+        let restoreCancelled = wasCancelled
         await MainActor.run {
             self.restorationProgress.isRestoring = false
             self.restorationProgress.cancelRequested = false
@@ -884,12 +880,12 @@ class VaultManager: ObservableObject {
             let success = self.restorationProgress.successItems
             let failed = self.restorationProgress.failedItems
             let summary = "\(success)/\(total) restored" + (failed > 0 ? " • \(failed) failed" : "")
-            self.restorationProgress.statusMessage = wasCancelled ? "Restore canceled" : "Restore complete"
+            self.restorationProgress.statusMessage = restoreCancelled ? "Restore canceled" : "Restore complete"
             self.restorationProgress.detailMessage = summary
             print("📊 Restoration complete: \(success)/\(total) successful, \(failed) failed (successful items already removed from vault)")
         }
 
-        if wasCancelled {
+        if restoreCancelled {
             throw CancellationError()
         }
     }
