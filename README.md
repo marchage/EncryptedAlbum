@@ -14,7 +14,7 @@ I am not keeping things compatible with previous implementations. When that star
 - **Video support** – Encrypt, decrypt and play videos directly in the app.
 - **Search & organize** – Search by filename or album and use simple vault albums for grouping.
 - **Batch actions** – Select multiple items to restore, export, or delete in one go.
-- **Cross-platform sync** – iCloud Drive sync keeps your vault synchronized between macOS and iOS devices. Oh no, not this yet.
+- **Cross-platform sync (planned)** – iCloud Drive support is on the roadmap but currently disabled, so each device keeps its own local vault.
 
 ## Development Notes
 
