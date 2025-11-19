@@ -94,7 +94,9 @@ struct UnlockView: View {
                     .frame(width: 300)
                     .textContentType(.password)
                     .autocorrectionDisabled()
+                    #if os(iOS)
                     .textInputAutocapitalization(.never)
+                    #endif
                     .onSubmit {
                         unlock()
                     }

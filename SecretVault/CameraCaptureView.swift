@@ -71,7 +71,15 @@ struct CameraCaptureView: UIViewControllerRepresentable {
                         
                         // Get video duration
                         let asset = AVAsset(url: videoURL)
-                        duration = asset.duration.seconds
+                        if #available(iOS 16.0, macOS 13.0, *) {
+                            Task {
+                                if let loadedDuration = try? await asset.load(.duration) {
+                                    duration = loadedDuration.seconds
+                                }
+                            }
+                        } else {
+                            duration = asset.duration.seconds
+                        }
                     } catch {
                         print("Failed to read video data: \(error)")
                     }

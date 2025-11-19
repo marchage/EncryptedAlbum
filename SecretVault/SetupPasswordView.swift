@@ -298,9 +298,15 @@ struct SetupPasswordView: View {
                     .padding(.horizontal)
                 SecureField("Enter password", text: $manualPassword)
                     .textFieldStyle(.roundedBorder)
+                    #if os(macOS)
+                    .textContentType(.password)
+                    #else
                     .textContentType(.newPassword)
+                    #endif
                     .autocorrectionDisabled()
+                    #if os(iOS)
                     .textInputAutocapitalization(.never)
+                    #endif
                     .padding(.horizontal)
                 
                 // Password strength indicator
@@ -335,9 +341,15 @@ struct SetupPasswordView: View {
                     .padding(.horizontal)
                 SecureField("Re-enter password", text: $confirmPassword)
                     .textFieldStyle(.roundedBorder)
+                    #if os(macOS)
+                    .textContentType(.password)
+                    #else
                     .textContentType(.newPassword)
+                    #endif
                     .autocorrectionDisabled()
+                    #if os(iOS)
                     .textInputAutocapitalization(.never)
+                    #endif
                     .padding(.horizontal)
                     .onSubmit {
                         setupPassword()
