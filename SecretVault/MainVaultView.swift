@@ -1178,8 +1178,13 @@ struct PhotoThumbnailView: View {
                         .fill(Color.gray.opacity(0.2))
                         .frame(width: thumbnailSize, height: thumbnailSize)
                         .overlay {
-                            ProgressView()
-                                .controlSize(.small)
+                            VStack(spacing: 4) {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text("Decrypting...")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                 }
                 
@@ -1311,8 +1316,7 @@ struct PhotoViewerSheet: View {
                     CustomVideoPlayer(url: url)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    decryptingPlaceholder
                 }
             } else {
                 if let image = fullImage {
@@ -1321,8 +1325,7 @@ struct PhotoViewerSheet: View {
                         .aspectRatio(contentMode: .fit)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    decryptingPlaceholder
                 }
             }
         }
@@ -1393,6 +1396,17 @@ struct PhotoViewerSheet: View {
         return String(format: "%d:%02d", minutes, seconds)
     }
 }
+
+    private var decryptingPlaceholder: some View {
+        VStack(spacing: 10) {
+            ProgressView()
+                .scaleEffect(1.2)
+            Text("Decrypting...")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 
 // Custom Video Player View
 #if os(macOS)
