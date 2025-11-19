@@ -4,6 +4,26 @@ import CryptoKit
 import AVFoundation
 import LocalAuthentication
 
+// MARK: - Data Extensions
+
+extension Data {
+    init?(hexString: String) {
+        let length = hexString.count / 2
+        var data = Data(capacity: length)
+        var index = hexString.startIndex
+        for _ in 0..<length {
+            let nextIndex = hexString.index(index, offsetBy: 2)
+            if let byte = UInt8(hexString[index..<nextIndex], radix: 16) {
+                data.append(byte)
+            } else {
+                return nil
+            }
+            index = nextIndex
+        }
+        self = data
+    }
+}
+
 // MARK: - Constants
 
 private enum KeychainKeys {
@@ -354,8 +374,9 @@ class VaultManager: ObservableObject {
         if let existing = cachedMasterKey { return existing }
 
         // passwordHash is a hex string of SHA-256(password || salt)
-        guard let hashData = Data(hexString: passwordHash) else {
-            // Fallback: derive directly from UTF-8 bytes if parsing fails
+        // Convert it back to binary data to use as key material
+        guard let hashData = Data(hexString: passwordHash), hashData.count == 32 else {
+            // Fallback: hash the password hash string itself if parsing fails
             let data = passwordHash.data(using: .utf8) ?? Data()
             let key = SymmetricKey(data: SHA256.hash(data: data))
             cachedMasterKey = key
