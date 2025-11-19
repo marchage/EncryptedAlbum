@@ -425,7 +425,9 @@ struct SetupPasswordView: View {
                 return
             }
             
-            completeSetup(with: manualPassword)
+            Task {
+                await completeSetup(with: manualPassword)
+            }
         }
     }
     
@@ -436,9 +438,10 @@ struct SetupPasswordView: View {
         context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, error in
             DispatchQueue.main.async {
                 if success {
-                    // Biometric authentication successful
-                    let finalPassword = generatedPasswords[0]
-                    completeSetup(with: finalPassword)
+                    let password = generatedPasswords[0]
+                    Task {
+                        await completeSetup(with: password)
+                    }
                 } else {
                     // Authentication failed
                     if let error = error as? LAError {
@@ -457,16 +460,15 @@ struct SetupPasswordView: View {
         }
     }
     
-    private func completeSetup(with password: String) {
-        let ok = vaultManager.setupPassword(password)
-        guard ok else {
-            errorMessage = "Failed to set password"
+    private func completeSetup(with password: String) async {
+        do {
+            try await vaultManager.setupPassword(password)
+            // Manager already stores the biometric password when setup succeeds
+            vaultManager.isUnlocked = true
+        } catch {
+            errorMessage = "Failed to set password: \(error.localizedDescription)"
             showError = true
-            return
         }
-
-        // Manager already stores the biometric password when setup succeeds
-        vaultManager.isUnlocked = true
     }
     
     private func revealPasswordWithFlash() {

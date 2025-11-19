@@ -124,7 +124,9 @@ struct PhotosLibraryPicker: View {
                     .font(.subheadline)
                     
                     Button("Hide (\(selectedAssets.count))") {
-                        hideSelectedPhotos()
+                        Task {
+                            await hideSelectedPhotos()
+                        }
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
@@ -194,7 +196,9 @@ struct PhotosLibraryPicker: View {
                 .keyboardShortcut(.cancelAction)
                 
                 Button("Hide Selected (\(selectedAssets.count))") {
-                    hideSelectedPhotos()
+                    Task {
+                        await hideSelectedPhotos()
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(selectedAssets.isEmpty)
@@ -420,114 +424,106 @@ struct PhotosLibraryPicker: View {
         }
     }
     
-    private func hideSelectedPhotos() {
+    private func hideSelectedPhotos() async {
         guard !selectedAssets.isEmpty else { return }
         // UI state must be mutated on the main thread
         importing = true
         
         let assetsToHide = allPhotos.filter { selectedAssets.contains($0.asset.localIdentifier) }
         
-        DispatchQueue.global(qos: .userInitiated).async {
-            // Limit concurrent media fetch & processing to avoid loading many large files into memory at once.
-            let semaphore = DispatchSemaphore(value: 2) // allow 2 concurrent operations
-            let group = DispatchGroup()
-            var successfulAssets: [PHAsset] = []
-            let lock = NSLock() // For thread-safe access to successfulAssets
-
-            for photoData in assetsToHide {
-                semaphore.wait()
-                group.enter()
-                PhotosLibraryService.shared.getMediaData(for: photoData.asset) { data, filename, dateTaken, mediaType, duration, location, isFavorite in
-                    defer {
-                        group.leave()
-                        semaphore.signal()
-                    }
-
-                    guard let mediaData = data else {
-                        print("Failed to get media data for asset: \(photoData.asset.localIdentifier)")
-                        return
-                    }
-
-                    // Add to vault. Use autoreleasepool to encourage early temporary object cleanup
-                    do {
-                        try autoreleasepool {
-                            try vaultManager.hidePhoto(
+        // Process assets with limited concurrency to avoid loading many large files into memory at once
+        let maxConcurrentOperations = 2
+        var successfulAssets: [PHAsset] = []
+        
+        // Process assets in batches to limit concurrency
+        for batch in assetsToHide.chunked(into: maxConcurrentOperations) {
+            await withTaskGroup(of: (PHAsset, Bool).self) { group in
+                for photoData in batch {
+                    group.addTask {
+                        do {
+                            guard let mediaResult = await PhotosLibraryService.shared.getMediaDataAsync(for: photoData.asset),
+                                  let mediaData = mediaResult.data else {
+                                print("Failed to get media data for asset: \(photoData.asset.localIdentifier)")
+                                return (photoData.asset, false)
+                            }
+                            
+                            try await vaultManager.hidePhoto(
                                 imageData: mediaData,
-                                filename: filename,
-                                dateTaken: dateTaken,
+                                filename: mediaResult.filename,
+                                dateTaken: mediaResult.dateTaken,
                                 sourceAlbum: photoData.album,
                                 assetIdentifier: photoData.asset.localIdentifier,
-                                mediaType: mediaType,
-                                duration: duration,
-                                location: location,
-                                isFavorite: isFavorite
+                                mediaType: mediaResult.mediaType,
+                                duration: mediaResult.duration,
+                                location: mediaResult.location,
+                                isFavorite: mediaResult.isFavorite
                             )
+                            
+                            print("\(mediaResult.mediaType == .video ? "Video" : "Photo") added to vault: \(mediaResult.filename)")
+                            return (photoData.asset, true)
+                        } catch {
+                            print("Failed to add media to vault: \(error.localizedDescription)")
+                            return (photoData.asset, false)
                         }
-                        // Use a lock to safely append to the shared array
-                        lock.lock()
-                        successfulAssets.append(photoData.asset)
-                        lock.unlock()
-                        print("\(mediaType == .video ? "Video" : "Photo") added to vault: \(filename)")
-                    } catch {
-                        print("Failed to add media to vault: \(filename) - \(error.localizedDescription)")
-                        // Don't add to successfulAssets if it failed
+                    }
+                }
+                
+                // Collect results from this batch
+                for await (asset, success) in group {
+                    if success {
+                        successfulAssets.append(asset)
                     }
                 }
             }
-
-            // Wait for all limited tasks to finish
-            group.wait()
-
-            // Batch delete all successfully vaulted photos at once
-            // Deduplicate by localIdentifier in case the same PHAsset was
-            // encountered multiple times through different album groupings.
-            let uniqueSuccessfulAssets: [PHAsset]
-            if !successfulAssets.isEmpty {
-                var seenIds = Set<String>()
-                uniqueSuccessfulAssets = successfulAssets.filter { asset in
-                    let id = asset.localIdentifier
-                    if seenIds.contains(id) { return false }
-                    seenIds.insert(id)
-                    return true
-                }
-            } else {
-                uniqueSuccessfulAssets = []
+        }
+        
+        // Batch delete all successfully vaulted photos at once
+        // Deduplicate by localIdentifier in case the same PHAsset was
+        // encountered multiple times through different album groupings.
+        let uniqueSuccessfulAssets: [PHAsset]
+        if !successfulAssets.isEmpty {
+            var seenIds = Set<String>()
+            uniqueSuccessfulAssets = successfulAssets.filter { asset in
+                let id = asset.localIdentifier
+                if seenIds.contains(id) { return false }
+                seenIds.insert(id)
+                return true
             }
+        } else {
+            uniqueSuccessfulAssets = []
+        }
 
-            DispatchQueue.main.async {
-                // UI updates and Photos deletions must run on main
-                if !uniqueSuccessfulAssets.isEmpty {
-                    PhotosLibraryService.shared.batchDeleteAssets(uniqueSuccessfulAssets) { success in
-                        if success {
-                            print("Successfully deleted \(uniqueSuccessfulAssets.count) photos from library")
-                        } else {
-                            print("Failed to delete some photos from library")
-                        }
-
-                        // Find the SecurePhoto records that correspond to the successfully processed PHAssets
-                        let ids = Set(uniqueSuccessfulAssets.map { $0.localIdentifier })
-                        let newlyHidden = vaultManager.hiddenPhotos.filter { photo in
-                            if let original = photo.originalAssetIdentifier {
-                                return ids.contains(original)
-                            }
-                            return false
-                        }
-
-                        importing = false
-
-                        // Notify main UI with undo-capable notification and dismiss the picker
-                        vaultManager.hideNotification = HideNotification(
-                            message: "Hidden \(uniqueSuccessfulAssets.count) item(s). Moved to Recently Deleted.",
-                            type: .success,
-                            photos: newlyHidden
-                        )
-                        dismiss()
-                    }
+        // UI updates and Photos deletions must run on main
+        if !uniqueSuccessfulAssets.isEmpty {
+            PhotosLibraryService.shared.batchDeleteAssets(uniqueSuccessfulAssets) { success in
+                if success {
+                    print("Successfully deleted \(uniqueSuccessfulAssets.count) photos from library")
                 } else {
-                    importing = false
-                    dismiss()
+                    print("Failed to delete some photos from library")
                 }
+
+                // Find the SecurePhoto records that correspond to the successfully processed PHAssets
+                let ids = Set(uniqueSuccessfulAssets.map { $0.localIdentifier })
+                let newlyHidden = vaultManager.hiddenPhotos.filter { photo in
+                    if let original = photo.originalAssetIdentifier {
+                        return ids.contains(original)
+                    }
+                    return false
+                }
+
+                importing = false
+
+                // Notify main UI with undo-capable notification and dismiss the picker
+                vaultManager.hideNotification = HideNotification(
+                    message: "Hidden \(uniqueSuccessfulAssets.count) item(s). Moved to Recently Deleted.",
+                    type: .success,
+                    photos: newlyHidden
+                )
+                dismiss()
             }
+        } else {
+            importing = false
+            dismiss()
         }
     }
 
@@ -597,6 +593,14 @@ struct PhotoAssetView: View {
 }
 
 // MARK: - Helper Extensions
+
+extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
+        }
+    }
+}
 
 extension String {
     /// Returns an appropriate SF Symbol icon name for an album.

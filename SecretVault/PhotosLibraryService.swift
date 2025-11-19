@@ -213,15 +213,22 @@ class PhotosLibraryService {
         return assets
     }
     
-    /// Retrieves media data for a Photos asset.
-    /// - Parameters:
-    ///   - asset: The PHAsset to fetch
-    ///   - completion: Called with data, filename, metadata, and type
-    func getMediaData(for asset: PHAsset, completion: @escaping (Data?, String, Date?, MediaType, TimeInterval?, SecurePhoto.Location?, Bool?) -> Void) {
-        if asset.mediaType == .video {
-            getVideoData(for: asset, completion: completion)
-        } else {
-            getImageData(for: asset, completion: completion)
+    /// Retrieves media data for a Photos asset asynchronously.
+    /// - Parameter asset: The PHAsset to fetch
+    /// - Returns: Tuple with data, filename, metadata, and type
+    func getMediaDataAsync(for asset: PHAsset) async -> (data: Data?, filename: String, dateTaken: Date?, mediaType: MediaType, duration: TimeInterval?, location: SecurePhoto.Location?, isFavorite: Bool?)? {
+        await withCheckedContinuation { continuation in
+            if asset.mediaType == .image {
+                getImageData(for: asset) { data, filename, dateTaken, mediaType, duration, location, isFavorite in
+                    continuation.resume(returning: (data: data, filename: filename, dateTaken: dateTaken, mediaType: mediaType, duration: duration, location: location, isFavorite: isFavorite))
+                }
+            } else if asset.mediaType == .video {
+                getVideoData(for: asset) { data, filename, dateTaken, mediaType, duration, location, isFavorite in
+                    continuation.resume(returning: (data: data, filename: filename, dateTaken: dateTaken, mediaType: mediaType, duration: duration, location: location, isFavorite: isFavorite))
+                }
+            } else {
+                continuation.resume(returning: nil)
+            }
         }
     }
     

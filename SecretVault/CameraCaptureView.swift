@@ -86,21 +86,23 @@ struct CameraCaptureView: UIViewControllerRepresentable {
                 }
                 
                 if let data = data {
-                    do {
-                        try self.parent.vaultManager.hidePhoto(
-                            imageData: data,
-                            filename: filename,
-                            dateTaken: Date(),
-                            sourceAlbum: "Captured to Vault",
-                            assetIdentifier: nil,
-                            mediaType: mediaType,
-                            duration: duration,
-                            location: nil,
-                            isFavorite: nil
-                        )
-                        print("✅ Captured to vault: \(filename)")
-                    } catch {
-                        print("❌ Failed to save to vault: \(error)")
+                    Task {
+                        do {
+                            try await self.parent.vaultManager.hidePhoto(
+                                imageData: data,
+                                filename: filename,
+                                dateTaken: Date(),
+                                sourceAlbum: "Captured to Vault",
+                                assetIdentifier: nil,
+                                mediaType: mediaType,
+                                duration: duration,
+                                location: nil,
+                                isFavorite: nil
+                            )
+                            print("✅ Captured to vault: \(filename)")
+                        } catch {
+                            print("❌ Failed to save to vault: \(error)")
+                        }
                     }
                 }
             }

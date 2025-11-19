@@ -108,7 +108,6 @@ struct MainVaultView: View {
     
     func exportSelectedPhotos() {
 #if os(macOS)
-        vaultManager.touchActivity()
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
@@ -126,50 +125,51 @@ struct MainVaultView: View {
     }
     
     func exportPhotos(to folderURL: URL) {
-        vaultManager.touchActivity()
         let photosToExport = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         
         DispatchQueue.global(qos: .userInitiated).async {
-            var successCount = 0
-            var failureCount = 0
-            var lastError: Error?
-            
-            for photo in photosToExport {
-                do {
-                    let decryptedData = try vaultManager.decryptPhoto(photo)
-                    let fileURL = folderURL.appendingPathComponent(photo.filename)
-                    try decryptedData.write(to: fileURL)
-                    print("✅ Exported: \(photo.filename)")
-                    successCount += 1
-                } catch {
-                    print("❌ Failed to export \(photo.filename): \(error)")
-                    failureCount += 1
-                    lastError = error
-                }
-            }
-            
-            DispatchQueue.main.async {
-                selectedPhotos.removeAll()
+            Task {
+                var successCount = 0
+                var failureCount = 0
+                var lastError: Error?
                 
-#if os(macOS)
-                // Show result alert
-                let alert = NSAlert()
-                if failureCount == 0 {
-                    alert.messageText = "Export Successful"
-                    alert.informativeText = "Successfully exported \(successCount) item(s) to \(folderURL.lastPathComponent)"
-                    alert.alertStyle = .informational
-                } else if successCount == 0 {
-                    alert.messageText = "Export Failed"
-                    alert.informativeText = "Failed to export \(failureCount) item(s). \(lastError?.localizedDescription ?? "Unknown error")"
-                    alert.alertStyle = .critical
-                } else {
-                    alert.messageText = "Partial Export"
-                    alert.informativeText = "Exported \(successCount) item(s), but \(failureCount) failed. \(lastError?.localizedDescription ?? "")"
-                    alert.alertStyle = .warning
+                for photo in photosToExport {
+                    do {
+                        let decryptedData = try await vaultManager.decryptPhoto(photo)
+                        let fileURL = folderURL.appendingPathComponent(photo.filename)
+                        try decryptedData.write(to: fileURL)
+                        print("✅ Exported: \(photo.filename)")
+                        successCount += 1
+                    } catch {
+                        print("❌ Failed to export \(photo.filename): \(error)")
+                        failureCount += 1
+                        lastError = error
+                    }
                 }
-                alert.addButton(withTitle: "OK")
-                alert.runModal()
+                
+                await MainActor.run {
+                    selectedPhotos.removeAll()
+                    
+#if os(macOS)
+                    // Show result alert
+                    let alert = NSAlert()
+                    if failureCount == 0 {
+                        alert.messageText = "Export Successful"
+                        alert.informativeText = "Successfully exported \(successCount) item(s) to \(folderURL.lastPathComponent)"
+                        alert.alertStyle = .informational
+                    } else if successCount == 0 {
+                        alert.messageText = "Export Failed"
+                        alert.informativeText = "Failed to export \(failureCount) item(s). \(lastError?.localizedDescription ?? "Unknown error")"
+                        alert.alertStyle = .critical
+                    } else {
+                        alert.messageText = "Partial Export"
+                        alert.informativeText = "Exported \(successCount) item(s), but \(failureCount) failed. \(lastError?.localizedDescription ?? "")"
+                        alert.alertStyle = .warning
+                    }
+                    alert.addButton(withTitle: "OK")
+                    alert.runModal()
 #endif
+                }
             }
         }
     }
@@ -198,20 +198,21 @@ struct MainVaultView: View {
     }
     
     func restoreSelectedPhotos() {
-        vaultManager.touchActivity()
         photosToRestore = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         showingRestoreOptions = true
     }
     
-    func restoreToOriginalAlbums() {
-        vaultManager.touchActivity()
+    func restoreToOriginalAlbums() async {
         selectedPhotos.removeAll()
-        vaultManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: true)
+        do {
+            try await vaultManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: true)
+        } catch {
+            print("Failed to restore photos: \(error)")
+        }
     }
     
-    func restoreToNewAlbum() {
+    func restoreToNewAlbum() async {
 #if os(macOS)
-        vaultManager.touchActivity()
         // Prompt for album name
         let alert = NSAlert()
         alert.messageText = "Create New Album"
@@ -229,20 +230,23 @@ struct MainVaultView: View {
             let albumName = textField.stringValue
             if !albumName.isEmpty {
                 selectedPhotos.removeAll()
-                vaultManager.batchRestorePhotos(photosToRestore, toNewAlbum: albumName)
+                do {
+                    try await vaultManager.batchRestorePhotos(photosToRestore, toNewAlbum: albumName)
+                } catch {
+                    print("Failed to restore photos: \(error)")
+                }
             }
         }
 #endif
     }
     
-    func restoreToLibrary() {
-        vaultManager.touchActivity()
+    func restoreToLibrary() async {
         selectedPhotos.removeAll()
-        vaultManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: false)
+        try? await vaultManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: false)
     }
     
     func deleteSelectedPhotos() {
-        vaultManager.touchActivity()
+        selectedPhotos.removeAll()
         let photosToDelete = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         for photo in photosToDelete {
             vaultManager.deletePhoto(photo)
@@ -252,7 +256,7 @@ struct MainVaultView: View {
     
     func importFilesToVault() {
 #if os(macOS)
-        vaultManager.touchActivity()
+        // vaultManager.touchActivity() - removed
         
         let warningAlert = NSAlert()
         warningAlert.messageText = "Capture Directly to Vault"
@@ -293,13 +297,15 @@ struct MainVaultView: View {
                                      url.pathExtension.lowercased() == "mp4" ||
                                      url.pathExtension.lowercased() == "m4v"
                         
-                        try vaultManager.hidePhoto(
-                            imageData: data,
-                            filename: filename,
-                            sourceAlbum: "Captured to Vault",
-                            mediaType: isVideo ? .video : .photo,
-                            duration: nil
-                        )
+                        Task {
+                            try await vaultManager.hidePhoto(
+                                imageData: data,
+                                filename: filename,
+                                sourceAlbum: "Captured to Vault",
+                                mediaType: isVideo ? .video : .photo,
+                                duration: nil
+                            )
+                        }
                         
                         print("✅ Imported to vault: \(filename)")
                         successCount += 1
@@ -338,7 +344,7 @@ struct MainVaultView: View {
         vaultManager.requireStepUpAuthentication { success in
             guard success else { return }
             
-            vaultManager.touchActivity()
+            // vaultManager.touchActivity() - removed
             
             let panel = NSOpenPanel()
             panel.canChooseFiles = false
@@ -907,8 +913,10 @@ struct MainVaultView: View {
                                     
                                     if !validPhotos.isEmpty {
                                         Button("Undo") {
-                                            for photo in validPhotos {
-                                                vaultManager.restorePhotoToLibrary(photo)
+                                            Task {
+                                                for photo in validPhotos {
+                                                    try? await vaultManager.restorePhotoToLibrary(photo)
+                                                }
                                             }
                                             withAnimation {
                                                 vaultManager.hideNotification = nil
@@ -1047,7 +1055,9 @@ struct MainVaultView: View {
                                         // Keep context menu available on the thumbnail/button
                                         .contextMenu {
                                             Button {
-                                                vaultManager.restorePhotoToLibrary(photo)
+                                                Task {
+                                                    try? await vaultManager.restorePhotoToLibrary(photo)
+                                                }
                                             } label: {
                                                 Label("Restore to Library", systemImage: "arrow.uturn.backward")
                                             }
@@ -1080,17 +1090,17 @@ struct MainVaultView: View {
                 print("DEBUG MainVaultView.onAppear: filteredPhotos.count = \(filteredPhotos.count)")
                 selectedPhotos.removeAll()
                 setupKeyboardShortcuts()
-                vaultManager.touchActivity()
+                // vaultManager.touchActivity() - removed
             }
             .alert("Restore Items", isPresented: $showingRestoreOptions) {
                 Button("Restore to Original Albums") {
-                    restoreToOriginalAlbums()
+                    Task { await restoreToOriginalAlbums() }
                 }
                 Button("Restore to New Album") {
-                    restoreToNewAlbum()
+                    Task { await restoreToNewAlbum() }
                 }
                 Button("Just Add to Library") {
-                    restoreToLibrary()
+                    Task { await restoreToLibrary() }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
@@ -1240,7 +1250,7 @@ struct PhotoThumbnailView: View {
     private func loadThumbnail() {
         loadTask = Task {
             do {
-                let data = try vaultManager.decryptThumbnail(for: photo)
+                let data = try await vaultManager.decryptThumbnail(for: photo)
                 
                 if data.isEmpty {
                     print("Thumbnail data empty for photo id=\(photo.id), thumbnailPath=\(photo.thumbnailPath), encryptedThumb=\(photo.encryptedThumbnailPath ?? "nil")")
@@ -1360,38 +1370,40 @@ struct PhotoViewerSheet: View {
     }
     
     private func loadFullImage() {
-        DispatchQueue.global(qos: .userInitiated).async {
-            if let decryptedData = try? vaultManager.decryptPhoto(photo) {
+        Task {
+            do {
+                let decryptedData = try await vaultManager.decryptPhoto(photo)
 #if os(macOS)
                 if let image = NSImage(data: decryptedData) {
-                    DispatchQueue.main.async {
+                    await MainActor.run {
                         fullImage = Image(nsImage: image)
                     }
                 }
 #else
                 if let image = UIImage(data: decryptedData) {
-                    DispatchQueue.main.async {
+                    await MainActor.run {
                         fullImage = Image(uiImage: image)
                     }
                 }
 #endif
+            } catch {
+                print("Failed to decrypt photo: \(error)")
             }
         }
     }
     
     private func loadVideo() {
-        DispatchQueue.global(qos: .userInitiated).async {
-            if let decryptedData = try? vaultManager.decryptPhoto(photo) {
+        Task {
+            do {
+                let decryptedData = try await vaultManager.decryptPhoto(photo)
                 // Write decrypted video to temp file
                 let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(photo.id.uuidString + ".mov")
-                do {
-                    try decryptedData.write(to: tempURL)
-                    DispatchQueue.main.async {
-                        self.videoURL = tempURL
-                    }
-                } catch {
-                    print("Failed to write temp video file: \(error)")
+                try decryptedData.write(to: tempURL)
+                await MainActor.run {
+                    self.videoURL = tempURL
                 }
+            } catch {
+                print("Failed to decrypt video: \(error)")
             }
         }
     }
