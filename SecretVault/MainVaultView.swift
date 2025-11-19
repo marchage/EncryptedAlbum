@@ -18,7 +18,6 @@ struct MainVaultView: View {
     @State private var showingCamera = false
     @State private var showingFilePicker = false
     @State private var captureInProgress = false
-    @State private var captureProgressValue: Double = 0
     @State private var captureStatusMessage = ""
     @State private var captureDetailMessage = ""
     @State private var captureItemsProcessed = 0
@@ -324,7 +323,6 @@ struct MainVaultView: View {
             captureInProgress = true
             captureItemsTotal = urls.count
             captureItemsProcessed = 0
-            captureProgressValue = 0
             captureStatusMessage = "Preparing import…"
             captureDetailMessage = "\(urls.count) item(s)"
         }
@@ -347,7 +345,6 @@ struct MainVaultView: View {
             await MainActor.run {
                 captureStatusMessage = "Encrypting \(filename)…"
                 captureDetailMessage = detail
-                captureProgressValue = Double(index) / Double(max(urls.count, 1))
                 captureItemsProcessed = index
             }
 
@@ -375,7 +372,6 @@ struct MainVaultView: View {
 
             await MainActor.run {
                 captureItemsProcessed = index + 1
-                captureProgressValue = Double(index + 1) / Double(max(urls.count, 1))
             }
         }
 
@@ -385,7 +381,6 @@ struct MainVaultView: View {
 
         await MainActor.run {
             captureInProgress = false
-            captureProgressValue = 0
             captureDetailMessage = ""
             captureStatusMessage = ""
             captureItemsProcessed = 0
@@ -606,9 +601,15 @@ struct MainVaultView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 12) {
-                ProgressView(value: captureProgressValue, total: 1)
-                    .progressViewStyle(.linear)
-                    .frame(maxWidth: 260)
+                if captureItemsTotal > 0 {
+                    ProgressView(value: Double(captureItemsProcessed), total: Double(max(captureItemsTotal, 1)))
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 260)
+                } else {
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 260)
+                }
 
                 Text(captureStatusMessage.isEmpty ? "Encrypting items…" : captureStatusMessage)
                     .font(.headline)
