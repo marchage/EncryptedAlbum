@@ -552,9 +552,18 @@ class VaultManager: ObservableObject {
     func hidePhoto(imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil) throws {
         touchActivity()
         
+        // Ensure photos directory exists
+        if !FileManager.default.fileExists(atPath: photosURL.path) {
+            do {
+                try FileManager.default.createDirectory(at: photosURL, withIntermediateDirectories: true)
+            } catch {
+                throw NSError(domain: "VaultManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create photos directory: \(error.localizedDescription)"])
+            }
+        }
+        
         // Check for reasonable data size to prevent memory issues
         guard imageData.count > 0 && imageData.count < 500 * 1024 * 1024 else { // 500MB limit
-            throw NSError(domain: "VaultManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Media file too large or empty"])
+            throw NSError(domain: "VaultManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "Media file too large or empty"])
         }
         
         // Check for duplicates by asset identifier
@@ -575,7 +584,7 @@ class VaultManager: ObservableObject {
         // Encrypt the media data with error handling
         let encrypted = encryptImage(imageData, password: passwordHash)
         guard encrypted.count > 0 else {
-            throw NSError(domain: "VaultManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "Encryption failed"])
+            throw NSError(domain: "VaultManager", code: -3, userInfo: [NSLocalizedDescriptionKey: "Encryption failed"])
         }
         
         do {
@@ -586,7 +595,7 @@ class VaultManager: ObservableObject {
             let hmacPath = photosURL.appendingPathComponent("\(photoId.uuidString).hmac")
             try hmac.data(using: .utf8)?.write(to: hmacPath, options: .atomic)
         } catch {
-            throw NSError(domain: "VaultManager", code: -3, userInfo: [NSLocalizedDescriptionKey: "Failed to save encrypted data: \(error.localizedDescription)"])
+            throw NSError(domain: "VaultManager", code: -4, userInfo: [NSLocalizedDescriptionKey: "Failed to save encrypted data: \(error.localizedDescription)"])
         }
         
         // Generate thumbnail with memory management
@@ -594,7 +603,7 @@ class VaultManager: ObservableObject {
         guard thumbnail.count > 0 else {
             // Clean up encrypted file if thumbnail generation fails
             try? FileManager.default.removeItem(at: encryptedPath)
-            throw NSError(domain: "VaultManager", code: -4, userInfo: [NSLocalizedDescriptionKey: "Thumbnail generation failed"])
+            throw NSError(domain: "VaultManager", code: -5, userInfo: [NSLocalizedDescriptionKey: "Thumbnail generation failed"])
         }
         
         do {
@@ -602,7 +611,7 @@ class VaultManager: ObservableObject {
         } catch {
             // Clean up encrypted file if thumbnail save fails
             try? FileManager.default.removeItem(at: encryptedPath)
-            throw NSError(domain: "VaultManager", code: -5, userInfo: [NSLocalizedDescriptionKey: "Failed to save thumbnail: \(error.localizedDescription)"])
+            throw NSError(domain: "VaultManager", code: -6, userInfo: [NSLocalizedDescriptionKey: "Failed to save thumbnail: \(error.localizedDescription)"])
         }
 
         let encryptedThumbnail = encryptImage(thumbnail, password: passwordHash)
@@ -610,7 +619,7 @@ class VaultManager: ObservableObject {
             // Clean up files if thumbnail encryption fails
             try? FileManager.default.removeItem(at: encryptedPath)
             try? FileManager.default.removeItem(at: thumbnailPath)
-            throw NSError(domain: "VaultManager", code: -6, userInfo: [NSLocalizedDescriptionKey: "Thumbnail encryption failed"])
+            throw NSError(domain: "VaultManager", code: -7, userInfo: [NSLocalizedDescriptionKey: "Thumbnail encryption failed"])
         }
         
         do {
@@ -619,7 +628,7 @@ class VaultManager: ObservableObject {
             // Clean up files if encrypted thumbnail save fails
             try? FileManager.default.removeItem(at: encryptedPath)
             try? FileManager.default.removeItem(at: thumbnailPath)
-            throw NSError(domain: "VaultManager", code: -7, userInfo: [NSLocalizedDescriptionKey: "Failed to save encrypted thumbnail: \(error.localizedDescription)"])
+            throw NSError(domain: "VaultManager", code: -8, userInfo: [NSLocalizedDescriptionKey: "Failed to save encrypted thumbnail: \(error.localizedDescription)"])
         }
         
         // Create photo record
@@ -1385,6 +1394,13 @@ class VaultManager: ObservableObject {
             }
         } catch {
             print("Error clearing vault files: \(error)")
+        }
+        
+        // Recreate photos directory after clearing
+        do {
+            try FileManager.default.createDirectory(at: photosURL, withIntermediateDirectories: true)
+        } catch {
+            print("Failed to recreate photos directory: \(error)")
         }
         
         // Save empty settings
