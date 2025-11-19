@@ -387,9 +387,9 @@ struct SetupPasswordView: View {
         password += String(numbers.randomElement()!)
         password += String(symbols.randomElement()!)
         
-        // Fill the rest (total 16 chars)
+        // Fill the rest (total 20 chars for maximum security)
         let allChars = uppercase + lowercase + numbers + symbols
-        for _ in 0..<12 {
+        for _ in 0..<16 {
             password += String(allChars.randomElement()!)
         }
         
