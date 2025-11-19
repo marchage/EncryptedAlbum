@@ -598,8 +598,14 @@ class VaultManager: ObservableObject {
             throw NSError(domain: "VaultManager", code: -4, userInfo: [NSLocalizedDescriptionKey: "Failed to save encrypted data: \(error.localizedDescription)"])
         }
         
-        // Generate thumbnail with memory management
-        let thumbnail = generatePhotoThumbnail(from: imageData)
+        // Generate thumbnail based on media type
+        let thumbnail: Data
+        if mediaType == .video {
+            thumbnail = generateVideoThumbnail(from: imageData)
+        } else {
+            thumbnail = generatePhotoThumbnail(from: imageData)
+        }
+        
         guard thumbnail.count > 0 else {
             // Clean up encrypted file if thumbnail generation fails
             try? FileManager.default.removeItem(at: encryptedPath)
@@ -1143,6 +1149,9 @@ class VaultManager: ObservableObject {
     private func generateVideoThumbnail(from videoData: Data) -> Data {
         // Check video data size
         guard videoData.count > 0 && videoData.count < 500 * 1024 * 1024 else { // 500MB limit
+            #if DEBUG
+            print("Video data size invalid: \(videoData.count) bytes")
+            #endif
             return Data()
         }
         
@@ -1163,6 +1172,9 @@ class VaultManager: ObservableObject {
             // Note: Using deprecated API because this is a synchronous function
             // Converting to async would require refactoring the entire thumbnail generation flow
             guard asset.tracks(withMediaType: .video).count > 0 else {
+                #if DEBUG
+                print("No video tracks found in asset")
+                #endif
                 return Data()
             }
             
@@ -1176,6 +1188,9 @@ class VaultManager: ObservableObject {
             let time = CMTimeMinimum(CMTime(seconds: 1, preferredTimescale: 60), duration)
             
             guard let cgImage = try? imageGenerator.copyCGImage(at: time, actualTime: nil) else {
+                #if DEBUG
+                print("Failed to generate CGImage from video")
+                #endif
                 return Data()
             }
             
@@ -1229,7 +1244,9 @@ class VaultManager: ObservableObject {
             #endif
             
         } catch {
+            #if DEBUG
             print("Failed to generate video thumbnail: \(error)")
+            #endif
             // Clean up temp file if it exists
             try? FileManager.default.removeItem(at: tempURL)
         }
@@ -1264,13 +1281,33 @@ class VaultManager: ObservableObject {
     }
     
     func saveSettings() {
+        // Ensure vault directory exists before saving
+        do {
+            try FileManager.default.createDirectory(at: vaultBaseURL, withIntermediateDirectories: true)
+        } catch {
+            #if DEBUG
+            print("Failed to create vault directory: \(error)")
+            #endif
+            return
+        }
+        
         var settings: [String: String] = [
             "passwordHash": passwordHash,
             "passwordSalt": passwordSalt
         ]
         settings["vaultBaseURL"] = vaultBaseURL.path
-        guard let data = try? JSONEncoder().encode(settings) else { return }
-        try? data.write(to: settingsFile)
+        
+        do {
+            let data = try JSONEncoder().encode(settings)
+            try data.write(to: settingsFile, options: .atomic)
+            #if DEBUG
+            print("Successfully saved settings to: \(settingsFile.path)")
+            #endif
+        } catch {
+            #if DEBUG
+            print("Failed to save settings: \(error)")
+            #endif
+        }
     }
     
     private func loadSettings() {
