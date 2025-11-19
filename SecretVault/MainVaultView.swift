@@ -6,6 +6,101 @@ import AppKit
 
 struct MainVaultView: View {
     @EnvironmentObject var vaultManager: VaultManager
+
+private struct RestorationProgressOverlayView: View {
+    @ObservedObject var progress: RestorationProgress
+    let cancelAction: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.45)
+                .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                if progress.totalItems > 0 {
+                    ProgressView(value: Double(progress.processedItems), total: Double(max(progress.totalItems, 1)))
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 260)
+                } else {
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 260)
+                }
+
+                if progress.currentBytesTotal > 0 {
+                    ProgressView(value: Double(progress.currentBytesProcessed), total: Double(max(progress.currentBytesTotal, 1)))
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 260)
+                    Text("\(formattedBytes(progress.currentBytesProcessed)) of \(formattedBytes(progress.currentBytesTotal))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else if progress.currentBytesProcessed > 0 {
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 260)
+                    Text("\(formattedBytes(progress.currentBytesProcessed)) processed…")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 260)
+                    Text("Preparing file size…")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                Text(progress.statusMessage.isEmpty ? "Restoring items…" : progress.statusMessage)
+                    .font(.headline)
+
+                if progress.totalItems > 0 {
+                    Text("\(progress.processedItems) of \(progress.totalItems)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if progress.successItems > 0 || progress.failedItems > 0 {
+                    Text("\(progress.successItems) restored • \(progress.failedItems) failed")
+                        .font(.caption2)
+                        .foregroundStyle(progress.failedItems > 0 ? Color.orange : .secondary)
+                }
+
+                if !progress.detailMessage.isEmpty {
+                    Text(progress.detailMessage)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+
+                if progress.cancelRequested {
+                    Text("Cancel requested… finishing current item")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                }
+
+                Button("Cancel Restore") {
+                    cancelAction()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(progress.cancelRequested)
+            }
+            .padding(24)
+            .background(.ultraThickMaterial)
+            .cornerRadius(16)
+            .shadow(radius: 18)
+        }
+        .transition(.opacity)
+    }
+
+    private func formattedBytes(_ value: Int64) -> String {
+        guard value > 0 else { return "0 bytes" }
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: value)
+    }
+}
     @State private var showingPhotosLibrary = false
     @State private var selectedPhoto: SecurePhoto?
     @State private var selectedPhotos: Set<UUID> = []
@@ -35,6 +130,7 @@ struct MainVaultView: View {
     @State private var exportCancelRequested = false
     @State private var exportBytesProcessed: Int64 = 0
     @State private var exportBytesTotal: Int64 = 0
+    @State private var restorationTask: Task<Void, Never>? = nil
     @State private var didForcePrivacyModeThisSession = false
     @AppStorage("vaultPrivacyModeEnabled") private var privacyModeEnabled: Bool = true
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
@@ -340,15 +436,23 @@ struct MainVaultView: View {
     }
     
     func restoreToOriginalAlbums() async {
+        defer {
+            Task { @MainActor in restorationTask = nil }
+        }
         selectedPhotos.removeAll()
         do {
             try await vaultManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: true)
+        } catch is CancellationError {
+            print("Restore canceled before completion")
         } catch {
             print("Failed to restore photos: \(error)")
         }
     }
     
     func restoreToNewAlbum() async {
+        defer {
+            Task { @MainActor in restorationTask = nil }
+        }
 #if os(macOS)
         // Prompt for album name
         let alert = NSAlert()
@@ -369,6 +473,8 @@ struct MainVaultView: View {
                 selectedPhotos.removeAll()
                 do {
                     try await vaultManager.batchRestorePhotos(photosToRestore, toNewAlbum: albumName)
+                } catch is CancellationError {
+                    print("Restore canceled before completion")
                 } catch {
                     print("Failed to restore photos: \(error)")
                 }
@@ -378,8 +484,17 @@ struct MainVaultView: View {
     }
     
     func restoreToLibrary() async {
+        defer {
+            Task { @MainActor in restorationTask = nil }
+        }
         selectedPhotos.removeAll()
-        try? await vaultManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: false)
+        do {
+            try await vaultManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: false)
+        } catch is CancellationError {
+            print("Restore canceled before completion")
+        } catch {
+            print("Failed to restore photos: \(error)")
+        }
     }
     
     func deleteSelectedPhotos() {
@@ -443,6 +558,27 @@ struct MainVaultView: View {
             await runDirectCaptureImport(urls: urls)
         }
 #endif
+    }
+
+    private func startRestorationTask(_ operation: @escaping () async -> Void) {
+        guard !vaultManager.restorationProgress.isRestoring else {
+#if os(macOS)
+            let alert = NSAlert()
+            alert.messageText = "Restore Already Running"
+            alert.informativeText = "Please wait for the current restore to finish or cancel it before starting another."
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+#else
+            print("Restore already in progress; ignoring additional request.")
+#endif
+            return
+        }
+
+        restorationTask?.cancel()
+        restorationTask = Task(priority: .userInitiated) {
+            await operation()
+        }
     }
 
 #if os(macOS)
@@ -953,6 +1089,26 @@ struct MainVaultView: View {
         }
         .transition(.opacity)
     }
+
+    private var restorationProgressOverlay: some View {
+        RestorationProgressOverlayView(
+            progress: vaultManager.restorationProgress,
+            cancelAction: {
+                Task { @MainActor in
+                    guard !vaultManager.restorationProgress.cancelRequested else { return }
+                    vaultManager.restorationProgress.cancelRequested = true
+                    let status = vaultManager.restorationProgress.statusMessage
+                    if status.isEmpty || !status.lowercased().contains("cancel") {
+                        vaultManager.restorationProgress.statusMessage = "Canceling restore…"
+                    }
+                    if vaultManager.restorationProgress.detailMessage.isEmpty {
+                        vaultManager.restorationProgress.detailMessage = "Finishing current item"
+                    }
+                    restorationTask?.cancel()
+                }
+            }
+        )
+    }
     
 #if DEBUG
     func resetVaultForDevelopment() {
@@ -1140,36 +1296,6 @@ struct MainVaultView: View {
                         }
                     }
 
-                    if vaultManager.restorationProgress.isRestoring {
-                        VStack(spacing: 8) {
-                            HStack {
-                                ProgressView(value: vaultManager.restorationProgress.progress)
-                                    .progressViewStyle(.linear)
-
-                                Text("\(vaultManager.restorationProgress.processedItems)/\(vaultManager.restorationProgress.totalItems)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 60)
-                            }
-
-                            HStack {
-                                Image(systemName: "arrow.uturn.backward.circle.fill")
-                                    .foregroundStyle(.blue)
-                                Text("Restoring items to Photos library...")
-                                    .font(.subheadline)
-                                Spacer()
-                                if vaultManager.restorationProgress.failedItems > 0 {
-                                    Text("\(vaultManager.restorationProgress.failedItems) failed")
-                                        .font(.caption)
-                                        .foregroundStyle(.orange)
-                                }
-                            }
-                        }
-                        .padding()
-                        .background(.blue.opacity(0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-
                     if vaultManager.hiddenPhotos.isEmpty {
                         VStack(spacing: 20) {
                             Image(systemName: "lock.fill")
@@ -1280,13 +1406,19 @@ struct MainVaultView: View {
             }
             .alert("Restore Items", isPresented: $showingRestoreOptions) {
             Button("Restore to Original Albums") {
-                Task { await restoreToOriginalAlbums() }
+                startRestorationTask {
+                    await restoreToOriginalAlbums()
+                }
             }
             Button("Restore to New Album") {
-                Task { await restoreToNewAlbum() }
+                startRestorationTask {
+                    await restoreToNewAlbum()
+                }
             }
             Button("Just Add to Library") {
-                Task { await restoreToLibrary() }
+                startRestorationTask {
+                    await restoreToLibrary()
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -1314,6 +1446,9 @@ struct MainVaultView: View {
             }
             if exportInProgress {
                 exportProgressOverlay
+            }
+            if vaultManager.restorationProgress.isRestoring {
+                restorationProgressOverlay
             }
         }
     }

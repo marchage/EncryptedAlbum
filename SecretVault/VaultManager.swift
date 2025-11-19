@@ -94,10 +94,28 @@ class RestorationProgress: ObservableObject {
     @Published var processedItems = 0
     @Published var successItems = 0
     @Published var failedItems = 0
+    @Published var currentBytesProcessed: Int64 = 0
+    @Published var currentBytesTotal: Int64 = 0
+    @Published var statusMessage: String = ""
+    @Published var detailMessage: String = ""
+    @Published var cancelRequested = false
 
     var progress: Double {
         guard totalItems > 0 else { return 0 }
         return Double(processedItems) / Double(totalItems)
+    }
+
+    func reset() {
+        isRestoring = false
+        totalItems = 0
+        processedItems = 0
+        successItems = 0
+        failedItems = 0
+        currentBytesProcessed = 0
+        currentBytesTotal = 0
+        statusMessage = ""
+        detailMessage = ""
+        cancelRequested = false
     }
 }
 
@@ -807,14 +825,19 @@ class VaultManager: ObservableObject {
         await MainActor.run {
             lastActivity = Date()
         }
-        
-        // Initialize progress tracking
+        guard !photos.isEmpty else { return }
+
         await MainActor.run {
             self.restorationProgress.isRestoring = true
             self.restorationProgress.totalItems = photos.count
             self.restorationProgress.processedItems = 0
             self.restorationProgress.successItems = 0
             self.restorationProgress.failedItems = 0
+            self.restorationProgress.currentBytesProcessed = 0
+            self.restorationProgress.currentBytesTotal = 0
+            self.restorationProgress.statusMessage = "Preparing restore…"
+            self.restorationProgress.detailMessage = "\(photos.count) item(s)"
+            self.restorationProgress.cancelRequested = false
         }
         
         // Group photos by target album to batch them efficiently
@@ -835,56 +858,128 @@ class VaultManager: ObservableObject {
         }
         
         print("🔄 Starting batch restore of \(photos.count) items grouped into \(albumGroups.count) albums")
-        
-        // Process each album group concurrently with limited parallelism
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            for (targetAlbum, photosInGroup) in albumGroups {
-                group.addTask {
-                    print("📁 Processing group: \(targetAlbum ?? "Library") with \(photosInGroup.count) items")
-                    
-                    // Process photos sequentially in each group to avoid overwhelming the Photos library
-                    for photo in photosInGroup {
-                        do {
-                            try Task.checkCancellation()
-                            print("  🔓 Decrypting: \(photo.filename) (\(photo.mediaType.rawValue))")
-                            let tempURL = try await self.decryptPhotoToTemporaryURL(photo)
-                            print("  ✅ Decrypted successfully: \(photo.filename) -> \(tempURL.lastPathComponent)")
+        var wasCancelled = false
 
-                            try Task.checkCancellation()
-
-                            defer {
-                                try? FileManager.default.removeItem(at: tempURL)
-                            }
-
-                            try await self.saveTempFileToLibraryAndDeletePhoto(tempURL: tempURL, photo: photo, targetAlbum: targetAlbum)
-
-                            await MainActor.run {
-                                self.restorationProgress.processedItems += 1
-                                self.restorationProgress.successItems += 1
-                            }
-
-                        } catch {
-                            print("  ❌ Failed to process \(photo.filename): \(error)")
-                            await MainActor.run {
-                                self.restorationProgress.processedItems += 1
-                                self.restorationProgress.failedItems += 1
-                            }
-                        }
+        do {
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                for (targetAlbum, photosInGroup) in albumGroups {
+                    group.addTask {
+                        print("📁 Processing group: \(targetAlbum ?? "Library") with \(photosInGroup.count) items")
+                        try await self.processRestoreGroup(photosInGroup,
+                                                           targetAlbum: targetAlbum)
                     }
                 }
+                try await group.waitForAll()
             }
-            
-            // Wait for all groups to complete
-            try await group.waitForAll()
+        } catch is CancellationError {
+            wasCancelled = true
         }
-        
+
         await MainActor.run {
             self.restorationProgress.isRestoring = false
+            self.restorationProgress.cancelRequested = false
+            self.restorationProgress.currentBytesProcessed = 0
+            self.restorationProgress.currentBytesTotal = 0
             let total = self.restorationProgress.totalItems
             let success = self.restorationProgress.successItems
             let failed = self.restorationProgress.failedItems
+            let summary = "\(success)/\(total) restored" + (failed > 0 ? " • \(failed) failed" : "")
+            self.restorationProgress.statusMessage = wasCancelled ? "Restore canceled" : "Restore complete"
+            self.restorationProgress.detailMessage = summary
             print("📊 Restoration complete: \(success)/\(total) successful, \(failed) failed (successful items already removed from vault)")
         }
+
+        if wasCancelled {
+            throw CancellationError()
+        }
+    }
+
+    private func processRestoreGroup(_ photos: [SecurePhoto], targetAlbum: String?) async throws {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
+        formatter.countStyle = .file
+        let albumLabel = targetAlbum ?? "Library"
+        for photo in photos {
+            try Task.checkCancellation()
+
+            let sizeDescription = formattedSizeString(for: photo.fileSize, formatter: formatter)
+            await MainActor.run {
+                self.restorationProgress.statusMessage = "Decrypting \(photo.filename)…"
+                self.restorationProgress.detailMessage = self.restorationDetailText(for: photo.filename,
+                                                                                    albumName: albumLabel,
+                                                                                    sizeDescription: sizeDescription)
+                self.restorationProgress.currentBytesTotal = max(photo.fileSize, 0)
+                self.restorationProgress.currentBytesProcessed = 0
+            }
+
+            do {
+                let tempURL = try await self.decryptPhotoToTemporaryURL(photo) { bytesRead in
+                    Task { @MainActor in
+                        self.restorationProgress.currentBytesProcessed = bytesRead
+                    }
+                }
+
+                defer { try? FileManager.default.removeItem(at: tempURL) }
+
+                let detectedSize = photo.fileSize > 0 ? photo.fileSize : self.fileSize(at: tempURL)
+                await MainActor.run {
+                    if detectedSize > 0 {
+                        self.restorationProgress.currentBytesTotal = detectedSize
+                    }
+                }
+
+                try Task.checkCancellation()
+
+                await MainActor.run {
+                    self.restorationProgress.statusMessage = "Saving \(photo.filename) to Photos…"
+                    self.restorationProgress.currentBytesProcessed = self.restorationProgress.currentBytesTotal
+                }
+
+                try await self.saveTempFileToLibraryAndDeletePhoto(tempURL: tempURL, photo: photo, targetAlbum: targetAlbum)
+
+                await MainActor.run {
+                    self.restorationProgress.processedItems += 1
+                    self.restorationProgress.successItems += 1
+                }
+
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                print("  ❌ Failed to process \(photo.filename): \(error)")
+                await MainActor.run {
+                    self.restorationProgress.processedItems += 1
+                    self.restorationProgress.failedItems += 1
+                    self.restorationProgress.statusMessage = "Failed \(photo.filename)"
+                    self.restorationProgress.detailMessage = error.localizedDescription
+                    self.restorationProgress.currentBytesProcessed = 0
+                    self.restorationProgress.currentBytesTotal = 0
+                }
+            }
+        }
+    }
+
+    private func formattedSizeString(for size: Int64, formatter: ByteCountFormatter) -> String? {
+        guard size > 0 else { return nil }
+        return formatter.string(fromByteCount: size)
+    }
+
+    private func restorationDetailText(for filename: String, albumName: String?, sizeDescription: String?) -> String {
+        var parts: [String] = [filename]
+        if let sizeDescription {
+            parts.append(sizeDescription)
+        }
+        if let albumName {
+            parts.append(albumName)
+        }
+        return parts.joined(separator: " • ")
+    }
+
+    private func fileSize(at url: URL) -> Int64 {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let size = attributes[.size] as? NSNumber else {
+            return 0
+        }
+        return size.int64Value
     }
     
     /// Removes duplicate photos from the vault based on asset identifiers.
