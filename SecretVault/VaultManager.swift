@@ -1,4 +1,5 @@
 import AVFoundation
+import Combine
 import CryptoKit
 import Foundation
 import LocalAuthentication
@@ -192,6 +193,7 @@ class VaultManager: ObservableObject {
     private let securityService: SecurityService
     private let passwordService: PasswordService
     private let vaultState: VaultState
+    private var restorationProgressCancellable: AnyCancellable?
 
     // Legacy properties for backward compatibility
     @Published var hiddenPhotos: [SecurePhoto] = []
@@ -237,6 +239,9 @@ class VaultManager: ObservableObject {
         fileService = FileService(cryptoService: cryptoService)
         vaultState = VaultState()
         fileService.cleanupTemporaryArtifacts()
+        restorationProgressCancellable = restorationProgress.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
 
         // Determine vault base directory based on platform
         #if os(macOS)
