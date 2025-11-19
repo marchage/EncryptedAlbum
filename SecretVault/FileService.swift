@@ -93,8 +93,7 @@ class FileService {
     private func performSecureDeletion(at url: URL, fileSize: Int) throws {
         let fileHandle = try FileHandle(forUpdating: url)
 
-        // Pass 1: Random data
-        let randomData = try Data(count: fileSize)
+        let randomData = Data((0..<fileSize).map { _ in UInt8.random(in: .min ... .max) })
         fileHandle.seek(toFileOffset: 0)
         fileHandle.write(randomData)
 

@@ -238,7 +238,6 @@ struct MainVaultView: View {
     }
     
     func deleteSelectedPhotos() {
-        selectedPhotos.removeAll()
         let photosToDelete = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         for photo in photosToDelete {
             vaultManager.deletePhoto(photo)
@@ -1154,4 +1153,3 @@ struct CustomVideoPlayer: UIViewControllerRepresentable {
     }
 }
 #endif
-

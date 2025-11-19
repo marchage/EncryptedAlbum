@@ -12,58 +12,53 @@ class CryptoService {
     func deriveKeys(password: String, salt: Data) async throws -> (encryptionKey: SymmetricKey, hmacKey: SymmetricKey) {
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
-                do {
-                    // Convert password to data
-                    guard let passwordData = password.data(using: .utf8) else {
-                        continuation.resume(throwing: VaultError.keyDerivationFailed(reason: "Invalid password encoding"))
-                        return
-                    }
+                guard let passwordData = password.data(using: .utf8) else {
+                    continuation.resume(throwing: VaultError.keyDerivationFailed(reason: "Invalid password encoding"))
+                    return
+                }
 
-                    // Derive master key using PBKDF2
-                    var derivedKey = [UInt8](repeating: 0, count: CryptoConstants.masterKeySize)
-                    let saltBytes = [UInt8](salt)
+                // Derive master key using PBKDF2
+                var derivedKey = [UInt8](repeating: 0, count: CryptoConstants.masterKeySize)
+                let saltBytes = [UInt8](salt)
 
-                    let result = derivedKey.withUnsafeMutableBytes { derivedKeyPtr in
-                        saltBytes.withUnsafeBytes { saltPtr in
-                            passwordData.withUnsafeBytes { passwordPtr in
-                                CCKeyDerivationPBKDF(
-                                    CCPBKDFAlgorithm(kCCPBKDF2),
-                                    passwordPtr.baseAddress, passwordPtr.count,
-                                    saltPtr.baseAddress, saltPtr.count,
-                                    CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
-                                    UInt32(CryptoConstants.pbkdf2Iterations),
-                                    derivedKeyPtr.baseAddress, derivedKeyPtr.count
-                                )
-                            }
+                let result = derivedKey.withUnsafeMutableBytes { derivedKeyPtr in
+                    saltBytes.withUnsafeBytes { saltPtr in
+                        passwordData.withUnsafeBytes { passwordPtr in
+                            CCKeyDerivationPBKDF(
+                                CCPBKDFAlgorithm(kCCPBKDF2),
+                                passwordPtr.baseAddress, passwordPtr.count,
+                                saltPtr.baseAddress, saltPtr.count,
+                                CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
+                                UInt32(CryptoConstants.pbkdf2Iterations),
+                                derivedKeyPtr.baseAddress, derivedKeyPtr.count
+                            )
                         }
                     }
-
-                    guard result == kCCSuccess else {
-                        continuation.resume(throwing: VaultError.keyDerivationFailed(reason: "PBKDF2 derivation failed"))
-                        return
-                    }
-
-                    let masterKey = SymmetricKey(data: Data(derivedKey))
-
-                    // Derive encryption and HMAC keys using HKDF
-                    let encryptionKey = HKDF<SHA256>.deriveKey(
-                        inputKeyMaterial: masterKey,
-                        salt: salt,
-                        info: Data(CryptoConstants.hkdfInfoEncryption.utf8),
-                        outputByteCount: CryptoConstants.encryptionKeySize
-                    )
-
-                    let hmacKey = HKDF<SHA256>.deriveKey(
-                        inputKeyMaterial: masterKey,
-                        salt: salt,
-                        info: Data(CryptoConstants.hkdfInfoHMAC.utf8),
-                        outputByteCount: CryptoConstants.hmacKeySize
-                    )
-
-                    continuation.resume(returning: (encryptionKey, hmacKey))
-                } catch {
-                    continuation.resume(throwing: VaultError.keyDerivationFailed(reason: error.localizedDescription))
                 }
+
+                guard result == kCCSuccess else {
+                    continuation.resume(throwing: VaultError.keyDerivationFailed(reason: "PBKDF2 derivation failed"))
+                    return
+                }
+
+                let masterKey = SymmetricKey(data: Data(derivedKey))
+
+                // Derive encryption and HMAC keys using HKDF
+                let encryptionKey = HKDF<SHA256>.deriveKey(
+                    inputKeyMaterial: masterKey,
+                    salt: salt,
+                    info: Data(CryptoConstants.hkdfInfoEncryption.utf8),
+                    outputByteCount: CryptoConstants.encryptionKeySize
+                )
+
+                let hmacKey = HKDF<SHA256>.deriveKey(
+                    inputKeyMaterial: masterKey,
+                    salt: salt,
+                    info: Data(CryptoConstants.hkdfInfoHMAC.utf8),
+                    outputByteCount: CryptoConstants.hmacKeySize
+                )
+
+                continuation.resume(returning: (encryptionKey, hmacKey))
             }
         }
     }
@@ -89,7 +84,7 @@ class CryptoService {
     /// Encrypts data with HMAC for integrity verification
     func encryptDataWithIntegrity(_ data: Data, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws -> (encryptedData: Data, nonce: Data, hmac: Data) {
         let (encryptedData, nonce) = try await encryptData(data, key: encryptionKey)
-        let hmac = try await generateHMAC(for: encryptedData, key: hmacKey)
+        let hmac = await generateHMAC(for: encryptedData, key: hmacKey)
         return (encryptedData, nonce, hmac)
     }
 
@@ -137,15 +132,11 @@ class CryptoService {
     // MARK: - HMAC Operations
 
     /// Generates HMAC for data integrity verification
-    func generateHMAC(for data: Data, key: SymmetricKey) async throws -> Data {
-        return try await withCheckedThrowingContinuation { continuation in
+    func generateHMAC(for data: Data, key: SymmetricKey) async -> Data {
+        return await withCheckedContinuation { continuation in
             queue.async {
-                do {
-                    let hmac = HMAC<SHA256>.authenticationCode(for: data, using: key)
-                    continuation.resume(returning: Data(hmac))
-                } catch {
-                    continuation.resume(throwing: VaultError.cryptoOperationFailed(operation: "HMAC generation", reason: error.localizedDescription))
-                }
+                let hmac = HMAC<SHA256>.authenticationCode(for: data, using: key)
+                continuation.resume(returning: Data(hmac))
             }
         }
     }
@@ -154,21 +145,14 @@ class CryptoService {
     func verifyHMAC(_ hmac: Data, for data: Data, key: SymmetricKey) async throws {
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
-                do {
-                    guard let expectedHMAC = try? HMAC<SHA256>.authenticationCode(for: data, using: key) else {
-                        continuation.resume(throwing: VaultError.cryptoOperationFailed(operation: "HMAC verification", reason: "Failed to generate expected HMAC"))
-                        return
-                    }
+                let expectedHMAC = Data(HMAC<SHA256>.authenticationCode(for: data, using: key))
 
-                    guard hmac == Data(expectedHMAC) else {
-                        continuation.resume(throwing: VaultError.hmacVerificationFailed)
-                        return
-                    }
-
-                    continuation.resume(returning: ())
-                } catch {
-                    continuation.resume(throwing: VaultError.cryptoOperationFailed(operation: "HMAC verification", reason: error.localizedDescription))
+                guard hmac == expectedHMAC else {
+                    continuation.resume(throwing: VaultError.hmacVerificationFailed)
+                    return
                 }
+
+                continuation.resume(returning: ())
             }
         }
     }
@@ -179,19 +163,17 @@ class CryptoService {
     func generateRandomData(length: Int) async throws -> Data {
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
-                do {
-                    var data = Data(count: length)
-                    let result = data.withUnsafeMutableBytes {
-                        SecRandomCopyBytes(kSecRandomDefault, length, $0.baseAddress!)
-                    }
-                    guard result == errSecSuccess else {
-                        continuation.resume(throwing: VaultError.randomGenerationFailed(reason: "SecRandomCopyBytes failed with code \(result)"))
-                        return
-                    }
-                    continuation.resume(returning: data)
-                } catch {
-                    continuation.resume(throwing: VaultError.randomGenerationFailed(reason: error.localizedDescription))
+                var data = Data(count: length)
+                let result = data.withUnsafeMutableBytes {
+                    SecRandomCopyBytes(kSecRandomDefault, length, $0.baseAddress!)
                 }
+
+                guard result == errSecSuccess else {
+                    continuation.resume(throwing: VaultError.randomGenerationFailed(reason: "SecRandomCopyBytes failed with code \(result)"))
+                    return
+                }
+
+                continuation.resume(returning: data)
             }
         }
     }
