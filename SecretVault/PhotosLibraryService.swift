@@ -260,7 +260,15 @@ class PhotosLibraryService {
         options.deliveryMode = .highQualityFormat
         options.isNetworkAccessAllowed = true
         
+        var hasCalledCompletion = false // Ensure we only call completion once
+        
         PHImageManager.default().requestImageDataAndOrientation(for: asset, options: options) { data, _, _, info in
+            // Check if we already called completion (PHImageManager may call this multiple times)
+            guard !hasCalledCompletion else {
+                print("⚠️ Ignoring duplicate callback for asset \(asset.localIdentifier)")
+                return
+            }
+            
             // Check for errors or cancellation
             if let error = info?[PHImageErrorKey] as? Error {
                 print("❌ PHImageManager error for asset \(asset.localIdentifier): \(error.localizedDescription)")
@@ -268,6 +276,7 @@ class PhotosLibraryService {
             
             if let isCancelled = info?[PHImageCancelledKey] as? Bool, isCancelled {
                 print("⚠️ Image request was cancelled for asset \(asset.localIdentifier)")
+                hasCalledCompletion = true
                 DispatchQueue.main.async {
                     completion(nil, "", nil, .photo, nil, nil, nil)
                 }
@@ -289,6 +298,7 @@ class PhotosLibraryService {
                 print("❌ Image data is nil for asset \(asset.localIdentifier), filename: \(filename)")
             }
             
+            hasCalledCompletion = true
             DispatchQueue.main.async {
                 completion(data, filename, dateTaken, .photo, nil, location, isFavorite)
             }

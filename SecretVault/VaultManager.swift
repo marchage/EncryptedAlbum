@@ -355,23 +355,18 @@ class VaultManager: ObservableObject {
     func setupPassword(_ password: String) async throws {
         try passwordService.validatePassword(password)
 
-        // Generate hash and salt
         let (hash, salt) = try await passwordService.hashPassword(password)
-
-        // Store credentials securely
         try passwordService.storePasswordHash(hash, salt: salt)
 
-        // Update legacy properties for backward compatibility
         passwordHash = hash.map { String(format: "%02x", $0) }.joined()
         passwordSalt = salt.base64EncodedString()
 
-        // Clear any cached keys
         cachedMasterKey = nil
         cachedEncryptionKey = nil
         cachedHMACKey = nil
         saveSettings()
 
-        // Store password for biometric unlock (legacy)
+        // Store password for biometric unlock
         saveBiometricPassword(password)
     }
 
@@ -427,9 +422,6 @@ class VaultManager: ObservableObject {
             
             // Save updated settings to disk
             saveSettings()
-            
-            // Update biometric password for next unlock
-            saveBiometricPassword(password)
         } else {
             failedUnlockAttempts += 1
             throw VaultError.invalidPassword
@@ -1227,13 +1219,28 @@ class VaultManager: ObservableObject {
     // MARK: - Biometric Authentication Helpers
 
     func saveBiometricPassword(_ password: String) {
-        // Use legacy key for backward compatibility
-        let key = "com.secretvault.password"
-        try? securityService.storeInKeychain(data: password.data(using: .utf8)!, for: key)
+        #if DEBUG
+        print("💾 Saving biometric password (length: \(password.count))")
+        #endif
+        do {
+            try securityService.storeBiometricPassword(password)
+        } catch {
+            #if DEBUG
+            print("Failed to store biometric password: \(error)")
+            #endif
+        }
     }
 
     func getBiometricPassword() -> String? {
-        return try? securityService.retrieveBiometricPassword()
+        let password = try? securityService.retrieveBiometricPassword()
+        #if DEBUG
+        if let password = password {
+            print("🔐 Retrieved biometric password: exists (length: \(password.count))")
+        } else {
+            print("🔐 Retrieved biometric password: nil")
+        }
+        #endif
+        return password
     }
     
     /// Validates crypto operations by performing encryption/decryption round-trip test.
