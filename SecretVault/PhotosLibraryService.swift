@@ -261,6 +261,19 @@ class PhotosLibraryService {
         options.isNetworkAccessAllowed = true
         
         PHImageManager.default().requestImageDataAndOrientation(for: asset, options: options) { data, _, _, info in
+            // Check for errors or cancellation
+            if let error = info?[PHImageErrorKey] as? Error {
+                print("❌ PHImageManager error for asset \(asset.localIdentifier): \(error.localizedDescription)")
+            }
+            
+            if let isCancelled = info?[PHImageCancelledKey] as? Bool, isCancelled {
+                print("⚠️ Image request was cancelled for asset \(asset.localIdentifier)")
+                DispatchQueue.main.async {
+                    completion(nil, "", nil, .photo, nil, nil, nil)
+                }
+                return
+            }
+            
             let resources = PHAssetResource.assetResources(for: asset)
             let filename = resources.first?.originalFilename ?? "photo_\(UUID().uuidString).jpg"
             let dateTaken = asset.creationDate
@@ -268,6 +281,13 @@ class PhotosLibraryService {
             // Extract metadata
             let location = asset.location.map { SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
             let isFavorite = asset.isFavorite
+            
+            // Log result
+            if let data = data {
+                print("✅ Successfully retrieved image data for \(filename): \(data.count) bytes")
+            } else {
+                print("❌ Image data is nil for asset \(asset.localIdentifier), filename: \(filename)")
+            }
             
             DispatchQueue.main.async {
                 completion(data, filename, dateTaken, .photo, nil, location, isFavorite)
@@ -280,8 +300,14 @@ class PhotosLibraryService {
         options.isNetworkAccessAllowed = true
         options.deliveryMode = .highQualityFormat
         
-        PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { avAsset, _, _ in
+        PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { avAsset, _, info in
+            // Check for errors
+            if let error = info?[PHImageErrorKey] as? Error {
+                print("❌ Video request error for asset \(asset.localIdentifier): \(error.localizedDescription)")
+            }
+            
             guard let urlAsset = avAsset as? AVURLAsset else {
+                print("❌ Failed to get AVURLAsset for video \(asset.localIdentifier)")
                 DispatchQueue.main.async {
                     completion(nil, "", nil, .video, nil, nil, nil)
                 }
@@ -299,11 +325,13 @@ class PhotosLibraryService {
                 let location = asset.location.map { SecurePhoto.Location(latitude: $0.coordinate.latitude, longitude: $0.coordinate.longitude) }
                 let isFavorite = asset.isFavorite
                 
+                print("✅ Successfully retrieved video data for \(filename): \(data.count) bytes")
+                
                 DispatchQueue.main.async {
                     completion(data, filename, dateTaken, .video, duration, location, isFavorite)
                 }
             } catch {
-                print("Failed to load video data: \(error)")
+                print("❌ Failed to load video data for \(asset.localIdentifier): \(error.localizedDescription)")
                 DispatchQueue.main.async {
                     completion(nil, "", nil, .video, nil, nil, nil)
                 }

@@ -427,6 +427,9 @@ class VaultManager: ObservableObject {
             
             // Save updated settings to disk
             saveSettings()
+            
+            // Update biometric password for next unlock
+            saveBiometricPassword(password)
         } else {
             failedUnlockAttempts += 1
             throw VaultError.invalidPassword
