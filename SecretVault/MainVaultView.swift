@@ -23,6 +23,7 @@ struct MainVaultView: View {
     @State private var captureItemsProcessed = 0
     @State private var captureItemsTotal = 0
     @State private var captureTask: Task<Void, Never>? = nil
+    @State private var captureCancelRequested = false
     @AppStorage("vaultPrivacyModeEnabled") private var privacyModeEnabled: Bool = true
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
 #if os(iOS)
@@ -325,12 +326,14 @@ struct MainVaultView: View {
             captureItemsProcessed = 0
             captureStatusMessage = "Preparing import…"
             captureDetailMessage = "\(urls.count) item(s)"
+            captureCancelRequested = false
         }
 
         var successCount = 0
         var failureCount = 0
         var firstError: String?
         var wasCancelled = false
+        let fileManager = FileManager.default
 
         for (index, url) in urls.enumerated() {
             if Task.isCancelled {
@@ -342,6 +345,22 @@ struct MainVaultView: View {
             let sizeText = fileSizeString(for: url, formatter: formatter)
             let detail = detailText(for: index + 1, total: urls.count, sizeDescription: sizeText)
 
+            if let attributes = try? fileManager.attributesOfItem(atPath: url.path),
+               let fileSize = attributes[.size] as? NSNumber,
+               fileSize.int64Value > CryptoConstants.maxMediaFileSize {
+                failureCount += 1
+                if firstError == nil {
+                    let humanSize = formatter.string(fromByteCount: fileSize.int64Value)
+                    firstError = "\(filename) exceeds the 5GB limit (\(humanSize))."
+                }
+                await MainActor.run {
+                    captureStatusMessage = "Skipping \(filename)…"
+                    captureDetailMessage = "File exceeds 5GB limit"
+                    captureItemsProcessed = index + 1
+                }
+                continue
+            }
+
             await MainActor.run {
                 captureStatusMessage = "Encrypting \(filename)…"
                 captureDetailMessage = detail
@@ -349,7 +368,9 @@ struct MainVaultView: View {
             }
 
             do {
+                try Task.checkCancellation()
                 let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+                try Task.checkCancellation()
                 let mediaType: MediaType = isVideoFile(url) ? .video : .photo
                 try await vaultManager.hidePhoto(
                     imageData: data,
@@ -363,6 +384,9 @@ struct MainVaultView: View {
                     isFavorite: nil
                 )
                 successCount += 1
+            } catch is CancellationError {
+                wasCancelled = true
+                break
             } catch {
                 failureCount += 1
                 if firstError == nil {
@@ -386,6 +410,7 @@ struct MainVaultView: View {
             captureItemsProcessed = 0
             captureItemsTotal = 0
             captureTask = nil
+            captureCancelRequested = false
         }
 
         await presentCaptureSummary(
@@ -626,7 +651,16 @@ struct MainVaultView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                if captureCancelRequested {
+                    Text("Cancel requested… finishing current file")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                }
+
                 Button("Cancel Import") {
+                    captureCancelRequested = true
+                    captureStatusMessage = "Canceling import…"
+                    captureDetailMessage = "Finishing current file"
                     captureTask?.cancel()
                 }
                 .buttonStyle(.borderedProminent)
