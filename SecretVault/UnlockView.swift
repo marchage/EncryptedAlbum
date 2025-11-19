@@ -92,6 +92,9 @@ struct UnlockView: View {
                 SecureField("Password", text: $password)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 300)
+                    .textContentType(.password)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
                     .onSubmit {
                         unlock()
                     }
