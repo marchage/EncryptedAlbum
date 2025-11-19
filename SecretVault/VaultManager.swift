@@ -773,19 +773,11 @@ class VaultManager: ObservableObject {
         overwriteData.secureZero()
     }
     
-    /// Restores a photo or video from the vault to the Photos library.
+    /// Restores a single photo or video by delegating to the batch restore workflow so that
+    /// users get consistent progress reporting and cancellation support.
     /// - Parameter photo: The SecurePhoto to restore
     func restorePhotoToLibrary(_ photo: SecurePhoto) async throws {
-        await MainActor.run {
-            lastActivity = Date()
-        }
-        
-        let tempURL = try await self.decryptPhotoToTemporaryURL(photo)
-        defer {
-            try? FileManager.default.removeItem(at: tempURL)
-        }
-
-        try await saveTempFileToLibraryAndDeletePhoto(tempURL: tempURL, photo: photo, targetAlbum: photo.sourceAlbum)
+        try await batchRestorePhotos([photo], restoreToSourceAlbum: true)
     }
     
     /// Helper method to save a temporary file to Photos library and delete the photo from vault on success.
@@ -803,14 +795,15 @@ class VaultManager: ObservableObject {
                 creationDate: photo.dateTaken,
                 location: photo.location,
                 isFavorite: photo.isFavorite
-            ) { success in
+            ) { success, libraryError in
                 if success {
                     print("Media restored to library with metadata: \(photo.filename)")
                     self.deletePhoto(photo)
                     continuation.resume(returning: ())
                 } else {
-                    print("Failed to restore media to library: \(photo.filename)")
-                    continuation.resume(throwing: VaultError.unknownError(reason: "Failed to save to Photos library"))
+                    let reason = libraryError?.localizedDescription ?? "Photos refused to import this item"
+                    print("Failed to restore media to library: \(photo.filename) – \(reason)")
+                    continuation.resume(throwing: VaultError.fileWriteFailed(path: photo.filename, reason: reason))
                 }
             }
         }

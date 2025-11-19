@@ -67,7 +67,7 @@ struct CameraCaptureView: UIViewControllerRepresentable {
                     mediaSource = .fileURL(videoURL)
                     filename = "Video_\(Date().timeIntervalSince1970).mov"
                     mediaType = .video
-
+                    
                     let asset = AVAsset(url: videoURL)
                     if #available(iOS 16.0, macOS 13.0, *) {
                         Task {

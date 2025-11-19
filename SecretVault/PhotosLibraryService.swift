@@ -26,6 +26,17 @@ struct MediaFetchResult {
     let shouldDeleteFileWhenFinished: Bool
 }
 
+enum PhotosLibraryServiceError: LocalizedError {
+    case fileNotFound(path: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .fileNotFound(let path):
+            return "File could not be found at \(path)"
+        }
+    }
+}
+
 /// Service for interacting with the Photos library across platforms.
 class PhotosLibraryService {
     static let shared = PhotosLibraryService()
@@ -742,12 +753,12 @@ class PhotosLibraryService {
     ///   - location: Optional GPS metadata
     ///   - isFavorite: Optional favorite flag
     ///   - completion: Called on main queue when Photos reports success/failure
-    func saveMediaFileToLibrary(_ fileURL: URL, filename: String, mediaType: MediaType, toAlbum albumName: String? = nil, creationDate: Date? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil, completion: @escaping (Bool) -> Void) {
+    func saveMediaFileToLibrary(_ fileURL: URL, filename: String, mediaType: MediaType, toAlbum albumName: String? = nil, creationDate: Date? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil, completion: @escaping (Bool, Error?) -> Void) {
         // Ensure the file exists before attempting to save
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             print("Failed to save media file to library: File does not exist at \(fileURL.path)")
             DispatchQueue.main.async {
-                completion(false)
+                completion(false, PhotosLibraryServiceError.fileNotFound(path: fileURL.path))
             }
             return
         }
@@ -789,7 +800,7 @@ class PhotosLibraryService {
                 print("Failed to save media file to library: \(error.localizedDescription)")
             }
             DispatchQueue.main.async {
-                completion(success)
+                completion(success, error)
             }
         }
     }

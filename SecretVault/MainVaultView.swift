@@ -6,101 +6,101 @@ import AppKit
 
 struct MainVaultView: View {
     @EnvironmentObject var vaultManager: VaultManager
-
-private struct RestorationProgressOverlayView: View {
-    @ObservedObject var progress: RestorationProgress
-    let cancelAction: () -> Void
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.45)
-                .ignoresSafeArea()
-
-            VStack(spacing: 12) {
-                if progress.totalItems > 0 {
-                    ProgressView(value: Double(progress.processedItems), total: Double(max(progress.totalItems, 1)))
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: 260)
-                } else {
-                    ProgressView()
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: 260)
+    
+    private struct RestorationProgressOverlayView: View {
+        @ObservedObject var progress: RestorationProgress
+        let cancelAction: () -> Void
+        
+        var body: some View {
+            ZStack {
+                Color.black.opacity(0.45)
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 12) {
+                    if progress.totalItems > 0 {
+                        ProgressView(value: Double(progress.processedItems), total: Double(max(progress.totalItems, 1)))
+                            .progressViewStyle(.linear)
+                            .frame(maxWidth: 260)
+                    } else {
+                        ProgressView()
+                            .progressViewStyle(.linear)
+                            .frame(maxWidth: 260)
+                    }
+                    
+                    if progress.currentBytesTotal > 0 {
+                        ProgressView(value: Double(progress.currentBytesProcessed), total: Double(max(progress.currentBytesTotal, 1)))
+                            .progressViewStyle(.linear)
+                            .frame(maxWidth: 260)
+                        Text("\(formattedBytes(progress.currentBytesProcessed)) of \(formattedBytes(progress.currentBytesTotal))")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else if progress.currentBytesProcessed > 0 {
+                        ProgressView()
+                            .progressViewStyle(.linear)
+                            .frame(maxWidth: 260)
+                        Text("\(formattedBytes(progress.currentBytesProcessed)) processed…")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ProgressView()
+                            .progressViewStyle(.linear)
+                            .frame(maxWidth: 260)
+                        Text("Preparing file size…")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Text(progress.statusMessage.isEmpty ? "Restoring items…" : progress.statusMessage)
+                        .font(.headline)
+                    
+                    if progress.totalItems > 0 {
+                        Text("\(progress.processedItems) of \(progress.totalItems)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    if progress.successItems > 0 || progress.failedItems > 0 {
+                        Text("\(progress.successItems) restored • \(progress.failedItems) failed")
+                            .font(.caption2)
+                            .foregroundStyle(progress.failedItems > 0 ? Color.orange : .secondary)
+                    }
+                    
+                    if !progress.detailMessage.isEmpty {
+                        Text(progress.detailMessage)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    
+                    if progress.cancelRequested {
+                        Text("Cancel requested… finishing current item")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
+                    
+                    Button("Cancel Restore") {
+                        cancelAction()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(progress.cancelRequested)
                 }
-
-                if progress.currentBytesTotal > 0 {
-                    ProgressView(value: Double(progress.currentBytesProcessed), total: Double(max(progress.currentBytesTotal, 1)))
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: 260)
-                    Text("\(formattedBytes(progress.currentBytesProcessed)) of \(formattedBytes(progress.currentBytesTotal))")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                } else if progress.currentBytesProcessed > 0 {
-                    ProgressView()
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: 260)
-                    Text("\(formattedBytes(progress.currentBytesProcessed)) processed…")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                } else {
-                    ProgressView()
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: 260)
-                    Text("Preparing file size…")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                Text(progress.statusMessage.isEmpty ? "Restoring items…" : progress.statusMessage)
-                    .font(.headline)
-
-                if progress.totalItems > 0 {
-                    Text("\(progress.processedItems) of \(progress.totalItems)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                if progress.successItems > 0 || progress.failedItems > 0 {
-                    Text("\(progress.successItems) restored • \(progress.failedItems) failed")
-                        .font(.caption2)
-                        .foregroundStyle(progress.failedItems > 0 ? Color.orange : .secondary)
-                }
-
-                if !progress.detailMessage.isEmpty {
-                    Text(progress.detailMessage)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-
-                if progress.cancelRequested {
-                    Text("Cancel requested… finishing current item")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                }
-
-                Button("Cancel Restore") {
-                    cancelAction()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .disabled(progress.cancelRequested)
+                .padding(24)
+                .background(.ultraThickMaterial)
+                .cornerRadius(16)
+                .shadow(radius: 18)
             }
-            .padding(24)
-            .background(.ultraThickMaterial)
-            .cornerRadius(16)
-            .shadow(radius: 18)
+            .transition(.opacity)
         }
-        .transition(.opacity)
+        
+        private func formattedBytes(_ value: Int64) -> String {
+            guard value > 0 else { return "0 bytes" }
+            let formatter = ByteCountFormatter()
+            formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
+            formatter.countStyle = .file
+            return formatter.string(fromByteCount: value)
+        }
     }
-
-    private func formattedBytes(_ value: Int64) -> String {
-        guard value > 0 else { return "0 bytes" }
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: value)
-    }
-}
     @State private var showingPhotosLibrary = false
     @State private var selectedPhoto: SecurePhoto?
     @State private var selectedPhotos: Set<UUID> = []
@@ -248,17 +248,17 @@ private struct RestorationProgressOverlayView: View {
             await runExportOperation(photos: photosToExport, to: folderURL)
         }
     }
-
+    
     private func runExportOperation(photos: [SecurePhoto], to folderURL: URL) async {
         guard !photos.isEmpty else {
             await MainActor.run { exportTask = nil }
             return
         }
-
+        
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
         formatter.countStyle = .file
-
+        
         await MainActor.run {
             exportInProgress = true
             exportItemsTotal = photos.count
@@ -269,19 +269,19 @@ private struct RestorationProgressOverlayView: View {
             exportBytesTotal = 0
             exportCancelRequested = false
         }
-
+        
         var successCount = 0
         var failureCount = 0
         var firstError: Error?
         var wasCancelled = false
         let fileManager = FileManager.default
-
+        
         for (index, photo) in photos.enumerated() {
             if Task.isCancelled {
                 wasCancelled = true
                 break
             }
-
+            
             let expectedSize = photo.fileSize
             let expectedSizeText = expectedSize > 0 ? formatter.string(fromByteCount: expectedSize) : nil
             await MainActor.run {
@@ -291,23 +291,23 @@ private struct RestorationProgressOverlayView: View {
                 exportBytesProcessed = 0
                 exportBytesTotal = expectedSize
             }
-
+            
             var destinationURL: URL?
-
+            
             do {
                 let tempURL = try await vaultManager.decryptPhotoToTemporaryURL(photo)
                 defer { try? fileManager.removeItem(at: tempURL) }
-
+                
                 destinationURL = folderURL.appendingPathComponent(photo.filename)
-
+                
                 if fileManager.fileExists(atPath: destinationURL!.path) {
                     try fileManager.removeItem(at: destinationURL!)
                 }
-
+                
                 let fileSizeValue = fileSizeValue(for: tempURL)
                 let sizeText = fileSizeValue > 0 ? formatter.string(fromByteCount: fileSizeValue) : nil
                 let detail = detailText(for: index + 1, total: photos.count, sizeDescription: sizeText)
-
+                
                 await MainActor.run {
                     exportStatusMessage = "Exporting \(photo.filename)…"
                     exportDetailMessage = detail
@@ -315,7 +315,7 @@ private struct RestorationProgressOverlayView: View {
                     exportBytesTotal = fileSizeValue
                     exportBytesProcessed = 0
                 }
-
+                
                 try Task.checkCancellation()
                 try await copyFileWithProgress(from: tempURL, to: destinationURL!, fileSize: fileSizeValue)
                 successCount += 1
@@ -338,17 +338,17 @@ private struct RestorationProgressOverlayView: View {
                     exportDetailMessage = error.localizedDescription
                 }
             }
-
+            
             await MainActor.run {
                 exportItemsProcessed = index + 1
                 exportBytesProcessed = exportBytesTotal
             }
         }
-
+        
         if Task.isCancelled {
             wasCancelled = true
         }
-
+        
         await MainActor.run {
             exportInProgress = false
             exportItemsProcessed = 0
@@ -361,7 +361,7 @@ private struct RestorationProgressOverlayView: View {
             exportTask = nil
             selectedPhotos.removeAll()
         }
-
+        
 #if os(macOS)
         await MainActor.run {
             presentExportSummary(
@@ -374,7 +374,7 @@ private struct RestorationProgressOverlayView: View {
         }
 #endif
     }
-
+    
     private func fileSizeValue(for url: URL) -> Int64 {
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
               let size = attributes[.size] as? NSNumber else {
@@ -382,18 +382,18 @@ private struct RestorationProgressOverlayView: View {
         }
         return size.int64Value
     }
-
+    
     private func copyFileWithProgress(from sourceURL: URL, to destinationURL: URL, fileSize: Int64) async throws {
         let chunkSize = 1_048_576 // 1 MB
         let inputHandle = try FileHandle(forReadingFrom: sourceURL)
         defer { try? inputHandle.close() }
-
+        
         FileManager.default.createFile(atPath: destinationURL.path, contents: nil)
         let outputHandle = try FileHandle(forWritingTo: destinationURL)
         defer { try? outputHandle.close() }
-
+        
         var totalCopied: Int64 = 0
-
+        
         while true {
             try Task.checkCancellation()
             guard let data = try inputHandle.read(upToCount: chunkSize), !data.isEmpty else {
@@ -496,6 +496,21 @@ private struct RestorationProgressOverlayView: View {
             print("Failed to restore photos: \(error)")
         }
     }
+
+    private func restoreSinglePhoto(_ photo: SecurePhoto) async {
+        await restorePhotos([photo], toSourceAlbums: true)
+    }
+
+    private func restorePhotos(_ photos: [SecurePhoto], toSourceAlbums: Bool) async {
+        guard !photos.isEmpty else { return }
+        do {
+            try await vaultManager.batchRestorePhotos(photos, restoreToSourceAlbum: toSourceAlbums)
+        } catch is CancellationError {
+            print("Restore canceled before completion")
+        } catch {
+            print("Failed to restore photos: \(error)")
+        }
+    }
     
     func deleteSelectedPhotos() {
         let photosToDelete = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
@@ -549,7 +564,7 @@ private struct RestorationProgressOverlayView: View {
         }
 #endif
     }
-
+    
     private func startDirectCaptureImport(with urls: [URL]) {
 #if os(macOS)
         guard !urls.isEmpty else { return }
@@ -559,8 +574,9 @@ private struct RestorationProgressOverlayView: View {
         }
 #endif
     }
-
-    private func startRestorationTask(_ operation: @escaping () async -> Void) {
+    
+    @discardableResult
+    private func startRestorationTask(_ operation: @escaping () async -> Void) -> Bool {
         guard !vaultManager.restorationProgress.isRestoring else {
 #if os(macOS)
             let alert = NSAlert()
@@ -572,15 +588,16 @@ private struct RestorationProgressOverlayView: View {
 #else
             print("Restore already in progress; ignoring additional request.")
 #endif
-            return
+            return false
         }
-
+        
         restorationTask?.cancel()
         restorationTask = Task(priority: .userInitiated) {
             await operation()
         }
+        return true
     }
-
+    
 #if os(macOS)
     private func runDirectCaptureImport(urls: [URL]) async {
         guard !urls.isEmpty else {
@@ -589,11 +606,11 @@ private struct RestorationProgressOverlayView: View {
             }
             return
         }
-
+        
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
         formatter.countStyle = .file
-
+        
         await MainActor.run {
             captureInProgress = true
             captureItemsTotal = urls.count
@@ -604,29 +621,29 @@ private struct RestorationProgressOverlayView: View {
             captureBytesProcessed = 0
             captureBytesTotal = 0
         }
-
+        
         var successCount = 0
         var failureCount = 0
         var firstError: String?
         var wasCancelled = false
         let fileManager = FileManager.default
-
+        
         for (index, url) in urls.enumerated() {
             if Task.isCancelled {
                 wasCancelled = true
                 break
             }
-
+            
             let filename = url.lastPathComponent
             let sizeText = fileSizeString(for: url, formatter: formatter)
             let detail = detailText(for: index + 1, total: urls.count, sizeDescription: sizeText)
-
+            
             var fileSizeValue: Int64 = 0
             if let attributes = try? fileManager.attributesOfItem(atPath: url.path),
                let fileSizeNumber = attributes[.size] as? NSNumber {
                 fileSizeValue = fileSizeNumber.int64Value
             }
-
+            
             if fileSizeValue > CryptoConstants.maxMediaFileSize {
                 failureCount += 1
                 if firstError == nil {
@@ -644,7 +661,7 @@ private struct RestorationProgressOverlayView: View {
                 }
                 continue
             }
-
+            
             await MainActor.run {
                 captureStatusMessage = "Encrypting \(filename)…"
                 captureDetailMessage = detail
@@ -652,7 +669,7 @@ private struct RestorationProgressOverlayView: View {
                 captureBytesTotal = fileSizeValue
                 captureBytesProcessed = 0
             }
-
+            
             do {
                 try Task.checkCancellation()
                 let mediaType: MediaType = isVideoFile(url) ? .video : .photo
@@ -682,17 +699,17 @@ private struct RestorationProgressOverlayView: View {
                     firstError = "\(filename): \(error.localizedDescription)"
                 }
             }
-
+            
             await MainActor.run {
                 captureItemsProcessed = index + 1
                 captureBytesProcessed = captureBytesTotal
             }
         }
-
+        
         if Task.isCancelled {
             wasCancelled = true
         }
-
+        
         await MainActor.run {
             captureInProgress = false
             captureDetailMessage = ""
@@ -704,7 +721,7 @@ private struct RestorationProgressOverlayView: View {
             captureBytesProcessed = 0
             captureBytesTotal = 0
         }
-
+        
         await MainActor.run {
             presentCaptureSummary(
                 successCount: successCount,
@@ -714,7 +731,7 @@ private struct RestorationProgressOverlayView: View {
             )
         }
     }
-
+    
     @MainActor
     private func presentCaptureSummary(successCount: Int, failureCount: Int, canceled: Bool, errorMessage: String?) {
         let alert = NSAlert()
@@ -742,7 +759,7 @@ private struct RestorationProgressOverlayView: View {
         alert.addButton(withTitle: "OK")
         alert.runModal()
     }
-
+    
     @MainActor
     private func presentExportSummary(successCount: Int, failureCount: Int, canceled: Bool, destinationFolderName: String, error: Error?) {
         let alert = NSAlert()
@@ -771,7 +788,7 @@ private struct RestorationProgressOverlayView: View {
         alert.runModal()
     }
 #endif
-
+    
     private func fileSizeString(for url: URL, formatter: ByteCountFormatter) -> String? {
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
               let size = attributes[.size] as? NSNumber else {
@@ -779,7 +796,7 @@ private struct RestorationProgressOverlayView: View {
         }
         return formatter.string(fromByteCount: size.int64Value)
     }
-
+    
     private func detailText(for index: Int, total: Int, sizeDescription: String?) -> String {
         var parts: [String] = ["Item \(index) of \(total)"]
         if let sizeDescription = sizeDescription {
@@ -787,13 +804,13 @@ private struct RestorationProgressOverlayView: View {
         }
         return parts.joined(separator: " • ")
     }
-
-
+    
+    
     private func isVideoFile(_ url: URL) -> Bool {
         let videoExtensions: Set<String> = ["mov", "mp4", "m4v", "avi", "mkv", "mpg", "mpeg", "hevc", "webm"]
         return videoExtensions.contains(url.pathExtension.lowercased())
     }
-
+    
     private func formattedBytes(_ value: Int64) -> String {
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
@@ -888,7 +905,7 @@ private struct RestorationProgressOverlayView: View {
         }
 #endif
     }
-
+    
     @ViewBuilder
     private var toolbarActions: some View {
         Button {
@@ -896,7 +913,7 @@ private struct RestorationProgressOverlayView: View {
         } label: {
             Image(systemName: "square.and.arrow.down")
         }
-
+        
 #if os(iOS)
         Button {
             showingCamera = true
@@ -911,7 +928,7 @@ private struct RestorationProgressOverlayView: View {
         }
         .disabled(captureInProgress || exportInProgress)
 #endif
-
+        
         Menu {
 #if os(macOS)
             Button {
@@ -919,24 +936,24 @@ private struct RestorationProgressOverlayView: View {
             } label: {
                 Label("Choose Vault Folder…", systemImage: "folder")
             }
-
+            
             Divider()
 #endif
-
+            
             Button {
                 vaultManager.removeDuplicates()
             } label: {
                 Label("Remove Duplicates", systemImage: "trash.slash")
             }
-
+            
             Divider()
-
+            
             Button {
                 vaultManager.lock()
             } label: {
                 Label("Lock Vault", systemImage: "lock.fill")
             }
-
+            
 #if DEBUG
             Divider()
             Button(role: .destructive) {
@@ -949,12 +966,12 @@ private struct RestorationProgressOverlayView: View {
             Image(systemName: "ellipsis.circle")
         }
     }
-
+    
     private var captureProgressOverlay: some View {
         ZStack {
             Color.black.opacity(0.45)
                 .ignoresSafeArea()
-
+            
             VStack(spacing: 12) {
                 if captureItemsTotal > 0 {
                     ProgressView(value: Double(captureItemsProcessed), total: Double(max(captureItemsTotal, 1)))
@@ -965,7 +982,7 @@ private struct RestorationProgressOverlayView: View {
                         .progressViewStyle(.linear)
                         .frame(maxWidth: 260)
                 }
-
+                
                 if captureBytesTotal > 0 {
                     ProgressView(value: Double(captureBytesProcessed), total: Double(max(captureBytesTotal, 1)))
                         .progressViewStyle(.linear)
@@ -977,28 +994,28 @@ private struct RestorationProgressOverlayView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
-
+                
                 Text(captureStatusMessage.isEmpty ? "Encrypting items…" : captureStatusMessage)
                     .font(.headline)
-
+                
                 if captureItemsTotal > 0 {
                     Text("\(captureItemsProcessed) of \(captureItemsTotal)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-
+                
                 if !captureDetailMessage.isEmpty {
                     Text(captureDetailMessage)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
-
+                
                 if captureCancelRequested {
                     Text("Cancel requested… finishing current file")
                         .font(.caption2)
                         .foregroundStyle(.orange)
                 }
-
+                
                 Button("Cancel Import") {
                     captureCancelRequested = true
                     captureStatusMessage = "Canceling import…"
@@ -1016,12 +1033,12 @@ private struct RestorationProgressOverlayView: View {
         }
         .transition(.opacity)
     }
-
+    
     private var exportProgressOverlay: some View {
         ZStack {
             Color.black.opacity(0.45)
                 .ignoresSafeArea()
-
+            
             VStack(spacing: 12) {
                 if exportItemsTotal > 0 {
                     ProgressView(value: Double(exportItemsProcessed), total: Double(max(exportItemsTotal, 1)))
@@ -1032,7 +1049,7 @@ private struct RestorationProgressOverlayView: View {
                         .progressViewStyle(.linear)
                         .frame(maxWidth: 260)
                 }
-
+                
                 if exportBytesTotal > 0 {
                     ProgressView(value: Double(exportBytesProcessed), total: Double(max(exportBytesTotal, 1)))
                         .progressViewStyle(.linear)
@@ -1048,28 +1065,28 @@ private struct RestorationProgressOverlayView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
-
+                
                 Text(exportStatusMessage.isEmpty ? "Exporting items…" : exportStatusMessage)
                     .font(.headline)
-
+                
                 if exportItemsTotal > 0 {
                     Text("\(exportItemsProcessed) of \(exportItemsTotal)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-
+                
                 if !exportDetailMessage.isEmpty {
                     Text(exportDetailMessage)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
-
+                
                 if exportCancelRequested {
                     Text("Cancel requested… finishing current file")
                         .font(.caption2)
                         .foregroundStyle(.orange)
                 }
-
+                
                 Button("Cancel Export") {
                     exportCancelRequested = true
                     exportStatusMessage = "Canceling export…"
@@ -1089,7 +1106,7 @@ private struct RestorationProgressOverlayView: View {
         }
         .transition(.opacity)
     }
-
+    
     private var restorationProgressOverlay: some View {
         RestorationProgressOverlayView(
             progress: vaultManager.restorationProgress,
@@ -1151,296 +1168,295 @@ private struct RestorationProgressOverlayView: View {
         ZStack {
             NavigationStack {
                 ScrollView {
-                VStack(spacing: 16) {
-                    if !selectedPhotos.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(spacing: 12) {
-                                Text("\(selectedPhotos.count) selected")
-                                    .font(.headline)
-                                    .lineLimit(1)
-                                    .layoutPriority(1)
-                                Spacer(minLength: 8)
-                                HStack(spacing: 8) {
-                                    Button {
-                                        restoreSelectedPhotos()
-                                    } label: {
-                                        Label("Restore", systemImage: "arrow.uturn.backward")
-                                    }
+                    VStack(spacing: 16) {
+                        if !selectedPhotos.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(spacing: 12) {
+                                    Text("\(selectedPhotos.count) selected")
+                                        .font(.headline)
+                                        .lineLimit(1)
+                                        .layoutPriority(1)
+                                    Spacer(minLength: 8)
+                                    HStack(spacing: 8) {
+                                        Button {
+                                            restoreSelectedPhotos()
+                                        } label: {
+                                            Label("Restore", systemImage: "arrow.uturn.backward")
+                                        }
 #if os(macOS)
-                                    Button {
-                                        exportSelectedPhotos()
-                                    } label: {
-                                        Label("Export", systemImage: "square.and.arrow.up")
-                                    }
-                                    .disabled(exportInProgress)
+                                        Button {
+                                            exportSelectedPhotos()
+                                        } label: {
+                                            Label("Export", systemImage: "square.and.arrow.up")
+                                        }
+                                        .disabled(exportInProgress)
 #endif
-                                    Button(role: .destructive) {
-                                        deleteSelectedPhotos()
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                                        Button(role: .destructive) {
+                                            deleteSelectedPhotos()
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
                                     }
+                                    .lineLimit(1)
+                                    .buttonStyle(.borderedProminent)
+                                    .controlSize(.small)
                                 }
-                                .lineLimit(1)
-                                .buttonStyle(.borderedProminent)
-                                .controlSize(.small)
                             }
+                            .padding()
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(alignment: .center, spacing: 12) {
+                                Label(privacyModeEnabled ? "Privacy Mode On" : "Privacy Mode Off",
+                                      systemImage: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                Spacer()
+                                Toggle("", isOn: $privacyModeEnabled)
+                                    .labelsHidden()
+                            }
+                            
+#if os(macOS)
+                            HStack(spacing: 12) {
+                                Button {
+                                    showingPhotosLibrary = true
+                                } label: {
+                                    Label("Import", systemImage: "square.and.arrow.down")
+                                }
+                                .buttonStyle(.bordered)
+                                
+                                Button {
+                                    showingFilePicker = true
+                                } label: {
+                                    Label("Capture", systemImage: "camera.fill")
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(captureInProgress || exportInProgress)
+                            }
+                            .controlSize(.small)
+#endif
                         }
                         .padding()
                         .background(.ultraThinMaterial)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
-                    }
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(alignment: .center, spacing: 12) {
-                            Label(privacyModeEnabled ? "Privacy Mode On" : "Privacy Mode Off",
-                                  systemImage: privacyModeEnabled ? "eye.slash.fill" : "eye.fill")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Toggle("", isOn: $privacyModeEnabled)
-                                .labelsHidden()
-                        }
-
-#if os(macOS)
-                        HStack(spacing: 12) {
-                            Button {
-                                showingPhotosLibrary = true
-                            } label: {
-                                Label("Import", systemImage: "square.and.arrow.down")
-                            }
-                            .buttonStyle(.bordered)
-
-                            Button {
-                                showingFilePicker = true
-                            } label: {
-                                Label("Capture", systemImage: "camera.fill")
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(captureInProgress || exportInProgress)
-                        }
-                        .controlSize(.small)
-#endif
-                    }
-                    .padding()
-                    .background(.ultraThinMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                    if let note = vaultManager.hideNotification {
-                        let validPhotos = note.photos?.filter { returned in
-                            vaultManager.hiddenPhotos.contains(where: { $0.id == returned.id })
-                        } ?? []
-
-                        VStack {
-                            HStack(spacing: 12) {
-                                Image(systemName: iconName(for: note.type))
-                                    .foregroundStyle(.white)
-                                    .padding(6)
-                                    .background(Circle().fill(iconColor(for: note.type)))
-
-                                Text(note.message)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.primary)
-
-                                Spacer()
-
-                                if !validPhotos.isEmpty {
-                                    Button("Undo") {
-                                        Task {
-                                            for photo in validPhotos {
-                                                try? await vaultManager.restorePhotoToLibrary(photo)
+                        
+                        if let note = vaultManager.hideNotification {
+                            let validPhotos = note.photos?.filter { returned in
+                                vaultManager.hiddenPhotos.contains(where: { $0.id == returned.id })
+                            } ?? []
+                            
+                            VStack {
+                                HStack(spacing: 12) {
+                                    Image(systemName: iconName(for: note.type))
+                                        .foregroundStyle(.white)
+                                        .padding(6)
+                                        .background(Circle().fill(iconColor(for: note.type)))
+                                    
+                                    Text(note.message)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.primary)
+                                    
+                                    Spacer()
+                                    
+                                    if !validPhotos.isEmpty {
+                                        Button("Undo") {
+                                            if startRestorationTask({
+                                                await restorePhotos(validPhotos, toSourceAlbums: true)
+                                            }) {
+                                                withAnimation {
+                                                    vaultManager.hideNotification = nil
+                                                }
                                             }
                                         }
+                                        .buttonStyle(.borderedProminent)
+                                        .controlSize(.small)
+                                    }
+                                    
+                                    Button("Open Photos App") {
+#if os(macOS)
+                                        NSWorkspace.shared.open(URL(string: "photos://")!)
+#endif
                                         withAnimation {
                                             vaultManager.hideNotification = nil
                                         }
                                     }
-                                    .buttonStyle(.borderedProminent)
+                                    .buttonStyle(.bordered)
                                     .controlSize(.small)
                                 }
-
-                                Button("Open Photos App") {
-#if os(macOS)
-                                    NSWorkspace.shared.open(URL(string: "photos://")!)
-#endif
+                                .padding(.horizontal)
+                                .padding(.vertical, 10)
+                                .frame(maxWidth: .infinity)
+                                .background(
+                                    Group {
+                                        if note.type == .success {
+                                            Color.green.opacity(0.14)
+                                        } else if note.type == .failure {
+                                            Color.red.opacity(0.14)
+                                        } else {
+                                            Color.gray.opacity(0.12)
+                                        }
+                                    }
+                                )
+                                .cornerRadius(8)
+                                .padding(.horizontal)
+                            }
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                            .onAppear {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + undoTimeoutSeconds) {
                                     withAnimation {
                                         vaultManager.hideNotification = nil
                                     }
                                 }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                            }
-                            .padding(.horizontal)
-                            .padding(.vertical, 10)
-                            .frame(maxWidth: .infinity)
-                            .background(
-                                Group {
-                                    if note.type == .success {
-                                        Color.green.opacity(0.14)
-                                    } else if note.type == .failure {
-                                        Color.red.opacity(0.14)
-                                    } else {
-                                        Color.gray.opacity(0.12)
-                                    }
-                                }
-                            )
-                            .cornerRadius(8)
-                            .padding(.horizontal)
-                        }
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                        .onAppear {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + undoTimeoutSeconds) {
-                                withAnimation {
-                                    vaultManager.hideNotification = nil
-                                }
                             }
                         }
-                    }
-
-                    if vaultManager.hiddenPhotos.isEmpty {
-                        VStack(spacing: 20) {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: 60))
-                                .foregroundStyle(.secondary)
-
-                            Text("No Hidden Items")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-
-                            Text("Hide photos and videos from your Photos Library")
-                                .font(.body)
-                                .foregroundStyle(.secondary)
-
-                            Button {
-                                showingPhotosLibrary = true
-                            } label: {
-                                Image(systemName: "square.and.arrow.down")
-                                    .font(.system(size: actionIconFontSize))
-                                    .foregroundColor(.white)
-                                    .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
-                                Text("Import from Photos")
-                                    .font(.headline)
-                                    .foregroundColor(.blue)
-                            }
-                            .buttonStyle(.plain)
-#if os(iOS)
-                            .controlSize(.mini)
-#else
-                            .controlSize(.large)
-#endif
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 40)
-                    } else {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 140, maximum: 200), spacing: 16)], spacing: 16) {
-                            ForEach(filteredPhotos) { photo in
+                        
+                        if vaultManager.hiddenPhotos.isEmpty {
+                            VStack(spacing: 20) {
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 60))
+                                    .foregroundStyle(.secondary)
+                                
+                                Text("No Hidden Items")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                
+                                Text("Hide photos and videos from your Photos Library")
+                                    .font(.body)
+                                    .foregroundStyle(.secondary)
+                                
                                 Button {
-                                    print("[DEBUG] Thumbnail single-click: id=\(photo.id)")
-                                    toggleSelection(photo.id)
+                                    showingPhotosLibrary = true
                                 } label: {
-                                    PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id), privacyModeEnabled: privacyModeEnabled)
+                                    Image(systemName: "square.and.arrow.down")
+                                        .font(.system(size: actionIconFontSize))
+                                        .foregroundColor(.white)
+                                        .frame(width: actionButtonDimension, height: actionButtonDimension)
+                                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
+                                    Text("Import from Photos")
+                                        .font(.headline)
+                                        .foregroundColor(.blue)
                                 }
                                 .buttonStyle(.plain)
-                                .focusable(false)
-                                .highPriorityGesture(TapGesture(count: 2).onEnded {
-                                    print("[DEBUG] Thumbnail double-click: id=\(photo.id)")
-                                    selectedPhoto = photo
-                                })
-                                .contextMenu {
+#if os(iOS)
+                                .controlSize(.mini)
+#else
+                                .controlSize(.large)
+#endif
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 40)
+                        } else {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140, maximum: 200), spacing: 16)], spacing: 16) {
+                                ForEach(filteredPhotos) { photo in
                                     Button {
-                                        Task {
-                                            try? await vaultManager.restorePhotoToLibrary(photo)
-                                        }
+                                        print("[DEBUG] Thumbnail single-click: id=\(photo.id)")
+                                        toggleSelection(photo.id)
                                     } label: {
-                                        Label("Restore to Library", systemImage: "arrow.uturn.backward")
+                                        PhotoThumbnailView(photo: photo, isSelected: selectedPhotos.contains(photo.id), privacyModeEnabled: privacyModeEnabled)
                                     }
-
-                                    Divider()
-
-                                    Button(role: .destructive) {
-                                        vaultManager.deletePhoto(photo)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                                    .buttonStyle(.plain)
+                                    .focusable(false)
+                                    .highPriorityGesture(TapGesture(count: 2).onEnded {
+                                        print("[DEBUG] Thumbnail double-click: id=\(photo.id)")
+                                        selectedPhoto = photo
+                                    })
+                                    .contextMenu {
+                                        Button {
+                                            startRestorationTask {
+                                                await restoreSinglePhoto(photo)
+                                            }
+                                        } label: {
+                                            Label("Restore to Library", systemImage: "arrow.uturn.backward")
+                                        }
+                                        
+                                        Divider()
+                                        
+                                        Button(role: .destructive) {
+                                            vaultManager.deletePhoto(photo)
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
                                     }
                                 }
                             }
+                            .padding(.horizontal, 4)
                         }
-                        .padding(.horizontal, 4)
                     }
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
+                    .padding()
+                    .frame(maxWidth: .infinity)
                 }
                 .navigationTitle("Hidden Items")
 #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    toolbarActions
+                    ToolbarItemGroup(placement: .navigationBarTrailing) {
+                        toolbarActions
+                    }
                 }
-            }
                 .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search hidden items")
 #else
                 .toolbar {
-                ToolbarItemGroup(placement: .primaryAction) {
-                    toolbarActions
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        toolbarActions
+                    }
                 }
-            }
                 .searchable(text: $searchText, prompt: "Search hidden items")
 #endif
                 .scrollDismissesKeyboard(.interactively)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onAppear {
-            if !didForcePrivacyModeThisSession {
-                // Ensure privacy mode starts enabled on each fresh app launch.
-                privacyModeEnabled = true
-                didForcePrivacyModeThisSession = true
-            }
-            print("DEBUG MainVaultView.onAppear: hiddenPhotos.count = \(vaultManager.hiddenPhotos.count)")
-            print("DEBUG MainVaultView.onAppear: isUnlocked = \(vaultManager.isUnlocked)")
-            print("DEBUG MainVaultView.onAppear: filteredPhotos.count = \(filteredPhotos.count)")
-            selectedPhotos.removeAll()
-            setupKeyboardShortcuts()
-            // vaultManager.touchActivity() - removed
+                if !didForcePrivacyModeThisSession {
+                    // Ensure privacy mode starts enabled on each fresh app launch.
+                    privacyModeEnabled = true
+                    didForcePrivacyModeThisSession = true
+                }
+                print("DEBUG MainVaultView.onAppear: hiddenPhotos.count = \(vaultManager.hiddenPhotos.count)")
+                print("DEBUG MainVaultView.onAppear: isUnlocked = \(vaultManager.isUnlocked)")
+                print("DEBUG MainVaultView.onAppear: filteredPhotos.count = \(filteredPhotos.count)")
+                selectedPhotos.removeAll()
+                setupKeyboardShortcuts()
+                // vaultManager.touchActivity() - removed
             }
             .alert("Restore Items", isPresented: $showingRestoreOptions) {
-            Button("Restore to Original Albums") {
-                startRestorationTask {
-                    await restoreToOriginalAlbums()
+                Button("Restore to Original Albums") {
+                    startRestorationTask {
+                        await restoreToOriginalAlbums()
+                    }
                 }
-            }
-            Button("Restore to New Album") {
-                startRestorationTask {
-                    await restoreToNewAlbum()
+                Button("Restore to New Album") {
+                    startRestorationTask {
+                        await restoreToNewAlbum()
+                    }
                 }
-            }
-            Button("Just Add to Library") {
-                startRestorationTask {
-                    await restoreToLibrary()
+                Button("Just Add to Library") {
+                    startRestorationTask {
+                        await restoreToLibrary()
+                    }
                 }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("How would you like to restore \(photosToRestore.count) item(s)?")
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("How would you like to restore \(photosToRestore.count) item(s)?")
             }
             .sheet(item: $selectedPhoto) { photo in
-            PhotoViewerSheet(photo: photo)
+                PhotoViewerSheet(photo: photo)
             }
             .sheet(isPresented: $showingPhotosLibrary) {
-            PhotosLibraryPicker()
+                PhotosLibraryPicker()
             }
 #if os(iOS)
             .sheet(isPresented: $showingCamera) {
-            CameraCaptureView()
-                .ignoresSafeArea()
+                CameraCaptureView()
+                    .ignoresSafeArea()
             }
 #endif
             .onChange(of: showingFilePicker) { newValue in
-            if newValue {
-                importFilesToVault()
+                if newValue {
+                    importFilesToVault()
+                }
             }
-        }
             if captureInProgress {
                 captureProgressOverlay
             }
@@ -1758,7 +1774,7 @@ struct PhotoViewerSheet: View {
         }
         videoURL = nil
     }
-
+    
     private func cancelDecryptTask() {
         decryptTask?.cancel()
         decryptTask = nil
@@ -1771,16 +1787,16 @@ struct PhotoViewerSheet: View {
     }
 }
 
-    private var decryptingPlaceholder: some View {
-        VStack(spacing: 10) {
-            ProgressView()
-                .scaleEffect(1.2)
-            Text("Decrypting...")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+private var decryptingPlaceholder: some View {
+    VStack(spacing: 10) {
+        ProgressView()
+            .scaleEffect(1.2)
+        Text("Decrypting...")
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+}
 
 // Custom Video Player View
 #if os(macOS)

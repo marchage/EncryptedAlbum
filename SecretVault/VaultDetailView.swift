@@ -112,20 +112,20 @@ struct VaultPhotoView: View {
             do {
                 let thumbnailData = try await VaultManager.shared.decryptThumbnail(for: photo)
                 if !thumbnailData.isEmpty {
-                    #if os(macOS)
+#if os(macOS)
                     await MainActor.run {
-                                            if let nsImage = NSImage(data: thumbnailData),
-                                               let cgImage = nsImage.cgImage(forProposedRect: nil, context: nil, hints: nil) {
-                                                thumbnail = Image(decorative: cgImage, scale: 1, orientation: .up)
+                        if let nsImage = NSImage(data: thumbnailData),
+                           let cgImage = nsImage.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                            thumbnail = Image(decorative: cgImage, scale: 1, orientation: .up)
                         }
                     }
-                    #else
+#else
                     if let uiImage = UIImage(data: thumbnailData) {
                         await MainActor.run {
                             thumbnail = Image(uiImage: uiImage)
                         }
                     }
-                    #endif
+#endif
                 }
             } catch {
                 // Thumbnail decryption failed, keep placeholder
@@ -220,53 +220,85 @@ struct PhotosLibraryPicker: View {
                     .padding(8)
                 }
             }
-            #if os(macOS)
+#if os(macOS)
             .frame(width: 220)
-            #else
+#else
             // On iOS (especially portrait) constrain the sidebar so it doesn't take
             // an excessive portion of the screen. Keep it flexible but bounded.
             .frame(minWidth: 80, idealWidth: 110, maxWidth: 140)
-            #endif
+#endif
             .background(.ultraThinMaterial)
             
             Divider()
             
             // Main content area
-        VStack(spacing: 0) {
-            // Header with library selector
-            #if os(iOS)
-            VStack(alignment: .leading, spacing: 12) {
-                // Title and main buttons
-                HStack(spacing: 8) {
+            VStack(spacing: 0) {
+                // Header with library selector
+#if os(iOS)
+                VStack(alignment: .leading, spacing: 12) {
+                    // Title and main buttons
+                    HStack(spacing: 8) {
+                        Text("Select Items to Hide")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.65)
+                        
+                        Spacer()
+                        
+                        Button("Cancel") {
+                            dismiss()
+                        }
+                        .keyboardShortcut(.cancelAction)
+                        .controlSize(.small)
+                        .font(.subheadline)
+                        
+                        Button("Hide (\(selectedAssets.count))") {
+                            Task {
+                                await hideSelectedPhotos()
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .font(.subheadline)
+                        .disabled(selectedAssets.isEmpty)
+                        .keyboardShortcut(.defaultAction)
+                    }
+                    
+                    // Library selector and options
+                    HStack(spacing: 12) {
+                        // Compact library selector with icons
+                        Picker("", selection: $selectedLibrary) {
+                            Label("Personal", systemImage: "person.fill").tag(LibraryType.personal)
+                            Label("Shared", systemImage: "person.2.fill").tag(LibraryType.shared)
+                            Label("All", systemImage: "square.grid.2x2.fill").tag(LibraryType.both)
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: .infinity)
+                        .onChange(of: selectedLibrary) { _, _ in
+                            loadPhotos()
+                        }
+                        
+                        // Manual fallback toggle only relevant when user selects Shared
+                        if selectedLibrary == .shared {
+                            Toggle("Force Shared", isOn: $forceSharedLibrary)
+                                .toggleStyle(.switch)
+                                .help("If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared.")
+                                .onChange(of: forceSharedLibrary) { _, _ in
+                                    loadPhotos()
+                                }
+                        }
+                    }
+                }
+                .padding()
+                .background(.ultraThinMaterial)
+#else
+                HStack {
                     Text("Select Items to Hide")
                         .font(.headline)
-                        .fontWeight(.semibold)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.65)
                     
                     Spacer()
                     
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .keyboardShortcut(.cancelAction)
-                    .controlSize(.small)
-                    .font(.subheadline)
-                    
-                    Button("Hide (\(selectedAssets.count))") {
-                        Task {
-                            await hideSelectedPhotos()
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .font(.subheadline)
-                    .disabled(selectedAssets.isEmpty)
-                    .keyboardShortcut(.defaultAction)
-                }
-                
-                // Library selector and options
-                HStack(spacing: 12) {
                     // Compact library selector with icons
                     Picker("", selection: $selectedLibrary) {
                         Label("Personal", systemImage: "person.fill").tag(LibraryType.personal)
@@ -274,143 +306,111 @@ struct PhotosLibraryPicker: View {
                         Label("All", systemImage: "square.grid.2x2.fill").tag(LibraryType.both)
                     }
                     .pickerStyle(.segmented)
-                    .frame(maxWidth: .infinity)
-                    .onChange(of: selectedLibrary) { _, _ in
+                    .frame(width: 280)
+                    .onChange(of: selectedLibrary) { _ in
                         loadPhotos()
                     }
-                    
                     // Manual fallback toggle only relevant when user selects Shared
-                    if selectedLibrary == .shared {
-                        Toggle("Force Shared", isOn: $forceSharedLibrary)
-                            .toggleStyle(.switch)
-                            .help("If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared.")
-                            .onChange(of: forceSharedLibrary) { _, _ in
-                                loadPhotos()
-                            }
+                    Toggle("Force Shared", isOn: $forceSharedLibrary)
+                        .toggleStyle(.switch)
+                        .help("If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared.")
+                        .onChange(of: forceSharedLibrary) { _ in
+                            if selectedLibrary == .shared { loadPhotos() }
+                        }
+                        .padding(.leading, 8)
+                        .frame(maxWidth: 130)
+                    
+                    Button("Cancel") {
+                        dismiss()
                     }
-                }
-            }
-            .padding()
-            .background(.ultraThinMaterial)
-            #else
-            HStack {
-                Text("Select Items to Hide")
-                    .font(.headline)
-                
-                Spacer()
-                
-                // Compact library selector with icons
-                Picker("", selection: $selectedLibrary) {
-                    Label("Personal", systemImage: "person.fill").tag(LibraryType.personal)
-                    Label("Shared", systemImage: "person.2.fill").tag(LibraryType.shared)
-                    Label("All", systemImage: "square.grid.2x2.fill").tag(LibraryType.both)
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 280)
-                .onChange(of: selectedLibrary) { _ in
-                    loadPhotos()
-                }
-                // Manual fallback toggle only relevant when user selects Shared
-                Toggle("Force Shared", isOn: $forceSharedLibrary)
-                    .toggleStyle(.switch)
-                    .help("If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared.")
-                    .onChange(of: forceSharedLibrary) { _ in
-                        if selectedLibrary == .shared { loadPhotos() }
-                    }
-                    .padding(.leading, 8)
-                    .frame(maxWidth: 130)
-                
-                Button("Cancel") {
-                    dismiss()
-                }
-                .keyboardShortcut(.cancelAction)
-                
-                Button("Hide Selected (\(selectedAssets.count))") {
-                    Task {
-                        await hideSelectedPhotos()
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(selectedAssets.isEmpty)
-                .keyboardShortcut(.defaultAction)
-            }
-            .padding()
-            .background(.ultraThinMaterial)
-            #endif
-            
-            Divider()
-            
-            // Photos grid
-            if isLoading {
-                VStack {
-                    ProgressView()
-                    Text("Loading items...")
-                        .foregroundStyle(.secondary)
-                        .padding(.top)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if allPhotos.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "photo.on.rectangle")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.secondary)
-                    Text("No items found")
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 20, pinnedViews: [.sectionHeaders]) {
-                        ForEach(groupedPhotos, id: \.album) { group in
-                            Section {
-                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 8)], spacing: 8) {
-                                    ForEach(group.photos, id: \.asset.localIdentifier) { photo in
-                                        PhotoAssetView(
-                                            asset: photo.asset,
-                                            isSelected: selectedAssets.contains(photo.asset.localIdentifier)
-                                        )
-                                        .onTapGesture {
-                                            toggleSelection(photo.asset.localIdentifier)
-                                        }
-                                    }
-                                }
-                            } header: {
-                                HStack {
-                                    Text(group.album)
-                                        .font(.headline)
-                                    Spacer()
-                                    Text("\(group.photos.count) items")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    
-                                    Button(action: {
-                                        toggleAlbumSelection(group.photos.map { $0.asset.localIdentifier })
-                                    }) {
-                                        Text(isAlbumSelected(group.photos.map { $0.asset.localIdentifier }) ? "Deselect All" : "Select All")
-                                            .font(.caption)
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                }
-                                .padding(.horizontal)
-                                .padding(.vertical, 8)
-                                .background(.ultraThinMaterial)
-                            }
+                    .keyboardShortcut(.cancelAction)
+                    
+                    Button("Hide Selected (\(selectedAssets.count))") {
+                        Task {
+                            await hideSelectedPhotos()
                         }
                     }
-                    .padding()
+                    .buttonStyle(.borderedProminent)
+                    .disabled(selectedAssets.isEmpty)
+                    .keyboardShortcut(.defaultAction)
+                }
+                .padding()
+                .background(.ultraThinMaterial)
+#endif
+                
+                Divider()
+                
+                // Photos grid
+                if isLoading {
+                    VStack {
+                        ProgressView()
+                        Text("Loading items...")
+                            .foregroundStyle(.secondary)
+                            .padding(.top)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if allPhotos.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "photo.on.rectangle")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.secondary)
+                        Text("No items found")
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 20, pinnedViews: [.sectionHeaders]) {
+                            ForEach(groupedPhotos, id: \.album) { group in
+                                Section {
+                                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 8)], spacing: 8) {
+                                        ForEach(group.photos, id: \.asset.localIdentifier) { photo in
+                                            PhotoAssetView(
+                                                asset: photo.asset,
+                                                isSelected: selectedAssets.contains(photo.asset.localIdentifier)
+                                            )
+                                            .onTapGesture {
+                                                toggleSelection(photo.asset.localIdentifier)
+                                            }
+                                        }
+                                    }
+                                } header: {
+                                    HStack {
+                                        Text(group.album)
+                                            .font(.headline)
+                                        Spacer()
+                                        Text("\(group.photos.count) items")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        
+                                        Button(action: {
+                                            toggleAlbumSelection(group.photos.map { $0.asset.localIdentifier })
+                                        }) {
+                                            Text(isAlbumSelected(group.photos.map { $0.asset.localIdentifier }) ? "Deselect All" : "Select All")
+                                                .font(.caption)
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                    }
+                                    .padding(.horizontal)
+                                    .padding(.vertical, 8)
+                                    .background(.ultraThinMaterial)
+                                }
+                            }
+                        }
+                        .padding()
+                    }
                 }
             }
         }
-        }
-        #if os(macOS)
+#if os(macOS)
         .frame(minWidth: 900, minHeight: 700)
-        #endif
+#endif
         .onAppear {
             requestPhotosAccess()
         }
         .onAppear {
-            #if os(macOS)
+#if os(macOS)
             // Install a local key monitor so Cmd+A selects all items when this picker is focused.
             keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
                 if event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command),
@@ -426,15 +426,15 @@ struct PhotosLibraryPicker: View {
                 }
                 return event
             }
-            #endif
+#endif
         }
         .onDisappear {
-            #if os(macOS)
+#if os(macOS)
             if let monitor = keyMonitor {
                 NSEvent.removeMonitor(monitor)
                 keyMonitor = nil
             }
-            #endif
+#endif
         }
         // Notify main view and dismiss when hiding completes instead of showing an alert here.
         .overlay {
@@ -461,7 +461,7 @@ struct PhotosLibraryPicker: View {
     private var uniqueAlbums: [String] {
         Array(Set(allPhotos.map { $0.album }))
     }
-
+    
     // Number of unique assets across all albums (counts each PHAsset once)
     private var uniqueAllPhotosCount: Int {
         Set(allPhotos.map { $0.asset.localIdentifier }).count
@@ -521,7 +521,7 @@ struct PhotosLibraryPicker: View {
                 }
             }
             var photos: [(String, PHAsset)] = []
-
+            
             // Track seen asset IDs per album name. Some PhotoKit collections may share the same
             // album name (e.g. multiple 'Recents' collections), which previously allowed the same
             // PHAsset to be appended multiple times under the same displayed album name. That
@@ -529,14 +529,14 @@ struct PhotosLibraryPicker: View {
             // duplicate-ID warnings. We dedupe by album name here so the UI shows each asset
             // once per displayed album.
             var seenPerAlbum: [String: Set<String>] = [:]
-
+            
             for album in albums {
                 let assets = PhotosLibraryService.shared.getAssets(from: album.collection)
                 let albumKey = album.name
                 if seenPerAlbum[albumKey] == nil {
                     seenPerAlbum[albumKey] = Set<String>()
                 }
-
+                
                 for asset in assets {
                     let id = asset.localIdentifier
                     if seenPerAlbum[albumKey]!.contains(id) { continue }
@@ -544,9 +544,9 @@ struct PhotosLibraryPicker: View {
                     photos.append((albumKey, asset))
                 }
             }
-
+            
             // (diagnostic prints removed)
-
+            
             DispatchQueue.main.async {
                 self.allPhotos = photos
                 self.isLoading = false
@@ -588,68 +588,68 @@ struct PhotosLibraryPicker: View {
         // Process assets in batches to limit concurrency
         for batch in assetsToHide.chunked(into: maxConcurrentOperations) {
             await withTaskGroup(of: (PHAsset, Bool).self) { group in
-                    for photoData in batch {
-                        group.addTask {
-                            do {
-                                print("Processing asset: \(photoData.asset.localIdentifier)")
-                                
-                                guard let mediaResult = await PhotosLibraryService.shared.getMediaDataAsync(for: photoData.asset) else {
-                                    print("❌ Failed to get media data for asset: \(photoData.asset.localIdentifier)")
-                                    return (photoData.asset, false)
-                                }
-
-                                defer {
-                                    if mediaResult.shouldDeleteFileWhenFinished, let tempURL = mediaResult.fileURL {
-                                        try? FileManager.default.removeItem(at: tempURL)
-                                    }
-                                }
-
-                                if let fileURL = mediaResult.fileURL {
-                                    try await vaultManager.hidePhoto(
-                                        mediaSource: .fileURL(fileURL),
-                                        filename: mediaResult.filename,
-                                        dateTaken: mediaResult.dateTaken,
-                                        sourceAlbum: photoData.album,
-                                        assetIdentifier: photoData.asset.localIdentifier,
-                                        mediaType: mediaResult.mediaType,
-                                        duration: mediaResult.duration,
-                                        location: mediaResult.location,
-                                        isFavorite: mediaResult.isFavorite
-                                    )
-                                } else if let mediaData = mediaResult.data {
-                                    try await vaultManager.hidePhoto(
-                                        imageData: mediaData,
-                                        filename: mediaResult.filename,
-                                        dateTaken: mediaResult.dateTaken,
-                                        sourceAlbum: photoData.album,
-                                        assetIdentifier: photoData.asset.localIdentifier,
-                                        mediaType: mediaResult.mediaType,
-                                        duration: mediaResult.duration,
-                                        location: mediaResult.location,
-                                        isFavorite: mediaResult.isFavorite
-                                    )
-                                } else {
-                                    print("❌ Media result lacked both data and file URL for asset: \(photoData.asset.localIdentifier)")
-                                    return (photoData.asset, false)
-                                }
-                                
-                                print("✅ \(mediaResult.mediaType == .video ? "Video" : "Photo") added to vault: \(mediaResult.filename)")
-                                return (photoData.asset, true)
-                            } catch {
-                                print("❌ Failed to add media to vault: \(error.localizedDescription)")
+                for photoData in batch {
+                    group.addTask {
+                        do {
+                            print("Processing asset: \(photoData.asset.localIdentifier)")
+                            
+                            guard let mediaResult = await PhotosLibraryService.shared.getMediaDataAsync(for: photoData.asset) else {
+                                print("❌ Failed to get media data for asset: \(photoData.asset.localIdentifier)")
                                 return (photoData.asset, false)
                             }
+                            
+                            defer {
+                                if mediaResult.shouldDeleteFileWhenFinished, let tempURL = mediaResult.fileURL {
+                                    try? FileManager.default.removeItem(at: tempURL)
+                                }
+                            }
+                            
+                            if let fileURL = mediaResult.fileURL {
+                                try await vaultManager.hidePhoto(
+                                    mediaSource: .fileURL(fileURL),
+                                    filename: mediaResult.filename,
+                                    dateTaken: mediaResult.dateTaken,
+                                    sourceAlbum: photoData.album,
+                                    assetIdentifier: photoData.asset.localIdentifier,
+                                    mediaType: mediaResult.mediaType,
+                                    duration: mediaResult.duration,
+                                    location: mediaResult.location,
+                                    isFavorite: mediaResult.isFavorite
+                                )
+                            } else if let mediaData = mediaResult.data {
+                                try await vaultManager.hidePhoto(
+                                    imageData: mediaData,
+                                    filename: mediaResult.filename,
+                                    dateTaken: mediaResult.dateTaken,
+                                    sourceAlbum: photoData.album,
+                                    assetIdentifier: photoData.asset.localIdentifier,
+                                    mediaType: mediaResult.mediaType,
+                                    duration: mediaResult.duration,
+                                    location: mediaResult.location,
+                                    isFavorite: mediaResult.isFavorite
+                                )
+                            } else {
+                                print("❌ Media result lacked both data and file URL for asset: \(photoData.asset.localIdentifier)")
+                                return (photoData.asset, false)
+                            }
+                            
+                            print("✅ \(mediaResult.mediaType == .video ? "Video" : "Photo") added to vault: \(mediaResult.filename)")
+                            return (photoData.asset, true)
+                        } catch {
+                            print("❌ Failed to add media to vault: \(error.localizedDescription)")
+                            return (photoData.asset, false)
                         }
                     }
-                    
-                    // Collect results from this batch
-                    for await (asset, success) in group {
-                        processedCount += 1
-                        if success {
-                            successfulAssets.append(asset)
-                        }
-                        print("Progress: \(processedCount)/\(totalCount) items processed")
+                }
+                
+                // Collect results from this batch
+                for await (asset, success) in group {
+                    processedCount += 1
+                    if success {
+                        successfulAssets.append(asset)
                     }
+                    print("Progress: \(processedCount)/\(totalCount) items processed")
+                }
             }
         }
         
@@ -670,7 +670,7 @@ struct PhotosLibraryPicker: View {
         } else {
             uniqueSuccessfulAssets = []
         }
-
+        
         // UI updates and Photos deletions must run on main
         if !uniqueSuccessfulAssets.isEmpty {
             PhotosLibraryService.shared.batchDeleteAssets(uniqueSuccessfulAssets) { success in
@@ -679,7 +679,7 @@ struct PhotosLibraryPicker: View {
                 } else {
                     print("Failed to delete some photos from library")
                 }
-
+                
                 // Find the SecurePhoto records that correspond to the successfully processed PHAssets
                 let ids = Set(uniqueSuccessfulAssets.map { $0.localIdentifier })
                 let newlyHidden = vaultManager.hiddenPhotos.filter { photo in
@@ -688,9 +688,9 @@ struct PhotosLibraryPicker: View {
                     }
                     return false
                 }
-
+                
                 importing = false
-
+                
                 // Notify main UI with undo-capable notification and dismiss the picker
                 vaultManager.hideNotification = HideNotification(
                     message: "Hidden \(uniqueSuccessfulAssets.count) item(s). Moved to Recently Deleted.",
@@ -757,11 +757,11 @@ struct PhotoAssetView: View {
         ) { image, _ in
             DispatchQueue.main.async {
                 if let image = image {
-                    #if os(macOS)
+#if os(macOS)
                     thumbnail = Image(nsImage: image)
-                    #else
+#else
                     thumbnail = Image(uiImage: image)
-                    #endif
+#endif
                 } else {
                     // Thumbnail unavailable for this asset; ignore silently
                 }
