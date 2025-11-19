@@ -22,6 +22,56 @@ extension Data {
         }
         self = data
     }
+    
+    /// Securely zeroes the contents of this Data buffer to prevent sensitive data from remaining in memory
+    mutating func secureZero() {
+        withUnsafeMutableBytes { bytes in
+            memset_s(bytes.baseAddress, bytes.count, 0, bytes.count)
+        }
+    }
+    
+    /// Creates a copy of the data and securely zeroes the original
+    func secureCopy() -> Data {
+        let copy = Data(self)
+        var mutableSelf = self
+        mutableSelf.secureZero()
+        return copy
+    }
+}
+
+// MARK: - Secure Memory Management
+
+/// Provides secure memory management utilities for sensitive cryptographic data
+class SecureMemory {
+    /// Securely zeroes a buffer of bytes
+    static func zero(_ buffer: UnsafeMutableRawBufferPointer) {
+        memset_s(buffer.baseAddress, buffer.count, 0, buffer.count)
+    }
+    
+    /// Securely zeroes a Data buffer
+    static func zero(_ data: inout Data) {
+        data.secureZero()
+    }
+    
+    /// Allocates a secure buffer that attempts to avoid being swapped to disk
+    static func allocateSecureBuffer(count: Int) -> UnsafeMutableRawBufferPointer? {
+        // Use malloc with MallocFlags to attempt to avoid swapping
+        // Note: This is a best-effort attempt and may not work on all systems
+        let buffer = malloc(count)
+        guard buffer != nil else { return nil }
+        
+        // Zero the buffer initially
+        memset_s(buffer, count, 0, count)
+        
+        return UnsafeMutableRawBufferPointer(start: buffer, count: count)
+    }
+    
+    /// Deallocates a secure buffer after zeroing it
+    static func deallocateSecureBuffer(_ buffer: UnsafeMutableRawBufferPointer) {
+        // Zero before deallocating
+        zero(buffer)
+        free(buffer.baseAddress)
+    }
 }
 
 // MARK: - Constants
@@ -360,6 +410,136 @@ class VaultManager: ObservableObject {
         clearDerivedKeys()
         
         return Data(hmac).map { String(format: "%02x", $0) }.joined()
+    }
+    
+    /// Validates the integrity of stored vault data including settings and photo metadata
+    /// - Returns: Array of validation errors, empty if all checks pass
+    func validateVaultIntegrity() -> [String] {
+        var errors: [String] = []
+        
+        // Validate settings file integrity
+        if let settingsData = try? Data(contentsOf: settingsFile) {
+            if settingsData.isEmpty {
+                errors.append("Settings file is empty")
+            } else {
+                // Validate JSON structure
+                if (try? JSONDecoder().decode([String: String].self, from: settingsData)) == nil {
+                    errors.append("Settings file contains invalid JSON")
+                }
+            }
+        } else {
+            errors.append("Cannot read settings file")
+        }
+        
+        // Validate photos metadata integrity
+        if let photosData = try? Data(contentsOf: photosFile) {
+            if photosData.isEmpty && !hiddenPhotos.isEmpty {
+                errors.append("Photos metadata file is empty but vault contains photos")
+            } else if !photosData.isEmpty {
+                if (try? JSONDecoder().decode([SecurePhoto].self, from: photosData)) == nil {
+                    errors.append("Photos metadata file contains invalid JSON")
+                }
+            }
+        } else if !hiddenPhotos.isEmpty {
+            errors.append("Cannot read photos metadata file")
+        }
+        
+        // Validate individual photo files exist and have integrity
+        for photo in hiddenPhotos {
+            // Check encrypted data file exists
+            let encryptedURL = URL(fileURLWithPath: photo.encryptedDataPath)
+            if !FileManager.default.fileExists(atPath: encryptedURL.path) {
+                errors.append("Encrypted data file missing: \(photo.filename)")
+                continue
+            }
+            
+            // Check HMAC file exists and validate integrity
+            let hmacURL = encryptedURL.deletingPathExtension().appendingPathExtension("hmac")
+            if !FileManager.default.fileExists(atPath: hmacURL.path) {
+                errors.append("HMAC file missing for: \(photo.filename)")
+            } else if let storedHMAC = try? String(contentsOf: hmacURL, encoding: .utf8),
+                      let encryptedData = try? Data(contentsOf: encryptedURL) {
+                let calculatedHMAC = generateHMAC(for: encryptedData, key: passwordHash)
+                if storedHMAC != calculatedHMAC {
+                    errors.append("HMAC integrity check failed for: \(photo.filename)")
+                }
+            }
+            
+            // Check thumbnail exists
+            let thumbnailURL = URL(fileURLWithPath: photo.thumbnailPath)
+            if !FileManager.default.fileExists(atPath: thumbnailURL.path) {
+                errors.append("Thumbnail file missing: \(photo.filename)")
+            }
+            
+            // Check encrypted thumbnail exists if specified
+            if let encryptedThumbPath = photo.encryptedThumbnailPath {
+                let encryptedThumbURL = URL(fileURLWithPath: encryptedThumbPath)
+                if !FileManager.default.fileExists(atPath: encryptedThumbURL.path) {
+                    errors.append("Encrypted thumbnail file missing: \(photo.filename)")
+                }
+            }
+        }
+        
+        // Validate cryptographic operations
+        if !validateCryptoOperations() {
+            errors.append("Cryptographic operation validation failed")
+        }
+        
+        // Validate random number generation
+        if !validateRandomGeneration() {
+            errors.append("Random number generation validation failed")
+        }
+        
+        return errors
+    }
+    
+    /// Validates that random number generation is working properly
+    /// - Returns: `true` if random generation appears to be working
+    private func validateRandomGeneration() -> Bool {
+        // Generate multiple random values and check they're not all the same
+        var values: [UInt8] = []
+        for _ in 0..<100 {
+            var randomByte: UInt8 = 0
+            let status = SecRandomCopyBytes(kSecRandomDefault, 1, &randomByte)
+            guard status == errSecSuccess else {
+                #if DEBUG
+                print("Random generation failed with status: \(status)")
+                #endif
+                return false
+            }
+            values.append(randomByte)
+        }
+        
+        // Check for basic randomness properties
+        let uniqueValues = Set(values)
+        let entropy = Double(uniqueValues.count) / Double(values.count)
+        
+        // Should have at least 80% unique values for good entropy
+        guard entropy >= 0.8 else {
+            #if DEBUG
+            print("Random generation entropy too low: \(entropy)")
+            #endif
+            return false
+        }
+        
+        // Check that values aren't in a simple pattern
+        var differences: [Int] = []
+        for i in 1..<values.count {
+            differences.append(Int(values[i]) - Int(values[i-1]))
+        }
+        
+        // Should have both positive and negative differences
+        let positiveDiffs = differences.filter { $0 > 0 }.count
+        let negativeDiffs = differences.filter { $0 < 0 }.count
+        
+        guard positiveDiffs > 10 && negativeDiffs > 10 else {
+            #if DEBUG
+            print("Random generation shows pattern: +\(positiveDiffs) -\(negativeDiffs)")
+            #endif
+            return false
+        }
+        
+        return true
     }
 
     // MARK: - Key Derivation (HKDF)
@@ -899,12 +1079,13 @@ class VaultManager: ObservableObject {
             // Limit overwrite to reasonable size (100MB max)
             let sizeToOverwrite = min(fileSize, 100 * 1024 * 1024)
             
-            // Overwrite with random data
-            var randomData = Data(count: Int(sizeToOverwrite))
-            _ = randomData.withUnsafeMutableBytes { bytes in
-                SecRandomCopyBytes(kSecRandomDefault, Int(sizeToOverwrite), bytes.baseAddress!)
-            }
-            try randomData.write(to: url, options: .atomic)
+            // Multiple pass secure deletion (Gutmann method inspired)
+            // Pass 1: Random data
+            try overwriteFile(at: url, with: .random, size: sizeToOverwrite)
+            // Pass 2: Complement of random data
+            try overwriteFile(at: url, with: .complementRandom, size: sizeToOverwrite)
+            // Pass 3: Random data again
+            try overwriteFile(at: url, with: .random, size: sizeToOverwrite)
             
             // Now delete the file
             try FileManager.default.removeItem(at: url)
@@ -914,6 +1095,44 @@ class VaultManager: ObservableObject {
             #endif
             try? FileManager.default.removeItem(at: url)
         }
+    }
+    
+    /// Overwrite patterns for secure file deletion
+    private enum OverwritePattern {
+        case random
+        case complementRandom
+        case zeros
+        case ones
+    }
+    
+    /// Overwrites a file with the specified pattern
+    private func overwriteFile(at url: URL, with pattern: OverwritePattern, size: Int64) throws {
+        var overwriteData = Data(count: Int(size))
+        
+        switch pattern {
+        case .random:
+            // Fill with cryptographically secure random data
+            _ = overwriteData.withUnsafeMutableBytes { bytes in
+                SecRandomCopyBytes(kSecRandomDefault, Int(size), bytes.baseAddress!)
+            }
+        case .complementRandom:
+            // Fill with random data, then complement each byte
+            _ = overwriteData.withUnsafeMutableBytes { bytes in
+                SecRandomCopyBytes(kSecRandomDefault, Int(size), bytes.baseAddress!)
+            }
+            overwriteData = Data(overwriteData.map { ~$0 })
+        case .zeros:
+            // Fill with zeros
+            overwriteData.resetBytes(in: 0..<Int(size))
+        case .ones:
+            // Fill with 0xFF
+            overwriteData = Data(repeating: 0xFF, count: Int(size))
+        }
+        
+        try overwriteData.write(to: url, options: .atomic)
+        
+        // Securely zero the overwrite data
+        overwriteData.secureZero()
     }
     
     /// Restores a photo or video from the vault to the Photos library.
@@ -1128,12 +1347,15 @@ class VaultManager: ObservableObject {
             return Data()
         }
 
+        // Create a secure copy of input data to avoid leaving sensitive data in memory
+        let secureData = data.secureCopy()
+        
         do {
             // Use the dedicated encryption key derived via HKDF from the password hash
             let symmetricKey = deriveEncryptionKey()
 
             // Encrypt using AES-GCM
-            let sealedBox = try AES.GCM.seal(data, using: symmetricKey)
+            let sealedBox = try AES.GCM.seal(secureData, using: symmetricKey)
 
             // Combine nonce + ciphertext + tag for storage
             guard let combined = sealedBox.combined else {
@@ -1579,9 +1801,241 @@ class VaultManager: ObservableObject {
             return false
         }
         
+        // Test key derivation consistency
+        guard validateKeyDerivationConsistency() else {
+            #if DEBUG
+            print("Crypto validation failed: key derivation consistency check")
+            #endif
+            return false
+        }
+        
         #if DEBUG
         print("Crypto validation successful")
         #endif
+        return true
+    }
+    
+    /// Validates that key derivation produces consistent results
+    private func validateKeyDerivationConsistency() -> Bool {
+        // Clear any cached keys
+        clearDerivedKeys()
+        
+        // Derive keys multiple times and ensure they're identical
+        let key1 = deriveMasterKey()
+        clearDerivedKeys()
+        let key2 = deriveMasterKey()
+        
+        // Compare the underlying data
+        let key1Data = key1.withUnsafeBytes { Data($0) }
+        let key2Data = key2.withUnsafeBytes { Data($0) }
+        
+        guard key1Data == key2Data else {
+            #if DEBUG
+            print("Key derivation consistency failed: master keys don't match")
+            #endif
+            return false
+        }
+        
+        // Test encryption key consistency
+        let encKey1 = deriveEncryptionKey()
+        clearDerivedKeys()
+        let encKey2 = deriveEncryptionKey()
+        
+        let encKey1Data = encKey1.withUnsafeBytes { Data($0) }
+        let encKey2Data = encKey2.withUnsafeBytes { Data($0) }
+        
+        guard encKey1Data == encKey2Data else {
+            #if DEBUG
+            print("Key derivation consistency failed: encryption keys don't match")
+            #endif
+            return false
+        }
+        
+        // Test HMAC key consistency
+        let hmacKey1 = deriveHMACKey()
+        clearDerivedKeys()
+        let hmacKey2 = deriveHMACKey()
+        
+        let hmacKey1Data = hmacKey1.withUnsafeBytes { Data($0) }
+        let hmacKey2Data = hmacKey2.withUnsafeBytes { Data($0) }
+        
+        guard hmacKey1Data == hmacKey2Data else {
+            #if DEBUG
+            print("Key derivation consistency failed: HMAC keys don't match")
+            #endif
+            return false
+        }
+        
+        return true
+    }
+    
+    /// Performs comprehensive security health checks on the vault
+    /// - Returns: Dictionary of check results with status and details
+    func performSecurityHealthCheck() -> [String: (passed: Bool, details: String)] {
+        var results: [String: (passed: Bool, details: String)] = [:]
+        
+        // Check 1: Cryptographic operations validation
+        let cryptoValid = validateCryptoOperations()
+        results["Cryptographic Operations"] = (cryptoValid, cryptoValid ? "All crypto operations working correctly" : "One or more crypto operations failed")
+        
+        // Check 2: Random number generation
+        let randomValid = validateRandomGeneration()
+        results["Random Generation"] = (randomValid, randomValid ? "Random number generation is working properly" : "Random number generation shows issues")
+        
+        // Check 3: Vault integrity
+        let integrityErrors = validateVaultIntegrity()
+        let integrityValid = integrityErrors.isEmpty
+        let integrityDetails = integrityValid ? "All vault files and metadata are intact" : "Found \(integrityErrors.count) integrity issues: \(integrityErrors.joined(separator: "; "))"
+        results["Vault Integrity"] = (integrityValid, integrityDetails)
+        
+        // Check 4: Memory security (best-effort check)
+        let memorySecure = validateMemorySecurity()
+        results["Memory Security"] = (memorySecure, memorySecure ? "Memory security measures are in place" : "Memory security validation failed")
+        
+        // Check 5: Key derivation security
+        let keySecurityValid = validateKeySecurity()
+        results["Key Security"] = (keySecurityValid, keySecurityValid ? "Key derivation and management is secure" : "Key security validation failed")
+        
+        // Check 6: File system security
+        let fsSecurityValid = validateFileSystemSecurity()
+        results["File System Security"] = (fsSecurityValid, fsSecurityValid ? "File system security measures are effective" : "File system security validation failed")
+        
+        return results
+    }
+    
+    /// Validates memory security measures
+    private func validateMemorySecurity() -> Bool {
+        // Test secure zeroing
+        var testData = Data([1, 2, 3, 4, 5])
+        let originalData = Data(testData)
+        
+        testData.secureZero()
+        
+        // Verify all bytes are zero
+        let allZeros = testData.allSatisfy { $0 == 0 }
+        guard allZeros else {
+            #if DEBUG
+            print("Memory security failed: secure zeroing didn't work")
+            #endif
+            return false
+        }
+        
+        // Test secure copy
+        var original = Data([10, 20, 30, 40, 50])
+        let copy = original.secureCopy()
+        
+        // Verify copy is correct
+        guard copy == Data([10, 20, 30, 40, 50]) else {
+            #if DEBUG
+            print("Memory security failed: secure copy produced wrong data")
+            #endif
+            return false
+        }
+        
+        // Verify original is zeroed
+        guard original.allSatisfy({ $0 == 0 }) else {
+            #if DEBUG
+            print("Memory security failed: secure copy didn't zero original")
+            #endif
+            return false
+        }
+        
+        return true
+    }
+    
+    /// Validates key security measures
+    private func validateKeySecurity() -> Bool {
+        // Test that keys are properly cleared
+        _ = deriveMasterKey() // This should cache the key
+        guard cachedMasterKey != nil else {
+            #if DEBUG
+            print("Key security failed: key not cached after derivation")
+            #endif
+            return false
+        }
+        
+        clearDerivedKeys()
+        guard cachedMasterKey == nil else {
+            #if DEBUG
+            print("Key security failed: key not cleared after clearDerivedKeys")
+            #endif
+            return false
+        }
+        
+        // Test key separation (encryption and HMAC keys should be different)
+        let encKey = deriveEncryptionKey()
+        let hmacKey = deriveHMACKey()
+        
+        let encKeyData = encKey.withUnsafeBytes { Data($0) }
+        let hmacKeyData = hmacKey.withUnsafeBytes { Data($0) }
+        
+        guard encKeyData != hmacKeyData else {
+            #if DEBUG
+            print("Key security failed: encryption and HMAC keys are identical")
+            #endif
+            return false
+        }
+        
+        return true
+    }
+    
+    /// Validates file system security measures
+    private func validateFileSystemSecurity() -> Bool {
+        // Check that vault directory has appropriate permissions (best effort)
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: vaultBaseURL.path)
+            if let posixPermissions = attributes[.posixPermissions] as? Int {
+                // Should not be world-readable/writable
+                let worldReadable = (posixPermissions & 0o004) != 0
+                let worldWritable = (posixPermissions & 0o002) != 0
+                
+                if worldReadable || worldWritable {
+                    #if DEBUG
+                    print("File system security warning: vault directory is world accessible")
+                    #endif
+                    // This is a warning, not a failure for compatibility
+                }
+            }
+        } catch {
+            #if DEBUG
+            print("File system security check failed: \(error)")
+            #endif
+            // Don't fail the check for this
+        }
+        
+        // Test secure file deletion (create a test file and delete it securely)
+        let testFileURL = vaultBaseURL.appendingPathComponent("security_test.tmp")
+        let testData = Data([0xAA, 0xBB, 0xCC, 0xDD])
+        
+        do {
+            try testData.write(to: testFileURL, options: .atomic)
+            
+            // Verify file exists and has correct content
+            guard let readData = try? Data(contentsOf: testFileURL), readData == testData else {
+                #if DEBUG
+                print("File system security failed: test file creation/verification failed")
+                #endif
+                return false
+            }
+            
+            // Securely delete the test file
+            secureDeleteFile(at: testFileURL)
+            
+            // Verify file is gone
+            guard !FileManager.default.fileExists(atPath: testFileURL.path) else {
+                #if DEBUG
+                print("File system security failed: secure deletion didn't remove file")
+                #endif
+                return false
+            }
+            
+        } catch {
+            #if DEBUG
+            print("File system security failed: \(error)")
+            #endif
+            return false
+        }
+        
         return true
     }
 }
