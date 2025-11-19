@@ -8,6 +8,8 @@
 	<string>Secret Vault needs access to import and encrypt your photos and videos.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Secret Vault needs permission to remove photos and videos from your library after encrypting them.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SecretVault needs microphone access to record audio when capturing vault videos.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Secret Vault uses Face ID to securely unlock your vault without entering a password.</string>
 </dict>
