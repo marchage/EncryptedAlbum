@@ -646,7 +646,7 @@ struct MainVaultView: View {
                                             showingPhotosLibrary = true
                                         } label: {
 #if os(macOS)
-                                            Label("Hide Items", systemImage: "square.and.arrow.down")
+                                            Label("Import from Photos", systemImage: "square.and.arrow.down")
                                                 .padding(.vertical, 6)
                                                 .padding(.horizontal, 10)
                                                 .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
@@ -1011,7 +1011,7 @@ struct MainVaultView: View {
                                         .foregroundColor(.white)
                                         .frame(width: actionButtonDimension, height: actionButtonDimension)
                                         .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
-                                    Text("Hide Items from Library")
+                                    Text("Import from Photos")
                                         .font(.headline)
                                         .foregroundColor(.blue)
                                 }
