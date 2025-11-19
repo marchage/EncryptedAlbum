@@ -114,8 +114,9 @@ struct VaultPhotoView: View {
                 if !thumbnailData.isEmpty {
                     #if os(macOS)
                     await MainActor.run {
-                        if let nsImage = NSImage(data: thumbnailData) {
-                            thumbnail = Image(nsImage: nsImage)
+                                            if let nsImage = NSImage(data: thumbnailData),
+                                               let cgImage = nsImage.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                                                thumbnail = Image(decorative: cgImage, scale: 1, orientation: .up)
                         }
                     }
                     #else
