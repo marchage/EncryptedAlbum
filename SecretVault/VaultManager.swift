@@ -120,6 +120,13 @@ class VaultManager: ObservableObject {
     private lazy var settingsFile: URL = vaultBaseURL.appendingPathComponent("settings.json")
     private var idleTimer: Timer?
     private let vaultQueue = DispatchQueue(label: "com.secretvault.vaultQueue", qos: .userInitiated)
+
+    // Derived keys cache (in-memory only, never persisted)
+    // We derive separate keys for encryption and HMAC from the stored passwordHash
+    // using HKDF so that compromise of one usage does not directly compromise the other.
+    private var cachedMasterKey: SymmetricKey?
+    private var cachedEncryptionKey: SymmetricKey?
+    private var cachedHMACKey: SymmetricKey?
     
     private init() {
         // Determine vault base directory based on platform
@@ -301,6 +308,8 @@ class VaultManager: ObservableObject {
         let hashString = hash.compactMap { String(format: "%02x", $0) }.joined()
         
         passwordHash = hashString
+        // Invalidate any derived keys when password changes
+        clearDerivedKeys()
         saveSettings()
         // Store password for biometric unlock
         saveBiometricPassword(password)
@@ -323,10 +332,64 @@ class VaultManager: ObservableObject {
     ///   - key: Key used for HMAC
     /// - Returns: HMAC as hex string
     private func generateHMAC(for data: Data, key: String) -> String {
-        guard let keyData = key.data(using: .utf8) else { return "" }
-        let symmetricKey = SymmetricKey(data: SHA256.hash(data: keyData))
-        let hmac = HMAC<SHA256>.authenticationCode(for: data, using: symmetricKey)
+        // Use the dedicated HMAC key derived via HKDF from the password hash.
+        let hmacKey = deriveHMACKey()
+        let hmac = HMAC<SHA256>.authenticationCode(for: data, using: hmacKey)
         return Data(hmac).map { String(format: "%02x", $0) }.joined()
+    }
+
+    // MARK: - Key Derivation (HKDF)
+
+    /// Clears all in-memory derived keys. Called whenever the password changes
+    /// or a new unlock succeeds so that subsequent operations re-derive keys.
+    private func clearDerivedKeys() {
+        cachedMasterKey = nil
+        cachedEncryptionKey = nil
+        cachedHMACKey = nil
+    }
+
+    /// Derives (and caches) a master key from the stored passwordHash using SHA-256.
+    /// This master key is then expanded via HKDF into independent encryption and HMAC keys.
+    private func deriveMasterKey() -> SymmetricKey {
+        if let existing = cachedMasterKey { return existing }
+
+        // passwordHash is a hex string of SHA-256(password || salt)
+        guard let hashData = Data(hexString: passwordHash) else {
+            // Fallback: derive directly from UTF-8 bytes if parsing fails
+            let data = passwordHash.data(using: .utf8) ?? Data()
+            let key = SymmetricKey(data: SHA256.hash(data: data))
+            cachedMasterKey = key
+            return key
+        }
+        let key = SymmetricKey(data: hashData)
+        cachedMasterKey = key
+        return key
+    }
+
+    /// Derives (and caches) a symmetric key for encryption using HKDF from the master key.
+    private func deriveEncryptionKey() -> SymmetricKey {
+        if let existing = cachedEncryptionKey { return existing }
+        let master = deriveMasterKey()
+        let info = "SecretVault-Encryption".data(using: .utf8) ?? Data()
+        let encKey = HKDF<SHA256>.deriveKey(inputKeyMaterial: master,
+                                            salt: Data(),
+                                            info: info,
+                                            outputByteCount: 32)
+        cachedEncryptionKey = encKey
+        return encKey
+    }
+
+    /// Derives (and caches) a symmetric key for HMAC using HKDF from the master key.
+    private func deriveHMACKey() -> SymmetricKey {
+        if let existing = cachedHMACKey { return existing }
+        let master = deriveMasterKey()
+        let info = "SecretVault-HMAC".data(using: .utf8) ?? Data()
+        let macKey = HKDF<SHA256>.deriveKey(inputKeyMaterial: master,
+                                            salt: Data(),
+                                            info: info,
+                                            outputByteCount: 32)
+        cachedHMACKey = macKey
+        return macKey
     }
     
     /// Attempts to unlock the vault with the provided password.
@@ -375,6 +438,9 @@ class VaultManager: ObservableObject {
             // Success - reset counters
             failedUnlockAttempts = 0
             failedBiometricAttempts = 0
+            // Invalidate derived keys so they will be re-derived for the
+            // current password on first use after a successful unlock.
+            clearDerivedKeys()
             
             isUnlocked = true
             loadPhotos()
@@ -462,6 +528,7 @@ class VaultManager: ObservableObject {
         
         let hash = SHA256.hash(data: combinedData)
         passwordHash = hash.compactMap { String(format: "%02x", $0) }.joined()
+        clearDerivedKeys()
         
         // Re-encrypt all photos with new password
         let totalPhotos = hiddenPhotos.count
@@ -473,7 +540,7 @@ class VaultManager: ObservableObject {
                     // Decrypt with old password
                     let encryptedPath = URL(fileURLWithPath: photo.encryptedDataPath)
                     let encryptedData = try Data(contentsOf: encryptedPath)
-                    let decrypted = decryptImage(encryptedData, password: oldPasswordHash)
+                    let decrypted = decryptImage(encryptedData, password: passwordHash)
                     
                     guard !decrypted.isEmpty else {
                         #if DEBUG
@@ -491,7 +558,7 @@ class VaultManager: ObservableObject {
                         let thumbURL = URL(fileURLWithPath: encThumbPath)
                         if FileManager.default.fileExists(atPath: thumbURL.path) {
                             let encThumbData = try Data(contentsOf: thumbURL)
-                            let decThumb = decryptImage(encThumbData, password: oldPasswordHash)
+                            let decThumb = decryptImage(encThumbData, password: passwordHash)
                             let reencThumb = encryptImage(decThumb, password: passwordHash)
                             try reencThumb.write(to: thumbURL, options: .atomic)
                         }
