@@ -3,13 +3,13 @@
 SecretVault is a native macOS and iOS app for securely hiding photos and videos using strong, modern encryption. 
 
 # Hopefully not pretend greenfield
-I am not keeping things compatible with previous implementations. When that starts happening I will remove this line.
+This project does not maintain compatibility with previous implementations. When that starts happening this line will be removed.
 
 ## Features
 
 - **End-to-end encryption** – AES-256-GCM via CryptoKit; media and metadata are encrypted at rest.
 - **Biometric unlock** – Touch ID / Face ID with an auto-generated strong password stored in Keychain.
-- **Manual password option** – Use your own password instead of biometrics if you prefer.
+- **Manual password option** – Use a custom password instead of biometrics.
 - **Hide & restore** – Import from the Photos library, hide items, and restore them later when needed.
 - **Video support** – Encrypt, decrypt and play videos directly in the app.
 - **Search & organize** – Search by filename or album and use simple vault albums for grouping.
@@ -20,23 +20,23 @@ I am not keeping things compatible with previous implementations. When that star
 
 ### Technical Details: iCloud Sync
 
-Currently the app uses local storage only. To enable iCloud sync between devices, you would need to join Apple's Developer Program and update the app's iCloud settings in the code.
+Currently the app uses local storage only. To enable iCloud sync between devices, joining Apple's Developer Program and updating the app's iCloud settings in the code is required.
 
 ## Build & Run
 
 1. Open `SecretVault.xcodeproj` in Xcode (macOS 13 or later).
 2. Select the `SecretVault` macOS app scheme.
-3. Build and run with `⌘R` on your Mac.
+3. Build and run with `⌘R`.
 4. On first launch, choose either:
-   - **Biometric mode** – the app creates and stores a strong random password in Keychain; you unlock with Touch ID / Face ID.
-   - **Manual password** – you set a password yourself (no recovery if forgotten).
+   - **Biometric mode** – the app creates and stores a strong random password in Keychain; unlock with Touch ID / Face ID.
+   - **Manual password** – set a password manually (no recovery if forgotten).
 5. Use the **"Hide Items"** button to select photos and videos from your library to add to the vault.
 
 ### iOS
 
 1. Open `SecretVault.xcodeproj` in Xcode (iOS 15 or later).
 2. Select the `SecretVault iOS` app scheme.
-3. Build and run with `⌘R` on your iOS device or simulator.
+3. Build and run with `⌘R` on an iOS device or simulator.
 4. **Note**: Currently uses local storage only (iCloud sync disabled for personal development teams).
 5. Follow the same setup process as macOS.
 
@@ -69,16 +69,16 @@ xcodebuild \
 
 - **macOS**: By default, encrypted media and metadata are stored under `~/Library/Application Support/SecretVault/` in the current user account.
 - **iOS**: Currently uses local Documents directory (iCloud Drive sync disabled for personal development teams).
-- You can optionally choose a custom vault folder (for example an iCloud Drive folder); the app then stores its encrypted vault inside a `SecretVault/` subfolder there.
-- Encryption keys are derived from either the auto-generated password or your manual password.
+- Optionally choose a custom vault folder (for example an iCloud Drive folder); the app then stores its encrypted vault inside a `SecretVault/` subfolder there.
+- Encryption keys are derived from either the auto-generated password or a manual password.
 - The app uses authenticated encryption (AES-256-GCM) so tampering with vault files is detected.
 - Losing or forgetting the password means the vault contents cannot be recovered.
 
 ## iCloud Sync
 
-**Note**: iCloud sync is currently turned off. The app works perfectly with local storage on each device - your vault stays secure but doesn't sync between devices.
+**Note**: iCloud sync is currently turned off. The app works perfectly with local storage on each device - the vault stays secure but doesn't sync between devices.
 
-If you want to enable syncing between your Mac and iPhone in the future, you'll need to update some settings in the code (see the Development Notes section below for technical details).
+Enabling syncing between Mac and iPhone in the future requires updating some settings in the code (see the Development Notes section above for technical details).
 
 ## License
 
