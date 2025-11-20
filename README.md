@@ -35,7 +35,7 @@ Currently the app uses local storage only. To enable iCloud sync between devices
 
 ### iOS
 
-1. Open `SecretVault.xcodeproj` in Xcode 15.2 or later.
+1. Open `SecretVault.xcodeproj` in Xcode 15 or later.
 2. Requires iOS 17 or later.
 3. Select the `SecretVault iOS` app scheme.
 4. Build and run with `⌘R` on an iOS device or simulator.
