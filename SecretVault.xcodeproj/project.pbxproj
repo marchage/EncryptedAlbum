@@ -23,7 +23,6 @@
 		9849B45C2EB9893F00B17DAC /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B45B2EB9893F00B17DAC /* Preview Assets.xcassets */; };
 		985C161C2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985C161B2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift */; };
 		985C161E2ECF1DA200EC1701 /* SecurityServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985C161D2ECF1DA200EC1701 /* SecurityServiceTests.swift */; };
-		985C16202ECF1DAD00EC1701 /* SecretVaultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985C161F2ECF1DAD00EC1701 /* SecretVaultTests.swift */; };
 		986328C92ECE882D00EAE9A9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4562EB9893D00B17DAC /* ContentView.swift */; };
 		986328CA2ECE882D00EAE9A9 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 312F03BA23EF4033AC165CA9 /* Constants.swift */; };
 		986328CB2ECE882D00EAE9A9 /* CryptoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E6FD95D924253BFFFAD57 /* CryptoService.swift */; };
@@ -94,7 +93,6 @@
 		9849B45D2EB9893F00B17DAC /* SecretVault.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SecretVault.entitlements; sourceTree = "<group>"; };
 		985C161B2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosLibraryServiceTests.swift; sourceTree = "<group>"; };
 		985C161D2ECF1DA200EC1701 /* SecurityServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityServiceTests.swift; sourceTree = "<group>"; };
-		985C161F2ECF1DAD00EC1701 /* SecretVaultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultTests.swift; sourceTree = "<group>"; };
 		986328D62ECE88F600EAE9A9 /* SecretVaultTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SecretVaultTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		986328D82ECE88F600EAE9A9 /* SecretVaultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultTests.swift; sourceTree = "<group>"; };
 		986328DF2ECE894300EAE9A9 /* VaultManagerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VaultManagerTests.swift; sourceTree = "<group>"; };
@@ -224,7 +222,6 @@
 			children = (
 				982404532ECF12930078B446 /* PasswordServiceTests.swift */,
 				985C161B2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift */,
-				985C161F2ECF1DAD00EC1701 /* SecretVaultTests.swift */,
 				986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */,
 				985C161D2ECF1DA200EC1701 /* SecurityServiceTests.swift */,
 				986328E02ECE894300EAE9A9 /* FileServiceTests.swift */,
@@ -457,7 +454,6 @@
 				986328E32ECE894300EAE9A9 /* FileServiceTests.swift in Sources */,
 				986328E22ECE894300EAE9A9 /* VaultManagerTests.swift in Sources */,
 				982404542ECF12930078B446 /* PasswordServiceTests.swift in Sources */,
-				985C16202ECF1DAD00EC1701 /* SecretVaultTests.swift in Sources */,
 				986328D92ECE88F600EAE9A9 /* SecretVaultTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
