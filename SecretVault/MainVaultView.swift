@@ -543,19 +543,6 @@ struct MainVaultView: View {
             }
             // vaultManager.touchActivity() - removed
 
-            let warningAlert = NSAlert()
-            warningAlert.messageText = "Capture Directly to Vault"
-            warningAlert.informativeText =
-                "Photos/videos imported this way are stored ONLY in the encrypted vault. They will NOT be in your Photos Library or iCloud Photos. Make sure your vault is backed up!"
-            warningAlert.alertStyle = .warning
-            warningAlert.addButton(withTitle: "Continue")
-            warningAlert.addButton(withTitle: "Cancel")
-
-            guard warningAlert.runModal() == .alertFirstButtonReturn else {
-                showingFilePicker = false
-                return
-            }
-
             let panel = NSOpenPanel()
             panel.canChooseFiles = true
             panel.canChooseDirectories = false
@@ -926,6 +913,14 @@ struct MainVaultView: View {
     }
 
     @ViewBuilder
+    private var cameraSheet: some View {
+        CameraCaptureView()
+            #if os(iOS)
+            .ignoresSafeArea()
+            #endif
+    }
+
+    @ViewBuilder
     private var toolbarActions: some View {
         Button {
             showingPhotosLibrary = true
@@ -933,17 +928,17 @@ struct MainVaultView: View {
             Image(systemName: "square.and.arrow.down")
         }
 
-        #if os(iOS)
-            Button {
-                showingCamera = true
-            } label: {
-                Image(systemName: "camera.fill")
-            }
-        #else
+        Button {
+            showingCamera = true
+        } label: {
+            Image(systemName: "camera.fill")
+        }
+        
+        #if os(macOS)
             Button {
                 showingFilePicker = true
             } label: {
-                Image(systemName: "camera.fill")
+                Label("Import Files", systemImage: "doc.badge.plus")
             }
             .disabled(captureInProgress || exportInProgress)
         #endif
@@ -1251,17 +1246,24 @@ struct MainVaultView: View {
                                     Button {
                                         showingPhotosLibrary = true
                                     } label: {
-                                        Label("Import", systemImage: "square.and.arrow.down")
+                                        Label("Photos", systemImage: "photo")
                                     }
                                     .buttonStyle(.bordered)
 
                                     Button {
                                         showingFilePicker = true
                                     } label: {
-                                        Label("Capture", systemImage: "camera.fill")
+                                        Label("Files", systemImage: "doc.badge.plus")
                                     }
                                     .buttonStyle(.bordered)
                                     .disabled(captureInProgress || exportInProgress)
+                                    
+                                    Button {
+                                        showingCamera = true
+                                    } label: {
+                                        Label("Camera", systemImage: "camera.fill")
+                                    }
+                                    .buttonStyle(.bordered)
                                 }
                                 .controlSize(.small)
                             #endif
@@ -1483,12 +1485,9 @@ struct MainVaultView: View {
             .sheet(isPresented: $showingPhotosLibrary) {
                 PhotosLibraryPicker()
             }
-            #if os(iOS)
-                .sheet(isPresented: $showingCamera) {
-                    CameraCaptureView()
-                    .ignoresSafeArea()
-                }
-            #endif
+            .sheet(isPresented: $showingCamera) {
+                cameraSheet
+            }
             .onChange(of: showingFilePicker) { newValue in
                 if newValue {
                     importFilesToVault()

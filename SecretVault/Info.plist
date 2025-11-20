@@ -6,6 +6,8 @@
 	<string>Secret Vault needs access to import and encrypt your photos and videos.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Secret Vault needs permission to remove photos and videos from your library after encrypting them.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>SecretVault needs camera access to capture photos directly to your encrypted vault.</string>
 	<key>LSMultipleInstancesProhibited</key>
 	<true/>
 </dict>

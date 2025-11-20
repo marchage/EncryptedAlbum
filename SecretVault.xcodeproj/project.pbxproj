@@ -37,6 +37,7 @@
 		986328E42ECE894300EAE9A9 /* CryptoServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */; };
 		986328EC2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */; };
 		986328EE2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328ED2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift */; };
+		988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */; };
 		98C835F92EC9E6CD000997CF /* PhotosLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */; };
 		98C835FA2EC9E6CD000997CF /* VaultDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C904A396A6B1968CDD78D9 /* VaultDetailView.swift */; };
 		98C835FB2EC9E6CD000997CF /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C068CD08B70A6DBEA00400 /* UnlockView.swift */; };
@@ -425,6 +426,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */,
 				9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */,
 				1CA80AC13D192EBBFCD3B516 /* PhotosLibraryService.swift in Sources */,
 				432DD49F40365EA5EAEBFD23 /* VaultDetailView.swift in Sources */,
