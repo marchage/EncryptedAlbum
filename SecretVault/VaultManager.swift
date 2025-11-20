@@ -483,17 +483,19 @@ class VaultManager: ObservableObject {
         let (hash, salt) = try await passwordService.hashPassword(password)
         try passwordService.storePasswordHash(hash, salt: salt)
 
-        passwordHash = hash.map { String(format: "%02x", $0) }.joined()
-        passwordSalt = salt.base64EncodedString()
-        securityVersion = 2 // New setups are always V2
+        await MainActor.run {
+            passwordHash = hash.map { String(format: "%02x", $0) }.joined()
+            passwordSalt = salt.base64EncodedString()
+            securityVersion = 2 // New setups are always V2
 
-        cachedMasterKey = nil
-        cachedEncryptionKey = nil
-        cachedHMACKey = nil
-        saveSettings()
+            cachedMasterKey = nil
+            cachedEncryptionKey = nil
+            cachedHMACKey = nil
+            saveSettings()
 
-        // Store password for biometric unlock
-        saveBiometricPassword(password)
+            // Store password for biometric unlock
+            saveBiometricPassword(password)
+        }
     }
 
     /// Attempts to unlock the vault with the provided password.
@@ -574,7 +576,9 @@ class VaultManager: ObservableObject {
             }
 
             // Save updated settings to disk
-            saveSettings()
+            await MainActor.run {
+                saveSettings()
+            }
         } else {
             failedUnlockAttempts += 1
             throw VaultError.invalidPassword
@@ -654,15 +658,16 @@ class VaultManager: ObservableObject {
             self.securityVersion = 2
         }
         
-        // 5. Update cached keys
-        cachedEncryptionKey = newEncryptionKey
-        cachedHMACKey = newHMACKey
-        
-        // 6. Save settings
-        saveSettings()
-        
-        // 7. Update biometric password
-        saveBiometricPassword(newPassword)
+        // 5. Update cached keys & Save settings
+        await MainActor.run {
+            cachedEncryptionKey = newEncryptionKey
+            cachedHMACKey = newHMACKey
+            
+            saveSettings()
+            
+            // 7. Update biometric password
+            saveBiometricPassword(newPassword)
+        }
         
         progressHandler?("Password changed successfully")
     }
@@ -683,6 +688,16 @@ class VaultManager: ObservableObject {
 
     /// Locks the vault by clearing cached keys and resetting state
     func lock() {
+        if Thread.isMainThread {
+            performLock()
+        } else {
+            DispatchQueue.main.async {
+                self.performLock()
+            }
+        }
+    }
+
+    private func performLock() {
         cachedMasterKey = nil
         cachedEncryptionKey = nil
         cachedHMACKey = nil
