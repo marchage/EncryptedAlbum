@@ -24,21 +24,23 @@ Currently the app uses local storage only. To enable iCloud sync between devices
 
 ## Build & Run
 
-1. Open `SecretVault.xcodeproj` in Xcode (macOS 13 or later).
-2. Select the `SecretVault` macOS app scheme.
-3. Build and run with `⌘R`.
-4. On first launch, choose either:
+1. Open `SecretVault.xcodeproj` in Xcode 15 or later.
+2. Requires macOS 13 or later.
+3. Select the `SecretVault` macOS app scheme.
+4. Build and run with `⌘R`.
+5. On first launch, choose either:
    - **Biometric mode** – the app creates and stores a strong random password in Keychain; unlock with Touch ID / Face ID.
    - **Manual password** – set a password manually (no recovery if forgotten).
-5. Use the **"Hide Items"** button to select photos and videos from your library to add to the vault.
+6. Use the **"Hide Items"** button to select photos and videos from your library to add to the vault.
 
 ### iOS
 
-1. Open `SecretVault.xcodeproj` in Xcode (iOS 15 or later).
-2. Select the `SecretVault iOS` app scheme.
-3. Build and run with `⌘R` on an iOS device or simulator.
-4. **Note**: Currently uses local storage only (iCloud sync disabled for personal development teams).
-5. Follow the same setup process as macOS.
+1. Open `SecretVault.xcodeproj` in Xcode 15.2 or later.
+2. Requires iOS 17 or later.
+3. Select the `SecretVault iOS` app scheme.
+4. Build and run with `⌘R` on an iOS device or simulator.
+5. **Note**: Currently uses local storage only (iCloud sync disabled for personal development teams).
+6. Follow the same setup process as macOS.
 
 ### Release builds from the console
 
