@@ -243,22 +243,49 @@ class PhotosLibraryService {
 
     /// Retrieves media data for a Photos asset asynchronously, preferring file-backed results for streaming encryption.
     func getMediaDataAsync(for asset: PHAsset) async -> MediaFetchResult? {
+        #if DEBUG
+        print("🔍 getMediaDataAsync called for asset: \(asset.localIdentifier), mediaType: \(asset.mediaType.rawValue)")
+        #endif
+        
         let result = await withTaskGroup(of: MediaFetchResult?.self) { group in
+            // Add fetch task first (higher priority)
+            group.addTask {
+                await self.fetchMediaResource(for: asset)
+            }
+            
+            // Add timeout task second
             group.addTask {
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
                 print("⏱️ Timeout (30s) fetching media data for asset: \(asset.localIdentifier)")
                 return nil
             }
 
-            group.addTask {
-                await self.fetchMediaResource(for: asset)
+            // Get the first non-nil result, or timeout if fetch fails
+            var fetchResult: MediaFetchResult? = nil
+            var gotFetchResult = false
+            
+            for await taskResult in group {
+                if taskResult != nil && !gotFetchResult {
+                    // Got a successful fetch - use it and cancel timeout
+                    fetchResult = taskResult
+                    gotFetchResult = true
+                    group.cancelAll()
+                    break
+                } else if taskResult == nil && !gotFetchResult {
+                    // This was the timeout - continue waiting for fetch
+                    continue
+                }
             }
-
-            if let firstResult = await group.next() {
-                group.cancelAll()
-                return firstResult
+            
+            #if DEBUG
+            if fetchResult != nil {
+                print("✅ getMediaDataAsync succeeded for asset: \(asset.localIdentifier)")
+            } else {
+                print("❌ getMediaDataAsync returned nil for asset: \(asset.localIdentifier)")
             }
-            return nil
+            #endif
+            
+            return fetchResult
         }
 
         return result
@@ -276,6 +303,10 @@ class PhotosLibraryService {
     }
 
     private func fetchPhotoResource(for asset: PHAsset) async -> MediaFetchResult? {
+        #if DEBUG
+        print("📸 Fetching photo resource for asset: \(asset.localIdentifier)")
+        #endif
+        
         let resources = PHAssetResource.assetResources(for: asset)
         if let resource = resources.first(where: { $0.type == .photo || $0.type == .fullSizePhoto }) ?? resources.first
         {
@@ -301,6 +332,9 @@ class PhotosLibraryService {
             }
         }
 
+        #if DEBUG
+        print("⚠️ Falling back to legacy photo fetch for asset: \(asset.localIdentifier)")
+        #endif
         return await legacyPhotoResult(for: asset)
     }
 
@@ -324,12 +358,22 @@ class PhotosLibraryService {
 
         let options = PHAssetResourceRequestOptions()
         options.isNetworkAccessAllowed = true
+        
+        #if DEBUG
+        print("📥 Starting export for resource: \(suggestedName)")
+        #endif
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             PHAssetResourceManager.default().writeData(for: resource, toFile: tempURL, options: options) { error in
                 if let error = error {
+                    #if DEBUG
+                    print("❌ Export failed for \(suggestedName): \(error.localizedDescription)")
+                    #endif
                     continuation.resume(throwing: error)
                 } else {
+                    #if DEBUG
+                    print("✅ Export succeeded for \(suggestedName)")
+                    #endif
                     continuation.resume(returning: ())
                 }
             }
