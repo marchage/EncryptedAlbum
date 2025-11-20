@@ -18,21 +18,24 @@ class CryptoService {
                 }
 
                 // Derive master key using PBKDF2
-                var derivedKey = [UInt8](repeating: 0, count: CryptoConstants.masterKeySize)
+                guard let derivedKeyBuffer = SecureMemory.allocateSecureBuffer(count: CryptoConstants.masterKeySize) else {
+                    continuation.resume(throwing: VaultError.keyDerivationFailed(reason: "Memory allocation failed"))
+                    return
+                }
+                defer { SecureMemory.deallocateSecureBuffer(derivedKeyBuffer) }
+                
                 let saltBytes = [UInt8](salt)
 
-                let result = derivedKey.withUnsafeMutableBytes { derivedKeyPtr in
-                    saltBytes.withUnsafeBytes { saltPtr in
-                        passwordData.withUnsafeBytes { passwordPtr in
-                            CCKeyDerivationPBKDF(
-                                CCPBKDFAlgorithm(kCCPBKDF2),
-                                passwordPtr.baseAddress, passwordPtr.count,
-                                saltPtr.baseAddress, saltPtr.count,
-                                CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
-                                UInt32(CryptoConstants.pbkdf2Iterations),
-                                derivedKeyPtr.baseAddress, derivedKeyPtr.count
-                            )
-                        }
+                let result = saltBytes.withUnsafeBytes { saltPtr in
+                    passwordData.withUnsafeBytes { passwordPtr in
+                        CCKeyDerivationPBKDF(
+                            CCPBKDFAlgorithm(kCCPBKDF2),
+                            passwordPtr.baseAddress, passwordPtr.count,
+                            saltPtr.baseAddress, saltPtr.count,
+                            CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
+                            UInt32(CryptoConstants.pbkdf2Iterations),
+                            derivedKeyBuffer.baseAddress, derivedKeyBuffer.count
+                        )
                     }
                 }
 
@@ -41,7 +44,7 @@ class CryptoService {
                     return
                 }
 
-                let masterKey = SymmetricKey(data: Data(derivedKey))
+                let masterKey = SymmetricKey(data: Data(bytes: derivedKeyBuffer.baseAddress!, count: derivedKeyBuffer.count))
 
                 // Derive encryption and HMAC keys using HKDF
                 let encryptionKey = HKDF<SHA256>.deriveKey(
@@ -75,21 +78,24 @@ class CryptoService {
                 }
 
                 // Derive master key using PBKDF2 (Same as deriveKeys)
-                var derivedKey = [UInt8](repeating: 0, count: CryptoConstants.masterKeySize)
+                guard let derivedKeyBuffer = SecureMemory.allocateSecureBuffer(count: CryptoConstants.masterKeySize) else {
+                    continuation.resume(throwing: VaultError.keyDerivationFailed(reason: "Memory allocation failed"))
+                    return
+                }
+                defer { SecureMemory.deallocateSecureBuffer(derivedKeyBuffer) }
+                
                 let saltBytes = [UInt8](salt)
 
-                let result = derivedKey.withUnsafeMutableBytes { derivedKeyPtr in
-                    saltBytes.withUnsafeBytes { saltPtr in
-                        passwordData.withUnsafeBytes { passwordPtr in
-                            CCKeyDerivationPBKDF(
-                                CCPBKDFAlgorithm(kCCPBKDF2),
-                                passwordPtr.baseAddress, passwordPtr.count,
-                                saltPtr.baseAddress, saltPtr.count,
-                                CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
-                                UInt32(CryptoConstants.pbkdf2Iterations),
-                                derivedKeyPtr.baseAddress, derivedKeyPtr.count
-                            )
-                        }
+                let result = saltBytes.withUnsafeBytes { saltPtr in
+                    passwordData.withUnsafeBytes { passwordPtr in
+                        CCKeyDerivationPBKDF(
+                            CCPBKDFAlgorithm(kCCPBKDF2),
+                            passwordPtr.baseAddress, passwordPtr.count,
+                            saltPtr.baseAddress, saltPtr.count,
+                            CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
+                            UInt32(CryptoConstants.pbkdf2Iterations),
+                            derivedKeyBuffer.baseAddress, derivedKeyBuffer.count
+                        )
                     }
                 }
 
@@ -98,7 +104,7 @@ class CryptoService {
                     return
                 }
 
-                let masterKey = SymmetricKey(data: Data(derivedKey))
+                let masterKey = SymmetricKey(data: Data(bytes: derivedKeyBuffer.baseAddress!, count: derivedKeyBuffer.count))
 
                 // Derive verifier using HKDF
                 let verifierKey = HKDF<SHA256>.deriveKey(

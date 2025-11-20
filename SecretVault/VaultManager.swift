@@ -57,22 +57,32 @@ class SecureMemory {
 
     /// Allocates a secure buffer that attempts to avoid being swapped to disk
     static func allocateSecureBuffer(count: Int) -> UnsafeMutableRawBufferPointer? {
-        // Use malloc with MallocFlags to attempt to avoid swapping
-        // Note: This is a best-effort attempt and may not work on all systems
+        // Use malloc to allocate memory
         let buffer = malloc(count)
-        guard buffer != nil else { return nil }
+        guard let ptr = buffer else { return nil }
 
         // Zero the buffer initially
-        memset_s(buffer, count, 0, count)
+        memset_s(ptr, count, 0, count)
 
-        return UnsafeMutableRawBufferPointer(start: buffer, count: count)
+        // Lock memory to prevent swapping
+        if mlock(ptr, count) != 0 {
+            #if DEBUG
+            print("Warning: mlock failed with error: \(errno)")
+            #endif
+        }
+
+        return UnsafeMutableRawBufferPointer(start: ptr, count: count)
     }
 
     /// Deallocates a secure buffer after zeroing it
     static func deallocateSecureBuffer(_ buffer: UnsafeMutableRawBufferPointer) {
         // Zero before deallocating
         zero(buffer)
-        free(buffer.baseAddress)
+        
+        if let baseAddress = buffer.baseAddress {
+            munlock(baseAddress, buffer.count)
+            free(baseAddress)
+        }
     }
 }
 
@@ -1854,7 +1864,6 @@ extension VaultManager {
         // Process assets with limited concurrency
         let maxConcurrentOperations = 2
         var successfulAssets: [PHAsset] = []
-        var processedCount = 0
 
         // Create indexed list for tracking
         let indexedAssets = assets.enumerated().map { (index: $0.offset, asset: $0.element) }
