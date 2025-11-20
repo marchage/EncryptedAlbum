@@ -1,6 +1,10 @@
 
 import XCTest
+#if canImport(SecretVault)
 @testable import SecretVault
+#else
+@testable import SecretVault_iOS
+#endif
 
 final class PasswordServiceTests: XCTestCase {
     

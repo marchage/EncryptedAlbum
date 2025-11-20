@@ -16,6 +16,7 @@
 		981926592EC854B800C67291 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 981926582EC854B800C67291 /* Assets.xcassets */; };
 		9819265C2EC854B800C67291 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9819265B2EC854B800C67291 /* Preview Assets.xcassets */; };
 		9823D7782ECD7BF400FFB750 /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */; };
+		982404542ECF12930078B446 /* PasswordServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 982404532ECF12930078B446 /* PasswordServiceTests.swift */; };
 		9849B4552EB9893D00B17DAC /* SecretVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4542EB9893D00B17DAC /* SecretVaultApp.swift */; };
 		9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4562EB9893D00B17DAC /* ContentView.swift */; };
 		9849B4592EB9893F00B17DAC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B4582EB9893F00B17DAC /* Assets.xcassets */; };
@@ -81,6 +82,7 @@
 		9819265B2EC854B800C67291 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		981926602EC8552000C67291 /* Info_iOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info_iOS.plist; sourceTree = "<group>"; };
 		9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CameraCaptureView.swift; sourceTree = "<group>"; };
+		982404532ECF12930078B446 /* PasswordServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordServiceTests.swift; sourceTree = "<group>"; };
 		9849B4512EB9893D00B17DAC /* SecretVault.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SecretVault.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9849B4542EB9893D00B17DAC /* SecretVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultApp.swift; sourceTree = "<group>"; };
 		9849B4562EB9893D00B17DAC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -214,6 +216,7 @@
 		986328D72ECE88F600EAE9A9 /* SecretVaultTests */ = {
 			isa = PBXGroup;
 			children = (
+				982404532ECF12930078B446 /* PasswordServiceTests.swift */,
 				986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */,
 				986328E02ECE894300EAE9A9 /* FileServiceTests.swift */,
 				986328DF2ECE894300EAE9A9 /* VaultManagerTests.swift */,
@@ -442,6 +445,7 @@
 				986328E42ECE894300EAE9A9 /* CryptoServiceTests.swift in Sources */,
 				986328E32ECE894300EAE9A9 /* FileServiceTests.swift in Sources */,
 				986328E22ECE894300EAE9A9 /* VaultManagerTests.swift in Sources */,
+				982404542ECF12930078B446 /* PasswordServiceTests.swift in Sources */,
 				986328D92ECE88F600EAE9A9 /* SecretVaultTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -224,7 +224,9 @@ class PasswordService {
         var feedback: [String] = []
 
         // Length check
-        if password.count >= 12 {
+        if password.count >= 16 {
+            score += 3
+        } else if password.count >= 12 {
             score += 2
         } else if password.count >= 8 {
             score += 1
@@ -241,7 +243,7 @@ class PasswordService {
         if hasLowercase { score += 1 } else { feedback.append("Include lowercase letters") }
         if hasUppercase { score += 1 } else { feedback.append("Include uppercase letters") }
         if hasDigits { score += 1 } else { feedback.append("Include numbers") }
-        if hasSpecialChars { score += 1 } else { feedback.append("Include special characters") }
+        if hasSpecialChars { score += 2 } else { feedback.append("Include special characters") }
 
         // Common patterns
         let commonPatterns = ["123456", "password", "qwerty", "abc123", "admin"]
@@ -264,20 +266,29 @@ class PasswordService {
             }
         }
 
-        // Repeated characters
-        if password.contains(where: { char in
-            password.filter { $0 == char }.count >= 3
-        }) {
+        // Repeated characters (3 or more consecutive)
+        var hasTripleRepeat = false
+        let chars = Array(password)
+        if chars.count >= 3 {
+            for i in 0...(chars.count - 3) {
+                if chars[i] == chars[i+1] && chars[i] == chars[i+2] {
+                    hasTripleRepeat = true
+                    break
+                }
+            }
+        }
+        
+        if hasTripleRepeat {
             score -= 1
             feedback.append("Avoid repeated characters")
         }
 
         let strength: PasswordStrength.Level
         switch score {
-        case 0...2: strength = .veryWeak
-        case 3...4: strength = .weak
-        case 5...6: strength = .fair
-        case 7...8: strength = .good
+        case ..<6: strength = .veryWeak
+        case 6...8: strength = .weak
+        case 10...12: strength = .fair
+        case 12...15: strength = .good
         default: strength = .strong
         }
 
