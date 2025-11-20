@@ -332,11 +332,20 @@ class VaultManager: ObservableObject {
 
         #if DEBUG
         // Handle Test Mode Reset
+        print("DEBUG: CommandLine arguments: \(CommandLine.arguments)")
         if CommandLine.arguments.contains("--reset-state") {
             print("⚠️ TEST MODE: Wiping Vault Data at \(vaultBaseURL.path)")
+            
+            // 1. Remove the entire vault directory
             try? FileManager.default.removeItem(at: vaultBaseURL)
             
-            // Also clear Keychain items to ensure full reset
+            // 2. Clear UserDefaults
+            if let bundleID = Bundle.main.bundleIdentifier {
+                UserDefaults.standard.removePersistentDomain(forName: bundleID)
+            }
+            UserDefaults.standard.synchronize()
+            
+            // 3. Clear Keychain items
             let keychainQueries = [
                 [
                     kSecClass as String: kSecClassGenericPassword,
@@ -346,10 +355,25 @@ class VaultManager: ObservableObject {
                     kSecClass as String: kSecClassGenericPassword,
                     kSecAttrAccount as String: "SecretVault.BiometricPassword",
                 ],
+                [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrAccount as String: "com.secretvault.passwordHash",
+                ],
+                [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrAccount as String: "com.secretvault.passwordSalt",
+                ]
             ]
             for query in keychainQueries {
                 SecItemDelete(query as CFDictionary)
             }
+            
+            // 4. Reset in-memory state just in case
+            passwordHash = ""
+            passwordSalt = ""
+            securityVersion = 2
+            isUnlocked = false
+            showUnlockPrompt = false
         }
         #endif
 

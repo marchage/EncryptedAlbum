@@ -8,6 +8,7 @@ final class SecretVaultUITests: XCTestCase {
         let app = XCUIApplication()
         // This argument tells the app to wipe data on launch
         app.launchArguments = ["--reset-state"]
+        print("Launching app with arguments: \(app.launchArguments)")
         app.launch()
     }
 
@@ -18,9 +19,9 @@ final class SecretVaultUITests: XCTestCase {
         let passwordField = app.secureTextFields["Enter password"]
         let confirmField = app.secureTextFields["Re-enter password"]
         
-        if !passwordField.waitForExistence(timeout: 75.0) {
+        if !passwordField.waitForExistence(timeout: 10.0) {
             print("DEBUG: Hierarchy at failure:\n\(app.debugDescription)")
-            XCTFail("Should be on Setup Password screen (Password field not found)")
+            XCTFail("Should be on Setup Password screen (Password field not found). App might not have reset correctly.")
             return
         }
         
@@ -69,7 +70,9 @@ final class SecretVaultUITests: XCTestCase {
         
         // Wait for the view to transition and the button to appear
         XCTAssertTrue(menuButton.waitForExistence(timeout: 10.0), "Menu button should exist")
-        menuButton.tap()
+        
+        // Force tap to avoid "Failed to scroll to visible" errors in toolbar
+        menuButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         
         // 2. Tap Lock
         let lockButton = app.buttons["Lock Vault"]
@@ -88,7 +91,9 @@ final class SecretVaultUITests: XCTestCase {
         // 1. Lock first
         let menuButton = app.buttons["More"]
         XCTAssertTrue(menuButton.waitForExistence(timeout: 10.0), "Menu button should exist")
-        menuButton.tap()
+        
+        // Force tap to avoid "Failed to scroll to visible" errors in toolbar
+        menuButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         
         app.buttons["Lock Vault"].tap()
         
@@ -98,6 +103,9 @@ final class SecretVaultUITests: XCTestCase {
         
         unlockField.tap()
         unlockField.typeText("WrongPass")
+        
+        // Dismiss keyboard to ensure Unlock button is visible
+        app.staticTexts["Enter Password"].tap()
         
         app.buttons["Unlock"].tap()
         
