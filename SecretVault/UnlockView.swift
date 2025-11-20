@@ -183,6 +183,18 @@ struct UnlockView: View {
 
     private func authenticateWithBiometrics() {
         Task {
+            #if os(iOS)
+            // On iOS, the Keychain with .biometryAny handles authentication automatically
+            // No need to authenticate first - just retrieve the password
+            if let storedPassword = self.vaultManager.getBiometricPassword() {
+                self.password = storedPassword
+                await unlock()
+            } else {
+                self.errorMessage = "Biometric authentication failed or no stored password."
+                self.showError = true
+            }
+            #else
+            // On macOS, authenticate manually first, then retrieve
             do {
                 try await vaultManager.authenticateWithBiometrics(reason: "Unlock your Secret Vault")
                 // User authenticated successfully - get stored password
@@ -212,6 +224,7 @@ struct UnlockView: View {
                 self.errorMessage = "Biometric authentication failed."
                 self.showError = true
             }
+            #endif
         }
     }
 

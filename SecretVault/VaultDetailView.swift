@@ -470,7 +470,7 @@ struct PhotosLibraryPicker: View {
 
                         if vaultManager.importProgress.currentBytesTotal > 0 {
                             ProgressView(
-                                value: Double(vaultManager.importProgress.currentBytesProcessed),
+                                value: Double(min(vaultManager.importProgress.currentBytesProcessed, vaultManager.importProgress.currentBytesTotal)),
                                 total: Double(max(vaultManager.importProgress.currentBytesTotal, 1))
                             )
                             .progressViewStyle(.linear)

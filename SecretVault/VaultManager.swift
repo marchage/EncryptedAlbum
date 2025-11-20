@@ -568,9 +568,12 @@ class VaultManager: ObservableObject {
 
             // Self-healing: Ensure biometric password is saved if missing
             // This fixes issues where the biometric item might have been lost or not saved correctly
+            // On iOS, checking if the password exists requires Face ID, so skip this check there
+            #if os(macOS)
             if getBiometricPassword() == nil {
                 saveBiometricPassword(password)
             }
+            #endif
 
             await MainActor.run {
                 isUnlocked = true

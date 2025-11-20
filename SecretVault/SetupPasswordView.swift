@@ -408,8 +408,17 @@ struct SetupPasswordView: View {
 
     private func setupPassword() {
         if useAutoPassword && biometricsAvailable {
-            // Verify biometric authentication first
+            #if os(iOS)
+            // On iOS, the Keychain will prompt for Face ID when storing with .biometryAny
+            // No need to authenticate first
+            let password = generatedPasswords[0]
+            Task {
+                await completeSetup(with: password)
+            }
+            #else
+            // On macOS, verify biometric authentication first
             authenticateAndSetup()
+            #endif
         } else {
             // Manual password validation
             guard manualPassword == confirmPassword else {
