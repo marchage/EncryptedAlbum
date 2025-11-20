@@ -566,6 +566,12 @@ class VaultManager: ObservableObject {
             cachedEncryptionKey = encryptionKey
             cachedHMACKey = hmacKey
 
+            // Self-healing: Ensure biometric password is saved if missing
+            // This fixes issues where the biometric item might have been lost or not saved correctly
+            if getBiometricPassword() == nil {
+                saveBiometricPassword(password)
+            }
+
             await MainActor.run {
                 isUnlocked = true
             }
@@ -783,7 +789,7 @@ class VaultManager: ObservableObject {
         let thumbnailPath = photosURL.appendingPathComponent("\(photoId.uuidString)_thumb.jpg")
         let encryptedThumbnailPath = photosURL.appendingPathComponent("\(photoId.uuidString)_thumb.enc")
 
-        var thumbnail = generateThumbnailData(from: mediaSource, mediaType: mediaType)
+        var thumbnail = await generateThumbnailData(from: mediaSource, mediaType: mediaType)
         if thumbnail.isEmpty {
             thumbnail = fallbackThumbnail(for: mediaType)
         }
@@ -1295,63 +1301,58 @@ class VaultManager: ObservableObject {
             return
         }
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            let thumbnailData: Data
-
-            if mediaType == .video {
-                // For videos, extract a frame as thumbnail
-                thumbnailData = self.generateVideoThumbnail(from: mediaData)
-            } else {
-                // For photos, resize the image
-                thumbnailData = self.generatePhotoThumbnail(from: mediaData)
-            }
-
-            DispatchQueue.main.async {
+        Task {
+            let thumbnailData = await self.generateThumbnailData(from: .data(mediaData), mediaType: mediaType)
+            await MainActor.run {
                 completion(thumbnailData)
             }
         }
     }
 
-    private func generateThumbnailData(from source: MediaSource, mediaType: MediaType) -> Data {
+    private func generateThumbnailData(from source: MediaSource, mediaType: MediaType) async -> Data {
         switch (mediaType, source) {
         case (.video, .data(let data)):
-            return generateVideoThumbnail(from: data)
+            return await generateVideoThumbnail(from: data)
         case (.video, .fileURL(let url)):
-            return generateVideoThumbnail(fromFileURL: url)
+            return await generateVideoThumbnail(fromFileURL: url)
         case (.photo, .data(let data)):
-            return generatePhotoThumbnail(from: data)
+            return await generatePhotoThumbnail(from: data)
         case (.photo, .fileURL(let url)):
-            return generatePhotoThumbnail(fromFileURL: url)
+            return await generatePhotoThumbnail(fromFileURL: url)
         }
     }
 
-    /// Generates a thumbnail from photo data (synchronous, call from background queue).
-    private func generatePhotoThumbnail(from mediaData: Data) -> Data {
-        #if os(macOS)
-            guard let image = NSImage(data: mediaData) else {
-                return Data()
-            }
-            return renderPhotoThumbnail(from: image)
-        #else
-            guard let image = UIImage(data: mediaData) else {
-                return Data()
-            }
-            return renderPhotoThumbnail(from: image)
-        #endif
+    /// Generates a thumbnail from photo data (asynchronous).
+    private func generatePhotoThumbnail(from mediaData: Data) async -> Data {
+        return await Task.detached(priority: .userInitiated) {
+            #if os(macOS)
+                guard let image = NSImage(data: mediaData) else {
+                    return Data()
+                }
+                return self.renderPhotoThumbnail(from: image)
+            #else
+                guard let image = UIImage(data: mediaData) else {
+                    return Data()
+                }
+                return self.renderPhotoThumbnail(from: image)
+            #endif
+        }.value
     }
 
-    private func generatePhotoThumbnail(fromFileURL url: URL) -> Data {
-        #if os(macOS)
-            guard let image = NSImage(contentsOf: url) else {
-                return Data()
-            }
-            return renderPhotoThumbnail(from: image)
-        #else
-            guard let image = UIImage(contentsOfFile: url.path) else {
-                return Data()
-            }
-            return renderPhotoThumbnail(from: image)
-        #endif
+    private func generatePhotoThumbnail(fromFileURL url: URL) async -> Data {
+        return await Task.detached(priority: .userInitiated) {
+            #if os(macOS)
+                guard let image = NSImage(contentsOf: url) else {
+                    return Data()
+                }
+                return self.renderPhotoThumbnail(from: image)
+            #else
+                guard let image = UIImage(contentsOfFile: url.path) else {
+                    return Data()
+                }
+                return self.renderPhotoThumbnail(from: image)
+            #endif
+        }.value
     }
 
     #if os(macOS)
@@ -1408,7 +1409,7 @@ class VaultManager: ObservableObject {
     #endif
 
     /// Generates a thumbnail from video data (synchronous, call from background queue).
-    private func generateVideoThumbnail(from videoData: Data) -> Data {
+    private func generateVideoThumbnail(from videoData: Data) async -> Data {
         guard videoData.count > 0 && videoData.count <= CryptoConstants.maxMediaFileSize else {
             #if DEBUG
                 print("Video data size invalid: \(videoData.count) bytes")
@@ -1423,7 +1424,7 @@ class VaultManager: ObservableObject {
             defer { try? FileManager.default.removeItem(at: tempURL) }
 
             let asset = AVAsset(url: tempURL)
-            return generateVideoThumbnail(fromAsset: asset)
+            return await generateVideoThumbnail(fromAsset: asset)
         } catch {
             #if DEBUG
                 print("Failed to generate video thumbnail: \(error)")
@@ -1433,81 +1434,84 @@ class VaultManager: ObservableObject {
         return Data()
     }
 
-    private func generateVideoThumbnail(fromFileURL url: URL) -> Data {
+    private func generateVideoThumbnail(fromFileURL url: URL) async -> Data {
         let asset = AVAsset(url: url)
-        return generateVideoThumbnail(fromAsset: asset)
+        return await generateVideoThumbnail(fromAsset: asset)
     }
 
-    private func generateVideoThumbnail(fromAsset asset: AVAsset) -> Data {
-        guard asset.tracks(withMediaType: .video).count > 0 else {
-            #if DEBUG
-                print("No video tracks found in asset")
-            #endif
-            return Data()
-        }
-
-        let imageGenerator = AVAssetImageGenerator(asset: asset)
-        imageGenerator.appliesPreferredTrackTransform = true
-        imageGenerator.maximumSize = CGSize(width: 300, height: 300)
-
-        let duration = asset.duration
-        let time = CMTimeMinimum(CMTime(seconds: 1, preferredTimescale: 60), duration)
-
-        guard let cgImage = try? imageGenerator.copyCGImage(at: time, actualTime: nil) else {
-            #if DEBUG
-                print("Failed to generate CGImage from video")
-            #endif
-            return Data()
-        }
-
-        #if os(macOS)
-            let image = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-
-            let maxSize: CGFloat = 300
-            let width = CGFloat(cgImage.width)
-            let height = CGFloat(cgImage.height)
-
-            guard width > 0 && height > 0 else { return Data() }
-
-            let scale = min(maxSize / width, maxSize / height, 1.0)
-            let newSize = NSSize(width: width * scale, height: height * scale)
-
-            let thumbnail = NSImage(size: newSize)
-            thumbnail.lockFocus()
-            image.draw(in: NSRect(origin: .zero, size: newSize))
-            thumbnail.unlockFocus()
-
-            guard let tiffData = thumbnail.tiffRepresentation,
-                let bitmapImage = NSBitmapImageRep(data: tiffData),
-                let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8])
-            else {
+    private func generateVideoThumbnail(fromAsset asset: AVAsset) async -> Data {
+        do {
+            let tracks = try await asset.load(.tracks)
+            guard tracks.contains(where: { $0.mediaType == .video }) else {
+                #if DEBUG
+                    print("No video tracks found in asset")
+                #endif
                 return Data()
             }
 
-            return jpegData
-        #else
-            let image = UIImage(cgImage: cgImage)
+            let imageGenerator = AVAssetImageGenerator(asset: asset)
+            imageGenerator.appliesPreferredTrackTransform = true
+            imageGenerator.maximumSize = CGSize(width: 300, height: 300)
 
-            let maxSize: CGFloat = 300
-            let size = image.size
+            let duration = try await asset.load(.duration)
+            let time = CMTimeMinimum(CMTime(seconds: 1, preferredTimescale: 60), duration)
 
-            guard size.width > 0 && size.height > 0 else { return Data() }
+            let (cgImage, _) = try await imageGenerator.image(at: time)
 
-            let scale = min(maxSize / size.width, maxSize / size.height, 1.0)
-            let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+            #if os(macOS)
+                let image = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
 
-            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
-            defer { UIGraphicsEndImageContext() }
+                let maxSize: CGFloat = 300
+                let width = CGFloat(cgImage.width)
+                let height = CGFloat(cgImage.height)
 
-            image.draw(in: CGRect(origin: .zero, size: newSize))
-            guard let resizedImage = UIGraphicsGetImageFromCurrentImageContext(),
-                let jpegData = resizedImage.jpegData(compressionQuality: 0.8)
-            else {
-                return Data()
-            }
+                guard width > 0 && height > 0 else { return Data() }
 
-            return jpegData
-        #endif
+                let scale = min(maxSize / width, maxSize / height, 1.0)
+                let newSize = NSSize(width: width * scale, height: height * scale)
+
+                let thumbnail = NSImage(size: newSize)
+                thumbnail.lockFocus()
+                image.draw(in: NSRect(origin: .zero, size: newSize))
+                thumbnail.unlockFocus()
+
+                guard let tiffData = thumbnail.tiffRepresentation,
+                    let bitmapImage = NSBitmapImageRep(data: tiffData),
+                    let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8])
+                else {
+                    return Data()
+                }
+
+                return jpegData
+            #else
+                let image = UIImage(cgImage: cgImage)
+
+                let maxSize: CGFloat = 300
+                let size = image.size
+
+                guard size.width > 0 && size.height > 0 else { return Data() }
+
+                let scale = min(maxSize / size.width, maxSize / size.height, 1.0)
+                let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+
+                UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+                defer { UIGraphicsEndImageContext() }
+
+                image.draw(in: CGRect(origin: .zero, size: newSize))
+                guard let resizedImage = UIGraphicsGetImageFromCurrentImageContext(),
+                    let jpegData = resizedImage.jpegData(compressionQuality: 0.8)
+                else {
+                    return Data()
+                }
+
+                return jpegData
+            #endif
+        } catch {
+            #if DEBUG
+                print("Failed to generate video thumbnail: \(error)")
+            #endif
+            return Data()
+        }
     }
 
     /// Generates a generic placeholder thumbnail when we cannot derive one from the media data.
@@ -1696,15 +1700,7 @@ class VaultManager: ObservableObject {
     }
 
     func getBiometricPassword() -> String? {
-        let password = try? securityService.retrieveBiometricPassword()
-        #if DEBUG
-            if let password = password {
-                print("🔐 Retrieved biometric password: exists (length: \(password.count))")
-            } else {
-                print("🔐 Retrieved biometric password: nil")
-            }
-        #endif
-        return password
+        return try? securityService.retrieveBiometricPassword()
     }
 
     /// Validates crypto operations by performing encryption/decryption round-trip test.

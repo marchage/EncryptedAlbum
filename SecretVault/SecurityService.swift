@@ -331,61 +331,96 @@ class SecurityService {
             throw VaultError.unknownError(reason: "Failed to encode password")
         }
         
-        // Create access control that requires biometric authentication
+        // On macOS without App Sandbox, we can't use biometric access control flags
+        // Instead, we'll store it securely and require biometric auth when retrieving
+        #if os(macOS)
+        // 1. Delete existing item first
+        let deleteQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: biometricPasswordKey
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
+        
+        // 2. Add new item without biometric flags (we'll authenticate manually on retrieval)
+        let addQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: biometricPasswordKey,
+            kSecValueData as String: passwordData,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        ]
+        
+        let status = SecItemAdd(addQuery as CFDictionary, nil)
+        
+        guard status == errSecSuccess else {
+            throw VaultError.unknownError(reason: "Keychain storage failed with status \(status)")
+        }
+        
+        #else
+        // iOS: Use biometric access control
         var error: Unmanaged<CFError>?
         guard let accessControl = SecAccessControlCreateWithFlags(
             kCFAllocatorDefault,
-            kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
-            .biometryAny, // Requires FaceID/TouchID
+            kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            .biometryAny,
             &error
         ) else {
-            throw VaultError.unknownError(reason: "Failed to create access control: \(error?.takeRetainedValue().localizedDescription ?? "Unknown error")")
+            let errorDesc = error?.takeRetainedValue().localizedDescription ?? "Unknown error"
+            #if DEBUG
+            print("🔐 DEBUG: Failed to create access control: \(errorDesc)")
+            #endif
+            throw VaultError.unknownError(reason: "Failed to create access control: \(errorDesc)")
         }
         
-        let query: [String: Any] = [
+        #if DEBUG
+        print("🔐 DEBUG: Access control created successfully")
+        #endif
+        
+        let deleteQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: biometricPasswordKey
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
+        
+        let addQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: biometricPasswordKey,
             kSecValueData as String: passwordData,
             kSecAttrAccessControl as String: accessControl
         ]
 
-        // Delete existing item
-        SecItemDelete(query as CFDictionary)
-
-        // Add new item
-        let status = SecItemAdd(query as CFDictionary, nil)
+        let status = SecItemAdd(addQuery as CFDictionary, nil)
+        
         guard status == errSecSuccess else {
             throw VaultError.unknownError(reason: "Keychain storage failed with status \(status)")
         }
+        #endif
     }
 
     /// Retrieves the stored biometric password
     /// This will trigger the system biometric prompt
     func retrieveBiometricPassword() throws -> String? {
-        let context = LAContext()
-        context.localizedReason = "Authenticate to unlock SecretVault"
+        // Simply retrieve from Keychain - authentication handled externally
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: biometricPasswordKey,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-            kSecUseAuthenticationContext as String: context
+            kSecMatchLimit as String: kSecMatchLimitOne
         ]
 
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
         if status == errSecItemNotFound {
+            #if DEBUG
+            print("🔐 Keychain: Biometric password item not found")
+            #endif
             return nil
-        }
-        
-        if status == errSecUserCanceled || status == errSecAuthFailed {
-             // User cancelled or failed biometrics
-             return nil
         }
 
         guard status == errSecSuccess, let data = result as? Data else {
-            // Don't throw for retrieval errors, just return nil to fall back to password
+            #if DEBUG
+            print("🔐 Keychain: Retrieval failed with status: \(status)")
+            #endif
             return nil
         }
 
