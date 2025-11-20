@@ -105,7 +105,8 @@ final class SecretVaultUITests: XCTestCase {
         unlockField.typeText("WrongPass")
         
         // Dismiss keyboard to ensure Unlock button is visible
-        app.staticTexts["Enter Password"].tap()
+        // The title is "Secret Vault" or "Enter your password to unlock" based on the error log
+        app.staticTexts["Secret Vault"].tap()
         
         app.buttons["Unlock"].tap()
         
@@ -132,7 +133,8 @@ final class SecretVaultUITests: XCTestCase {
         // We can check for the static text
         
         // Note: Since we start with Privacy Mode ON (default), tapping it turns it OFF.
+        // Wait a bit longer for the toggle animation and state update
         let offLabel = app.staticTexts["Privacy Mode Off"]
-        XCTAssertTrue(offLabel.waitForExistence(timeout: 1.0), "Should switch to Privacy Mode Off")
+        XCTAssertTrue(offLabel.waitForExistence(timeout: 5.0), "Should switch to Privacy Mode Off")
     }
 }

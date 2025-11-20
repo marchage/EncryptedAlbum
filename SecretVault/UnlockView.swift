@@ -15,8 +15,10 @@ struct UnlockView: View {
     @State private var biometricType: LABiometryType = .none
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 24) {
+                    Spacer()
 
             // App Icon
             #if os(macOS)
@@ -152,11 +154,10 @@ struct UnlockView: View {
                 .buttonStyle(.plain)
                 .padding(.bottom, 8)
             #endif
+                }
+                .frame(minWidth: geometry.size.width, minHeight: geometry.size.height)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        #if os(iOS)
-            .ignoresSafeArea(.keyboard)
-        #endif
         .onAppear {
             checkBiometricAvailability()
             // Auto-trigger biometric authentication if available
