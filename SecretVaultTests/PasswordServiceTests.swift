@@ -59,16 +59,42 @@ final class PasswordServiceTests: XCTestCase {
         let result = passwordService.analyzePasswordStrength(weak)
         
         // Should be weak because it's a common pattern and short-ish
+        // Score: Length 8 (+1) + Lower (+1) - Common (-5) = -3
         XCTAssertTrue(result.score < 5)
         XCTAssertTrue(result.feedback.contains("Avoid common patterns"))
     }
     
     func testAnalyzePasswordStrength_StrongPassword() {
-        let strong = "CorrectHorseBatteryStaple123!"
+        // "CorrectHorseBatteryStaple!9!2!"
+        // Length 26 (>20): +8
+        // Lower: +1
+        // Upper: +2
+        // Digit: +3
+        // Special: +5
+        // No patterns/sequential/repeats
+        // Total: 19
+        let strong = "CorrectHorseBatteryStaple!9!2!"
         let result = passwordService.analyzePasswordStrength(strong)
         
         XCTAssertEqual(result.level, .strong)
-        XCTAssertTrue(result.score >= 7)
+        XCTAssertTrue(result.score > 16)
+    }
+    
+    func testAnalyzePasswordStrength_GoodPassword() {
+        // "CorrectHorseBatteryStaple123!"
+        // Length 29 (>20): +8
+        // Lower: +1
+        // Upper: +2
+        // Digit: +3
+        // Special: +5
+        // Sequential "123": -3
+        // Total: 19 - 3 = 16
+        // 16 is "Good" (13...16)
+        let good = "CorrectHorseBatteryStaple123!"
+        let result = passwordService.analyzePasswordStrength(good)
+        
+        XCTAssertEqual(result.level, .good)
+        XCTAssertEqual(result.score, 16)
     }
     
     // MARK: - Hashing and Verification Tests
