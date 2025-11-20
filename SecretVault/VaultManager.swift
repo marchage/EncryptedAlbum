@@ -506,6 +506,14 @@ class VaultManager: ObservableObject {
             // Store password for biometric unlock
             saveBiometricPassword(password)
         }
+        
+        #if os(iOS)
+        // On iOS, verify biometric storage by attempting to retrieve it
+        // This triggers Face ID prompt immediately to confirm biometric works
+        if getBiometricPassword() == nil {
+            throw VaultError.biometricFailed
+        }
+        #endif
     }
 
     /// Attempts to unlock the vault with the provided password.
