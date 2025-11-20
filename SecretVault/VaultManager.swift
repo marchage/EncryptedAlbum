@@ -1614,7 +1614,7 @@ class VaultManager: ObservableObject {
         }
 
         #if DEBUG
-            print("Loaded settings: \(settings)")
+            print("Loaded settings: [REDACTED]")
         #endif
         if let hash = settings["passwordHash"] {
             passwordHash = hash

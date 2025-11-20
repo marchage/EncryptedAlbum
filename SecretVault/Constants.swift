@@ -15,6 +15,7 @@ enum CryptoConstants {
     static let maxPasswordLength = 128
 
     /// Key derivation parameters
+    /// TODO: Increase iterations to 600,000+ for new vaults. Current 1000 is for legacy compatibility.
     static let pbkdf2Iterations = 1000
     static let hkdfInfoEncryption = "SecretVault-Encryption"
     static let hkdfInfoHMAC = "SecretVault-HMAC"
