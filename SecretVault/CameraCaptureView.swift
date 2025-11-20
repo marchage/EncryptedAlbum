@@ -122,7 +122,17 @@ struct CameraCaptureView: View {
             
             VStack {
                 HStack {
+                    // Mode toggle
+                    Picker("", selection: $model.captureMode) {
+                        Label("Photo", systemImage: "camera.fill").tag(CaptureMode.photo)
+                        Label("Video", systemImage: "video.fill").tag(CaptureMode.video)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 200)
+                    .padding(.leading)
+                    
                     Spacer()
+                    
                     Button {
                         dismiss()
                     } label: {
@@ -139,22 +149,59 @@ struct CameraCaptureView: View {
                 HStack {
                     Spacer()
                     
-                    Button {
-                        model.capturePhoto(vaultManager: vaultManager) {
-                            dismiss()
+                    if model.captureMode == .video {
+                        // Video recording button
+                        Button {
+                            if model.isRecording {
+                                model.stopRecording(vaultManager: vaultManager) {
+                                    dismiss()
+                                }
+                            } else {
+                                model.startRecording()
+                            }
+                        } label: {
+                            ZStack {
+                                Circle()
+                                    .fill(model.isRecording ? .red : .white)
+                                    .frame(width: 64, height: 64)
+                                Circle()
+                                    .stroke(Color.white, lineWidth: 4)
+                                    .frame(width: 72, height: 72)
+                                if model.isRecording {
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(.white)
+                                        .frame(width: 24, height: 24)
+                                }
+                            }
                         }
-                    } label: {
-                        ZStack {
-                            Circle()
-                                .fill(.white)
-                                .frame(width: 64, height: 64)
-                            Circle()
-                                .stroke(Color.white, lineWidth: 4)
-                                .frame(width: 72, height: 72)
+                        .buttonStyle(.plain)
+                        .padding(.bottom, 30)
+                        
+                        if model.isRecording, let duration = model.recordingDuration {
+                            Text(String(format: "%02d:%02d", Int(duration) / 60, Int(duration) % 60))
+                                .font(.system(.title2, design: .monospaced))
+                                .foregroundStyle(.white)
+                                .padding(.bottom, 30)
                         }
+                    } else {
+                        // Photo capture button
+                        Button {
+                            model.capturePhoto(vaultManager: vaultManager) {
+                                dismiss()
+                            }
+                        } label: {
+                            ZStack {
+                                Circle()
+                                    .fill(.white)
+                                    .frame(width: 64, height: 64)
+                                Circle()
+                                    .stroke(Color.white, lineWidth: 4)
+                                    .frame(width: 72, height: 72)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.bottom, 30)
                     }
-                    .buttonStyle(.plain)
-                    .padding(.bottom, 30)
                     
                     Spacer()
                 }
@@ -170,10 +217,22 @@ struct CameraCaptureView: View {
     }
 }
 
+enum CaptureMode {
+    case photo
+    case video
+}
+
 class CameraModel: NSObject, ObservableObject {
     let session = AVCaptureSession()
-    private let output = AVCapturePhotoOutput()
+    private let photoOutput = AVCapturePhotoOutput()
+    private let movieOutput = AVCaptureMovieFileOutput()
     @Published var isAuthorized = false
+    @Published var captureMode: CaptureMode = .photo
+    @Published var isRecording = false
+    @Published var recordingDuration: TimeInterval? = nil
+    
+    private var recordingTimer: Timer?
+    private var recordingStartTime: Date?
     
     func checkPermissions() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -221,10 +280,16 @@ class CameraModel: NSObject, ObservableObject {
             return
         }
         
-        if session.canAddOutput(output) {
-            session.addOutput(output)
+        if session.canAddOutput(photoOutput) {
+            session.addOutput(photoOutput)
         } else {
             print("❌ Cannot add photo output to session")
+        }
+        
+        if session.canAddOutput(movieOutput) {
+            session.addOutput(movieOutput)
+        } else {
+            print("❌ Cannot add movie output to session")
         }
         
         session.commitConfiguration()
@@ -248,10 +313,43 @@ class CameraModel: NSObject, ObservableObject {
         let settings = AVCapturePhotoSettings()
         self.photoCompletion = completion
         self.vaultManager = vaultManager
-        output.capturePhoto(with: settings, delegate: self)
+        photoOutput.capturePhoto(with: settings, delegate: self)
+    }
+    
+    func startRecording() {
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("video_\(Date().timeIntervalSince1970).mov")
+        movieOutput.startRecording(to: tempURL, recordingDelegate: self)
+        
+        recordingStartTime = Date()
+        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self = self, let startTime = self.recordingStartTime else { return }
+            DispatchQueue.main.async {
+                self.recordingDuration = Date().timeIntervalSince(startTime)
+            }
+        }
+        
+        DispatchQueue.main.async {
+            self.isRecording = true
+        }
+    }
+    
+    func stopRecording(vaultManager: VaultManager, completion: @escaping () -> Void) {
+        self.videoCompletion = completion
+        self.vaultManager = vaultManager
+        movieOutput.stopRecording()
+        
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+        recordingStartTime = nil
+        
+        DispatchQueue.main.async {
+            self.isRecording = false
+            self.recordingDuration = nil
+        }
     }
     
     private var photoCompletion: (() -> Void)?
+    private var videoCompletion: (() -> Void)?
     private var vaultManager: VaultManager?
 }
 
@@ -284,6 +382,58 @@ extension CameraModel: AVCapturePhotoCaptureDelegate {
                 print("Failed to save capture: \(error)")
             }
         }
+    }
+}
+
+extension CameraModel: AVCaptureFileOutputRecordingDelegate {
+    func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL, from connections: [AVCaptureConnection], error: Error?) {
+        defer {
+            DispatchQueue.main.async {
+                self.videoCompletion?()
+            }
+        }
+        
+        if let error = error {
+            print("Video recording error: \(error)")
+            return
+        }
+        
+        let filename = "Video_\(Date().timeIntervalSince1970).mov"
+        
+        Task {
+            do {
+                let asset = AVAsset(url: outputFileURL)
+                var duration: TimeInterval?
+                if #available(macOS 13.0, *) {
+                    if let loadedDuration = try? await asset.load(.duration) {
+                        duration = loadedDuration.seconds
+                    }
+                } else {
+                    duration = asset.duration.seconds
+                }
+                
+                try await vaultManager?.hidePhoto(
+                    mediaSource: .fileURL(outputFileURL),
+                    filename: filename,
+                    dateTaken: Date(),
+                    sourceAlbum: "Captured to Vault",
+                    assetIdentifier: nil,
+                    mediaType: .video,
+                    duration: duration,
+                    location: nil,
+                    isFavorite: nil
+                )
+                
+                // Clean up temp file
+                try? FileManager.default.removeItem(at: outputFileURL)
+            } catch {
+                print("Failed to save video: \(error)")
+            }
+        }
+    }
+    
+    func fileOutput(_ output: AVCaptureFileOutput, didStartRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
+        print("Started recording to: \(fileURL)")
     }
 }
 
