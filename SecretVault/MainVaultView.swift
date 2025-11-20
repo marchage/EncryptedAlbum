@@ -1452,9 +1452,7 @@ struct MainVaultView: View {
                     privacyModeEnabled = true
                     didForcePrivacyModeThisSession = true
                 }
-                print("DEBUG MainVaultView.onAppear: hiddenPhotos.count = \(vaultManager.hiddenPhotos.count)")
-                print("DEBUG MainVaultView.onAppear: isUnlocked = \(vaultManager.isUnlocked)")
-                print("DEBUG MainVaultView.onAppear: filteredPhotos.count = \(filteredPhotos.count)")
+                // Vault view appeared
                 selectedPhotos.removeAll()
                 setupKeyboardShortcuts()
                 // vaultManager.touchActivity() - removed

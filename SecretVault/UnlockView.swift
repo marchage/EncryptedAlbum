@@ -259,7 +259,7 @@ struct UnlockView: View {
                     // Delete all vault files from the correct vault location
                     let fileManager = FileManager.default
                     try? fileManager.removeItem(at: vaultManager.vaultBaseURL)
-                    print("Deleted vault directory: \(vaultManager.vaultBaseURL.path)")
+                    // Vault directory deleted
 
                     // Delete password hash from UserDefaults
                     UserDefaults.standard.removeObject(forKey: "passwordHash")
@@ -313,14 +313,14 @@ struct UnlockView: View {
                         {
                             let vaultDirectory = iCloudURL.appendingPathComponent("SecretVault", isDirectory: true)
                             try? fileManager.removeItem(at: vaultDirectory)
-                            print("Deleted vault from iCloud: \(vaultDirectory.path)")
+                            // Vault deleted from iCloud
                         }
 
                         // Also delete from local documents as fallback
                         if let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
                             let vaultDirectory = documentsURL.appendingPathComponent("SecretVault", isDirectory: true)
                             try? fileManager.removeItem(at: vaultDirectory)
-                            print("Deleted vault from local documents: \(vaultDirectory.path)")
+                            // Vault deleted from local documents
                         }
 
                         // Delete password hash from UserDefaults

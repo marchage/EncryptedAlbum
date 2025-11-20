@@ -316,7 +316,7 @@ class VaultManager: ObservableObject {
                     resolvedBaseURL = defaultBaseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
                 }
                 vaultBaseURL = resolvedBaseURL
-                print("macOS vault base URL: \(vaultBaseURL.path)")
+                // Vault base URL configured
             #else
                 // iOS: Use iCloud Drive if available, otherwise local documents
                 let fileManager = FileManager.default
@@ -326,14 +326,14 @@ class VaultManager: ObservableObject {
                 {
                     // iCloud is available
                     baseURL = iCloudURL.appendingPathComponent("SecretVault", isDirectory: true)
-                    print("Using iCloud Drive for vault storage: \(baseURL.path)")
+                    // Using iCloud Drive for vault storage
                 } else {
                     // Fallback to local documents
                     guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
                         fatalError("Unable to access file system")
                     }
                     baseURL = documentsURL.appendingPathComponent("SecretVault", isDirectory: true)
-                    print("Using local storage for vault (iCloud not available): \(baseURL.path)")
+                    // Using local storage for vault (iCloud not available)
                 }
 
                 vaultBaseURL = baseURL
@@ -344,7 +344,7 @@ class VaultManager: ObservableObject {
         // Handle Test Mode Reset
         print("DEBUG: CommandLine arguments: \(CommandLine.arguments)")
         if CommandLine.arguments.contains("--reset-state") {
-            print("⚠️ TEST MODE: Wiping Vault Data at \(vaultBaseURL.path)")
+            // TEST MODE: Wiping Vault Data
             
             // 1. Remove the entire vault directory
             try? FileManager.default.removeItem(at: vaultBaseURL)
@@ -402,12 +402,9 @@ class VaultManager: ObservableObject {
 
         print("Loading settings from: \(settingsFile.path)")
         loadSettings()
-        print("After loading settings - passwordHash.isEmpty: \(passwordHash.isEmpty), hasPassword(): \(hasPassword())")
+        // Settings loaded, checking password status
         if !passwordHash.isEmpty {
             showUnlockPrompt = true
-            print("Password exists, showing unlock prompt")
-        } else {
-            print("No password found, should show setup screen")
         }
     }
 
@@ -547,7 +544,6 @@ class VaultManager: ObservableObject {
             
             if isValid {
                 // MIGRATE TO V2
-                print("🔒 Migrating vault security to V2 (Verifier-based)...")
                 let (newVerifier, _) = try await passwordService.hashPassword(password) // Uses new verifier logic
                 // Salt remains the same to avoid re-encrypting data (we just change the stored verifier)
                 try passwordService.storePasswordHash(newVerifier, salt: storedSalt)
@@ -557,7 +553,6 @@ class VaultManager: ObservableObject {
                     self.securityVersion = 2
                 }
                 saveSettings()
-                print("✅ Migration complete. Encryption key removed from storage.")
             }
         } else {
             // Standard verification (V2)
@@ -1670,7 +1665,7 @@ class VaultManager: ObservableObject {
                 let url = URL(fileURLWithPath: basePath, isDirectory: true)
                 vaultBaseURL = url
                 #if DEBUG
-                    print("Loaded vault base URL: \(basePath)")
+                    // Vault base URL loaded
                 #endif
             }
         #endif
@@ -1699,7 +1694,7 @@ class VaultManager: ObservableObject {
 
     func saveBiometricPassword(_ password: String) {
         #if DEBUG
-            print("💾 Saving biometric password (length: \(password.count))")
+            // Saving biometric password
         #endif
         do {
             try securityService.storeBiometricPassword(password)
