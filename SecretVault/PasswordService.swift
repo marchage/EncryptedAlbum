@@ -224,10 +224,12 @@ class PasswordService {
         var feedback: [String] = []
 
         // Length check
-        if password.count >= 16 {
-            score += 3
+        if password.count >= 20 {
+            score += 8
+        } else if password.count >= 16 {
+            score += 5
         } else if password.count >= 12 {
-            score += 2
+            score += 3
         } else if password.count >= 8 {
             score += 1
         } else {
@@ -241,14 +243,14 @@ class PasswordService {
         let hasSpecialChars = password.contains { "!@#$%^&*()_+-=[]{}|;:,.<>?".contains($0) }
 
         if hasLowercase { score += 1 } else { feedback.append("Include lowercase letters") }
-        if hasUppercase { score += 1 } else { feedback.append("Include uppercase letters") }
-        if hasDigits { score += 1 } else { feedback.append("Include numbers") }
-        if hasSpecialChars { score += 2 } else { feedback.append("Include special characters") }
+        if hasUppercase { score += 2 } else { feedback.append("Include uppercase letters") }
+        if hasDigits { score += 3 } else { feedback.append("Include numbers") }
+        if hasSpecialChars { score += 5 } else { feedback.append("Include special characters") }
 
         // Common patterns
         let commonPatterns = ["123456", "password", "qwerty", "abc123", "admin"]
         if commonPatterns.contains(where: { password.lowercased().contains($0) }) {
-            score -= 2
+            score -= 5
             feedback.append("Avoid common patterns")
         }
 
@@ -259,7 +261,7 @@ class PasswordService {
                 let substring = String(
                     seq[seq.index(seq.startIndex, offsetBy: i)...seq.index(seq.startIndex, offsetBy: i + 2)])
                 if password.lowercased().contains(substring) {
-                    score -= 1
+                    score -= 3
                     feedback.append("Avoid sequential characters")
                     break
                 }
@@ -279,16 +281,16 @@ class PasswordService {
         }
         
         if hasTripleRepeat {
-            score -= 1
+            score -= 3
             feedback.append("Avoid repeated characters")
         }
 
         let strength: PasswordStrength.Level
         switch score {
-        case ..<6: strength = .veryWeak
-        case 6...8: strength = .weak
-        case 10...12: strength = .fair
-        case 12...15: strength = .good
+        case ..<5: strength = .veryWeak
+        case 5...8: strength = .weak
+        case 9...12: strength = .fair
+        case 13...16: strength = .good
         default: strength = .strong
         }
 
