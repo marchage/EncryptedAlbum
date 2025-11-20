@@ -111,7 +111,7 @@ final class SecretVaultUITests: XCTestCase {
         app.buttons["Unlock"].tap()
         
         // 3. Verify Error Message
-        let errorText = app.staticTexts["Incorrect password"]
+        let errorText = app.staticTexts["Invalid password"]
         XCTAssertTrue(errorText.waitForExistence(timeout: 1.0), "Error message should appear")
     }
     
