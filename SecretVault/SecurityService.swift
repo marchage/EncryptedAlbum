@@ -175,19 +175,24 @@ class SecurityService {
     private func validateFileSystemSecurity() async throws -> Bool {
         // Check if we're running on a jailbroken device (iOS)
         #if os(iOS)
-            let jailbreakPaths = [
-                "/Applications/Cydia.app",
-                "/Library/MobileSubstrate/MobileSubstrate.dylib",
-                "/bin/bash",
-                "/usr/sbin/sshd",
-                "/etc/apt",
-            ]
+            // Skip jailbreak checks on Simulator
+            #if targetEnvironment(simulator)
+                return true
+            #else
+                let jailbreakPaths = [
+                    "/Applications/Cydia.app",
+                    "/Library/MobileSubstrate/MobileSubstrate.dylib",
+                    "/bin/bash",
+                    "/usr/sbin/sshd",
+                    "/etc/apt",
+                ]
 
-            for path in jailbreakPaths {
-                if FileManager.default.fileExists(atPath: path) {
-                    return false
+                for path in jailbreakPaths {
+                    if FileManager.default.fileExists(atPath: path) {
+                        return false
+                    }
                 }
-            }
+            #endif
         #endif
 
         return true
