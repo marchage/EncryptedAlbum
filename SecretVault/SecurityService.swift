@@ -192,10 +192,11 @@ class SecurityService {
                         return false
                     }
                 }
+                return true
             #endif
+        #else
+            return true
         #endif
-
-        return true
     }
 
     private func validateMemorySecurity() async throws -> Bool {
