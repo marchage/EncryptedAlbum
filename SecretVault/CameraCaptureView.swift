@@ -252,53 +252,55 @@ class CameraModel: NSObject, ObservableObject {
     }
     
     func setupSession() {
-        guard let device = AVCaptureDevice.default(for: .video) else {
-            print("❌ No camera device available")
-            DispatchQueue.main.async {
-                self.isAuthorized = false
-            }
-            return
-        }
-        
-        guard let input = try? AVCaptureDeviceInput(device: device) else {
-            print("❌ Failed to create camera input")
-            DispatchQueue.main.async {
-                self.isAuthorized = false
-            }
-            return
-        }
-        
-        session.beginConfiguration()
-        if session.canAddInput(input) {
-            session.addInput(input)
-        } else {
-            print("❌ Cannot add camera input to session")
-            session.commitConfiguration()
-            DispatchQueue.main.async {
-                self.isAuthorized = false
-            }
-            return
-        }
-        
-        if session.canAddOutput(photoOutput) {
-            session.addOutput(photoOutput)
-        } else {
-            print("❌ Cannot add photo output to session")
-        }
-        
-        if session.canAddOutput(movieOutput) {
-            session.addOutput(movieOutput)
-        } else {
-            print("❌ Cannot add movie output to session")
-        }
-        
-        session.commitConfiguration()
-        
         DispatchQueue.global(qos: .userInitiated).async {
-            self.session.startRunning()
-            if !self.session.isRunning {
-                print("❌ Camera session failed to start")
+            guard let device = AVCaptureDevice.default(for: .video) else {
+                print("❌ No camera device available")
                 DispatchQueue.main.async {
+                    self.isAuthorized = false
+                }
+                return
+            }
+            
+            guard let input = try? AVCaptureDeviceInput(device: device) else {
+                print("❌ Failed to create camera input")
+                DispatchQueue.main.async {
+                    self.isAuthorized = false
+                }
+                return
+            }
+            
+            self.session.beginConfiguration()
+            
+            if self.session.canAddInput(input) {
+                self.session.addInput(input)
+            } else {
+                print("❌ Cannot add camera input to session")
+                self.session.commitConfiguration()
+                DispatchQueue.main.async {
+                    self.isAuthorized = false
+                }
+                return
+            }
+            
+            if self.session.canAddOutput(self.photoOutput) {
+                self.session.addOutput(self.photoOutput)
+            } else {
+                print("❌ Cannot add photo output to session")
+            }
+            
+            if self.session.canAddOutput(self.movieOutput) {
+                self.session.addOutput(self.movieOutput)
+            } else {
+                print("❌ Cannot add movie output to session")
+            }
+            
+            self.session.commitConfiguration()
+            
+            self.session.startRunning()
+            
+            DispatchQueue.main.async {
+                if !self.session.isRunning {
+                    print("❌ Camera session failed to start")
                     self.isAuthorized = false
                 }
             }
