@@ -362,14 +362,14 @@ class SecurityService {
     /// Retrieves the stored biometric password
     /// This will trigger the system biometric prompt
     func retrieveBiometricPassword() throws -> String? {
+        let context = LAContext()
+        context.localizedReason = "Authenticate to unlock SecretVault"
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: biometricPasswordKey,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
-            // Note: We don't need to specify access control here, the system enforces it based on the item's attributes
-            // However, we might need to provide a prompt string
-            kSecUseOperationPrompt as String: "Authenticate to unlock SecretVault"
+            kSecUseAuthenticationContext as String: context
         ]
 
         var result: AnyObject?
