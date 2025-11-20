@@ -330,6 +330,29 @@ class VaultManager: ObservableObject {
             #endif
         }
 
+        #if DEBUG
+        // Handle Test Mode Reset
+        if CommandLine.arguments.contains("--reset-state") {
+            print("⚠️ TEST MODE: Wiping Vault Data at \(vaultBaseURL.path)")
+            try? FileManager.default.removeItem(at: vaultBaseURL)
+            
+            // Also clear Keychain items to ensure full reset
+            let keychainQueries = [
+                [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrService as String: "com.secretvault.password",
+                ],
+                [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrAccount as String: "SecretVault.BiometricPassword",
+                ],
+            ]
+            for query in keychainQueries {
+                SecItemDelete(query as CFDictionary)
+            }
+        }
+        #endif
+
         // Create directories
         do {
             try FileManager.default.createDirectory(at: vaultBaseURL, withIntermediateDirectories: true)

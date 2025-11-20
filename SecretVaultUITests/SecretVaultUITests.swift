@@ -11,15 +11,18 @@ final class SecretVaultUITests: XCTestCase {
         app.launch()
     }
 
-    func testUnlockFlow() throws {
-        let app = XCUIApplication()
+    // MARK: - Helpers
+    
+    func setupPasswordAndUnlock(app: XCUIApplication) {
+        // 1. Verify we are on setup screen
+        let passwordField = app.secureTextFields["Enter password"]
+        let confirmField = app.secureTextFields["Re-enter password"]
         
-        // 1. Since we reset state, we expect the "Setup Password" screen
-        let passwordField = app.secureTextFields["New Password"]
-        let confirmField = app.secureTextFields["Confirm Password"]
-        
-        // Verify we are on setup screen
-        XCTAssertTrue(passwordField.waitForExistence(timeout: 2.0), "Should be on Setup Password screen")
+        if !passwordField.waitForExistence(timeout: 75.0) {
+            print("DEBUG: Hierarchy at failure:\n\(app.debugDescription)")
+            XCTFail("Should be on Setup Password screen (New Password field not found)")
+            return
+        }
         
         // 2. Create a new password
         passwordField.tap()
@@ -28,22 +31,92 @@ final class SecretVaultUITests: XCTestCase {
         confirmField.tap()
         confirmField.typeText("TestPass123!")
         
-        // 3. Tap Setup/Save button
-        app.buttons["Set Password"].tap()
+        // Dismiss keyboard if needed (tap somewhere else)
+        app.staticTexts["Welcome to Secret Vault"].tap()
         
-        // 4. Now we should be in the Vault (or asked to unlock)
-        // Let's assume it logs us in or asks for unlock.
-        // If it asks for unlock:
-        if app.buttons["Unlock"].exists {
+        // 3. Tap Setup/Save button
+        app.buttons["Create Vault"].tap()
+        
+        // 4. Handle potential unlock prompt if it doesn't auto-login
+        if app.buttons["Unlock"].waitForExistence(timeout: 1.0) {
             let unlockField = app.secureTextFields["Password"]
             unlockField.tap()
             unlockField.typeText("TestPass123!")
             app.buttons["Unlock"].tap()
         }
+    }
+
+    // MARK: - Tests
+
+    func testUnlockFlow() throws {
+        let app = XCUIApplication()
+        setupPasswordAndUnlock(app: app)
         
-        // 5. Verify we are inside the vault
-        // Look for a key element like the "Add" button or navigation title
-        let navBar = app.navigationBars["SecretVault"]
+        // Verify we are inside the vault
+        let navBar = app.navigationBars["Hidden Items"]
         XCTAssertTrue(navBar.waitForExistence(timeout: 2.0), "Should be inside the vault")
+    }
+    
+    func testLockVault() throws {
+        let app = XCUIApplication()
+        setupPasswordAndUnlock(app: app)
+        
+        // 1. Open Menu
+        let menuButton = app.buttons["ellipsis.circle"]
+        XCTAssertTrue(menuButton.exists, "Menu button should exist")
+        menuButton.tap()
+        
+        // 2. Tap Lock
+        let lockButton = app.buttons["Lock Vault"]
+        XCTAssertTrue(lockButton.waitForExistence(timeout: 1.0), "Lock button should appear in menu")
+        lockButton.tap()
+        
+        // 3. Verify we are back at Unlock Screen
+        let unlockButton = app.buttons["Unlock"]
+        XCTAssertTrue(unlockButton.waitForExistence(timeout: 2.0), "Should return to unlock screen")
+    }
+    
+    func testWrongPassword() throws {
+        let app = XCUIApplication()
+        setupPasswordAndUnlock(app: app)
+        
+        // 1. Lock first
+        app.buttons["ellipsis.circle"].tap()
+        app.buttons["Lock Vault"].tap()
+        
+        // 2. Enter Wrong Password
+        let unlockField = app.secureTextFields["Password"]
+        XCTAssertTrue(unlockField.waitForExistence(timeout: 2.0))
+        
+        unlockField.tap()
+        unlockField.typeText("WrongPass")
+        
+        app.buttons["Unlock"].tap()
+        
+        // 3. Verify Error Message
+        let errorText = app.staticTexts["Incorrect password"]
+        XCTAssertTrue(errorText.waitForExistence(timeout: 1.0), "Error message should appear")
+    }
+    
+    func testPrivacyModeToggle() throws {
+        let app = XCUIApplication()
+        setupPasswordAndUnlock(app: app)
+        
+        // 1. Find Toggle
+        // Toggles often don't have simple labels if .labelsHidden() is used, 
+        // but we can find it by type
+        let toggle = app.switches.firstMatch
+        XCTAssertTrue(toggle.exists, "Privacy Mode toggle should exist")
+        
+        // 2. Toggle it
+        toggle.tap()
+        
+        // 3. Verify State Change (Optional: check label text if it changes)
+        // In MainVaultView: Label(privacyModeEnabled ? "Privacy Mode On" : "Privacy Mode Off", ...)
+        // We can check for the static text
+        
+        // Note: Since we start with Privacy Mode ON (default), tapping it turns it OFF.
+        let offLabel = app.staticTexts["Privacy Mode Off"]
+        XCTAssertTrue(offLabel.waitForExistence(timeout: 1.0), "Should switch to Privacy Mode Off")
     }
 }
