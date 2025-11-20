@@ -20,7 +20,7 @@ final class SecretVaultUITests: XCTestCase {
         
         if !passwordField.waitForExistence(timeout: 75.0) {
             print("DEBUG: Hierarchy at failure:\n\(app.debugDescription)")
-            XCTFail("Should be on Setup Password screen (New Password field not found)")
+            XCTFail("Should be on Setup Password screen (Password field not found)")
             return
         }
         
@@ -62,13 +62,18 @@ final class SecretVaultUITests: XCTestCase {
         setupPasswordAndUnlock(app: app)
         
         // 1. Open Menu
-        let menuButton = app.buttons["ellipsis.circle"]
-        XCTAssertTrue(menuButton.exists, "Menu button should exist")
+        // The button has an image "ellipsis.circle" but SwiftUI might expose it as "More"
+        // or simply by its image name if no label is provided.
+        // Based on the error, it is exposed as "More".
+        let menuButton = app.buttons["More"]
+        
+        // Wait for the view to transition and the button to appear
+        XCTAssertTrue(menuButton.waitForExistence(timeout: 10.0), "Menu button should exist")
         menuButton.tap()
         
         // 2. Tap Lock
         let lockButton = app.buttons["Lock Vault"]
-        XCTAssertTrue(lockButton.waitForExistence(timeout: 1.0), "Lock button should appear in menu")
+        XCTAssertTrue(lockButton.waitForExistence(timeout: 2.0), "Lock button should appear in menu")
         lockButton.tap()
         
         // 3. Verify we are back at Unlock Screen
@@ -81,7 +86,10 @@ final class SecretVaultUITests: XCTestCase {
         setupPasswordAndUnlock(app: app)
         
         // 1. Lock first
-        app.buttons["ellipsis.circle"].tap()
+        let menuButton = app.buttons["More"]
+        XCTAssertTrue(menuButton.waitForExistence(timeout: 10.0), "Menu button should exist")
+        menuButton.tap()
+        
         app.buttons["Lock Vault"].tap()
         
         // 2. Enter Wrong Password
