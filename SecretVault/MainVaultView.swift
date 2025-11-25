@@ -856,30 +856,34 @@ struct MainVaultView: View {
         @MainActor
         private func presentCaptureSummary(successCount: Int, failureCount: Int, canceled: Bool, errorMessage: String?)
         {
-            let alert = NSAlert()
+            let message: String
+            let notificationType: HideNotificationType
+            
             if canceled {
-                alert.messageText = "Import Canceled"
-                alert.informativeText = "Encrypted \(successCount) item(s) before canceling."
-                alert.alertStyle = .warning
+                message = "Import canceled. Encrypted \(successCount) item(s) before canceling."
+                notificationType = .info
             } else if failureCount == 0 {
-                alert.messageText = "Import Complete"
-                alert.informativeText = "Encrypted \(successCount) item(s) into the vault."
-                alert.alertStyle = .informational
+                message = "Import complete. Encrypted \(successCount) item(s) into the vault."
+                notificationType = .success
             } else if successCount == 0 {
-                alert.messageText = "Import Failed"
-                alert.informativeText = errorMessage ?? "Unable to import the selected files."
-                alert.alertStyle = .critical
+                message = errorMessage ?? "Import failed. Unable to import the selected files."
+                notificationType = .failure
             } else {
-                alert.messageText = "Import Completed with Issues"
-                var summary = "Imported \(successCount) item(s); \(failureCount) failed."
+                var summary = "Import completed with issues. Imported \(successCount) item(s); \(failureCount) failed."
                 if let errorMessage = errorMessage, !errorMessage.isEmpty {
-                    summary += "\n\(errorMessage)"
+                    summary += " \(errorMessage)"
                 }
-                alert.informativeText = summary
-                alert.alertStyle = .warning
+                message = summary
+                notificationType = .info
             }
-            alert.addButton(withTitle: "OK")
-            alert.runModal()
+            
+            withAnimation {
+                vaultManager.hideNotification = HideNotification(
+                    message: message,
+                    type: notificationType,
+                    photos: nil
+                )
+            }
         }
 
         @MainActor
