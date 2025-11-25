@@ -354,6 +354,8 @@ class VaultManager: ObservableObject {
                         return
                     }
 
+                    let enteredPassword = textField.stringValue
+
                    
                     // Reuse the same salted hashing logic as `unlock(password:)` so that
                     // step-up authentication behaves identically to a normal unlock.

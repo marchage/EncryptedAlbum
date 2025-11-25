@@ -14,8 +14,7 @@ struct InactiveAppOverlay: View {
     var body: some View {
         ZStack {
             if isObscured {
-                Color.black.opacity(1.0)
-                    .ignoresSafeArea()
+                PrivacyOverlayBackground()
                     .overlay(content: overlayContent)
                     .transition(.opacity)
                     .zIndex(9999) // Force top z-index
