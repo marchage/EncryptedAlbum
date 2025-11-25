@@ -219,48 +219,27 @@ struct UnlockView: View {
     private func authenticateWithBiometrics() {
         cancelAutoBiometricScheduling()
         Task {
-            #if os(iOS)
-                // On iOS, the Keychain with .biometryAny handles authentication automatically
-                // No need to authenticate first - just retrieve the password
-                if let storedPassword = self.vaultManager.getBiometricPassword() {
-                    self.password = storedPassword
-                    await unlock()
-                } else {
-                    self.errorMessage = "Biometric authentication failed or no stored password."
+            do {
+                // On both iOS and macOS, we now use SecAccessControl which handles the prompt
+                let password = try vaultManager.authenticateAndRetrievePassword()
+                self.password = password
+                await unlock()
+            } catch let error as VaultError {
+                switch error {
+                case .biometricCancelled:
+                    // User cancelled, do nothing
+                    break
+                case .biometricNotAvailable:
+                    self.errorMessage = "Biometric authentication not available."
+                    self.showError = true
+                default:
+                    self.errorMessage = error.localizedDescription
                     self.showError = true
                 }
-            #else
-                // On macOS, authenticate manually first, then retrieve
-                do {
-                    try await vaultManager.authenticateWithBiometrics(reason: "Unlock your Secret Vault")
-                    // User authenticated successfully - get stored password
-                    if let storedPassword = self.vaultManager.getBiometricPassword() {
-                        self.password = storedPassword
-                        await unlock()
-                    }
-                } catch let error as VaultError {
-                    switch error {
-                    case .tooManyBiometricAttempts:
-                        self.errorMessage = "Too many failed attempts. Use password."
-                        self.showError = true
-                    case .biometricCancelled:
-                        // User cancelled, do nothing
-                        break
-                    case .biometricFailed:
-                        self.errorMessage = "Biometric authentication failed. Use password."
-                        self.showError = true
-                    case .biometricNotAvailable:
-                        self.errorMessage = "Biometric authentication not available."
-                        self.showError = true
-                    default:
-                        self.errorMessage = error.localizedDescription
-                        self.showError = true
-                    }
-                } catch {
-                    self.errorMessage = "Biometric authentication failed."
-                    self.showError = true
-                }
-            #endif
+            } catch {
+                self.errorMessage = "Biometric authentication failed."
+                self.showError = true
+            }
         }
     }
 

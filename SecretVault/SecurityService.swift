@@ -338,35 +338,8 @@ class SecurityService {
             throw VaultError.unknownError(reason: "Failed to encode password")
         }
         
-        // On macOS without App Sandbox, we can't use biometric access control flags
-        // Instead, we'll store it securely and require biometric auth when retrieving
-        #if os(macOS)
-        // 1. Delete existing item first
-        var deleteQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: biometricPasswordKey
-        ]
-        applyMacKeychainAttributes(to: &deleteQuery, requireUISkip: true)
-        SecItemDelete(deleteQuery as CFDictionary)
-        
-        // 2. Add new item with trusted access control so keychain does not prompt repeatedly
-        var addQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: biometricPasswordKey,
-            kSecValueData as String: passwordData,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-            kSecUseAuthenticationUI as String: kSecUseAuthenticationUISkip
-        ]
-        applyMacKeychainAttributes(to: &addQuery, requireUISkip: true)
-        
-        let status = SecItemAdd(addQuery as CFDictionary, nil)
-        
-        guard status == errSecSuccess else {
-            throw VaultError.unknownError(reason: "Keychain storage failed with status \(status)")
-        }
-        
-        #else
-        // iOS: Use biometric access control
+        // Create access control with biometric requirement
+        // This works on both iOS (FaceID/TouchID) and macOS (TouchID)
         var error: Unmanaged<CFError>?
         guard let accessControl = SecAccessControlCreateWithFlags(
             kCFAllocatorDefault,
@@ -375,68 +348,55 @@ class SecurityService {
             &error
         ) else {
             let errorDesc = error?.takeRetainedValue().localizedDescription ?? "Unknown error"
-            #if DEBUG
-            print("🔐 DEBUG: Failed to create access control: \(errorDesc)")
-            #endif
             throw VaultError.unknownError(reason: "Failed to create access control: \(errorDesc)")
         }
         
-        #if DEBUG
-        print("🔐 DEBUG: Access control created successfully")
-        #endif
-        
+        // 1. Delete existing item first
         let deleteQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: biometricPasswordKey
         ]
         SecItemDelete(deleteQuery as CFDictionary)
         
+        // 2. Add new item with access control
         let addQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: biometricPasswordKey,
             kSecValueData as String: passwordData,
             kSecAttrAccessControl as String: accessControl
         ]
-
+        
         let status = SecItemAdd(addQuery as CFDictionary, nil)
         
         guard status == errSecSuccess else {
             throw VaultError.unknownError(reason: "Keychain storage failed with status \(status)")
         }
-        #endif
     }
 
     /// Retrieves the stored biometric password
-    /// This will trigger the system biometric prompt
-    func retrieveBiometricPassword() throws -> String? {
-        // Simply retrieve from Keychain - authentication handled externally
-        var query: [String: Any] = [
+    /// This will trigger the system biometric prompt automatically due to SecAccessControl
+    func retrieveBiometricPassword(prompt: String = "Authenticate to unlock SecretVault") throws -> String? {
+        let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: biometricPasswordKey,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecUseOperationPrompt as String: prompt
         ]
-
-        #if os(macOS)
-            query[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-        #endif
-        applyMacKeychainAttributes(to: &query, requireUISkip: true)
 
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
         if status == errSecItemNotFound {
-            #if DEBUG
-            print("🔐 Keychain: Biometric password item not found")
-            #endif
             return nil
+        }
+        
+        if status == errSecUserCanceled || status == errSecAuthFailed {
+            throw VaultError.biometricCancelled
         }
 
         guard status == errSecSuccess, let data = result as? Data else {
-            #if DEBUG
-            print("🔐 Keychain: Retrieval failed with status: \(status)")
-            #endif
-            return nil
+            throw VaultError.unknownError(reason: "Keychain retrieval failed with status: \(status)")
         }
 
         return String(data: data, encoding: .utf8)

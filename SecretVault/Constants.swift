@@ -27,7 +27,7 @@ enum CryptoConstants {
 
     /// Streaming encryption
     static let streamingMagic = "SVSTRM01"
-    static let streamingVersion: UInt8 = 1
+    static let streamingVersion: UInt8 = 2 // Bumped to 2 for SVF2 (Metadata support)
     static let streamingChunkSize = 4 * 1024 * 1024  // 4MB chunks
     static let streamingNonceSize = 12
     static let streamingTagSize = 16

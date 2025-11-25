@@ -235,6 +235,7 @@ class VaultManager: ObservableObject {
     private let fileService: FileService
     private let securityService: SecurityService
     private let passwordService: PasswordService
+    private let journalService: PasswordChangeJournalService
     private let vaultState: VaultState
     private let storage: VaultStorage
     private var restorationProgressCancellable: AnyCancellable?
@@ -290,6 +291,7 @@ class VaultManager: ObservableObject {
         cryptoService = CryptoService()
         securityService = SecurityService(cryptoService: cryptoService)
         passwordService = PasswordService(cryptoService: cryptoService, securityService: securityService)
+        journalService = PasswordChangeJournalService()
         fileService = FileService(cryptoService: cryptoService)
         vaultState = VaultState()
         storage = VaultStorage(baseURL: customBaseURL)
@@ -576,16 +578,51 @@ class VaultManager: ObservableObject {
             throw VaultError.vaultNotInitialized
         }
         
-        // 2. Re-encrypt all photos
+        // 2. Initialize or Resume Journal
         let photos = hiddenPhotos // Capture current list
         let total = photos.count
         
+        // Calculate hash prefixes for verification
+        let oldHashPrefix = String(passwordHash.prefix(8))
+        let newHashPrefix = String(newVerifier.map { String(format: "%02x", $0) }.joined().prefix(8))
+        
+        var journal: PasswordChangeJournal
+        
+        // Check for existing journal to resume
+        if let existingJournal = try? journalService.readJournal(from: vaultBaseURL),
+           existingJournal.status != .completed,
+           existingJournal.oldPasswordHashPrefix == oldHashPrefix,
+           existingJournal.newPasswordHashPrefix == newHashPrefix {
+            
+            progressHandler?("Resuming interrupted password change...")
+            journal = existingJournal
+            
+            // If we are resuming, we might have more files now than before, or fewer. 
+            // Ideally we should respect the journal's state, but for simplicity in this monolithic structure,
+            // we'll just use the current list and skip what's marked as processed.
+        } else {
+            // Start fresh
+            journal = PasswordChangeJournal(
+                oldPasswordHashPrefix: oldHashPrefix,
+                newPasswordHashPrefix: newHashPrefix,
+                totalFiles: total
+            )
+            try journalService.writeJournal(journal, to: vaultBaseURL)
+        }
+        
+        // 3. Re-encrypt all photos
         for (index, photo) in photos.enumerated() {
+            let encryptedURL = resolveURL(for: photo.encryptedDataPath)
+            let filename = encryptedURL.lastPathComponent
+            
+            // Skip if already processed (in case of resume logic, though this is a fresh start)
+            if journal.isProcessed(filename) {
+                continue
+            }
+            
             progressHandler?("Re-encrypting item \(index + 1) of \(total)...")
             
             let photosDir = photosDirectoryURL
-            let encryptedURL = resolveURL(for: photo.encryptedDataPath)
-            let filename = encryptedURL.lastPathComponent
             
             // Re-encrypt main file
             try await fileService.reEncryptFile(
@@ -613,25 +650,25 @@ class VaultManager: ObservableObject {
                     newEncryptionKey: newEncryptionKey,
                     newHMACKey: newHMACKey
                 )
-            } else {
-                // If it was a legacy unencrypted thumbnail, we should probably encrypt it now?
-                // For now, we leave it as is or handle it if we want to enforce full encryption.
-                // Let's stick to re-encrypting what is already encrypted.
             }
+            
+            // Update Journal
+            journal.markProcessed(filename)
+            try journalService.writeJournal(journal, to: vaultBaseURL)
         }
         
-        // 3. Commit: Store new password verifier and salt
+        // 4. Commit: Store new password verifier and salt
         progressHandler?("Saving new password...")
         try passwordService.storePasswordHash(newVerifier, salt: newSalt)
         
-        // 4. Update local state
+        // 5. Update local state
         await MainActor.run {
             self.passwordHash = newVerifier.map { String(format: "%02x", $0) }.joined()
             self.passwordSalt = newSalt.base64EncodedString()
             self.securityVersion = 2
         }
         
-        // 5. Update cached keys & Save settings
+        // 6. Update cached keys & Save settings
         await MainActor.run {
             cachedEncryptionKey = newEncryptionKey
             cachedHMACKey = newHMACKey
@@ -642,7 +679,25 @@ class VaultManager: ObservableObject {
             saveBiometricPassword(newPassword)
         }
         
+        // 8. Cleanup Journal
+        try journalService.deleteJournal(from: vaultBaseURL)
+        
         progressHandler?("Password changed successfully")
+    }
+
+    /// Checks if a password change operation was interrupted and needs recovery.
+    /// - Returns: The journal if an interrupted operation exists, nil otherwise.
+    func checkForInterruptedPasswordChange() -> PasswordChangeJournal? {
+        guard let journal = try? journalService.readJournal(from: vaultBaseURL) else {
+            return nil
+        }
+        
+        // Only return if it's in progress or failed
+        if journal.status == .inProgress || journal.status == .failed {
+            return journal
+        }
+        
+        return nil
     }
 
     func hasPassword() -> Bool {
@@ -781,14 +836,33 @@ class VaultManager: ObservableObject {
             hmacKey: hmacKey)
 
         let encryptedFilename = "\(photoId.uuidString).enc"
+        
+        // Create metadata for SVF2
+        let metadataLocation: FileService.EmbeddedMetadata.Location?
+        if let loc = location {
+            metadataLocation = FileService.EmbeddedMetadata.Location(latitude: loc.latitude, longitude: loc.longitude)
+        } else {
+            metadataLocation = nil
+        }
+        
+        let metadata = FileService.EmbeddedMetadata(
+            filename: filename,
+            dateCreated: dateTaken ?? Date(),
+            originalAssetIdentifier: assetIdentifier,
+            duration: duration,
+            location: metadataLocation
+        )
+
         switch mediaSource {
         case .data(let data):
             try await fileService.saveEncryptedFile(
                 data: data, filename: encryptedFilename, to: photosURL, encryptionKey: encryptionKey,
-                hmacKey: hmacKey)
+                hmacKey: hmacKey, metadata: metadata)
         case .fileURL(let url):
             try await fileService.saveStreamEncryptedFile(
-                from: url, filename: encryptedFilename, mediaType: mediaType, to: photosURL,
+                from: url, filename: encryptedFilename, mediaType: mediaType, 
+                metadata: metadata,
+                to: photosURL,
                 encryptionKey: encryptionKey, hmacKey: hmacKey, progressHandler: progressHandler)
         }
 
@@ -887,7 +961,7 @@ class VaultManager: ObservableObject {
             let url = resolveURL(for: encryptedThumbnailPath)
             if !FileManager.default.fileExists(atPath: url.path) {
                 print(
-                    "[VaultManager] decryptThumbnail: encrypted thumbnail missing for id=\(photo.id). Falling back to legacy thumbnail if available."
+                    "[VaultManager] decryptThumbnail: encrypted thumbnail missing for id=\(photo.id)."
                 )
             } else {
                 do {
@@ -900,37 +974,11 @@ class VaultManager: ObservableObject {
                 } catch {
                     #if DEBUG
                     print(
-                        "[VaultManager] decryptThumbnail: error reading encrypted thumbnail for id=\(photo.id): \(error). Falling back to legacy thumbnail if available."
+                        "[VaultManager] decryptThumbnail: error reading encrypted thumbnail for id=\(photo.id): \(error)."
                     )
                     #endif
                 }
             }
-        }
-
-        // Legacy or fallback path: try the plain thumbnailPath.
-        let legacyURL = resolveURL(for: photo.thumbnailPath)
-        if FileManager.default.fileExists(atPath: legacyURL.path) {
-            do {
-                let data = try Data(contentsOf: legacyURL)
-                if data.isEmpty {
-                    #if DEBUG
-                    print(
-                        "[VaultManager] decryptThumbnail: legacy thumbnail data empty for id=\(photo.id), thumb=\(photo.thumbnailPath)"
-                    )
-                    #endif
-                }
-                return data
-            } catch {
-                #if DEBUG
-                print("[VaultManager] decryptThumbnail: error reading legacy thumbnail for id=\(photo.id): \(error)")
-                #endif
-            }
-        } else {
-            #if DEBUG
-            print(
-                "[VaultManager] decryptThumbnail: legacy thumbnail file missing for id=\(photo.id) at path=\(photo.thumbnailPath)"
-            )
-            #endif
         }
 
         // As a last resort, return empty Data so the UI can show a placeholder.
@@ -1592,8 +1640,6 @@ class VaultManager: ObservableObject {
         }
 
         var settings: [String: String] = [
-            "passwordHash": passwordHash,
-            "passwordSalt": passwordSalt,
             "securityVersion": String(securityVersion),
             "secureDeletionEnabled": String(secureDeletionEnabled)
         ]
@@ -1620,6 +1666,20 @@ class VaultManager: ObservableObject {
         #if DEBUG
             print("Attempting to load settings from: \(settingsFileURL.path)")
         #endif
+        
+        // Load credentials from Keychain
+        if let credentials = try? passwordService.retrievePasswordCredentials() {
+            passwordHash = credentials.hash.map { String(format: "%02x", $0) }.joined()
+            passwordSalt = credentials.salt.base64EncodedString()
+            #if DEBUG
+                print("Loaded credentials from Keychain")
+            #endif
+        } else {
+            #if DEBUG
+                print("No credentials found in Keychain")
+            #endif
+        }
+
         guard let data = try? Data(contentsOf: settingsFileURL),
             let settings = try? JSONDecoder().decode([String: String].self, from: data)
         else {
@@ -1632,18 +1692,6 @@ class VaultManager: ObservableObject {
         #if DEBUG
             print("Loaded settings: [REDACTED]")
         #endif
-        if let hash = settings["passwordHash"] {
-            passwordHash = hash
-            #if DEBUG
-                print("Loaded password hash: \(hash.isEmpty ? "empty" : "present")")
-            #endif
-        }
-        if let salt = settings["passwordSalt"] {
-            passwordSalt = salt
-            #if DEBUG
-                print("Loaded password salt: \(salt.isEmpty ? "empty" : "present")")
-            #endif
-        }
         
         if let versionString = settings["securityVersion"], let version = Int(versionString) {
             securityVersion = version
@@ -1745,6 +1793,15 @@ class VaultManager: ObservableObject {
 
     func getBiometricPassword() -> String? {
         return try? securityService.retrieveBiometricPassword()
+    }
+
+    /// Retrieves the biometric password, throwing an error if authentication fails or is cancelled.
+    /// This allows the UI to distinguish between "not found" and "user cancelled".
+    func authenticateAndRetrievePassword() throws -> String {
+        guard let password = try securityService.retrieveBiometricPassword() else {
+            throw VaultError.biometricNotAvailable
+        }
+        return password
     }
 
     /// Validates crypto operations by performing encryption/decryption round-trip test.

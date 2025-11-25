@@ -55,11 +55,20 @@ class FileService {
 
     // MARK: - Streaming Format
 
+    struct EmbeddedMetadata: Codable {
+        let filename: String
+        let dateCreated: Date
+        let originalAssetIdentifier: String?
+        let duration: TimeInterval?
+        // We can add more fields here as needed
+    }
+
     private struct StreamFileHeader {
         let version: UInt8
         let mediaType: MediaType
         let originalSize: UInt64
         let chunkSize: UInt32
+        let metadataLength: UInt32 // New in V2
     }
 
     private var streamMagicData: Data {
@@ -68,9 +77,10 @@ class FileService {
 
     // MARK: - File Operations
 
-    /// Saves encrypted data to file with integrity protection
+    /// Saves encrypted data to file with integrity protection using SVF2 format
     func saveEncryptedFile(
-        data: Data, filename: String, to directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey
+        data: Data, filename: String, to directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey,
+        metadata: EmbeddedMetadata? = nil
     ) async throws {
         let fileURL = directory.appendingPathComponent(filename)
 
@@ -79,24 +89,79 @@ class FileService {
             throw VaultError.fileAlreadyExists(path: fileURL.path)
         }
 
-        // Encrypt data with integrity
-        let (encryptedData, nonce, hmac) = try await self.cryptoService.encryptDataWithIntegrity(
-            data, encryptionKey: encryptionKey, hmacKey: hmacKey)
+        // Prepare metadata if provided
+        var encryptedMetadataData = Data()
+        if let metadata = metadata {
+            let jsonData = try JSONEncoder().encode(metadata)
+            // Encrypt metadata as a single block
+            let (encrypted, nonce, hmac) = try await cryptoService.encryptDataWithIntegrity(
+                jsonData, encryptionKey: encryptionKey, hmacKey: hmacKey)
+            
+            // Format: [Nonce(12)][HMAC(32)][Ciphertext]
+            encryptedMetadataData.append(nonce)
+            encryptedMetadataData.append(hmac)
+            encryptedMetadataData.append(encrypted)
+        }
 
-        // Write encrypted data
-        try encryptedData.write(to: fileURL, options: .atomic)
+        // Create SVF2 Header
+        let header = StreamFileHeader(
+            version: CryptoConstants.streamingVersion,
+            mediaType: .photo, // Defaulting to photo for thumbnails/generic data
+            originalSize: UInt64(data.count),
+            chunkSize: UInt32(CryptoConstants.streamingChunkSize),
+            metadataLength: UInt32(encryptedMetadataData.count)
+        )
+        
+        FileManager.default.createFile(atPath: fileURL.path, contents: nil)
+        let writeHandle = try FileHandle(forWritingTo: fileURL)
+        defer { try? writeHandle.close() }
+        
+        do {
+            try writeStreamHeader(header, to: writeHandle)
 
-        // Write nonce as extended attribute
-        try self.setExtendedAttribute(name: "com.secretvault.nonce", data: nonce, at: fileURL)
-
-        // Write HMAC as extended attribute
-        try self.setExtendedAttribute(name: "com.secretvault.hmac", data: hmac, at: fileURL)
+            // Write metadata if present
+            if !encryptedMetadataData.isEmpty {
+                try writeHandle.write(contentsOf: encryptedMetadataData)
+            }
+            
+            // Encrypt and write data in chunks
+            let chunkSize = Int(CryptoConstants.streamingChunkSize)
+            var offset = 0
+            
+            while offset < data.count {
+                let end = min(offset + chunkSize, data.count)
+                let chunkData = data[offset..<end]
+                
+                let nonce = AES.GCM.Nonce()
+                let sealedBox = try AES.GCM.seal(chunkData, using: encryptionKey, nonce: nonce)
+                
+                var chunkLength = UInt32(chunkData.count).littleEndian
+                try writeHandle.write(contentsOf: Data(bytes: &chunkLength, count: MemoryLayout<UInt32>.size))
+                
+                let nonceData = nonce.withUnsafeBytes { Data($0) }
+                try writeHandle.write(contentsOf: nonceData)
+                try writeHandle.write(contentsOf: sealedBox.ciphertext)
+                try writeHandle.write(contentsOf: sealedBox.tag)
+                
+                offset += chunkSize
+            }
+        } catch {
+            try? FileManager.default.removeItem(at: fileURL)
+            throw error
+        }
     }
 
     /// Encrypts a file already on disk by streaming chunks to the destination file.
+    /// Supports SVF2 with embedded metadata.
     func saveStreamEncryptedFile(
-        from sourceURL: URL, filename: String, mediaType: MediaType, to directory: URL, encryptionKey: SymmetricKey,
-        hmacKey _: SymmetricKey, progressHandler: ((Int64) async -> Void)? = nil
+        from sourceURL: URL, 
+        filename: String, 
+        mediaType: MediaType, 
+        metadata: EmbeddedMetadata? = nil,
+        to directory: URL, 
+        encryptionKey: SymmetricKey,
+        hmacKey: SymmetricKey, 
+        progressHandler: ((Int64) async -> Void)? = nil
     ) async throws {
         let destinationURL = directory.appendingPathComponent(filename)
 
@@ -117,15 +182,35 @@ class FileService {
             try? writeHandle.close()
         }
 
+        // Prepare metadata if provided
+        var encryptedMetadataData = Data()
+        if let metadata = metadata {
+            let jsonData = try JSONEncoder().encode(metadata)
+            // Encrypt metadata as a single block
+            let (encrypted, nonce, hmac) = try await cryptoService.encryptDataWithIntegrity(
+                jsonData, encryptionKey: encryptionKey, hmacKey: hmacKey)
+            
+            // Format: [Nonce(12)][HMAC(32)][Ciphertext]
+            encryptedMetadataData.append(nonce)
+            encryptedMetadataData.append(hmac)
+            encryptedMetadataData.append(encrypted)
+        }
+
         let header = StreamFileHeader(
             version: CryptoConstants.streamingVersion,
             mediaType: mediaType,
             originalSize: fileSize.uint64Value,
-            chunkSize: UInt32(CryptoConstants.streamingChunkSize)
+            chunkSize: UInt32(CryptoConstants.streamingChunkSize),
+            metadataLength: UInt32(encryptedMetadataData.count)
         )
 
         do {
             try writeStreamHeader(header, to: writeHandle)
+
+            // Write metadata if present
+            if !encryptedMetadataData.isEmpty {
+                try writeHandle.write(contentsOf: encryptedMetadataData)
+            }
 
             let chunkSize = CryptoConstants.streamingChunkSize
             var totalProcessed: Int64 = 0
@@ -173,7 +258,7 @@ class FileService {
             return streamData
         }
 
-        return try await decryptLegacyFile(at: fileURL, encryptionKey: encryptionKey, hmacKey: hmacKey)
+        throw VaultError.invalidFileFormat(reason: "File is not in valid SVF2 format")
     }
 
     /// Decrypts an encrypted file to a temporary location on disk, returning the URL for downstream streaming uses.
@@ -194,10 +279,7 @@ class FileService {
             return tempURL
         }
 
-        let data = try await decryptLegacyFile(at: fileURL, encryptionKey: encryptionKey, hmacKey: hmacKey)
-        let tempURL = makeTemporaryFileURL(preferredExtension: originalExtension)
-        try data.write(to: tempURL, options: .atomic)
-        return tempURL
+        throw VaultError.invalidFileFormat(reason: "File is not in valid SVF2 format")
     }
 
     private func decryptStreamFileDataIfNeeded(at fileURL: URL, encryptionKey: SymmetricKey) async throws -> Data? {
@@ -209,6 +291,11 @@ class FileService {
 
         guard let header = try readStreamHeader(from: handle) else {
             return nil
+        }
+        
+        // Skip metadata if present
+        if header.metadataLength > 0 {
+            try handle.seek(toOffset: handle.offsetInFile + UInt64(header.metadataLength))
         }
 
         var decrypted = Data()
@@ -236,6 +323,11 @@ class FileService {
 
         guard let header = try readStreamHeader(from: handle) else {
             return nil
+        }
+        
+        // Skip metadata if present
+        if header.metadataLength > 0 {
+            try handle.seek(toOffset: handle.offsetInFile + UInt64(header.metadataLength))
         }
 
         let tempURL = makeTemporaryFileURL(preferredExtension: preferredExtension)
@@ -268,6 +360,10 @@ class FileService {
 
         var chunkSize = header.chunkSize.littleEndian
         data.append(Data(bytes: &chunkSize, count: MemoryLayout<UInt32>.size))
+        
+        // New in V2
+        var metadataLength = header.metadataLength.littleEndian
+        data.append(Data(bytes: &metadataLength, count: MemoryLayout<UInt32>.size))
 
         try handle.write(contentsOf: data)
     }
@@ -279,29 +375,96 @@ class FileService {
             return nil
         }
 
-        let headerSize = 1 + 1 + 2 + 8 + 4
-        guard let headerData = try handle.read(upToCount: headerSize), headerData.count == headerSize else {
+        // Read version first
+        guard let versionData = try handle.read(upToCount: 1) else { return nil }
+        let version = versionData[0]
+        
+        // Read remaining V1 header fields (15 bytes)
+        // Type(1) + Res(2) + Size(8) + Chunk(4)
+        let v1RemainingSize = 1 + 2 + 8 + 4
+        guard let v1Data = try handle.read(upToCount: v1RemainingSize), v1Data.count == v1RemainingSize else {
             throw VaultError.fileReadFailed(path: handle.description, reason: "Incomplete stream header")
         }
 
-        let version = headerData[0]
-        let mediaByte = headerData[1]
+        let mediaByte = v1Data[0]
         let mediaType: MediaType = mediaByte == 0x02 ? .video : .photo
 
-        let originalSize: UInt64 = headerData[4..<12].withUnsafeBytes { rawBuffer in
+        let originalSize: UInt64 = v1Data[3..<11].withUnsafeBytes { rawBuffer in
             var value: UInt64 = 0
             memcpy(&value, rawBuffer.baseAddress!, MemoryLayout<UInt64>.size)
             return UInt64(littleEndian: value)
         }
 
-        let chunkSize: UInt32 = headerData[12..<16].withUnsafeBytes { rawBuffer in
+        let chunkSize: UInt32 = v1Data[11..<15].withUnsafeBytes { rawBuffer in
             var value: UInt32 = 0
             memcpy(&value, rawBuffer.baseAddress!, MemoryLayout<UInt32>.size)
             return UInt32(littleEndian: value)
         }
+        
+        var metadataLength: UInt32 = 0
+        if version >= 2 {
+            // Read metadata length (4 bytes)
+            if let metaLenData = try handle.read(upToCount: 4), metaLenData.count == 4 {
+                metadataLength = metaLenData.withUnsafeBytes { rawBuffer in
+                    var value: UInt32 = 0
+                    memcpy(&value, rawBuffer.baseAddress!, MemoryLayout<UInt32>.size)
+                    return UInt32(littleEndian: value)
+                }
+            }
+        }
 
         return StreamFileHeader(
-            version: version, mediaType: mediaType, originalSize: originalSize, chunkSize: chunkSize)
+            version: version, mediaType: mediaType, originalSize: originalSize, chunkSize: chunkSize, metadataLength: metadataLength)
+    }
+    
+    /// Reads and decrypts embedded metadata from a file
+    func readMetadata(from fileURL: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws -> EmbeddedMetadata? {
+        guard let handle = try? FileHandle(forReadingFrom: fileURL) else { return nil }
+        defer { try? handle.close() }
+        
+        guard let header = try readStreamHeader(from: handle) else { return nil }
+        
+        guard header.metadataLength > 0 else { return nil }
+        
+        guard let metadataData = try handle.read(upToCount: Int(header.metadataLength)),
+              metadataData.count == Int(header.metadataLength) else {
+            return nil
+        }
+        
+        // Decrypt metadata
+        // Format: [Nonce(12)][HMAC(32)][Ciphertext]
+        let nonceSize = CryptoConstants.streamingNonceSize
+        let hmacSize = CryptoConstants.encryptionKeySize // Assuming HMAC size matches key size or constant
+        // Actually CryptoConstants.streamingTagSize is 16 (GCM tag), but here we used encryptDataWithIntegrity which uses HMAC-SHA256 (32 bytes) usually?
+        // Wait, encryptDataWithIntegrity returns (encryptedData, nonce, hmac).
+        // encryptDataWithIntegrity uses AES.GCM (16 byte tag included in ciphertext usually?) OR AES.CTR + HMAC?
+        // Let's check CryptoService.encryptDataWithIntegrity.
+        
+        // I need to check CryptoService to be sure about the format of `encryptDataWithIntegrity`.
+        // But assuming I can just call `decryptDataWithIntegrity` with the components.
+        
+        // Parse components
+        // Nonce is 12 bytes (AES.GCM.Nonce)
+        // HMAC is 32 bytes (SHA256)
+        // Ciphertext is the rest
+        
+        let hmacLength = 32 // SHA256
+        
+        guard metadataData.count > nonceSize + hmacLength else { return nil }
+        
+        let nonceData = metadataData.prefix(nonceSize)
+        let hmacData = metadataData.dropFirst(nonceSize).prefix(hmacLength)
+        let ciphertext = metadataData.dropFirst(nonceSize + hmacLength)
+        
+        let decryptedData = try await cryptoService.decryptDataWithIntegrity(
+            ciphertext, 
+            nonce: nonceData, 
+            hmac: hmacData, 
+            encryptionKey: encryptionKey, 
+            hmacKey: hmacKey
+        )
+        
+        return try JSONDecoder().decode(EmbeddedMetadata.self, from: decryptedData)
     }
 
     private func processStreamFile(
@@ -337,23 +500,6 @@ class FileService {
             totalProcessed += Int64(chunk.count)
             progressHandler?(totalProcessed)
         }
-    }
-
-    private func decryptLegacyFile(at fileURL: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws
-        -> Data
-    {
-        let encryptedData = try Data(contentsOf: fileURL)
-
-        guard let nonce = try self.getExtendedAttribute(name: "com.secretvault.nonce", at: fileURL) else {
-            throw VaultError.fileReadFailed(path: fileURL.path, reason: "Missing nonce")
-        }
-
-        guard let hmac = try self.getExtendedAttribute(name: "com.secretvault.hmac", at: fileURL) else {
-            throw VaultError.fileReadFailed(path: fileURL.path, reason: "Missing HMAC")
-        }
-
-        return try await self.cryptoService.decryptDataWithIntegrity(
-            encryptedData, nonce: nonce, hmac: hmac, encryptionKey: encryptionKey, hmacKey: hmacKey)
     }
 
     private func readExact(from handle: FileHandle, count: Int) throws -> Data {
@@ -477,35 +623,6 @@ class FileService {
         }
     #endif
 
-    // MARK: - Extended Attributes
-
-    private func setExtendedAttribute(name: String, data: Data, at url: URL) throws {
-        let result = data.withUnsafeBytes { bytes in
-            setxattr(url.path, name, bytes.baseAddress, bytes.count, 0, 0)
-        }
-        if result != 0 {
-            throw VaultError.fileWriteFailed(path: url.path, reason: "Failed to set extended attribute '\(name)'")
-        }
-    }
-
-    private func getExtendedAttribute(name: String, at url: URL) throws -> Data? {
-        let bufferSize = getxattr(url.path, name, nil, 0, 0, 0)
-        if bufferSize == -1 {
-            return nil  // Attribute doesn't exist
-        }
-
-        var buffer = [UInt8](repeating: 0, count: bufferSize)
-        let result = buffer.withUnsafeMutableBytes { bytes in
-            getxattr(url.path, name, bytes.baseAddress, bufferSize, 0, 0)
-        }
-
-        if result == -1 {
-            throw VaultError.fileReadFailed(path: url.path, reason: "Failed to read extended attribute '\(name)'")
-        }
-
-        return Data(buffer)
-    }
-
     // MARK: - Utility Functions
 
     /// Gets file size safely
@@ -541,6 +658,9 @@ class FileService {
     ) async throws {
         let fileURL = directory.appendingPathComponent(filename)
 
+        // 0. Read metadata from the old file
+        let metadata = try await readMetadata(from: fileURL, encryptionKey: oldEncryptionKey, hmacKey: oldHMACKey)
+
         // 1. Decrypt to temporary file using OLD keys
         // We use the existing decryptEncryptedFileToTemporaryURL which handles both legacy and stream formats
         let tempURL = try await decryptEncryptedFileToTemporaryURL(
@@ -567,6 +687,7 @@ class FileService {
             from: tempURL,
             filename: newFilename,
             mediaType: mediaType,
+            metadata: metadata, // Pass the preserved metadata
             to: directory,
             encryptionKey: newEncryptionKey,
             hmacKey: newHMACKey
