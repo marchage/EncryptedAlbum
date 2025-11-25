@@ -201,7 +201,6 @@ struct MainVaultView: View {
 
     private var actionButtonDimension: CGFloat {
         #if os(iOS)
-            #warning("Action button sizes reduced for a more compact toolbar")
             return verticalSizeClass == .regular ? 36 : 44
         #else
             return 44
@@ -1639,7 +1638,7 @@ struct MainVaultView: View {
                     .searchable(
                         text: $searchText, isPresented: $isSearchActive, placement: .navigationBarDrawer(displayMode: .automatic),
                         prompt: "Search hidden items")
-                    .onChange(of: isSearchActive) { newValue in
+                    .onChange(of: isSearchActive) { _, newValue in
                         if !newValue {
                             dismissKeyboard()
                         }
@@ -1715,13 +1714,13 @@ struct MainVaultView: View {
             } message: {
                 Text("This action permanently removes the selected content from Secret Vault.")
             }
-            .onChange(of: showingFilePicker) { newValue in
+            .onChange(of: showingFilePicker) { _, newValue in
                 if newValue {
                     importFilesToVault()
                 }
             }
             #if os(iOS)
-                .onChange(of: showingCamera) { isPresented in
+                .onChange(of: showingCamera) { _, isPresented in
                     if !isPresented {
                         UltraPrivacyCoordinator.shared.endTrustedModal()
                     }
@@ -1752,22 +1751,22 @@ struct MainVaultView: View {
             .onDisappear {
                 cancelScheduledForegroundLock()
             }
-            .onChange(of: showingPhotosLibrary) { isPresented in
+            .onChange(of: showingPhotosLibrary) { _, isPresented in
                 if isPresented {
                     cancelScheduledForegroundLock()
                 }
             }
-            .onChange(of: showingFilePicker) { isPresented in
+            .onChange(of: showingFilePicker) { _, isPresented in
                 if isPresented {
                     cancelScheduledForegroundLock()
                 }
             }
-            .onChange(of: showingCamera) { isPresented in
+            .onChange(of: showingCamera) { _, isPresented in
                 if isPresented {
                     cancelScheduledForegroundLock()
                 }
             }
-            .onChange(of: vaultManager.importProgress.isImporting) { importing in
+            .onChange(of: vaultManager.importProgress.isImporting) { _, importing in
                 if importing {
                     cancelScheduledForegroundLock()
                 }
@@ -1782,55 +1781,20 @@ struct MainVaultView: View {
                 isAppActive = NSApplication.shared.isActive
             }
         #else
-            .onChange(of: scenePhase) { newPhase in
+            .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active {
                     isAppActive = true
-                } else if newPhase == .background || newPhase == .inactive {
+                } else if newPhase == .background {
+                    isAppActive = false
+                    if requireForegroundReauthentication {
+                        let shouldSuppress = showingPhotosLibrary || showingCamera || vaultManager.importProgress.isImporting || captureInProgress || exportInProgress
+                        if !shouldSuppress {
+                            vaultManager.lock()
+                        }
+                    }
+                } else if newPhase == .inactive {
                     isAppActive = false
                 }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in
-                guard requireForegroundReauthentication else { return }
-                guard !shouldSuppressForegroundLock else {
-                    cancelScheduledForegroundLock()
-                    return
-                }
-                scheduleForegroundAutoLock()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                cancelScheduledForegroundLock()
-            }
-            .onDisappear {
-                cancelScheduledForegroundLock()
-            }
-            .onChange(of: showingPhotosLibrary) { isPresented in
-                if isPresented {
-                    cancelScheduledForegroundLock()
-                }
-            }
-            .onChange(of: showingFilePicker) { isPresented in
-                if isPresented {
-                    cancelScheduledForegroundLock()
-                }
-            }
-            .onChange(of: showingCamera) { isPresented in
-                if isPresented {
-                    cancelScheduledForegroundLock()
-                }
-            }
-            .onChange(of: vaultManager.importProgress.isImporting) { importing in
-                if importing {
-                    cancelScheduledForegroundLock()
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
-                isAppActive = false
-            }
-            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                isAppActive = true
-            }
-            .onAppear {
-                isAppActive = NSApplication.shared.isActive
             }
         #endif
     }
@@ -1988,7 +1952,7 @@ struct PhotoThumbnailView: View {
                 loadThumbnail()
             }
         }
-        .onChange(of: privacyModeEnabled) { newValue in
+        .onChange(of: privacyModeEnabled) { _, newValue in
             if !newValue && thumbnailImage == nil {
                 loadThumbnail()
             }
@@ -2146,7 +2110,7 @@ struct PhotoViewerSheet: View {
                 cancelDecryptTask()
                 cleanupVideo()
             }
-            .onChange(of: scenePhase) { newPhase in
+            .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active else {
                     dismissViewer()
                     return

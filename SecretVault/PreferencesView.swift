@@ -32,7 +32,7 @@ struct PreferencesView: View {
         }
         .padding(20)
         .frame(minWidth: 360, minHeight: 250)
-        .onChange(of: vaultManager.secureDeletionEnabled) { _ in
+        .onChange(of: vaultManager.secureDeletionEnabled) { _, _ in
             vaultManager.saveSettings()
         }
     }

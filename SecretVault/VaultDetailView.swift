@@ -543,7 +543,7 @@ struct PhotosLibraryPicker: View {
             isAppActive = NSApplication.shared.isActive
         }
         #else
-        .onChange(of: scenePhase) { newPhase in
+        .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 isAppActive = true
             } else if newPhase == .background || newPhase == .inactive {
