@@ -38,8 +38,6 @@
 		986328EC2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */; };
 		986328EE2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328ED2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift */; };
 		988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */; };
-		989ADDD92ED5BDE400994E72 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 989ADDD32ED5BDE400994E72 /* Assets.xcassets */; };
-		989ADDDA2ED5BDE400994E72 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 989ADDD32ED5BDE400994E72 /* Assets.xcassets */; };
 		989ADDDB2ED5BDE400994E72 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 989ADDD52ED5BDE400994E72 /* Preview Assets.xcassets */; };
 		989ADDDC2ED5BDE400994E72 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 989ADDD52ED5BDE400994E72 /* Preview Assets.xcassets */; };
 		989ADDDD2ED5BDE400994E72 /* VaultStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD62ED5BDE400994E72 /* VaultStorage.swift */; };
@@ -112,7 +110,6 @@
 		986328E92ECE8CEF00EAE9A9 /* SecretVaultUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SecretVaultUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultUITests.swift; sourceTree = "<group>"; };
 		986328ED2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultUITestsLaunchTests.swift; sourceTree = "<group>"; };
-		989ADDD32ED5BDE400994E72 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		989ADDD52ED5BDE400994E72 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		989ADDD62ED5BDE400994E72 /* VaultStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VaultStorage.swift; sourceTree = "<group>"; };
 		989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InactiveAppOverlay.swift; sourceTree = "<group>"; };
@@ -188,7 +185,6 @@
 		9849B4532EB9893D00B17DAC /* SecretVault */ = {
 			isa = PBXGroup;
 			children = (
-				989ADDD32ED5BDE400994E72 /* Assets.xcassets */,
 				989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */,
 				989ADDD42ED5BDE400994E72 /* Preview Content */,
 				989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */,
@@ -397,7 +393,6 @@
 				9819265C2EC854B800C67291 /* Preview Assets.xcassets in Resources */,
 				981926592EC854B800C67291 /* Assets.xcassets in Resources */,
 				989ADDDC2ED5BDE400994E72 /* Preview Assets.xcassets in Resources */,
-				989ADDDA2ED5BDE400994E72 /* Assets.xcassets in Resources */,
 				98C836002EC9E6CD000997CF /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -408,7 +403,6 @@
 			files = (
 				989ADDDB2ED5BDE400994E72 /* Preview Assets.xcassets in Resources */,
 				9849B45C2EB9893F00B17DAC /* Preview Assets.xcassets in Resources */,
-				989ADDD92ED5BDE400994E72 /* Assets.xcassets in Resources */,
 				9849B4592EB9893F00B17DAC /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
