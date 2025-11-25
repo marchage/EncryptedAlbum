@@ -860,29 +860,33 @@ struct PhotoAssetView: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            if let image = thumbnail {
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 100, height: 100)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
-                    )
-            } else {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.gray.opacity(0.2))
-                    .frame(width: 100, height: 100)
+            Group {
+                if let image = thumbnail {
+                    image
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Color.gray.opacity(0.2)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .aspectRatio(1, contentMode: .fill)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
+            )
 
             if isSelected {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.white)
-                    .background(Circle().fill(Color.accentColor).padding(2))
                     .padding(4)
+                    .background(Circle().fill(Color.accentColor))
+                    .padding(6)
             }
         }
+        .aspectRatio(1, contentMode: .fit)
+        .contentShape(Rectangle())
         .onAppear {
             loadThumbnail()
         }

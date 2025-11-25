@@ -310,39 +310,7 @@ struct UnlockView: View {
                 alert.addButton(withTitle: "Cancel")
 
                 if alert.runModal() == .alertFirstButtonReturn {
-                    // Delete all vault files from the correct vault location
-                    let fileManager = FileManager.default
-                    try? fileManager.removeItem(at: vaultManager.vaultBaseURL)
-                    // Vault directory deleted
-
-                    // Delete password hash from UserDefaults
-                    UserDefaults.standard.removeObject(forKey: "passwordHash")
-
-                    // Delete Keychain entries (both regular and biometric passwords)
-                    let keychainQueries = [
-                        [
-                            kSecClass as String: kSecClassGenericPassword,
-                            kSecAttrService as String: "com.secretvault.password",
-                        ],
-                        [
-                            kSecClass as String: kSecClassGenericPassword,
-                            kSecAttrAccount as String: "SecretVault.BiometricPassword",
-                        ],
-                    ]
-
-                    for query in keychainQueries {
-                        SecItemDelete(query as CFDictionary)
-                    }
-
-                    // Reset vault manager state
-                    vaultManager.passwordHash = ""
-                    vaultManager.objectWillChange.send()  // Immediate notification
-                    vaultManager.isUnlocked = false
-                    vaultManager.hiddenPhotos = []
-                    vaultManager.saveSettings()  // Persist the empty state
-
-                    // Force view refresh
-                    vaultManager.viewRefreshId = UUID()
+                    vaultManager.nukeAllData()
                 }
             #else
                 // iOS implementation - dismiss keyboard first to avoid constraint conflicts
@@ -358,53 +326,7 @@ struct UnlockView: View {
 
                 alert.addAction(
                     UIAlertAction(title: "Reset Vault", style: .destructive) { _ in
-                        // Delete all vault files from the correct iOS location
-                        let fileManager = FileManager.default
-
-                        // Delete from iCloud if available
-                        if let iCloudURL = fileManager.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent(
-                            "Documents")
-                        {
-                            let vaultDirectory = iCloudURL.appendingPathComponent("SecretVault", isDirectory: true)
-                            try? fileManager.removeItem(at: vaultDirectory)
-                            // Vault deleted from iCloud
-                        }
-
-                        // Also delete from local documents as fallback
-                        if let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
-                            let vaultDirectory = documentsURL.appendingPathComponent("SecretVault", isDirectory: true)
-                            try? fileManager.removeItem(at: vaultDirectory)
-                            // Vault deleted from local documents
-                        }
-
-                        // Delete password hash from UserDefaults
-                        UserDefaults.standard.removeObject(forKey: "passwordHash")
-
-                        // Delete Keychain entries (both regular and biometric passwords)
-                        let keychainQueries = [
-                            [
-                                kSecClass as String: kSecClassGenericPassword,
-                                kSecAttrService as String: "com.secretvault.password",
-                            ],
-                            [
-                                kSecClass as String: kSecClassGenericPassword,
-                                kSecAttrAccount as String: "SecretVault.BiometricPassword",
-                            ],
-                        ]
-
-                        for query in keychainQueries {
-                            SecItemDelete(query as CFDictionary)
-                        }
-
-                        // Reset vault manager state
-                        vaultManager.passwordHash = ""
-                        vaultManager.objectWillChange.send()  // Immediate notification
-                        vaultManager.isUnlocked = false
-                        vaultManager.hiddenPhotos = []
-                        vaultManager.saveSettings()  // Persist the empty state
-
-                        // Force view refresh
-                        vaultManager.viewRefreshId = UUID()
+                        vaultManager.nukeAllData()
                     })
 
                 alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))

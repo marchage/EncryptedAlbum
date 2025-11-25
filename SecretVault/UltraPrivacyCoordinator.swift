@@ -160,9 +160,18 @@ final class UltraPrivacyCoordinator: ObservableObject {
 private struct UltraPrivacyCoverView: View {
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            LinearGradient(
+                colors: [.pink, .orange, .yellow, .green, .mint, .blue, .purple],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            .overlay(
+                Color.black.opacity(0.45)
+                    .ignoresSafeArea()
+            )
             VStack(spacing: 16) {
-                Image(systemName: "lock.shield.fill")
+                Image(systemName: "lock.circle.fill")
                     .font(.system(size: 56, weight: .semibold))
                     .foregroundStyle(.white)
                 Text("SecretVault Locked")

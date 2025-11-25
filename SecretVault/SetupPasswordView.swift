@@ -79,8 +79,8 @@ struct SetupPasswordView: View {
                             .compositingGroup()
                             .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
                     } else {
-                        // Fallback to lock shield
-                        Image(systemName: "lock.shield.fill")
+                        // Fallback to lock circle
+                        Image(systemName: "lock.circle.fill")
                             .font(.system(size: 80))
                             .foregroundStyle(
                                 LinearGradient(
@@ -103,8 +103,8 @@ struct SetupPasswordView: View {
                             .compositingGroup()
                             .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
                     } else {
-                        // Fallback to lock shield
-                        Image(systemName: "lock.shield.fill")
+                        // Fallback to lock circle
+                        Image(systemName: "lock.circle.fill")
                             .font(.system(size: 72))
                             .foregroundStyle(
                                 LinearGradient(
@@ -128,7 +128,7 @@ struct SetupPasswordView: View {
                             .compositingGroup()
                             .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
                     } else {
-                        Image(systemName: "lock.shield.fill")
+                        Image(systemName: "lock.circle.fill")
                             .font(.system(size: 80))
                             .foregroundStyle(
                                 LinearGradient(

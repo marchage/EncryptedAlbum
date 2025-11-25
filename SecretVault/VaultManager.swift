@@ -286,46 +286,7 @@ class VaultManager: ObservableObject {
         // Handle Test Mode Reset
         print("DEBUG: CommandLine arguments: \(CommandLine.arguments)")
         if CommandLine.arguments.contains("--reset-state") {
-            // TEST MODE: Wiping Vault Data
-            
-            // 1. Remove the entire vault directory
-            try? FileManager.default.removeItem(at: self.storage.baseURL)
-            
-            // 2. Clear UserDefaults
-            if let bundleID = Bundle.main.bundleIdentifier {
-                UserDefaults.standard.removePersistentDomain(forName: bundleID)
-            }
-            UserDefaults.standard.synchronize()
-            
-            // 3. Clear Keychain items
-            let keychainQueries = [
-                [
-                    kSecClass as String: kSecClassGenericPassword,
-                    kSecAttrService as String: "com.secretvault.password",
-                ],
-                [
-                    kSecClass as String: kSecClassGenericPassword,
-                    kSecAttrAccount as String: "SecretVault.BiometricPassword",
-                ],
-                [
-                    kSecClass as String: kSecClassGenericPassword,
-                    kSecAttrAccount as String: "com.secretvault.passwordHash",
-                ],
-                [
-                    kSecClass as String: kSecClassGenericPassword,
-                    kSecAttrAccount as String: "com.secretvault.passwordSalt",
-                ]
-            ]
-            for query in keychainQueries {
-                SecItemDelete(query as CFDictionary)
-            }
-            
-            // 4. Reset in-memory state just in case
-            passwordHash = ""
-            passwordSalt = ""
-            securityVersion = 2
-            isUnlocked = false
-            showUnlockPrompt = false
+            nukeAllData()
         }
         #endif
 
@@ -393,7 +354,7 @@ class VaultManager: ObservableObject {
                         return
                     }
 
-                    let enteredPassword = textField.stringValue
+                   
                     // Reuse the same salted hashing logic as `unlock(password:)` so that
                     // step-up authentication behaves identically to a normal unlock.
                     guard let passwordData = enteredPassword.data(using: .utf8),
@@ -1932,5 +1893,39 @@ extension VaultManager {
             importProgress.statusMessage = "Import complete"
         }
     }
+
+    #if DEBUG
+    /// Completely wipes all vault data, settings, and keychain items.
+    /// DANGER: This is irreversible. Only for development/testing.
+    func nukeAllData() {
+        print("☢️ NUKING ALL VAULT DATA ☢️")
+        
+        // 1. Delete all files
+        try? FileManager.default.removeItem(at: storage.baseURL)
+        
+        // 2. Reset in-memory state
+        DispatchQueue.main.async {
+            self.hiddenPhotos = []
+            self.passwordHash = ""
+            self.passwordSalt = ""
+            self.securityVersion = 2
+            self.isUnlocked = false
+            self.showUnlockPrompt = false
+        }
+        
+        cachedMasterKey = nil
+        cachedEncryptionKey = nil
+        cachedHMACKey = nil
+        
+        // 3. Clear Keychain
+        try? passwordService.clearPasswordCredentials()
+        try? securityService.clearBiometricPassword()
+        
+        // 4. Clear UserDefaults
+        UserDefaults.standard.removeObject(forKey: "biometricConfigured")
+        
+        print("✅ Vault nuked successfully")
+    }
+    #endif
 }
 

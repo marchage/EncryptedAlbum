@@ -24,9 +24,18 @@ struct SecretVaultApp_iOS: App {
                     
                     // Privacy overlay for App Switcher
                     if scenePhase != .active && !privacyCoordinator.isTrustedModalActive {
-                        Color.black.ignoresSafeArea()
+                        LinearGradient(
+                            colors: [.pink, .orange, .yellow, .green, .mint, .blue, .purple],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        .ignoresSafeArea()
+                        .overlay(
+                            Color.black.opacity(0.45)
+                                .ignoresSafeArea()
+                        )
                         VStack(spacing: 16) {
-                            Image(systemName: "lock.shield.fill")
+                            Image(systemName: "lock.circle.fill")
                                 .font(.system(size: 60))
                                 .foregroundStyle(.white)
                             Text("SecretVault")
