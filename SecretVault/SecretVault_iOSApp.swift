@@ -24,10 +24,9 @@ struct SecretVaultApp_iOS: App {
                     
                     // Privacy overlay for App Switcher
                     if scenePhase != .active && !privacyCoordinator.isTrustedModalActive {
-                        let iconName = vaultManager.authenticationPromptActive ? "lock.circle.fill" : "eye.slash.fill"
                         PrivacyOverlayBackground()
                         VStack(spacing: 16) {
-                            Image(systemName: iconName)
+                            Image(systemName: "lock.circle.fill")
                                 .font(.system(size: 60))
                                 .foregroundStyle(.white)
                             Text("SecretVault")
