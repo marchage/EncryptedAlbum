@@ -212,7 +212,6 @@ class VaultManager: ObservableObject {
     private let vaultState: VaultState
     private let storage: VaultStorage
     private var restorationProgressCancellable: AnyCancellable?
-    private var importProgressCancellable: AnyCancellable?
 
     // Legacy properties for backward compatibility
     @Published var hiddenPhotos: [SecurePhoto] = []
@@ -234,10 +233,6 @@ class VaultManager: ObservableObject {
     @Published var viewRefreshId = UUID()  // Force view refresh when needed
     @Published var secureDeletionEnabled: Bool = true // Default to true for security
     @Published var authenticationPromptActive: Bool = false
-
-    var isBusy: Bool {
-        return importProgress.isImporting || restorationProgress.isRestoring
-    }
 
     /// Idle timeout in seconds before automatically locking the vault when unlocked.
     /// Default is 600 seconds (10 minutes).
@@ -306,9 +301,6 @@ class VaultManager: ObservableObject {
         self.loadSettings()
         
         restorationProgressCancellable = restorationProgress.objectWillChange.sink { [weak self] _ in
-            self?.objectWillChange.send()
-        }
-        importProgressCancellable = importProgress.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }
         // Settings loaded, checking password status
