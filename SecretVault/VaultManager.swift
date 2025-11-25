@@ -222,12 +222,12 @@ class VaultManager: ObservableObject {
     @Published var securityVersion: Int = 1   // 1 = Legacy (Key as Hash), 2 = Secure (Verifier)
     @Published var restorationProgress = RestorationProgress()
     @Published var importProgress = ImportProgress()
-    @Published var vaultBaseURL: URL {
-        didSet {
-            guard oldValue != vaultBaseURL else { return }
-            storage.updateBaseURL(vaultBaseURL)
-        }
+    
+    // Vault location is now fixed and managed by VaultStorage
+    var vaultBaseURL: URL {
+        return storage.baseURL
     }
+    
     @Published var hideNotification: HideNotification? = nil
     @Published var lastActivity: Date = Date()
     @Published var viewRefreshId = UUID()  // Force view refresh when needed
@@ -264,7 +264,7 @@ class VaultManager: ObservableObject {
         return ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
 
-    init(customBaseURL: URL? = nil) {
+    init(storage: VaultStorage? = nil) {
         let progress = ImportProgress()
         importService = ImportService(progress: progress)
 
@@ -275,12 +275,12 @@ class VaultManager: ObservableObject {
         journalService = PasswordChangeJournalService()
         fileService = FileService(cryptoService: cryptoService)
         vaultState = VaultState()
-        storage = VaultStorage(baseURL: customBaseURL)
+        self.storage = storage ?? VaultStorage()
         
         self.importProgress = progress
         
         fileService.cleanupTemporaryArtifacts()
-        vaultBaseURL = storage.baseURL
+        // vaultBaseURL is now computed from storage.baseURL
 
         #if DEBUG
         // Handle Test Mode Reset
@@ -289,7 +289,7 @@ class VaultManager: ObservableObject {
             // TEST MODE: Wiping Vault Data
             
             // 1. Remove the entire vault directory
-            try? FileManager.default.removeItem(at: vaultBaseURL)
+            try? FileManager.default.removeItem(at: self.storage.baseURL)
             
             // 2. Clear UserDefaults
             if let bundleID = Bundle.main.bundleIdentifier {
@@ -1625,7 +1625,6 @@ class VaultManager: ObservableObject {
         // when accessing @Published properties inside the background queue block
         let version = String(securityVersion)
         let secureDelete = String(secureDeletionEnabled)
-        let basePath = vaultBaseURL.path
 
         vaultQueue.sync {
             // Ensure vault directory exists before saving
@@ -1638,15 +1637,10 @@ class VaultManager: ObservableObject {
                 return
             }
 
-            var settings: [String: String] = [
+            let settings: [String: String] = [
                 "securityVersion": version,
                 "secureDeletionEnabled": secureDelete
             ]
-
-        #if os(macOS)
-            // Persist the sandbox path so we can detect old locations for migration info, but always prefer sandbox on next launch
-            settings["vaultBaseURL"] = basePath
-        #endif
 
             do {
                 let data = try JSONEncoder().encode(settings)
@@ -1670,15 +1664,6 @@ class VaultManager: ObservableObject {
             
             // Load credentials from Keychain
             if let credentials = try? passwordService.retrievePasswordCredentials() {
-                // We must update published properties on the main thread if we weren't already in init
-                // But loadSettings is private and mostly called from init. 
-                // To be safe given this is a sync block, we can just set them, 
-                // but strictly speaking @Published should be on main.
-                // However, since we are inside vaultQueue.sync, we are blocking the caller.
-                // If the caller is Main, we are fine to set ivars directly if we are in init.
-                // If we are not in init, we should be careful.
-                // For now, we'll assume direct assignment is okay as this is primarily init logic.
-                
                 passwordHash = credentials.hash.map { String(format: "%02x", $0) }.joined()
                 passwordSalt = credentials.salt.base64EncodedString()
                 #if DEBUG
@@ -1715,77 +1700,13 @@ class VaultManager: ObservableObject {
             } else {
                 secureDeletionEnabled = false
             }
-            
-            // On macOS we respect a stored custom vaultBaseURL so users can move
-            // the vault. On iOS, the container path is not stable across installs,
-            // so we ignore the stored path and always use the current Documents
-            // location determined during init.
-            #if os(macOS)
-                if let basePath = settings["vaultBaseURL"] {
-                    let url = URL(fileURLWithPath: basePath, isDirectory: true)
-                    let sandboxRoot = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?.path ?? ""
-                    // Only honor stored path if it still resides within our sandbox; otherwise prefer the current storage base
-                    if url.path.hasPrefix(sandboxRoot) {
-                        vaultBaseURL = url
-                    } else {
-                        vaultBaseURL = storage.baseURL
-                    }
-                } else {
-                    vaultBaseURL = storage.baseURL
-                }
-            #endif
         }
     }
 
     // MARK: - Vault Location Management
 
-    /// Copies the current vault contents into the user-selected directory and updates the active base URL.
-    /// - Parameters:
-    ///   - directory: The directory chosen by the user (a "SecretVault" folder will be created inside it).
-    ///   - completion: Called on the main queue with the migration result.
-    func moveVault(to directory: URL, completion: @escaping (Result<Void, Error>) -> Void) {
-        let destinationBase = directory.appendingPathComponent("SecretVault", isDirectory: true).standardizedFileURL
-        let currentBase = vaultBaseURL.standardizedFileURL
-
-        guard destinationBase != currentBase else {
-            DispatchQueue.main.async {
-                completion(.success(()))
-            }
-            return
-        }
-
-        let fileManager = FileManager.default
-        let migrationMarker = destinationBase.appendingPathComponent("migration-in-progress")
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                try fileManager.createDirectory(at: destinationBase, withIntermediateDirectories: true, attributes: nil)
-                try Data().write(to: migrationMarker)
-
-                let contents = try fileManager.contentsOfDirectory(at: currentBase, includingPropertiesForKeys: nil)
-                for item in contents {
-                    let destination = destinationBase.appendingPathComponent(item.lastPathComponent)
-                    if fileManager.fileExists(atPath: destination.path) {
-                        try fileManager.removeItem(at: destination)
-                    }
-                    try fileManager.copyItem(at: item, to: destination)
-                }
-
-                try fileManager.removeItem(at: migrationMarker)
-
-                DispatchQueue.main.async {
-                    self.vaultBaseURL = destinationBase
-                    self.saveSettings()
-                    completion(.success(()))
-                }
-            } catch {
-                try? fileManager.removeItem(at: migrationMarker)
-                DispatchQueue.main.async {
-                    completion(.failure(error))
-                }
-            }
-        }
-    }
+    // Vault location is now fixed to the App Sandbox Container.
+    // Legacy moveVault functionality has been removed to ensure security and data integrity.
 
     // MARK: - Biometric Authentication Helpers
 

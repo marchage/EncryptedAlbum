@@ -185,9 +185,11 @@ struct UnlockView: View {
             switch newPhase {
             case .active:
                 scheduleAutoBiometricIfNeeded(isReady: biometricsReady)
-            case .inactive, .background:
+            case .background:
                 cancelAutoBiometricScheduling()
                 hasAutoBiometricAttempted = false
+            case .inactive:
+                break
             @unknown default:
                 break
             }

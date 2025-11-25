@@ -352,37 +352,92 @@ class SecurityService {
         }
         
         // 1. Delete existing item first
-        let deleteQuery: [String: Any] = [
+        var deleteQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: biometricPasswordKey
         ]
+        #if os(macOS)
+        if shouldUseDataProtectionKeychain() {
+            deleteQuery[kSecUseDataProtectionKeychain as String] = true
+        }
+        #endif
         SecItemDelete(deleteQuery as CFDictionary)
         
         // 2. Add new item with access control
-        let addQuery: [String: Any] = [
+        var addQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: biometricPasswordKey,
             kSecValueData as String: passwordData,
             kSecAttrAccessControl as String: accessControl
         ]
+        #if os(macOS)
+        if shouldUseDataProtectionKeychain() {
+            addQuery[kSecUseDataProtectionKeychain as String] = true
+        }
+        #endif
         
         let status = SecItemAdd(addQuery as CFDictionary, nil)
         
-        guard status == errSecSuccess else {
+        if status != errSecSuccess {
+            #if os(macOS)
+            // Fallback for macOS without Data Protection: Store without Access Control
+            // We will rely on manual LAContext evaluation before retrieval
+            var fallbackQuery = addQuery
+            fallbackQuery.removeValue(forKey: kSecAttrAccessControl as String)
+            let fallbackStatus = SecItemAdd(fallbackQuery as CFDictionary, nil)
+            
+            guard fallbackStatus == errSecSuccess else {
+                throw VaultError.unknownError(reason: "Keychain storage failed with status \(status) and fallback \(fallbackStatus)")
+            }
+            #else
             throw VaultError.unknownError(reason: "Keychain storage failed with status \(status)")
+            #endif
         }
     }
 
     /// Retrieves the stored biometric password
     /// This will trigger the system biometric prompt automatically due to SecAccessControl
     func retrieveBiometricPassword(prompt: String = "Authenticate to unlock SecretVault") throws -> String? {
-        let query: [String: Any] = [
+        let context = LAContext()
+        context.localizedReason = prompt
+        
+        #if os(macOS)
+        // If we are not using Data Protection Keychain, we likely used the fallback storage (no Access Control).
+        // We must manually authenticate the user to maintain security.
+        if !shouldUseDataProtectionKeychain() {
+            let semaphore = DispatchSemaphore(value: 0)
+            var authError: Error?
+            var authSuccess = false
+            
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: prompt) { success, error in
+                authSuccess = success
+                authError = error
+                semaphore.signal()
+            }
+            
+            _ = semaphore.wait(timeout: .now() + 30) // 30s timeout for user interaction
+            
+            if !authSuccess {
+                if let error = authError as? LAError, error.code == .userCancel {
+                    throw VaultError.biometricCancelled
+                }
+                throw VaultError.biometricFailed
+            }
+        }
+        #endif
+        
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: biometricPasswordKey,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
-            kSecUseOperationPrompt as String: prompt
+            kSecUseAuthenticationContext as String: context
         ]
+        #if os(macOS)
+        if shouldUseDataProtectionKeychain() {
+            query[kSecUseDataProtectionKeychain as String] = true
+        }
+        #endif
 
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -427,7 +482,7 @@ class SecurityService {
         }
     }
 
-    private func shouldUseDataProtectionKeychain() -> Bool {
+    func shouldUseDataProtectionKeychain() -> Bool {
         if #available(macOS 10.15, *) {
             switch SecurityService.keychainDomainPreference {
             case .dataProtection:

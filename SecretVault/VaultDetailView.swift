@@ -278,7 +278,7 @@ struct PhotosLibraryPicker: View {
                             }
                             .pickerStyle(.segmented)
                             .frame(maxWidth: .infinity)
-                            .onChange(of: selectedLibrary) { _, _ in
+                            .onChange(of: selectedLibrary) { _ in
                                 loadPhotos()
                             }
 
@@ -289,7 +289,7 @@ struct PhotosLibraryPicker: View {
                                     .help(
                                         "If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared."
                                     )
-                                    .onChange(of: forceSharedLibrary) { _, _ in
+                                    .onChange(of: forceSharedLibrary) { _ in
                                         loadPhotos()
                                     }
                             }
@@ -543,7 +543,7 @@ struct PhotosLibraryPicker: View {
             isAppActive = NSApplication.shared.isActive
         }
         #else
-        .onChange(of: scenePhase) { _, newPhase in
+        .onChange(of: scenePhase) { newPhase in
             if newPhase == .active {
                 isAppActive = true
             } else if newPhase == .background || newPhase == .inactive {

@@ -17,7 +17,7 @@ final class VaultManagerTests: XCTestCase {
         tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         
-        sut = VaultManager(customBaseURL: tempDir)
+        sut = VaultManager(storage: VaultStorage(customBaseURL: tempDir))
     }
     
     override func tearDown() {

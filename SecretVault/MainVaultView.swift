@@ -183,7 +183,6 @@ struct MainVaultView: View {
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
     @State private var isSearchActive = false
     @State private var isAppActive = true
-    @State private var isChoosingVaultLocation = false
     #if os(iOS)
         @Environment(\.verticalSizeClass) private var verticalSizeClass
     #else
@@ -962,63 +961,6 @@ struct MainVaultView: View {
         return parts.joined(separator: ", ")
     }
 
-    func chooseVaultLocation() {
-        #if os(macOS)
-            isChoosingVaultLocation = true
-            // Step-up authentication before allowing vault location change
-            vaultManager.requireStepUpAuthentication { success in
-                guard success else {
-                    isChoosingVaultLocation = false
-                    return
-                }
-
-                // vaultManager.touchActivity() - removed
-
-                let panel = NSOpenPanel()
-                panel.canChooseFiles = false
-                panel.canChooseDirectories = true
-                panel.allowsMultipleSelection = false
-                panel.prompt = "Choose"
-                panel.message = "Select the folder where SecretVault should store its encrypted vault."
-
-                panel.begin { response in
-                    guard response == .OK, let baseURL = panel.url else {
-                        isChoosingVaultLocation = false
-                        return
-                    }
-
-                    // Ask for explicit confirmation and explain implications
-                    let confirmAlert = NSAlert()
-                    confirmAlert.messageText = "Change Vault Location?"
-                    confirmAlert.informativeText =
-                        "SecretVault will copy your existing encrypted vault to a new 'SecretVault' folder inside the selected location. If the folder is in iCloud Drive or another synced location, the encrypted vault files (including encrypted thumbnails and metadata) will be synced there. The old vault folder will be left in place so you can clean it up manually."
-                    confirmAlert.alertStyle = .warning
-                    confirmAlert.addButton(withTitle: "Move Vault")
-                    confirmAlert.addButton(withTitle: "Cancel")
-
-                    let response = confirmAlert.runModal()
-                    guard response == .alertFirstButtonReturn else {
-                        isChoosingVaultLocation = false
-                        return
-                    }
-
-                    vaultManager.moveVault(to: baseURL) { result in
-                        isChoosingVaultLocation = false
-                        if case .failure(let error) = result {
-                            let errorAlert = NSAlert()
-                            errorAlert.messageText = "Failed to Move Vault"
-                            errorAlert.informativeText =
-                                "SecretVault could not copy your vault to the new location. Your existing vault remains at its previous location. Error: \(error.localizedDescription)"
-                            errorAlert.alertStyle = .critical
-                            errorAlert.addButton(withTitle: "OK")
-                            errorAlert.runModal()
-                        }
-                    }
-                }
-            }
-        #endif
-    }
-
     @ViewBuilder
     private var cameraSheet: some View {
         #if os(iOS)
@@ -1072,16 +1014,6 @@ struct MainVaultView: View {
         #endif
 
         Menu {
-            #if os(macOS)
-                Button {
-                    chooseVaultLocation()
-                } label: {
-                    Label("Choose Vault Folder…", systemImage: "folder")
-                }
-
-                Divider()
-            #endif
-
             Button {
                 vaultManager.removeDuplicates()
             } label: {
@@ -1393,7 +1325,7 @@ struct MainVaultView: View {
                                             .disabled(exportInProgress)
                                         #endif
                                         Button(role: .destructive) {
-                                            let photosToDelete = vaultManager.hiddenPhotos.filter {
+                                            let photosToDelete: [SecurePhoto] = vaultManager.hiddenPhotos.filter {
                                                 selectedPhotos.contains($0.id)
                                             }
                                             requestDeletion(for: photosToDelete)
@@ -1830,7 +1762,6 @@ struct MainVaultView: View {
                 || vaultManager.importProgress.isImporting
                 || captureInProgress
                 || exportInProgress
-                || isChoosingVaultLocation
         }
     }
 #endif

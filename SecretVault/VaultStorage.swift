@@ -3,32 +3,19 @@ import Foundation
 /// Centralizes sandbox-aware vault file locations and relative-path helpers.
 final class VaultStorage {
     private let fileManager = FileManager.default
-    private(set) var baseURL: URL {
-        didSet { configureDerivedPaths() }
-    }
-
+    private(set) var baseURL: URL
     private(set) var photosDirectory: URL
     private(set) var settingsFile: URL
     private(set) var metadataFile: URL
 
-    init(baseURL: URL? = nil) {
-        let resolvedBase = baseURL ?? VaultStorage.defaultBaseURL()
+    init(customBaseURL: URL? = nil) {
+        let resolvedBase = customBaseURL ?? VaultStorage.defaultBaseURL()
         self.baseURL = resolvedBase
         self.photosDirectory = resolvedBase.appendingPathComponent(FileConstants.photosDirectoryName, isDirectory: true)
         self.settingsFile = resolvedBase.appendingPathComponent(FileConstants.settingsFileName)
         self.metadataFile = resolvedBase.appendingPathComponent(FileConstants.photosMetadataFileName)
 
         ensureDirectoryExists(resolvedBase)
-        ensureDirectoryExists(photosDirectory)
-
-        if baseURL == nil {
-            migrateLegacyVaultIfPossible()
-        }
-    }
-
-    func updateBaseURL(_ newURL: URL) {
-        baseURL = newURL
-        ensureDirectoryExists(baseURL)
         ensureDirectoryExists(photosDirectory)
     }
 
@@ -61,12 +48,6 @@ final class VaultStorage {
         return storedPath
     }
 
-    private func configureDerivedPaths() {
-        photosDirectory = baseURL.appendingPathComponent(FileConstants.photosDirectoryName, isDirectory: true)
-        settingsFile = baseURL.appendingPathComponent(FileConstants.settingsFileName)
-        metadataFile = baseURL.appendingPathComponent(FileConstants.photosMetadataFileName)
-    }
-
     private func ensureDirectoryExists(_ url: URL) {
         do {
             try fileManager.createDirectory(at: url, withIntermediateDirectories: true)
@@ -77,109 +58,27 @@ final class VaultStorage {
         }
     }
 
-    private func migrateLegacyVaultIfPossible() {
-        guard let legacyURL = VaultStorage.locateLegacyVault(),
-              legacyURL.standardizedFileURL.path != baseURL.standardizedFileURL.path else {
-            return
-        }
-
-        var isDirectory: ObjCBool = false
-        guard fileManager.fileExists(atPath: legacyURL.path, isDirectory: &isDirectory), isDirectory.boolValue else {
-            return
-        }
-
-        do {
-            let legacyContents = try fileManager.contentsOfDirectory(at: legacyURL, includingPropertiesForKeys: nil)
-            for item in legacyContents {
-                let destination = baseURL.appendingPathComponent(item.lastPathComponent)
-                if fileManager.fileExists(atPath: destination.path) { continue }
-                try fileManager.copyItem(at: item, to: destination)
-            }
-            #if DEBUG
-                print("VaultStorage: Copied legacy vault from \(legacyURL.path) to \(baseURL.path)")
-            #endif
-        } catch {
-            #if DEBUG
-                print("VaultStorage: Failed to migrate legacy data: \(error)")
-            #endif
-        }
-    }
-
     private static func defaultBaseURL() -> URL {
         #if os(iOS)
             let fm = FileManager.default
-            if let iCloudURL = fm.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents") {
-                return iCloudURL.appendingPathComponent("SecretVault", isDirectory: true)
+            // Always use the secure Application Support directory for the vault
+            // This is backed up by iCloud/iTunes backups but not accessible to user via Files app
+            // unless we explicitly expose it (which we don't want for a secret vault).
+            // Note: Previous versions might have used Documents.
+            // For a "Secret" vault, Application Support is better than Documents.
+            // However, if we want to be super strict, we can use the Library directory.
+            // Let's stick to Application Support as it's standard for app data.
+            
+            guard let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+                fatalError("Unable to locate application support directory")
             }
-            guard let documentsURL = fm.urls(for: .documentDirectory, in: .userDomainMask).first else {
-                fatalError("Unable to locate documents directory")
-            }
-            return documentsURL.appendingPathComponent("SecretVault", isDirectory: true)
+            return appSupport.appendingPathComponent("SecretVault", isDirectory: true)
         #else
+            // macOS: Always use the App Sandbox Container's Application Support directory
             let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
                 ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support", isDirectory: true)
             return appSupport.appendingPathComponent("SecretVault", isDirectory: true)
         #endif
     }
-
-    private static func locateLegacyVault() -> URL? {
-        if let stored = storedLegacyBaseURL() {
-            return stored
-        }
-
-        #if os(macOS)
-            let home = FileManager.default.homeDirectoryForCurrentUser
-            let candidates = [
-                home.appendingPathComponent("Library/Application Support/SecretVault", isDirectory: true),
-                home.appendingPathComponent("Documents/SecretVault", isDirectory: true)
-            ]
-        #else
-            var candidates: [URL] = []
-            if let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-                candidates.append(docs.appendingPathComponent("SecretVault", isDirectory: true))
-            }
-            if let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first {
-                candidates.append(library.appendingPathComponent("SecretVault", isDirectory: true))
-            }
-        #endif
-
-        for url in candidates {
-            var isDirectory: ObjCBool = false
-            if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory), isDirectory.boolValue {
-                return url
-            }
-        }
-
-        return nil
-    }
-
-    private static func storedLegacyBaseURL() -> URL? {
-        guard let settingsURL = legacySettingsFileURL(),
-              let data = try? Data(contentsOf: settingsURL),
-              let settings = try? JSONDecoder().decode([String: String].self, from: data),
-              let basePath = settings["vaultBaseURL"], !basePath.isEmpty else {
-            return nil
-        }
-
-        let candidate = URL(fileURLWithPath: basePath, isDirectory: true)
-        var isDirectory: ObjCBool = false
-        if FileManager.default.fileExists(atPath: candidate.path, isDirectory: &isDirectory), isDirectory.boolValue {
-            return candidate
-        }
-        return nil
-    }
-
-    private static func legacySettingsFileURL() -> URL? {
-        #if os(macOS)
-            let home = FileManager.default.homeDirectoryForCurrentUser
-            let base = home.appendingPathComponent("Library/Application Support/SecretVault", isDirectory: true)
-            return base.appendingPathComponent(FileConstants.settingsFileName)
-        #else
-            guard let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-                return nil
-            }
-            let base = documentsURL.appendingPathComponent("SecretVault", isDirectory: true)
-            return base.appendingPathComponent(FileConstants.settingsFileName)
-        #endif
-    }
 }
+
