@@ -10,8 +10,6 @@ import SwiftUI
 
 struct MainVaultView: View {
     @EnvironmentObject var vaultManager: VaultManager
-    @Binding var captureInProgress: Bool
-    @Binding var exportInProgress: Bool
 
     private struct RestorationProgressOverlayView: View {
         @ObservedObject var progress: RestorationProgress
@@ -158,7 +156,7 @@ struct MainVaultView: View {
     @State private var photosToRestore: [SecurePhoto] = []
     @State private var showingCamera = false
     @State private var showingFilePicker = false
-    // captureInProgress and exportInProgress are now @Binding from parent
+    @State private var captureInProgress = false
     @State private var captureStatusMessage = ""
     @State private var captureDetailMessage = ""
     @State private var captureItemsProcessed = 0
@@ -167,6 +165,7 @@ struct MainVaultView: View {
     @State private var captureCancelRequested = false
     @State private var captureBytesProcessed: Int64 = 0
     @State private var captureBytesTotal: Int64 = 0
+    @State private var exportInProgress = false
     @State private var showDeleteConfirmation = false
     @State private var pendingDeletionPhotos: [SecurePhoto] = []
     @State private var exportStatusMessage = ""
@@ -1699,7 +1698,15 @@ struct MainVaultView: View {
                     }
                 }
             #endif
-            // Progress overlays moved to ContentView to stay visible when locked
+            if captureInProgress {
+                captureProgressOverlay
+            }
+            if exportInProgress {
+                exportProgressOverlay
+            }
+            if vaultManager.restorationProgress.isRestoring {
+                restorationProgressOverlay
+            }
         }
         #if os(macOS)
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in

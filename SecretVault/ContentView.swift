@@ -2,109 +2,23 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var vaultManager: VaultManager
-    @State private var captureInProgress = false
-    @State private var exportInProgress = false
 
     var body: some View {
         ZStack {
             if vaultManager.hasPassword() {
                 if vaultManager.isUnlocked {
-                    MainVaultView(
-                        captureInProgress: $captureInProgress,
-                        exportInProgress: $exportInProgress
-                    )
+                    MainVaultView()
                 } else {
                     UnlockView()
                 }
             } else {
                 SetupPasswordView()
             }
-            
-            // Progress overlays stay visible even when locked
-            if captureInProgress {
-                ProgressOverlayPlaceholder(message: "Import in progress…")
-            }
-            if exportInProgress {
-                ProgressOverlayPlaceholder(message: "Export in progress…")
-            }
-            if vaultManager.restorationProgress.isRestoring {
-                RestorationProgressOverlay(progress: vaultManager.restorationProgress)
-            }
         }
         #if os(macOS)
             .frame(minWidth: 900, minHeight: 600)
         #endif
         .id(vaultManager.viewRefreshId)  // Force view recreation when refreshId changes
-    }
-}
-
-// MARK: - Progress Overlay Placeholder
-
-private struct ProgressOverlayPlaceholder: View {
-    let message: String
-    
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.45)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 16) {
-                ProgressView()
-                    .progressViewStyle(.circular)
-                    .scaleEffect(1.5)
-                
-                Text(message)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                
-                Text("Operation continues in background")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(32)
-            .background(.ultraThickMaterial)
-            .cornerRadius(16)
-            .shadow(radius: 18)
-        }
-        .transition(.opacity)
-    }
-}
-
-private struct RestorationProgressOverlay: View {
-    @ObservedObject var progress: RestorationProgress
-    
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.45)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 12) {
-                if progress.totalItems > 0 {
-                    ProgressView(value: Double(progress.processedItems), total: Double(max(progress.totalItems, 1)))
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: 300)
-                } else {
-                    ProgressView()
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: 300)
-                }
-                
-                Text(progress.statusMessage.isEmpty ? "Restoring items…" : progress.statusMessage)
-                    .font(.headline)
-                
-                if progress.totalItems > 0 {
-                    Text("\(progress.processedItems) of \(progress.totalItems)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(24)
-            .frame(maxWidth: 300)
-            .background(.ultraThickMaterial)
-            .cornerRadius(16)
-            .shadow(radius: 18)
-        }
-        .transition(.opacity)
     }
 }
 
