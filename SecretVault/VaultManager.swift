@@ -1002,15 +1002,21 @@ class VaultManager: ObservableObject {
     /// - Throws: Error if file reading or decryption fails
     func decryptPhoto(_ photo: SecurePhoto) async throws -> Data {
         // Use FileService to load and decrypt the encrypted file
+        guard let encryptionKey = cachedEncryptionKey, let hmacKey = cachedHMACKey else {
+            throw VaultError.vaultNotInitialized
+        }
         let encryptedURL = resolveURL(for: photo.encryptedDataPath)
         return try await fileService.loadEncryptedFile(
             filename: encryptedURL.lastPathComponent,
             from: encryptedURL.deletingLastPathComponent(),
-            encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
+            encryptionKey: encryptionKey, hmacKey: hmacKey)
     }
 
     func decryptPhotoToTemporaryURL(_ photo: SecurePhoto, progressHandler: ((Int64) -> Void)? = nil) async throws -> URL
     {
+        guard let encryptionKey = cachedEncryptionKey, let hmacKey = cachedHMACKey else {
+            throw VaultError.vaultNotInitialized
+        }
         let encryptedURL = resolveURL(for: photo.encryptedDataPath)
         let filename = encryptedURL.lastPathComponent
         let directory = encryptedURL.deletingLastPathComponent()
@@ -1020,13 +1026,16 @@ class VaultManager: ObservableObject {
             filename: filename,
             originalExtension: preferredExtension,
             from: directory,
-            encryptionKey: cachedEncryptionKey!,
-            hmacKey: cachedHMACKey!,
+            encryptionKey: encryptionKey,
+            hmacKey: hmacKey,
             progressHandler: progressHandler
         )
     }
 
     func decryptThumbnail(for photo: SecurePhoto) async throws -> Data {
+        guard let encryptionKey = cachedEncryptionKey, let hmacKey = cachedHMACKey else {
+            throw VaultError.vaultNotInitialized
+        }
         // Option 1: be resilient to missing thumbnail files and fall back gracefully.
         if let encryptedThumbnailPath = photo.encryptedThumbnailPath {
             let url = resolveURL(for: encryptedThumbnailPath)
@@ -1041,7 +1050,7 @@ class VaultManager: ObservableObject {
                     return try await fileService.loadEncryptedFile(
                         filename: filename,
                         from: url.deletingLastPathComponent(),
-                        encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
+                        encryptionKey: encryptionKey, hmacKey: hmacKey)
                 } catch {
                     #if DEBUG
                     print(
