@@ -232,6 +232,7 @@ class VaultManager: ObservableObject {
     @Published var lastActivity: Date = Date()
     @Published var viewRefreshId = UUID()  // Force view refresh when needed
     @Published var secureDeletionEnabled: Bool = false // Default to true for security
+    @Published var authenticationPromptActive: Bool = false
 
     /// Idle timeout in seconds before automatically locking the vault when unlocked.
     /// Default is 600 seconds (10 minutes).
@@ -1693,6 +1694,19 @@ class VaultManager: ObservableObject {
     /// Retrieves the biometric password, throwing an error if authentication fails or is cancelled.
     /// This allows the UI to distinguish between "not found" and "user cancelled".
     func authenticateAndRetrievePassword() throws -> String {
+        let setPromptState: (Bool) -> Void = { value in
+            if Thread.isMainThread {
+                self.authenticationPromptActive = value
+            } else {
+                DispatchQueue.main.async {
+                    self.authenticationPromptActive = value
+                }
+            }
+        }
+
+        setPromptState(true)
+        defer { setPromptState(false) }
+
         guard let password = try securityService.retrieveBiometricPassword() else {
             throw VaultError.biometricNotAvailable
         }

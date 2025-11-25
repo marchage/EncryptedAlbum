@@ -161,11 +161,17 @@ final class UltraPrivacyCoordinator: ObservableObject {
 }
 
 private struct UltraPrivacyCoverView: View {
+    @ObservedObject private var vaultManager = VaultManager.shared
+
+    private var overlayIconName: String {
+        vaultManager.authenticationPromptActive ? "lock.circle.fill" : "eye.slash.fill"
+    }
+
     var body: some View {
         ZStack {
             PrivacyOverlayBackground()
             VStack(spacing: 16) {
-                Image(systemName: "lock.circle.fill")
+                Image(systemName: overlayIconName)
                     .font(.system(size: 56, weight: .semibold))
                     .foregroundStyle(.white)
                 Text("SecretVault Locked")

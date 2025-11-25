@@ -2,6 +2,7 @@ import SwiftUI
 
 #if os(macOS)
 struct InactiveAppOverlay: View {
+    @EnvironmentObject private var vaultManager: VaultManager
     @Environment(\.scenePhase) private var scenePhase
     @State private var windowIsKey = true
     @State private var appIsActive = true
@@ -9,6 +10,10 @@ struct InactiveAppOverlay: View {
     private var isObscured: Bool {
         let obscured = !appIsActive || scenePhase != .active || !windowIsKey
         return obscured
+    }
+
+    private var overlayIconName: String {
+        vaultManager.authenticationPromptActive ? "lock.circle.fill" : "eye.slash.fill"
     }
 
     var body: some View {
@@ -36,8 +41,8 @@ struct InactiveAppOverlay: View {
     @ViewBuilder
     private func overlayContent() -> some View {
         VStack(spacing: 12) {
-            Image(systemName: "eye.slash.fill")
-                .font(.system(size: 32, weight: .semibold))
+            Image(systemName: overlayIconName)
+                .font(.system(size: 40, weight: .semibold))
                 .foregroundStyle(.white)
             Text("SecretVault is obscured")
                 .font(.headline)
