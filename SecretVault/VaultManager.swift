@@ -1952,6 +1952,18 @@ extension VaultManager {
         func startDirectImport(urls: [URL]) {
             guard !urls.isEmpty else { return }
 
+            guard isUnlocked, cachedEncryptionKey != nil, cachedHMACKey != nil else {
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.hideNotification = HideNotification(
+                        message: "Unlock the vault before importing files.",
+                        type: .failure,
+                        photos: nil
+                    )
+                }
+                return
+            }
+
             Task { @MainActor [weak self] in
                 self?.directImportProgress.reset(totalItems: urls.count)
             }
@@ -2185,6 +2197,19 @@ extension VaultManager {
 extension VaultManager {
     /// Imports assets from Photo Library into the vault
     func importAssets(_ assets: [PHAsset]) async {
+        guard isUnlocked, cachedEncryptionKey != nil, cachedHMACKey != nil else {
+            await MainActor.run {
+                hideNotification = HideNotification(
+                    message: "Unlock the vault before importing from Photos.",
+                    type: .failure,
+                    photos: nil
+                )
+                importProgress.isImporting = false
+                importProgress.statusMessage = "Import cancelled"
+            }
+            return
+        }
+
         let successfulAssets = await importService.importAssets(assets) { [weak self] mediaSource, filename, dateTaken, sourceAlbum, assetIdentifier, mediaType, duration, location, isFavorite, progressHandler in
             guard let self = self else { throw VaultError.vaultNotInitialized }
             try await self.hidePhoto(
