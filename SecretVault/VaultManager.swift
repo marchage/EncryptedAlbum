@@ -231,7 +231,7 @@ class VaultManager: ObservableObject {
     @Published var hideNotification: HideNotification? = nil
     @Published var lastActivity: Date = Date()
     @Published var viewRefreshId = UUID()  // Force view refresh when needed
-    @Published var secureDeletionEnabled: Bool = false // Default to true for security
+    @Published var secureDeletionEnabled: Bool = true // Default to true for security
     @Published var authenticationPromptActive: Bool = false
 
     /// Idle timeout in seconds before automatically locking the vault when unlocked.
@@ -1662,7 +1662,7 @@ class VaultManager: ObservableObject {
             if let secureDeleteString = settings["secureDeletionEnabled"], let secureDelete = Bool(secureDeleteString) {
                 secureDeletionEnabled = secureDelete
             } else {
-                secureDeletionEnabled = false
+                secureDeletionEnabled = true
             }
         }
     }
