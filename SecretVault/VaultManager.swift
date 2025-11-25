@@ -256,6 +256,7 @@ class VaultManager: ObservableObject {
     private func relativePath(for absoluteURL: URL) -> String { storage.relativePath(for: absoluteURL) }
     private func normalizedStoredPath(_ storedPath: String) -> String { storage.normalizedStoredPath(storedPath) }
     private var idleTimer: Timer?
+    private var idleTimerSuspended: Bool = false
 
     // Serial queue for thread-safe operations
     private let vaultQueue = DispatchQueue(label: "com.secretvault.vaultQueue", qos: .userInitiated)
@@ -758,6 +759,11 @@ class VaultManager: ObservableObject {
                 return
             }
 
+            // Skip idle check if timer is suspended (e.g., during imports)
+            if self.idleTimerSuspended {
+                return
+            }
+
             let elapsed = Date().timeIntervalSince(self.lastActivity)
             if elapsed > self.idleTimeout {
                 self.lock()
@@ -766,6 +772,17 @@ class VaultManager: ObservableObject {
         if let idleTimer = idleTimer {
             RunLoop.main.add(idleTimer, forMode: .common)
         }
+    }
+
+    /// Suspends the idle timer to prevent auto-lock during long operations (e.g., imports)
+    func suspendIdleTimer() {
+        idleTimerSuspended = true
+    }
+
+    /// Resumes the idle timer after long operations complete
+    func resumeIdleTimer() {
+        idleTimerSuspended = false
+        lastActivity = Date() // Reset activity timestamp
     }
 
     /// Encrypts and stores a photo or video in the vault using either in-memory data or a file URL.

@@ -645,7 +645,18 @@ struct MainVaultView: View {
                 alert.runModal()
                 return
             }
-            // vaultManager.touchActivity() - removed
+            
+            // Verify vault is unlocked before starting import
+            guard vaultManager.isUnlocked else {
+                showingFilePicker = false
+                let alert = NSAlert()
+                alert.messageText = "Vault Not Unlocked"
+                alert.informativeText = "Please unlock the vault before importing files."
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+                return
+            }
 
             let panel = NSOpenPanel()
             panel.canChooseFiles = true
@@ -714,6 +725,7 @@ struct MainVaultView: View {
             formatter.countStyle = .file
 
             await MainActor.run {
+                vaultManager.suspendIdleTimer()
                 captureInProgress = true
                 captureItemsTotal = urls.count
                 captureItemsProcessed = 0
@@ -734,6 +746,11 @@ struct MainVaultView: View {
                 if Task.isCancelled {
                     wasCancelled = true
                     break
+                }
+
+                // Keep vault active during long import operations
+                await MainActor.run {
+                    vaultManager.lastActivity = Date()
                 }
 
                 let filename = url.lastPathComponent
@@ -814,6 +831,7 @@ struct MainVaultView: View {
             }
 
             await MainActor.run {
+                vaultManager.resumeIdleTimer()
                 captureInProgress = false
                 captureDetailMessage = ""
                 captureStatusMessage = ""
