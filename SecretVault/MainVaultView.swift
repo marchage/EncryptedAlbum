@@ -919,10 +919,12 @@ struct MainVaultView: View {
                 directImportDetailLabel
                 directImportCancelNotice
 
-                Button("Cancel Import", action: cancelDirectImportTapped)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .disabled(directImportProgress.cancelRequested)
+                #if os(macOS)
+                    Button("Cancel Import", action: cancelDirectImportTapped)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .disabled(directImportProgress.cancelRequested)
+                #endif
             }
             .padding(24)
             .frame(maxWidth: UIConstants.progressCardWidth)
@@ -1020,9 +1022,13 @@ struct MainVaultView: View {
         }
     }
 
-    private func cancelDirectImportTapped() {
-        vaultManager.cancelDirectImport()
-    }
+    #if os(macOS)
+        private func cancelDirectImportTapped() {
+            vaultManager.cancelDirectImport()
+        }
+    #else
+        private func cancelDirectImportTapped() {}
+    #endif
 
     private var exportProgressOverlay: some View {
         ZStack {
