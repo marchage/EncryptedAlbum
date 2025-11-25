@@ -206,6 +206,22 @@ struct MainVaultView: View {
         #endif
     }
 
+    private var gridSpacing: CGFloat {
+        #if os(iOS)
+            return 1
+        #else
+            return 16
+        #endif
+    }
+
+    private var gridMinimumItemWidth: CGFloat {
+        #if os(iOS)
+            return 80
+        #else
+            return 140
+        #endif
+    }
+
     var filteredPhotos: [SecurePhoto] {
         var photos = vaultManager.hiddenPhotos
 
@@ -1514,7 +1530,9 @@ struct MainVaultView: View {
                             .padding(.vertical, 40)
                         } else {
                             LazyVGrid(
-                                columns: [GridItem(.adaptive(minimum: 140, maximum: 200), spacing: 16)], spacing: 16
+                                columns: [GridItem(
+                                    .adaptive(minimum: gridMinimumItemWidth, maximum: 200), spacing: gridSpacing)
+                                ], spacing: gridSpacing
                             ) {
                                 ForEach(filteredPhotos) { photo in
                                     Button {
@@ -1550,7 +1568,7 @@ struct MainVaultView: View {
                                     }
                                 }
                             }
-                            .padding(.horizontal, 4)
+                            .padding(.horizontal, gridSpacing)
                         }
                     }
                     .padding()
@@ -1774,87 +1792,71 @@ struct PhotoThumbnailView: View {
     @State private var loadTask: Task<Void, Never>?
     @State private var failedToLoad: Bool = false
 
-    private var thumbnailSize: CGFloat {
-        #if os(iOS)
-            return 120
-        #else
-            return 180
-        #endif
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             ZStack(alignment: .topTrailing) {
-                if privacyModeEnabled {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(width: thumbnailSize, height: thumbnailSize)
-                        .overlay {
-                            Image(systemName: "eye.slash.fill")
-                                .font(.title2)
-                                .foregroundStyle(.secondary)
-                        }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
-                        )
-                } else if let image = thumbnailImage {
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: thumbnailSize, height: thumbnailSize)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .shadow(radius: 2)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
-                        )
-                        .overlay(alignment: .bottomLeading) {
-                            if photo.mediaType == .video {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "play.fill")
-                                        .font(.caption2)
-                                    if let duration = photo.duration {
-                                        Text(formatDuration(duration))
-                                            .font(.caption2)
-                                    }
-                                }
-                                .foregroundStyle(.white)
-                                .padding(4)
-                                .background(.black.opacity(0.6))
-                                .cornerRadius(4)
-                                .padding(6)
-                            }
-                        }
-                } else if failedToLoad {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(width: thumbnailSize, height: thumbnailSize)
-                        .overlay {
-                            Image(
-                                systemName: photo.mediaType == .video ? "video.slash" : "exclamationmark.triangle.fill"
-                            )
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
-                        }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
-                        )
-                } else {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(width: thumbnailSize, height: thumbnailSize)
-                        .overlay {
-                            VStack(spacing: 4) {
-                                ProgressView()
-                                    .controlSize(.small)
-                                Text("Decrypting...")
-                                    .font(.caption2)
+                Group {
+                    if privacyModeEnabled {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay {
+                                Image(systemName: "eye.slash.fill")
+                                    .font(.title2)
                                     .foregroundStyle(.secondary)
                             }
-                        }
+                    } else if let image = thumbnailImage {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .shadow(radius: 2)
+                            .overlay(alignment: .bottomLeading) {
+                                if photo.mediaType == .video {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "play.fill")
+                                            .font(.caption2)
+                                        if let duration = photo.duration {
+                                            Text(formatDuration(duration))
+                                                .font(.caption2)
+                                        }
+                                    }
+                                    .foregroundStyle(.white)
+                                    .padding(4)
+                                    .background(.black.opacity(0.6))
+                                    .cornerRadius(4)
+                                    .padding(6)
+                                }
+                            }
+                    } else if failedToLoad {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay {
+                                Image(
+                                    systemName: photo.mediaType == .video
+                                        ? "video.slash" : "exclamationmark.triangle.fill"
+                                )
+                                .font(.title2)
+                                .foregroundStyle(.secondary)
+                            }
+                    } else {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay {
+                                VStack(spacing: 4) {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                    Text("Decrypting...")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
+                )
 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
@@ -1864,6 +1866,7 @@ struct PhotoThumbnailView: View {
                         .padding(6)
                 }
             }
+            .aspectRatio(1, contentMode: .fit)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(photo.filename)
@@ -1876,7 +1879,6 @@ struct PhotoThumbnailView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(width: thumbnailSize, alignment: .leading)
         }
         .onAppear {
             if !privacyModeEnabled {
@@ -1885,6 +1887,13 @@ struct PhotoThumbnailView: View {
         }
         .onChange(of: privacyModeEnabled) { newValue in
             if !newValue && thumbnailImage == nil {
+                loadThumbnail()
+            }
+        }
+        .onChange(of: vaultManager.isUnlocked) { isUnlocked in
+            if !isUnlocked {
+                thumbnailImage = nil
+            } else if !privacyModeEnabled {
                 loadThumbnail()
             }
         }
