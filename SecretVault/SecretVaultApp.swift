@@ -16,12 +16,6 @@ struct SecretVaultApp: App {
                     .overlay {
                         InactiveAppOverlay()
                     }
-                    .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in
-                        // Lock immediately when backgrounded, unless busy with import/export
-                        if !vaultManager.isBusy {
-                            vaultManager.lock()
-                        }
-                    }
             }
             Settings {
                 PreferencesView()

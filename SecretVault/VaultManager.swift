@@ -388,12 +388,6 @@ class VaultManager: ObservableObject {
     /// - Parameter password: The password to set (must be 8-128 characters)
     /// - Returns: `true` on success, `false` if validation fails
     func setupPassword(_ password: String) async throws {
-        // Verify system entropy before generating keys
-        let health = try await securityService.performSecurityHealthCheck()
-        guard health.randomGenerationHealthy else {
-            throw VaultError.securityHealthCheckFailed(reason: "Insufficient system entropy for secure key generation")
-        }
-
         try passwordService.validatePassword(password)
 
         let (hash, salt) = try await passwordService.hashPassword(password)
@@ -536,12 +530,6 @@ class VaultManager: ObservableObject {
     {
         await MainActor.run { lastActivity = Date() }
         
-        // Verify system entropy before generating new keys
-        let health = try await securityService.performSecurityHealthCheck()
-        guard health.randomGenerationHealthy else {
-            throw VaultError.securityHealthCheckFailed(reason: "Insufficient system entropy for secure key generation")
-        }
-
         // 1. Prepare: Verify old password and generate new keys
         progressHandler?("Verifying and generating keys...")
         let (newVerifier, newSalt, newEncryptionKey, newHMACKey) = try await passwordService.preparePasswordChange(
