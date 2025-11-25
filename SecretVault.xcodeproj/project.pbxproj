@@ -15,11 +15,12 @@
 		981926552EC854B600C67291 /* SecretVault_iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981926542EC854B600C67291 /* SecretVault_iOSApp.swift */; };
 		981926592EC854B800C67291 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 981926582EC854B800C67291 /* Assets.xcassets */; };
 		9819265C2EC854B800C67291 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9819265B2EC854B800C67291 /* Preview Assets.xcassets */; };
+		981BB77E2ED5C1AA00584B7B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 981BB77D2ED5C1AA00584B7B /* Assets.xcassets */; };
+		981BB77F2ED5C1AA00584B7B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 981BB77D2ED5C1AA00584B7B /* Assets.xcassets */; };
 		9823D7782ECD7BF400FFB750 /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */; };
 		982404542ECF12930078B446 /* PasswordServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 982404532ECF12930078B446 /* PasswordServiceTests.swift */; };
 		9849B4552EB9893D00B17DAC /* SecretVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4542EB9893D00B17DAC /* SecretVaultApp.swift */; };
 		9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4562EB9893D00B17DAC /* ContentView.swift */; };
-		9849B4592EB9893F00B17DAC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B4582EB9893F00B17DAC /* Assets.xcassets */; };
 		9849B45C2EB9893F00B17DAC /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B45B2EB9893F00B17DAC /* Preview Assets.xcassets */; };
 		985C161C2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985C161B2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift */; };
 		985C161E2ECF1DA200EC1701 /* SecurityServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985C161D2ECF1DA200EC1701 /* SecurityServiceTests.swift */; };
@@ -53,7 +54,6 @@
 		98C835FD2EC9E6CD000997CF /* MainVaultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE5566FF77AA88BB99CC /* MainVaultView.swift */; };
 		98C835FE2EC9E6CD000997CF /* VaultManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F96EA3625074B045C751E84 /* VaultManager.swift */; };
 		98C835FF2EC9E6CD000997CF /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345677 /* PreferencesView.swift */; };
-		98C836002EC9E6CD000997CF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B4582EB9893F00B17DAC /* Assets.xcassets */; };
 		9FA39564407F407B82E34796 /* PasswordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28CF564BDC0E4C9F891A9910 /* PasswordService.swift */; };
 		A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345677 /* PreferencesView.swift */; };
 		AA11BB2233CC44DD55EE66FF /* SetupPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */; };
@@ -92,12 +92,12 @@
 		981926582EC854B800C67291 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9819265B2EC854B800C67291 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		981926602EC8552000C67291 /* Info_iOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info_iOS.plist; sourceTree = "<group>"; };
+		981BB77D2ED5C1AA00584B7B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = ../../../../Desktop/Assets.xcassets; sourceTree = "<group>"; };
 		9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CameraCaptureView.swift; sourceTree = "<group>"; };
 		982404532ECF12930078B446 /* PasswordServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordServiceTests.swift; sourceTree = "<group>"; };
 		9849B4512EB9893D00B17DAC /* SecretVault.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SecretVault.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9849B4542EB9893D00B17DAC /* SecretVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultApp.swift; sourceTree = "<group>"; };
 		9849B4562EB9893D00B17DAC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		9849B4582EB9893F00B17DAC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9849B45B2EB9893F00B17DAC /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		9849B45D2EB9893F00B17DAC /* SecretVault.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SecretVault.entitlements; sourceTree = "<group>"; };
 		985C161B2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosLibraryServiceTests.swift; sourceTree = "<group>"; };
@@ -209,7 +209,7 @@
 				28CF564BDC0E4C9F891A9910 /* PasswordService.swift */,
 				A61A2BD7A0514BCA85111D3F /* VaultError.swift */,
 				8CC21B534704407E965288CF /* VaultState.swift */,
-				9849B4582EB9893F00B17DAC /* Assets.xcassets */,
+				981BB77D2ED5C1AA00584B7B /* Assets.xcassets */,
 				9849B45D2EB9893F00B17DAC /* SecretVault.entitlements */,
 				CF9ADA540C59D1A9B3039480 /* SecretVault_iOS.entitlements */,
 				9849B45A2EB9893F00B17DAC /* Preview Content */,
@@ -393,7 +393,7 @@
 				9819265C2EC854B800C67291 /* Preview Assets.xcassets in Resources */,
 				981926592EC854B800C67291 /* Assets.xcassets in Resources */,
 				989ADDDC2ED5BDE400994E72 /* Preview Assets.xcassets in Resources */,
-				98C836002EC9E6CD000997CF /* Assets.xcassets in Resources */,
+				981BB77F2ED5C1AA00584B7B /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -403,7 +403,7 @@
 			files = (
 				989ADDDB2ED5BDE400994E72 /* Preview Assets.xcassets in Resources */,
 				9849B45C2EB9893F00B17DAC /* Preview Assets.xcassets in Resources */,
-				9849B4592EB9893F00B17DAC /* Assets.xcassets in Resources */,
+				981BB77E2ED5C1AA00584B7B /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
