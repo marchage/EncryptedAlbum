@@ -2,7 +2,7 @@ import SwiftUI
 
 #if os(macOS)
 struct InactiveAppOverlay: View {
-    @EnvironmentObject private var vaultManager: VaultManager
+    @ObservedObject private var vaultManager = VaultManager.shared
     @Environment(\.scenePhase) private var scenePhase
     @State private var windowIsKey = true
     @State private var appIsActive = true
