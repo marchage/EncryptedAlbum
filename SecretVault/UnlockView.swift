@@ -181,7 +181,7 @@ struct UnlockView: View {
             cancelAutoBiometricScheduling()
             hasAutoBiometricAttempted = false
         }
-        .onChange(of: scenePhase) { _, newPhase in
+        .onChange(of: scenePhase) { newPhase in
             switch newPhase {
             case .active:
                 scheduleAutoBiometricIfNeeded(isReady: biometricsReady)
