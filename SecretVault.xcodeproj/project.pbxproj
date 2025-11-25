@@ -38,6 +38,16 @@
 		986328EC2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */; };
 		986328EE2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328ED2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift */; };
 		988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */; };
+		989ADDD92ED5BDE400994E72 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 989ADDD32ED5BDE400994E72 /* Assets.xcassets */; };
+		989ADDDA2ED5BDE400994E72 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 989ADDD32ED5BDE400994E72 /* Assets.xcassets */; };
+		989ADDDB2ED5BDE400994E72 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 989ADDD52ED5BDE400994E72 /* Preview Assets.xcassets */; };
+		989ADDDC2ED5BDE400994E72 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 989ADDD52ED5BDE400994E72 /* Preview Assets.xcassets */; };
+		989ADDDD2ED5BDE400994E72 /* VaultStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD62ED5BDE400994E72 /* VaultStorage.swift */; };
+		989ADDDE2ED5BDE400994E72 /* VaultStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD62ED5BDE400994E72 /* VaultStorage.swift */; };
+		989ADDDF2ED5BDE400994E72 /* InactiveAppOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */; };
+		989ADDE02ED5BDE400994E72 /* InactiveAppOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */; };
+		989ADDE12ED5BDE400994E72 /* UltraPrivacyCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */; };
+		989ADDE22ED5BDE400994E72 /* UltraPrivacyCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */; };
 		98C835F92EC9E6CD000997CF /* PhotosLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */; };
 		98C835FA2EC9E6CD000997CF /* VaultDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C904A396A6B1968CDD78D9 /* VaultDetailView.swift */; };
 		98C835FB2EC9E6CD000997CF /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C068CD08B70A6DBEA00400 /* UnlockView.swift */; };
@@ -102,6 +112,11 @@
 		986328E92ECE8CEF00EAE9A9 /* SecretVaultUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SecretVaultUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultUITests.swift; sourceTree = "<group>"; };
 		986328ED2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		989ADDD32ED5BDE400994E72 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		989ADDD52ED5BDE400994E72 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		989ADDD62ED5BDE400994E72 /* VaultStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VaultStorage.swift; sourceTree = "<group>"; };
+		989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InactiveAppOverlay.swift; sourceTree = "<group>"; };
+		989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UltraPrivacyCoordinator.swift; sourceTree = "<group>"; };
 		9F96EA3625074B045C751E84 /* VaultManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6789012345677 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		A61A2BD7A0514BCA85111D3F /* VaultError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultError.swift; sourceTree = "<group>"; };
@@ -173,6 +188,11 @@
 		9849B4532EB9893D00B17DAC /* SecretVault */ = {
 			isa = PBXGroup;
 			children = (
+				989ADDD32ED5BDE400994E72 /* Assets.xcassets */,
+				989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */,
+				989ADDD42ED5BDE400994E72 /* Preview Content */,
+				989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */,
+				989ADDD62ED5BDE400994E72 /* VaultStorage.swift */,
 				9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */,
 				9849B4542EB9893D00B17DAC /* SecretVaultApp.swift */,
 				981926542EC854B600C67291 /* SecretVault_iOSApp.swift */,
@@ -239,6 +259,14 @@
 				986328ED2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift */,
 			);
 			path = SecretVaultUITests;
+			sourceTree = "<group>";
+		};
+		989ADDD42ED5BDE400994E72 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				989ADDD52ED5BDE400994E72 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -368,6 +396,8 @@
 			files = (
 				9819265C2EC854B800C67291 /* Preview Assets.xcassets in Resources */,
 				981926592EC854B800C67291 /* Assets.xcassets in Resources */,
+				989ADDDC2ED5BDE400994E72 /* Preview Assets.xcassets in Resources */,
+				989ADDDA2ED5BDE400994E72 /* Assets.xcassets in Resources */,
 				98C836002EC9E6CD000997CF /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -376,7 +406,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				989ADDDB2ED5BDE400994E72 /* Preview Assets.xcassets in Resources */,
 				9849B45C2EB9893F00B17DAC /* Preview Assets.xcassets in Resources */,
+				989ADDD92ED5BDE400994E72 /* Assets.xcassets in Resources */,
 				9849B4592EB9893F00B17DAC /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -402,11 +434,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				989ADDDE2ED5BDE400994E72 /* VaultStorage.swift in Sources */,
 				986328C92ECE882D00EAE9A9 /* ContentView.swift in Sources */,
 				981926552EC854B600C67291 /* SecretVault_iOSApp.swift in Sources */,
 				98C835F92EC9E6CD000997CF /* PhotosLibraryService.swift in Sources */,
 				98C835FA2EC9E6CD000997CF /* VaultDetailView.swift in Sources */,
 				98C835FB2EC9E6CD000997CF /* UnlockView.swift in Sources */,
+				989ADDE02ED5BDE400994E72 /* InactiveAppOverlay.swift in Sources */,
 				98C835FC2EC9E6CD000997CF /* SetupPasswordView.swift in Sources */,
 				98C835FD2EC9E6CD000997CF /* MainVaultView.swift in Sources */,
 				98C835FE2EC9E6CD000997CF /* VaultManager.swift in Sources */,
@@ -414,6 +448,7 @@
 				98C835FF2EC9E6CD000997CF /* PreferencesView.swift in Sources */,
 				986328CA2ECE882D00EAE9A9 /* Constants.swift in Sources */,
 				986328CB2ECE882D00EAE9A9 /* CryptoService.swift in Sources */,
+				989ADDE22ED5BDE400994E72 /* UltraPrivacyCoordinator.swift in Sources */,
 				986328CC2ECE882D00EAE9A9 /* FileService.swift in Sources */,
 				986328CD2ECE882D00EAE9A9 /* PasswordService.swift in Sources */,
 				986328CE2ECE882D00EAE9A9 /* SecurityService.swift in Sources */,
@@ -426,11 +461,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				989ADDDD2ED5BDE400994E72 /* VaultStorage.swift in Sources */,
 				988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */,
 				9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */,
 				1CA80AC13D192EBBFCD3B516 /* PhotosLibraryService.swift in Sources */,
 				432DD49F40365EA5EAEBFD23 /* VaultDetailView.swift in Sources */,
 				F9B0EAD109417F32CF3B7D50 /* UnlockView.swift in Sources */,
+				989ADDDF2ED5BDE400994E72 /* InactiveAppOverlay.swift in Sources */,
 				AA11BB2233CC44DD55EE66FF /* SetupPasswordView.swift in Sources */,
 				CC33DD4455EE66FF77AA88BB /* MainVaultView.swift in Sources */,
 				E48BBB324071974C8BE48D0D /* VaultManager.swift in Sources */,
@@ -438,6 +475,7 @@
 				A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */,
 				0A1A2C90CFC24033BB978D99 /* Constants.swift in Sources */,
 				72601657C5564D06A303EECF /* CryptoService.swift in Sources */,
+				989ADDE12ED5BDE400994E72 /* UltraPrivacyCoordinator.swift in Sources */,
 				DD69BC27985C4D09BA6690A2 /* FileService.swift in Sources */,
 				9FA39564407F407B82E34796 /* PasswordService.swift in Sources */,
 				AB219FCE33BC4485A762BDA6 /* SecurityService.swift in Sources */,
