@@ -293,7 +293,7 @@ class VaultManager: ObservableObject {
     private func relativePath(for absoluteURL: URL) -> String { storage.relativePath(for: absoluteURL) }
     private func normalizedStoredPath(_ storedPath: String) -> String { storage.normalizedStoredPath(storedPath) }
     private var idleTimer: Timer?
-    private var idleTimerSuspended: Bool = false
+    private var idleTimerSuspendCount: Int = 0
 
     // Serial queue for thread-safe operations
     private let vaultQueue = DispatchQueue(label: "com.secretvault.vaultQueue", qos: .userInitiated)
@@ -799,7 +799,7 @@ class VaultManager: ObservableObject {
             }
 
             // Skip idle check if timer is suspended (e.g., during imports)
-            if self.idleTimerSuspended {
+            if self.idleTimerSuspendCount > 0 {
                 #if DEBUG
                 print("⏸️  Idle timer check skipped (suspended)")
                 #endif
@@ -822,20 +822,37 @@ class VaultManager: ObservableObject {
     /// Suspends the idle timer to prevent auto-lock during long operations (e.g., imports)
     @MainActor
     func suspendIdleTimer() {
-        idleTimerSuspended = true
+        idleTimerSuspendCount += 1
         #if DEBUG
-        print("🔒 Idle timer SUSPENDED - vault will not auto-lock")
+        if idleTimerSuspendCount == 1 {
+            print("🔒 Idle timer SUSPENDED - vault will not auto-lock")
+        } else {
+            print("🔒 Idle timer suspension depth now \(idleTimerSuspendCount)")
+        }
         #endif
     }
 
     /// Resumes the idle timer after long operations complete
     @MainActor
     func resumeIdleTimer() {
-        idleTimerSuspended = false
-        lastActivity = Date() // Reset activity timestamp
-        #if DEBUG
-        print("🔓 Idle timer RESUMED - vault will auto-lock after \(Int(idleTimeout))s of inactivity")
-        #endif
+        guard idleTimerSuspendCount > 0 else {
+            #if DEBUG
+                print("⚠️ resumeIdleTimer called with no active suspensions")
+            #endif
+            return
+        }
+
+        idleTimerSuspendCount -= 1
+        if idleTimerSuspendCount == 0 {
+            lastActivity = Date() // Reset activity timestamp
+            #if DEBUG
+                print("🔓 Idle timer RESUMED - vault will auto-lock after \(Int(idleTimeout))s of inactivity")
+            #endif
+        } else {
+            #if DEBUG
+                print("🔐 Idle timer suspension depth decreased to \(idleTimerSuspendCount)")
+            #endif
+        }
     }
 
     /// Encrypts and stores a photo or video in the vault using either in-memory data or a file URL.

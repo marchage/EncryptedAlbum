@@ -1528,6 +1528,13 @@ struct MainVaultView: View {
             } message: {
                 Text("This action permanently removes the selected content from Secret Vault.")
             }
+            .onChange(of: showDeleteConfirmation) { presented in
+                if presented {
+                    vaultManager.suspendIdleTimer()
+                } else {
+                    vaultManager.resumeIdleTimer()
+                }
+            }
             .onChange(of: showingFilePicker) { newValue in
                 if newValue {
                     importFilesToVault()
@@ -1920,6 +1927,12 @@ struct PhotoViewerSheet: View {
                     return
                 }
             }
+        }
+        .onAppear {
+            vaultManager.suspendIdleTimer()
+        }
+        .onDisappear {
+            vaultManager.resumeIdleTimer()
         }
     }
 
