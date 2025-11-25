@@ -4,6 +4,10 @@ struct PreferencesView: View {
     @EnvironmentObject var vaultManager: VaultManager
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
 
+    @State private var healthReport: SecurityHealthReport?
+    @State private var isCheckingHealth = false
+    @State private var healthCheckError: String?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("General")
@@ -28,12 +32,89 @@ struct PreferencesView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            Divider()
+
+            Text("Diagnostics")
+                .font(.headline)
+
+            Button {
+                runHealthCheck()
+            } label: {
+                if isCheckingHealth {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Text("Run Security Health Check")
+                }
+            }
+            .disabled(isCheckingHealth)
+
+            if let report = healthReport {
+                VStack(alignment: .leading, spacing: 8) {
+                    HealthCheckRow(label: "Random Generation (Entropy)", passed: report.randomGenerationHealthy)
+                    HealthCheckRow(label: "Crypto Operations", passed: report.cryptoOperationsHealthy)
+                    HealthCheckRow(label: "File System Security", passed: report.fileSystemSecure)
+                    HealthCheckRow(label: "Memory Security", passed: report.memorySecurityHealthy)
+                    Divider()
+                    HStack {
+                        Text("Overall Status:")
+                        Spacer()
+                        Text(report.overallHealthy ? "PASSED" : "FAILED")
+                            .fontWeight(.bold)
+                            .foregroundStyle(report.overallHealthy ? .green : .red)
+                    }
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
+            }
+
+            if let error = healthCheckError {
+                Text("Check failed: \(error)")
+                    .foregroundStyle(.red)
+                    .font(.caption)
+            }
+
             Spacer()
         }
         .padding(20)
-        .frame(minWidth: 360, minHeight: 250)
+        .frame(minWidth: 360, minHeight: 450)
         .onChange(of: vaultManager.secureDeletionEnabled) { _ in
             vaultManager.saveSettings()
+        }
+    }
+
+    private func runHealthCheck() {
+        isCheckingHealth = true
+        healthReport = nil
+        healthCheckError = nil
+
+        Task {
+            do {
+                let report = try await vaultManager.performSecurityHealthCheck()
+                await MainActor.run {
+                    self.healthReport = report
+                    self.isCheckingHealth = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.healthCheckError = error.localizedDescription
+                    self.isCheckingHealth = false
+                }
+            }
+        }
+    }
+}
+
+struct HealthCheckRow: View {
+    let label: String
+    let passed: Bool
+
+    var body: some View {
+        HStack {
+            Text(label)
+            Spacer()
+            Image(systemName: passed ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .foregroundStyle(passed ? .green : .red)
         }
     }
 }
