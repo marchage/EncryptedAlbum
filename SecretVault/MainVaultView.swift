@@ -909,74 +909,17 @@ struct MainVaultView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 12) {
-                if directImportProgress.itemsTotal > 0 {
-                    ProgressView(
-                        value: Double(directImportProgress.itemsProcessed),
-                        total: Double(max(directImportProgress.itemsTotal, 1))
-                    )
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: UIConstants.progressCardWidth)
-                } else {
-                    ProgressView()
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: UIConstants.progressCardWidth)
-                }
+                directImportItemsProgressView
+                directImportBytesProgressView
 
-                if directImportProgress.bytesTotal > 0 {
-                    ProgressView(
-                        value: Double(directImportProgress.bytesProcessed),
-                        total: Double(max(directImportProgress.bytesTotal, 1))
-                    )
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: UIConstants.progressCardWidth)
-                    
-                    if isAppActive {
-                        Text(
-                            "\(formattedBytes(directImportProgress.bytesProcessed)) of \(formattedBytes(directImportProgress.bytesTotal))"
-                        )
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        let percent = Double(directImportProgress.bytesProcessed)
-                            / Double(max(directImportProgress.bytesTotal, 1))
-                        Text(String(format: "%.0f%%", percent * 100))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                } else if directImportProgress.bytesProcessed > 0 {
-                    Text("\(formattedBytes(directImportProgress.bytesProcessed)) processed…")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                Text(
-                    isAppActive
-                        ? (directImportProgress.statusMessage.isEmpty ? "Encrypting items…" : directImportProgress.statusMessage)
-                        : "Encrypting items…"
-                )
+                Text(directImportStatusText)
                     .font(.headline)
 
-                if directImportProgress.itemsTotal > 0 {
-                    Text("\(directImportProgress.itemsProcessed) of \(directImportProgress.itemsTotal)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                directImportTotalsLabel
+                directImportDetailLabel
+                directImportCancelNotice
 
-                if !directImportProgress.detailMessage.isEmpty && isAppActive {
-                    Text(directImportProgress.detailMessage)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                if directImportProgress.cancelRequested {
-                    Text("Cancel requested… finishing current file")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                }
-
-                Button("Cancel Import") {
-                    vaultManager.cancelDirectImport()
-                }
+                Button("Cancel Import", action: cancelDirectImportTapped)
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .disabled(directImportProgress.cancelRequested)
@@ -992,6 +935,93 @@ struct MainVaultView: View {
             .accessibilityAddTraits(.isModal)
         }
         .transition(.opacity)
+    }
+
+    @ViewBuilder
+    private var directImportItemsProgressView: some View {
+        if directImportProgress.itemsTotal > 0 {
+            ProgressView(
+                value: Double(directImportProgress.itemsProcessed),
+                total: Double(max(directImportProgress.itemsTotal, 1))
+            )
+                .progressViewStyle(.linear)
+                .frame(maxWidth: UIConstants.progressCardWidth)
+        } else {
+            ProgressView()
+                .progressViewStyle(.linear)
+                .frame(maxWidth: UIConstants.progressCardWidth)
+        }
+    }
+
+    @ViewBuilder
+    private var directImportBytesProgressView: some View {
+        if directImportProgress.bytesTotal > 0 {
+            ProgressView(
+                value: Double(directImportProgress.bytesProcessed),
+                total: Double(max(directImportProgress.bytesTotal, 1))
+            )
+                .progressViewStyle(.linear)
+                .frame(maxWidth: UIConstants.progressCardWidth)
+
+            directImportBytesStatusLabel
+        } else if directImportProgress.bytesProcessed > 0 {
+            Text("\(formattedBytes(directImportProgress.bytesProcessed)) processed…")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var directImportBytesStatusLabel: some View {
+        if isAppActive {
+            Text("\(formattedBytes(directImportProgress.bytesProcessed)) of \(formattedBytes(directImportProgress.bytesTotal))")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        } else {
+            let percent = Double(directImportProgress.bytesProcessed)
+                / Double(max(directImportProgress.bytesTotal, 1))
+            Text(String(format: "%.0f%%", percent * 100))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var directImportStatusText: String {
+        let activeMessage = directImportProgress.statusMessage.isEmpty
+            ? "Encrypting items…"
+            : directImportProgress.statusMessage
+        return isAppActive ? activeMessage : "Encrypting items…"
+    }
+
+    @ViewBuilder
+    private var directImportTotalsLabel: some View {
+        if directImportProgress.itemsTotal > 0 {
+            Text("\(directImportProgress.itemsProcessed) of \(directImportProgress.itemsTotal)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var directImportDetailLabel: some View {
+        if !directImportProgress.detailMessage.isEmpty && isAppActive {
+            Text(directImportProgress.detailMessage)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var directImportCancelNotice: some View {
+        if directImportProgress.cancelRequested {
+            Text("Cancel requested… finishing current file")
+                .font(.caption2)
+                .foregroundStyle(.orange)
+        }
+    }
+
+    private func cancelDirectImportTapped() {
+        vaultManager.cancelDirectImport()
     }
 
     private var exportProgressOverlay: some View {
