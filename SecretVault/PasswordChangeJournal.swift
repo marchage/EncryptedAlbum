@@ -17,6 +17,13 @@ struct PasswordChangeJournal: Codable {
 
     /// First 8 characters of new password hash (for verification only)
     let newPasswordHashPrefix: String
+    
+    /// The new salt used for key derivation (stored in plaintext as salts are not secret)
+    let newSalt: Data
+    
+    /// The new encryption key, encrypted with the OLD encryption key.
+    /// This allows recovery if the app crashes before the keychain is updated.
+    let encryptedNewKey: Data
 
     /// List of files that have been successfully re-encrypted
     var processedFiles: [String]
@@ -33,6 +40,8 @@ struct PasswordChangeJournal: Codable {
     init(
         oldPasswordHashPrefix: String,
         newPasswordHashPrefix: String,
+        newSalt: Data,
+        encryptedNewKey: Data,
         totalFiles: Int
     ) {
         self.version = 1
@@ -40,6 +49,8 @@ struct PasswordChangeJournal: Codable {
         self.startedAt = Date()
         self.oldPasswordHashPrefix = oldPasswordHashPrefix
         self.newPasswordHashPrefix = newPasswordHashPrefix
+        self.newSalt = newSalt
+        self.encryptedNewKey = encryptedNewKey
         self.processedFiles = []
         self.totalFiles = totalFiles
     }

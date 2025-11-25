@@ -22,6 +22,10 @@
 		9849B4552EB9893D00B17DAC /* SecretVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4542EB9893D00B17DAC /* SecretVaultApp.swift */; };
 		9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4562EB9893D00B17DAC /* ContentView.swift */; };
 		9849B45C2EB9893F00B17DAC /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9849B45B2EB9893F00B17DAC /* Preview Assets.xcassets */; };
+		984EC6752ED5DDB300038F9F /* PasswordChangeJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 984EC6712ED5DDB200038F9F /* PasswordChangeJournal.swift */; };
+		984EC6762ED5DDB300038F9F /* PasswordChangeJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 984EC6712ED5DDB200038F9F /* PasswordChangeJournal.swift */; };
+		984EC6772ED5DDB300038F9F /* ImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 984EC6722ED5DDB300038F9F /* ImportService.swift */; };
+		984EC6782ED5DDB300038F9F /* ImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 984EC6722ED5DDB300038F9F /* ImportService.swift */; };
 		985C161C2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985C161B2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift */; };
 		985C161E2ECF1DA200EC1701 /* SecurityServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985C161D2ECF1DA200EC1701 /* SecurityServiceTests.swift */; };
 		986328C92ECE882D00EAE9A9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4562EB9893D00B17DAC /* ContentView.swift */; };
@@ -100,6 +104,8 @@
 		9849B4562EB9893D00B17DAC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		9849B45B2EB9893F00B17DAC /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		9849B45D2EB9893F00B17DAC /* SecretVault.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SecretVault.entitlements; sourceTree = "<group>"; };
+		984EC6712ED5DDB200038F9F /* PasswordChangeJournal.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PasswordChangeJournal.swift; sourceTree = "<group>"; };
+		984EC6722ED5DDB300038F9F /* ImportService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImportService.swift; sourceTree = "<group>"; };
 		985C161B2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosLibraryServiceTests.swift; sourceTree = "<group>"; };
 		985C161D2ECF1DA200EC1701 /* SecurityServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityServiceTests.swift; sourceTree = "<group>"; };
 		986328D62ECE88F600EAE9A9 /* SecretVaultTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SecretVaultTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -185,6 +191,8 @@
 		9849B4532EB9893D00B17DAC /* SecretVault */ = {
 			isa = PBXGroup;
 			children = (
+				984EC6722ED5DDB300038F9F /* ImportService.swift */,
+				984EC6712ED5DDB200038F9F /* PasswordChangeJournal.swift */,
 				989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */,
 				989ADDD42ED5BDE400994E72 /* Preview Content */,
 				989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */,
@@ -428,7 +436,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				984EC6762ED5DDB300038F9F /* PasswordChangeJournal.swift in Sources */,
 				989ADDDE2ED5BDE400994E72 /* VaultStorage.swift in Sources */,
+				984EC6782ED5DDB300038F9F /* ImportService.swift in Sources */,
 				986328C92ECE882D00EAE9A9 /* ContentView.swift in Sources */,
 				981926552EC854B600C67291 /* SecretVault_iOSApp.swift in Sources */,
 				98C835F92EC9E6CD000997CF /* PhotosLibraryService.swift in Sources */,
@@ -455,7 +465,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				984EC6752ED5DDB300038F9F /* PasswordChangeJournal.swift in Sources */,
 				989ADDDD2ED5BDE400994E72 /* VaultStorage.swift in Sources */,
+				984EC6772ED5DDB300038F9F /* ImportService.swift in Sources */,
 				988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */,
 				9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */,
 				1CA80AC13D192EBBFCD3B516 /* PhotosLibraryService.swift in Sources */,

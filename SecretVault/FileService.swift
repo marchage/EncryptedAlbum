@@ -56,11 +56,26 @@ class FileService {
     // MARK: - Streaming Format
 
     struct EmbeddedMetadata: Codable {
+        struct Location: Codable {
+            let latitude: Double
+            let longitude: Double
+        }
+
         let filename: String
         let dateCreated: Date
         let originalAssetIdentifier: String?
         let duration: TimeInterval?
-        // We can add more fields here as needed
+        let location: Location?
+        let isFavorite: Bool?
+        
+        init(filename: String, dateCreated: Date, originalAssetIdentifier: String? = nil, duration: TimeInterval? = nil, location: Location? = nil, isFavorite: Bool? = nil) {
+            self.filename = filename
+            self.dateCreated = dateCreated
+            self.originalAssetIdentifier = originalAssetIdentifier
+            self.duration = duration
+            self.location = location
+            self.isFavorite = isFavorite
+        }
     }
 
     private struct StreamFileHeader {
@@ -80,7 +95,7 @@ class FileService {
     /// Saves encrypted data to file with integrity protection using SVF2 format
     func saveEncryptedFile(
         data: Data, filename: String, to directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey,
-        metadata: EmbeddedMetadata? = nil
+        mediaType: MediaType = .photo, metadata: EmbeddedMetadata? = nil
     ) async throws {
         let fileURL = directory.appendingPathComponent(filename)
 
@@ -106,7 +121,7 @@ class FileService {
         // Create SVF2 Header
         let header = StreamFileHeader(
             version: CryptoConstants.streamingVersion,
-            mediaType: .photo, // Defaulting to photo for thumbnails/generic data
+            mediaType: mediaType,
             originalSize: UInt64(data.count),
             chunkSize: UInt32(CryptoConstants.streamingChunkSize),
             metadataLength: UInt32(encryptedMetadataData.count)
@@ -434,14 +449,6 @@ class FileService {
         // Decrypt metadata
         // Format: [Nonce(12)][HMAC(32)][Ciphertext]
         let nonceSize = CryptoConstants.streamingNonceSize
-        let hmacSize = CryptoConstants.encryptionKeySize // Assuming HMAC size matches key size or constant
-        // Actually CryptoConstants.streamingTagSize is 16 (GCM tag), but here we used encryptDataWithIntegrity which uses HMAC-SHA256 (32 bytes) usually?
-        // Wait, encryptDataWithIntegrity returns (encryptedData, nonce, hmac).
-        // encryptDataWithIntegrity uses AES.GCM (16 byte tag included in ciphertext usually?) OR AES.CTR + HMAC?
-        // Let's check CryptoService.encryptDataWithIntegrity.
-        
-        // I need to check CryptoService to be sure about the format of `encryptDataWithIntegrity`.
-        // But assuming I can just call `decryptDataWithIntegrity` with the components.
         
         // Parse components
         // Nonce is 12 bytes (AES.GCM.Nonce)
