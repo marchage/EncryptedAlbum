@@ -8,16 +8,14 @@ struct SecretVaultApp: App {
     #endif
 
     var body: some Scene {
-        #if os(iOS)
-            WindowGroup {
-                ContentView()
-                    .environmentObject(vaultManager)
-            }
-        #else
+        #if os(macOS)
             WindowGroup {
                 ContentView()
                     .environmentObject(vaultManager)
                     .frame(minWidth: 900, minHeight: 600)
+                    .overlay {
+                        InactiveAppOverlay()
+                    }
             }
             Settings {
                 PreferencesView()
@@ -27,6 +25,14 @@ struct SecretVaultApp: App {
                 // Remove "New Window" command to prevent multiple windows
                 CommandGroup(replacing: .newItem) {}
             }
+        #endif
+        #if os(iOS)
+        // This target should use SecretVault_iOSApp.swift as entry point
+        // But if this file is included in iOS target by mistake, we provide a fallback
+        WindowGroup {
+            ContentView()
+                .environmentObject(vaultManager)
+        }
         #endif
     }
 }
@@ -48,3 +54,5 @@ struct SecretVaultApp: App {
         }
     }
 #endif
+
+// InactiveAppOverlay moved to InactiveAppOverlay.swift

@@ -236,6 +236,7 @@ class VaultManager: ObservableObject {
     private let securityService: SecurityService
     private let passwordService: PasswordService
     private let vaultState: VaultState
+    private let storage: VaultStorage
     private var restorationProgressCancellable: AnyCancellable?
 
     // Legacy properties for backward compatibility
@@ -247,10 +248,16 @@ class VaultManager: ObservableObject {
     @Published var securityVersion: Int = 1   // 1 = Legacy (Key as Hash), 2 = Secure (Verifier)
     @Published var restorationProgress = RestorationProgress()
     @Published var importProgress = ImportProgress()
-    @Published var vaultBaseURL: URL = URL(fileURLWithPath: "/tmp")
+    @Published var vaultBaseURL: URL {
+        didSet {
+            guard oldValue != vaultBaseURL else { return }
+            storage.updateBaseURL(vaultBaseURL)
+        }
+    }
     @Published var hideNotification: HideNotification? = nil
     @Published var lastActivity: Date = Date()
     @Published var viewRefreshId = UUID()  // Force view refresh when needed
+    @Published var secureDeletionEnabled: Bool = false // Default to true for security
 
     /// Idle timeout in seconds before automatically locking the vault when unlocked.
     /// Default is 600 seconds (10 minutes).
@@ -262,10 +269,12 @@ class VaultManager: ObservableObject {
     private var failedBiometricAttempts: Int = 0
     private let maxBiometricAttempts: Int = CryptoConstants.biometricMaxAttempts
 
-    private lazy var photosURL: URL = vaultBaseURL.appendingPathComponent(
-        FileConstants.photosDirectoryName, isDirectory: true)
-    private lazy var photosFile: URL = vaultBaseURL.appendingPathComponent(FileConstants.photosMetadataFileName)
-    private lazy var settingsFile: URL = vaultBaseURL.appendingPathComponent(FileConstants.settingsFileName)
+    private var photosDirectoryURL: URL { storage.photosDirectory }
+    private var photosMetadataFileURL: URL { storage.metadataFile }
+    private var settingsFileURL: URL { storage.settingsFile }
+    private func resolveURL(for storedPath: String) -> URL { storage.resolvePath(storedPath) }
+    private func relativePath(for absoluteURL: URL) -> String { storage.relativePath(for: absoluteURL) }
+    private func normalizedStoredPath(_ storedPath: String) -> String { storage.normalizedStoredPath(storedPath) }
     private var idleTimer: Timer?
 
     // Serial queue for thread-safe operations
@@ -283,62 +292,9 @@ class VaultManager: ObservableObject {
         passwordService = PasswordService(cryptoService: cryptoService, securityService: securityService)
         fileService = FileService(cryptoService: cryptoService)
         vaultState = VaultState()
+        storage = VaultStorage(baseURL: customBaseURL)
         fileService.cleanupTemporaryArtifacts()
-        restorationProgressCancellable = restorationProgress.objectWillChange.sink { [weak self] _ in
-            self?.objectWillChange.send()
-        }
-
-        if let customURL = customBaseURL {
-            vaultBaseURL = customURL
-        } else {
-            // Determine vault base directory based on platform
-            #if os(macOS)
-                // macOS: Use Application Support or custom location
-                let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-                let defaultBaseDirectory: URL
-
-                if let appSupport = appSupport {
-                    defaultBaseDirectory = appSupport
-                } else {
-                    // Fallback to documents directory if Application Support is unavailable
-                    guard let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-                    else {
-                        fatalError("Unable to access file system")
-                    }
-                    defaultBaseDirectory = documents
-                }
-
-                // Load previously chosen vault base URL if available
-                let resolvedBaseURL: URL
-                if let storedBaseURL = VaultManager.loadStoredVaultBaseURL() {
-                    resolvedBaseURL = storedBaseURL
-                } else {
-                    resolvedBaseURL = defaultBaseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
-                }
-                vaultBaseURL = resolvedBaseURL
-                // Vault base URL configured
-            #else
-                // iOS: Use iCloud Drive if available, otherwise local documents
-                let fileManager = FileManager.default
-                var baseURL: URL
-
-                if let iCloudURL = fileManager.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents")
-                {
-                    // iCloud is available
-                    baseURL = iCloudURL.appendingPathComponent("SecretVault", isDirectory: true)
-                    // Using iCloud Drive for vault storage
-                } else {
-                    // Fallback to local documents
-                    guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-                        fatalError("Unable to access file system")
-                    }
-                    baseURL = documentsURL.appendingPathComponent("SecretVault", isDirectory: true)
-                    // Using local storage for vault (iCloud not available)
-                }
-
-                vaultBaseURL = baseURL
-            #endif
-        }
+        vaultBaseURL = storage.baseURL
 
         #if DEBUG
         // Handle Test Mode Reset
@@ -387,21 +343,13 @@ class VaultManager: ObservableObject {
         }
         #endif
 
-        // Create directories
-        do {
-            try FileManager.default.createDirectory(at: vaultBaseURL, withIntermediateDirectories: true)
-        } catch {
-            print("Failed to create directory: \(error)")
-        }
-
-        do {
-            try FileManager.default.createDirectory(at: photosURL, withIntermediateDirectories: true)
-        } catch {
-            print("Failed to create photos directory: \(error)")
-        }
-
-        print("Loading settings from: \(settingsFile.path)")
+        #if DEBUG
+            print("Loading settings from: \(settingsFileURL.path)")
+        #endif
         loadSettings()
+        restorationProgressCancellable = restorationProgress.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
         // Settings loaded, checking password status
         if !passwordHash.isEmpty {
             showUnlockPrompt = true
@@ -635,8 +583,9 @@ class VaultManager: ObservableObject {
         for (index, photo) in photos.enumerated() {
             progressHandler?("Re-encrypting item \(index + 1) of \(total)...")
             
-            let photosDir = vaultBaseURL.appendingPathComponent(FileConstants.photosDirectoryName)
-            let filename = URL(fileURLWithPath: photo.encryptedDataPath).lastPathComponent
+            let photosDir = photosDirectoryURL
+            let encryptedURL = resolveURL(for: photo.encryptedDataPath)
+            let filename = encryptedURL.lastPathComponent
             
             // Re-encrypt main file
             try await fileService.reEncryptFile(
@@ -650,7 +599,9 @@ class VaultManager: ObservableObject {
             )
             
             // Re-encrypt thumbnail
-            let thumbFilename = URL(fileURLWithPath: photo.encryptedThumbnailPath ?? photo.thumbnailPath).lastPathComponent
+            let thumbSourcePath = photo.encryptedThumbnailPath ?? photo.thumbnailPath
+            let thumbURL = resolveURL(for: thumbSourcePath)
+            let thumbFilename = thumbURL.lastPathComponent
             // Check if it's actually an encrypted thumbnail (ends in .enc)
             if thumbFilename.hasSuffix(FileConstants.encryptedFileExtension) {
                 try await fileService.reEncryptFile(
@@ -727,6 +678,18 @@ class VaultManager: ObservableObject {
         startIdleTimer()
     }
 
+    /// Clears transient UI state and temporary files when the app is heading into the background.
+    func prepareForBackground() {
+        vaultQueue.async { [weak self] in
+            self?.fileService.cleanupTemporaryArtifacts()
+        }
+
+        DispatchQueue.main.async {
+            self.hideNotification = nil
+            self.viewRefreshId = UUID()
+        }
+    }
+
     /// Starts or restarts the idle timer that auto-locks after `idleTimeout`.
     private func startIdleTimer() {
         idleTimer?.invalidate()
@@ -762,7 +725,12 @@ class VaultManager: ObservableObject {
             lastActivity = Date()
         }
 
-        let photosURL = try await fileService.createPhotosDirectory(in: vaultBaseURL)
+        guard let encryptionKey = cachedEncryptionKey, let hmacKey = cachedHMACKey else {
+            throw VaultError.vaultNotInitialized
+        }
+
+        try ensurePhotosDirectoryExists()
+        let photosURL = photosDirectoryURL
 
         // Determine media size without duplicating memory usage
         let fileSize: Int64
@@ -809,25 +777,25 @@ class VaultManager: ObservableObject {
 
         let thumbnailFilename = "\(photoId.uuidString)_thumb.enc"
         try await fileService.saveEncryptedFile(
-            data: thumbnail, filename: thumbnailFilename, to: photosURL, encryptionKey: cachedEncryptionKey!,
-            hmacKey: cachedHMACKey!)
+            data: thumbnail, filename: thumbnailFilename, to: photosURL, encryptionKey: encryptionKey,
+            hmacKey: hmacKey)
 
         let encryptedFilename = "\(photoId.uuidString).enc"
         switch mediaSource {
         case .data(let data):
             try await fileService.saveEncryptedFile(
-                data: data, filename: encryptedFilename, to: photosURL, encryptionKey: cachedEncryptionKey!,
-                hmacKey: cachedHMACKey!)
+                data: data, filename: encryptedFilename, to: photosURL, encryptionKey: encryptionKey,
+                hmacKey: hmacKey)
         case .fileURL(let url):
             try await fileService.saveStreamEncryptedFile(
                 from: url, filename: encryptedFilename, mediaType: mediaType, to: photosURL,
-                encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!, progressHandler: progressHandler)
+                encryptionKey: encryptionKey, hmacKey: hmacKey, progressHandler: progressHandler)
         }
 
         let photo = SecurePhoto(
-            encryptedDataPath: encryptedPath.path,
-            thumbnailPath: thumbnailPath.path,
-            encryptedThumbnailPath: encryptedThumbnailPath.path,
+            encryptedDataPath: relativePath(for: encryptedPath),
+            thumbnailPath: relativePath(for: thumbnailPath),
+            encryptedThumbnailPath: relativePath(for: encryptedThumbnailPath),
             filename: filename,
             dateTaken: dateTaken,
             sourceAlbum: sourceAlbum,
@@ -853,6 +821,13 @@ class VaultManager: ObservableObject {
             self.vaultQueue.async {
                 self.savePhotos()
             }
+        }
+    }
+
+    private func ensurePhotosDirectoryExists() throws {
+        let photosURL = photosDirectoryURL
+        if !FileManager.default.fileExists(atPath: photosURL.path) {
+            try FileManager.default.createDirectory(at: photosURL, withIntermediateDirectories: true)
         }
     }
 
@@ -882,16 +857,18 @@ class VaultManager: ObservableObject {
     /// - Throws: Error if file reading or decryption fails
     func decryptPhoto(_ photo: SecurePhoto) async throws -> Data {
         // Use FileService to load and decrypt the encrypted file
-        let filename = URL(fileURLWithPath: photo.encryptedDataPath).lastPathComponent
+        let encryptedURL = resolveURL(for: photo.encryptedDataPath)
         return try await fileService.loadEncryptedFile(
-            filename: filename, from: URL(fileURLWithPath: photo.encryptedDataPath).deletingLastPathComponent(),
+            filename: encryptedURL.lastPathComponent,
+            from: encryptedURL.deletingLastPathComponent(),
             encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
     }
 
     func decryptPhotoToTemporaryURL(_ photo: SecurePhoto, progressHandler: ((Int64) -> Void)? = nil) async throws -> URL
     {
-        let filename = URL(fileURLWithPath: photo.encryptedDataPath).lastPathComponent
-        let directory = URL(fileURLWithPath: photo.encryptedDataPath).deletingLastPathComponent()
+        let encryptedURL = resolveURL(for: photo.encryptedDataPath)
+        let filename = encryptedURL.lastPathComponent
+        let directory = encryptedURL.deletingLastPathComponent()
         let originalExtension = URL(fileURLWithPath: photo.filename).pathExtension
         let preferredExtension = originalExtension.isEmpty ? nil : originalExtension
         return try await fileService.decryptEncryptedFileToTemporaryURL(
@@ -907,7 +884,7 @@ class VaultManager: ObservableObject {
     func decryptThumbnail(for photo: SecurePhoto) async throws -> Data {
         // Option 1: be resilient to missing thumbnail files and fall back gracefully.
         if let encryptedThumbnailPath = photo.encryptedThumbnailPath {
-            let url = URL(fileURLWithPath: encryptedThumbnailPath)
+            let url = resolveURL(for: encryptedThumbnailPath)
             if !FileManager.default.fileExists(atPath: url.path) {
                 print(
                     "[VaultManager] decryptThumbnail: encrypted thumbnail missing for id=\(photo.id). Falling back to legacy thumbnail if available."
@@ -915,37 +892,45 @@ class VaultManager: ObservableObject {
             } else {
                 do {
                     // Use FileService to load and decrypt the encrypted thumbnail
-                    let filename = URL(fileURLWithPath: encryptedThumbnailPath).lastPathComponent
+                    let filename = url.lastPathComponent
                     return try await fileService.loadEncryptedFile(
                         filename: filename,
-                        from: URL(fileURLWithPath: encryptedThumbnailPath).deletingLastPathComponent(),
+                        from: url.deletingLastPathComponent(),
                         encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
                 } catch {
+                    #if DEBUG
                     print(
                         "[VaultManager] decryptThumbnail: error reading encrypted thumbnail for id=\(photo.id): \(error). Falling back to legacy thumbnail if available."
                     )
+                    #endif
                 }
             }
         }
 
         // Legacy or fallback path: try the plain thumbnailPath.
-        let legacyURL = URL(fileURLWithPath: photo.thumbnailPath)
+        let legacyURL = resolveURL(for: photo.thumbnailPath)
         if FileManager.default.fileExists(atPath: legacyURL.path) {
             do {
                 let data = try Data(contentsOf: legacyURL)
                 if data.isEmpty {
+                    #if DEBUG
                     print(
                         "[VaultManager] decryptThumbnail: legacy thumbnail data empty for id=\(photo.id), thumb=\(photo.thumbnailPath)"
                     )
+                    #endif
                 }
                 return data
             } catch {
+                #if DEBUG
                 print("[VaultManager] decryptThumbnail: error reading legacy thumbnail for id=\(photo.id): \(error)")
+                #endif
             }
         } else {
+            #if DEBUG
             print(
                 "[VaultManager] decryptThumbnail: legacy thumbnail file missing for id=\(photo.id) at path=\(photo.thumbnailPath)"
             )
+            #endif
         }
 
         // As a last resort, return empty Data so the UI can show a placeholder.
@@ -959,10 +944,10 @@ class VaultManager: ObservableObject {
             lastActivity = Date()
         }
         // Securely delete files (overwrite before deletion)
-        secureDeleteFile(at: URL(fileURLWithPath: photo.encryptedDataPath))
-        secureDeleteFile(at: URL(fileURLWithPath: photo.thumbnailPath))
+        secureDeleteFile(at: resolveURL(for: photo.encryptedDataPath))
+        secureDeleteFile(at: resolveURL(for: photo.thumbnailPath))
         if let encryptedThumbnailPath = photo.encryptedThumbnailPath {
-            secureDeleteFile(at: URL(fileURLWithPath: encryptedThumbnailPath))
+            secureDeleteFile(at: resolveURL(for: encryptedThumbnailPath))
         }
 
         // Remove from list on main thread
@@ -976,6 +961,12 @@ class VaultManager: ObservableObject {
     /// - Parameter url: URL of the file to delete
     private func secureDeleteFile(at url: URL) {
         guard FileManager.default.fileExists(atPath: url.path) else { return }
+
+        // If secure deletion is disabled, just remove the file
+        guard secureDeletionEnabled else {
+            try? FileManager.default.removeItem(at: url)
+            return
+        }
 
         do {
             // Get file size
@@ -1279,10 +1270,10 @@ class VaultManager: ObservableObject {
 
             // Delete duplicate files
             for photo in duplicatesToDelete {
-                try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.encryptedDataPath))
-                try? FileManager.default.removeItem(at: URL(fileURLWithPath: photo.thumbnailPath))
+                try? FileManager.default.removeItem(at: self.resolveURL(for: photo.encryptedDataPath))
+                try? FileManager.default.removeItem(at: self.resolveURL(for: photo.thumbnailPath))
                 if let encryptedThumbnailPath = photo.encryptedThumbnailPath {
-                    try? FileManager.default.removeItem(at: URL(fileURLWithPath: encryptedThumbnailPath))
+                    try? FileManager.default.removeItem(at: self.resolveURL(for: encryptedThumbnailPath))
                 }
             }
 
@@ -1584,9 +1575,9 @@ class VaultManager: ObservableObject {
     private func savePhotos() {
         guard let data = try? JSONEncoder().encode(hiddenPhotos) else { return }
         #if DEBUG
-            print("savePhotos: writing \(hiddenPhotos.count) items to \(photosFile.path)")
+            print("savePhotos: writing \(hiddenPhotos.count) items to \(photosMetadataFileURL.path)")
         #endif
-        try? data.write(to: photosFile)
+        try? data.write(to: photosMetadataFileURL)
     }
 
     func saveSettings() {
@@ -1603,15 +1594,20 @@ class VaultManager: ObservableObject {
         var settings: [String: String] = [
             "passwordHash": passwordHash,
             "passwordSalt": passwordSalt,
-            "securityVersion": String(securityVersion)
+            "securityVersion": String(securityVersion),
+            "secureDeletionEnabled": String(secureDeletionEnabled)
         ]
+
+    #if os(macOS)
+        // Persist the sandbox path so we can detect old locations for migration info, but always prefer sandbox on next launch
         settings["vaultBaseURL"] = vaultBaseURL.path
+    #endif
 
         do {
             let data = try JSONEncoder().encode(settings)
-            try data.write(to: settingsFile, options: .atomic)
+            try data.write(to: settingsFileURL, options: .atomic)
             #if DEBUG
-                print("Successfully saved settings to: \(settingsFile.path)")
+                print("Successfully saved settings to: \(settingsFileURL.path)")
             #endif
         } catch {
             #if DEBUG
@@ -1622,9 +1618,9 @@ class VaultManager: ObservableObject {
 
     private func loadSettings() {
         #if DEBUG
-            print("Attempting to load settings from: \(settingsFile.path)")
+            print("Attempting to load settings from: \(settingsFileURL.path)")
         #endif
-        guard let data = try? Data(contentsOf: settingsFile),
+        guard let data = try? Data(contentsOf: settingsFileURL),
             let settings = try? JSONDecoder().decode([String: String].self, from: data)
         else {
             #if DEBUG
@@ -1655,6 +1651,12 @@ class VaultManager: ObservableObject {
             // Default to 1 (Legacy) if missing
             securityVersion = 1
         }
+
+        if let secureDeleteString = settings["secureDeletionEnabled"], let secureDelete = Bool(secureDeleteString) {
+            secureDeletionEnabled = secureDelete
+        } else {
+            secureDeletionEnabled = false
+        }
         
         // On macOS we respect a stored custom vaultBaseURL so users can move
         // the vault. On iOS, the container path is not stable across installs,
@@ -1663,31 +1665,67 @@ class VaultManager: ObservableObject {
         #if os(macOS)
             if let basePath = settings["vaultBaseURL"] {
                 let url = URL(fileURLWithPath: basePath, isDirectory: true)
-                vaultBaseURL = url
-                #if DEBUG
-                    // Vault base URL loaded
-                #endif
+                let sandboxRoot = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?.path ?? ""
+                // Only honor stored path if it still resides within our sandbox; otherwise prefer the current storage base
+                if url.path.hasPrefix(sandboxRoot) {
+                    vaultBaseURL = url
+                } else {
+                    vaultBaseURL = storage.baseURL
+                }
+            } else {
+                vaultBaseURL = storage.baseURL
             }
         #endif
     }
 
-    private static func loadStoredVaultBaseURL() -> URL? {
-        // This is only used during init before instance properties are set
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        let baseDirectory = appSupport ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+    // MARK: - Vault Location Management
 
-        guard let baseDirectory = baseDirectory else { return nil }
-        let appDirectory = baseDirectory.appendingPathComponent("SecretVault", isDirectory: true)
-        let settingsFile = appDirectory.appendingPathComponent("settings.json")
+    /// Copies the current vault contents into the user-selected directory and updates the active base URL.
+    /// - Parameters:
+    ///   - directory: The directory chosen by the user (a "SecretVault" folder will be created inside it).
+    ///   - completion: Called on the main queue with the migration result.
+    func moveVault(to directory: URL, completion: @escaping (Result<Void, Error>) -> Void) {
+        let destinationBase = directory.appendingPathComponent("SecretVault", isDirectory: true).standardizedFileURL
+        let currentBase = vaultBaseURL.standardizedFileURL
 
-        guard let data = try? Data(contentsOf: settingsFile),
-            let settings = try? JSONDecoder().decode([String: String].self, from: data),
-            let basePath = settings["vaultBaseURL"]
-        else {
-            return nil
+        guard destinationBase != currentBase else {
+            DispatchQueue.main.async {
+                completion(.success(()))
+            }
+            return
         }
 
-        return URL(fileURLWithPath: basePath, isDirectory: true)
+        let fileManager = FileManager.default
+        let migrationMarker = destinationBase.appendingPathComponent("migration-in-progress")
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                try fileManager.createDirectory(at: destinationBase, withIntermediateDirectories: true, attributes: nil)
+                try Data().write(to: migrationMarker)
+
+                let contents = try fileManager.contentsOfDirectory(at: currentBase, includingPropertiesForKeys: nil)
+                for item in contents {
+                    let destination = destinationBase.appendingPathComponent(item.lastPathComponent)
+                    if fileManager.fileExists(atPath: destination.path) {
+                        try fileManager.removeItem(at: destination)
+                    }
+                    try fileManager.copyItem(at: item, to: destination)
+                }
+
+                try fileManager.removeItem(at: migrationMarker)
+
+                DispatchQueue.main.async {
+                    self.vaultBaseURL = destinationBase
+                    self.saveSettings()
+                    completion(.success(()))
+                }
+            } catch {
+                try? fileManager.removeItem(at: migrationMarker)
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
+            }
+        }
     }
 
     // MARK: - Biometric Authentication Helpers
@@ -1818,7 +1856,7 @@ class VaultManager: ObservableObject {
 
     /// Loads photos from disk
     private func loadPhotos() async throws {
-        guard let data = try? Data(contentsOf: photosFile) else {
+        guard let data = try? Data(contentsOf: photosMetadataFileURL) else {
             await MainActor.run {
                 hiddenPhotos = []
             }
@@ -1826,8 +1864,17 @@ class VaultManager: ObservableObject {
         }
 
         let decodedPhotos = try JSONDecoder().decode([SecurePhoto].self, from: data)
+        let normalizedPhotos = decodedPhotos.map { photo in
+            var updated = photo
+            updated.encryptedDataPath = normalizedStoredPath(photo.encryptedDataPath)
+            updated.thumbnailPath = normalizedStoredPath(photo.thumbnailPath)
+            if let encryptedThumb = photo.encryptedThumbnailPath {
+                updated.encryptedThumbnailPath = normalizedStoredPath(encryptedThumb)
+            }
+            return updated
+        }
         await MainActor.run {
-            hiddenPhotos = decodedPhotos
+            hiddenPhotos = normalizedPhotos
         }
     }
 }

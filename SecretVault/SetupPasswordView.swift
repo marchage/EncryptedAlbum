@@ -481,8 +481,8 @@ struct SetupPasswordView: View {
     private func completeSetup(with password: String) async {
         do {
             try await vaultManager.setupPassword(password)
-            // Manager already stores the biometric password when setup succeeds
-            vaultManager.isUnlocked = true
+            // Immediately unlock so session keys are derived and the user can start working
+            try await vaultManager.unlock(password: password)
         } catch {
             errorMessage = "Failed to set password: \(error.localizedDescription)"
             showError = true

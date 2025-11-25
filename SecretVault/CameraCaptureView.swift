@@ -107,6 +107,7 @@ import SwiftUI
         @Environment(\.dismiss) var dismiss
         @EnvironmentObject var vaultManager: VaultManager
         @StateObject private var model = CameraModel()
+        @State private var cameraErrorMessage: String?
 
         var body: some View {
             ZStack {
@@ -215,6 +216,25 @@ import SwiftUI
             .onDisappear {
                 model.stopSession()
             }
+            .onReceive(model.$cameraError) { error in
+                cameraErrorMessage = error
+            }
+            .alert("Camera Unavailable", isPresented: Binding(
+                get: { cameraErrorMessage != nil },
+                set: { newValue in
+                    if !newValue {
+                        cameraErrorMessage = nil
+                        model.cameraError = nil
+                    }
+                }
+            )) {
+                Button("OK", role: .cancel) {
+                    cameraErrorMessage = nil
+                    model.cameraError = nil
+                }
+            } message: {
+                Text(cameraErrorMessage ?? "The camera cannot be used right now.")
+            }
         }
     }
 
@@ -232,6 +252,7 @@ import SwiftUI
         @Published var captureMode: CaptureMode = .photo
         @Published var isRecording = false
         @Published var recordingDuration: TimeInterval? = nil
+        @Published var cameraError: String?
 
         private var recordingTimer: Timer?
         private var recordingStartTime: Date?
@@ -256,18 +277,12 @@ import SwiftUI
         func setupSession() {
             sessionQueue.async {
                 guard let device = AVCaptureDevice.default(for: .video) else {
-                    print("❌ No camera device available")
-                    DispatchQueue.main.async {
-                        self.isAuthorized = false
-                    }
+                    self.handleCameraError("No camera device is available. Connect one and try again.")
                     return
                 }
 
                 guard let input = try? AVCaptureDeviceInput(device: device) else {
-                    print("❌ Failed to create camera input")
-                    DispatchQueue.main.async {
-                        self.isAuthorized = false
-                    }
+                    self.handleCameraError("Failed to create a camera input. Check permissions.")
                     return
                 }
 
@@ -276,24 +291,21 @@ import SwiftUI
                 if self.session.canAddInput(input) {
                     self.session.addInput(input)
                 } else {
-                    print("❌ Cannot add camera input to session")
                     self.session.commitConfiguration()
-                    DispatchQueue.main.async {
-                        self.isAuthorized = false
-                    }
+                    self.handleCameraError("Cannot add the camera input to this session.")
                     return
                 }
 
                 if self.session.canAddOutput(self.photoOutput) {
                     self.session.addOutput(self.photoOutput)
                 } else {
-                    print("❌ Cannot add photo output to session")
+                    self.handleCameraError("Cannot add photo output to the capture session.")
                 }
 
                 if self.session.canAddOutput(self.movieOutput) {
                     self.session.addOutput(self.movieOutput)
                 } else {
-                    print("❌ Cannot add movie output to session")
+                    self.handleCameraError("Cannot add video output to the capture session.")
                 }
 
                 self.session.commitConfiguration()
@@ -302,8 +314,10 @@ import SwiftUI
 
                 DispatchQueue.main.async {
                     if !self.session.isRunning {
-                        print("❌ Camera session failed to start")
-                        self.isAuthorized = false
+                        self.handleCameraError("The camera session failed to start.")
+                    } else {
+                        self.cameraError = nil
+                        self.isAuthorized = true
                     }
                 }
             }
@@ -330,6 +344,13 @@ import SwiftUI
             DispatchQueue.main.async { [weak self] in
                 self?.isRecording = false
                 self?.recordingDuration = nil
+            }
+        }
+
+        private func handleCameraError(_ message: String) {
+            DispatchQueue.main.async {
+                self.cameraError = message
+                self.isAuthorized = false
             }
         }
 

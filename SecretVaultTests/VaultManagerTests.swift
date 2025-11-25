@@ -60,6 +60,26 @@ final class VaultManagerTests: XCTestCase {
         
         XCTAssertFalse(sut.isUnlocked)
     }
+
+    func testHidePhoto_WhenVaultLocked_Throws() async throws {
+        let password = "LockCheck123!"
+        try await sut.setupPassword(password)
+
+        let photoData = Data("Secret".utf8)
+
+        do {
+            try await sut.hidePhoto(
+                imageData: photoData,
+                filename: "locked.jpg",
+                mediaType: .photo
+            )
+            XCTFail("Expected vaultNotInitialized error")
+        } catch VaultError.vaultNotInitialized {
+            // Expected path
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
     
     func testChangePassword_ReEncryptsData() async throws {
         // 1. Setup

@@ -66,15 +66,6 @@ class FileService {
         Data(CryptoConstants.streamingMagic.utf8)
     }
 
-    // MARK: - Directory Management
-
-    /// Creates the photos directory if it doesn't exist
-    func createPhotosDirectory(in vaultURL: URL) async throws -> URL {
-        let photosURL = vaultURL.appendingPathComponent(FileConstants.photosDirectoryName)
-        try FileManager.default.createDirectory(at: photosURL, withIntermediateDirectories: true, attributes: nil)
-        return photosURL
-    }
-
     // MARK: - File Operations
 
     /// Saves encrypted data to file with integrity protection

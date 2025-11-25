@@ -5,6 +5,9 @@ import UniformTypeIdentifiers
 #if os(macOS)
     import AppKit
 #endif
+#if os(iOS)
+    import UIKit
+#endif
 
 struct VaultDetailView: View {
     @EnvironmentObject var vaultManager: VaultManager
@@ -131,7 +134,9 @@ struct VaultPhotoView: View {
                 }
             } catch {
                 // Thumbnail decryption failed, keep placeholder
+                #if DEBUG
                 print("Failed to load thumbnail for \(photo.filename): \(error)")
+                #endif
             }
         }
     }
@@ -139,6 +144,11 @@ struct VaultPhotoView: View {
 struct PhotosLibraryPicker: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var vaultManager: VaultManager
+    @Environment(\.scenePhase) var scenePhase
+    #if os(iOS)
+        @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+        @Environment(\.verticalSizeClass) private var verticalSizeClass
+    #endif
 
     @State private var albums: [(name: String, collection: PHAssetCollection)] = []
     @State private var allPhotos: [(album: String, asset: PHAsset)] = []
@@ -151,6 +161,7 @@ struct PhotosLibraryPicker: View {
     // Fallback: Force treat all albums as Shared Library when PhotoKit can't distinguish
     @State private var forceSharedLibrary = false
     @State private var keyMonitor: Any? = nil
+    @State private var isAppActive = true
     private typealias IndexedAsset = (index: Int, album: String, asset: PHAsset)
 
     var filteredPhotos: [(album: String, asset: PHAsset)] {
@@ -161,10 +172,11 @@ struct PhotosLibraryPicker: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            // Sidebar with albums
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Albums")
+        SecureWrapper {
+            HStack(spacing: 0) {
+                // Sidebar with albums
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Albums")
                     .font(.headline)
                     .padding()
 
@@ -249,23 +261,11 @@ struct PhotosLibraryPicker: View {
 
                             Spacer()
 
-                            Button("Cancel") {
-                                dismiss()
-                            }
-                            .keyboardShortcut(.cancelAction)
-                            .controlSize(.small)
-                            .font(.subheadline)
+                            headerSelectionControls
 
-                            Button("Hide (\(selectedAssets.count))") {
-                                Task {
-                                    await hideSelectedPhotos()
-                                }
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.small)
-                            .font(.subheadline)
-                            .disabled(selectedAssets.isEmpty)
-                            .keyboardShortcut(.defaultAction)
+                            headerCancelButton
+
+                            headerHideButton
                         }
 
                         // Library selector and options
@@ -330,6 +330,7 @@ struct PhotosLibraryPicker: View {
                         Button("Cancel") {
                             dismiss()
                         }
+                        .accessibilityIdentifier("photosPickerCancelButton")
                         .keyboardShortcut(.cancelAction)
 
                         Button("Hide Selected (\(selectedAssets.count))") {
@@ -412,11 +413,15 @@ struct PhotosLibraryPicker: View {
                     }
                 }
             }
+            }
         }
         #if os(macOS)
             .frame(minWidth: 900, minHeight: 700)
         #endif
         .onAppear {
+            #if os(iOS)
+                UltraPrivacyCoordinator.shared.beginTrustedModal()
+            #endif
             requestPhotosAccess()
         }
         .onAppear {
@@ -441,6 +446,9 @@ struct PhotosLibraryPicker: View {
             #endif
         }
         .onDisappear {
+            #if os(iOS)
+                UltraPrivacyCoordinator.shared.endTrustedModal()
+            #endif
             #if os(macOS)
                 if let monitor = keyMonitor {
                     NSEvent.removeMonitor(monitor)
@@ -456,9 +464,11 @@ struct PhotosLibraryPicker: View {
                         .ignoresSafeArea()
                     VStack(spacing: 12) {
                         if vaultManager.importProgress.totalItems > 0 {
+                            let totalItems = max(vaultManager.importProgress.totalItems, 1)
+                            let processedItems = min(vaultManager.importProgress.processedItems, totalItems)
                             ProgressView(
-                                value: Double(vaultManager.importProgress.processedItems),
-                                total: Double(max(vaultManager.importProgress.totalItems, 1))
+                                value: Double(processedItems),
+                                total: Double(totalItems)
                             )
                             .progressViewStyle(.linear)
                             .frame(maxWidth: UIConstants.progressCardWidth)
@@ -475,9 +485,17 @@ struct PhotosLibraryPicker: View {
                             )
                             .progressViewStyle(.linear)
                             .frame(maxWidth: UIConstants.progressCardWidth)
-                            Text("\(formattedBytes(vaultManager.importProgress.currentBytesProcessed)) of \(formattedBytes(vaultManager.importProgress.currentBytesTotal))")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                            
+                            if isAppActive {
+                                Text("\(formattedBytes(vaultManager.importProgress.currentBytesProcessed)) of \(formattedBytes(vaultManager.importProgress.currentBytesTotal))")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                let percent = Double(vaultManager.importProgress.currentBytesProcessed) / Double(max(vaultManager.importProgress.currentBytesTotal, 1))
+                                Text(String(format: "%.0f%%", percent * 100))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
                         } else {
                             ProgressView()
                                 .progressViewStyle(.linear)
@@ -490,7 +508,7 @@ struct PhotosLibraryPicker: View {
                             .foregroundStyle(.secondary)
                         }
 
-                        Text(vaultManager.importProgress.statusMessage.isEmpty ? "Encrypting items…" : vaultManager.importProgress.statusMessage)
+                        Text(isAppActive ? (vaultManager.importProgress.statusMessage.isEmpty ? "Encrypting items…" : vaultManager.importProgress.statusMessage) : "Encrypting items…")
                             .font(.headline)
 
                         if vaultManager.importProgress.totalItems > 0 {
@@ -499,7 +517,7 @@ struct PhotosLibraryPicker: View {
                                 .foregroundStyle(.secondary)
                         }
 
-                        if !vaultManager.importProgress.detailMessage.isEmpty {
+                        if !vaultManager.importProgress.detailMessage.isEmpty && isAppActive {
                             Text(vaultManager.importProgress.detailMessage)
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
@@ -514,6 +532,25 @@ struct PhotosLibraryPicker: View {
                 }
             }
         }
+        #if os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            isAppActive = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            isAppActive = true
+        }
+        .onAppear {
+            isAppActive = NSApplication.shared.isActive
+        }
+        #else
+        .onChange(of: scenePhase) { newPhase in
+            if newPhase == .active {
+                isAppActive = true
+            } else if newPhase == .background || newPhase == .inactive {
+                isAppActive = false
+            }
+        }
+        #endif
     }
 
     private var uniqueAlbums: [String] {
@@ -535,12 +572,33 @@ struct PhotosLibraryPicker: View {
             .sorted { $0.album < $1.album }
     }
 
+    private var visibleAssetIdentifiers: [String] {
+        filteredPhotos.map { $0.asset.localIdentifier }
+    }
+
+    private var allVisibleAssetsSelected: Bool {
+        guard !visibleAssetIdentifiers.isEmpty else { return false }
+        return visibleAssetIdentifiers.allSatisfy { selectedAssets.contains($0) }
+    }
+
+    private var anyVisibleAssetsSelected: Bool {
+        visibleAssetIdentifiers.contains { selectedAssets.contains($0) }
+    }
+
     private func toggleSelection(_ id: String) {
         if selectedAssets.contains(id) {
             selectedAssets.remove(id)
         } else {
             selectedAssets.insert(id)
         }
+    }
+
+    private func selectAllVisibleAssets() {
+        visibleAssetIdentifiers.forEach { selectedAssets.insert($0) }
+    }
+
+    private func deselectAllVisibleAssets() {
+        visibleAssetIdentifiers.forEach { selectedAssets.remove($0) }
     }
 
     private func toggleAlbumSelection(_ assetIds: [String]) {
@@ -614,15 +672,18 @@ struct PhotosLibraryPicker: View {
 
     private func hideSelectedPhotos() async {
         guard !selectedAssets.isEmpty else { return }
-        
-        let assetsToHide = allPhotos
-            .filter { selectedAssets.contains($0.asset.localIdentifier) }
-            .map { $0.asset }
-        
-        // Delegate to VaultManager
+
+        var seenIds = Set<String>()
+        let assetsToHide: [PHAsset] = allPhotos.compactMap { entry in
+            let identifier = entry.asset.localIdentifier
+            guard selectedAssets.contains(identifier), !seenIds.contains(identifier) else { return nil }
+            seenIds.insert(identifier)
+            return entry.asset
+        }
+
+        guard !assetsToHide.isEmpty else { return }
+
         await vaultManager.importAssets(assetsToHide)
-        
-        // Dismiss when done
         dismiss()
     }
 
@@ -633,6 +694,164 @@ struct PhotosLibraryPicker: View {
         return formatter.string(fromByteCount: max(value, 0))
     }
 }
+
+#if os(iOS)
+extension PhotosLibraryPicker {
+    private var isCompactHeader: Bool {
+        guard let horizontalSizeClass else { return false }
+        if horizontalSizeClass == .compact {
+            if let verticalSizeClass, verticalSizeClass == .compact {
+                return false
+            }
+            return true
+        }
+        return false
+    }
+
+    @ViewBuilder
+    private var headerSelectionControls: some View {
+        if !visibleAssetIdentifiers.isEmpty {
+            HStack(spacing: isCompactHeader ? 4 : 8) {
+                Button(action: selectAllVisibleAssets) {
+                    Group {
+                        if isCompactHeader {
+                            compactSelectAllIcon
+                        } else {
+                            Label {
+                                Text("All")
+                            } icon: {
+                                Image(systemName: "square.grid.2x2.fill")
+                            }
+                                .font(.subheadline)
+                        }
+                    }
+                    .padding(isCompactHeader ? 0 : 0)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(allVisibleAssetsSelected)
+                .accessibilityLabel("Select all visible items")
+
+                Button(action: deselectAllVisibleAssets) {
+                    Group {
+                        if isCompactHeader {
+                            compactDeselectAllIcon
+                        } else {
+                            Label {
+                                Text("None")
+                            } icon: {
+                                Image(systemName: "square.grid.2x2")
+                            }
+                                .font(.subheadline)
+                        }
+                    }
+                    .padding(isCompactHeader ? 0 : 0)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(!anyVisibleAssetsSelected)
+                .accessibilityLabel("Deselect all visible items")
+            }
+        }
+    }
+
+    private var compactSelectAllIcon: some View {
+        Image(systemName: "square.grid.2x2.fill")
+            .font(.system(size: 20, weight: .semibold))
+            .foregroundStyle(Color.accentColor)
+    }
+
+    private var compactDeselectAllIcon: some View {
+        Image(systemName: "square.grid.2x2")
+            .font(.system(size: 20, weight: .semibold))
+            .foregroundStyle(Color.secondary)
+    }
+
+    private var headerCancelButton: some View {
+        Button(action: { dismiss() }) {
+            Group {
+                if isCompactHeader {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .symbolRenderingMode(.hierarchical)
+                } else {
+                    Label {
+                        Text("Canc")
+                            .font(.subheadline)
+                    } icon: {
+                        Image(systemName: "xmark.circle.fill")
+                    }
+                }
+            }
+            .padding(isCompactHeader ? 6 : 0)
+        }
+        .accessibilityIdentifier("photosPickerCancelButton")
+        .keyboardShortcut(.cancelAction)
+        .controlSize(.small)
+        .accessibilityLabel("Cancel selection")
+    }
+
+    private var headerHideButton: some View {
+        Button(action: {
+            Task {
+                await hideSelectedPhotos()
+            }
+        }) {
+            Group {
+                if isCompactHeader {
+                    compactHideIcon
+                } else {
+                    Label {
+                        Text("Hide (\(selectedAssets.count))")
+                            .font(.subheadline)
+                    } icon: {
+                        Image(systemName: "lock.fill")
+                    }
+                }
+            }
+            .frame(minWidth: isCompactHeader ? 36 : nil, minHeight: isCompactHeader ? 36 : nil)
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.small)
+        .disabled(selectedAssets.isEmpty)
+        .keyboardShortcut(.defaultAction)
+        .accessibilityLabel("Hide \(selectedAssets.count) items")
+    }
+
+    private var compactHideIcon: some View {
+        ZStack(alignment: .topTrailing) {
+            Circle()
+                .fill(selectedAssets.isEmpty ? Color.secondary.opacity(0.18) : Color.accentColor)
+                .frame(width: 44, height: 44)
+                .overlay(
+                    Image(systemName: "lock.fill")
+                        .font(.callout)
+                        .foregroundStyle(selectedAssets.isEmpty ? Color.secondary : Color.white)
+                )
+
+            if selectedAssets.count > 0 {
+                Text(selectionBadgeText)
+                    .font(.caption.bold())
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule()
+                            .fill(Color.white)
+                            .shadow(color: .black.opacity(0.15), radius: 1, x: 0, y: 1)
+                    )
+                    .offset(x: 8, y: -8)
+            }
+        }
+    }
+
+    private var selectionBadgeText: String {
+        if selectedAssets.count > 99 { return "99+" }
+        return "\(selectedAssets.count)"
+    }
+ }
+ 
+ #endif
 
 struct PhotoAssetView: View {
     let asset: PHAsset

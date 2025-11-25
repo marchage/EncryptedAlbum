@@ -1,0 +1,120 @@
+import SwiftUI
+
+#if os(macOS)
+struct InactiveAppOverlay: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var windowIsKey = true
+    @State private var appIsActive = true
+
+    private var isObscured: Bool {
+        let obscured = !appIsActive || scenePhase != .active || !windowIsKey
+        return obscured
+    }
+
+    var body: some View {
+        ZStack {
+            if isObscured {
+                Color.black.opacity(1.0)
+                    .ignoresSafeArea()
+                    .overlay(content: overlayContent)
+                    .transition(.opacity)
+                    .zIndex(9999) // Force top z-index
+            }
+        }
+        .background(WindowFocusObserver(isKey: $windowIsKey))
+        .animation(.easeInOut(duration: 0.25), value: isObscured)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            appIsActive = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            appIsActive = true
+        }
+        .onAppear {
+            appIsActive = NSApplication.shared.isActive
+        }
+    }
+
+    @ViewBuilder
+    private func overlayContent() -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "eye.slash.fill")
+                .font(.system(size: 32, weight: .semibold))
+                .foregroundStyle(.white)
+            Text("SecretVault is obscured")
+                .font(.headline)
+                .foregroundStyle(.white)
+            Text("Return to the app to reveal your hidden items.")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.7))
+        }
+        .padding(24)
+    }
+}
+
+private struct WindowFocusObserver: NSViewRepresentable {
+    @Binding var isKey: Bool
+
+    func makeNSView(context: Context) -> ObserverView {
+        let view = ObserverView()
+        view.onKeyChange = { update in
+            DispatchQueue.main.async {
+                self.isKey = update
+            }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: ObserverView, context: Context) {
+        nsView.onKeyChange = { update in
+            DispatchQueue.main.async {
+                self.isKey = update
+            }
+        }
+    }
+
+    final class ObserverView: NSView {
+        var onKeyChange: ((Bool) -> Void)?
+        private var tokens: [NSObjectProtocol] = []
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            tokens.forEach(NotificationCenter.default.removeObserver)
+            tokens.removeAll()
+
+            guard let window = window else {
+                onKeyChange?(false)
+                return
+            }
+
+            onKeyChange?(window.isKeyWindow)
+
+            let center = NotificationCenter.default
+            let become = center.addObserver(
+                forName: NSWindow.didBecomeKeyNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
+                self?.onKeyChange?(true)
+            }
+
+            let resign = center.addObserver(
+                forName: NSWindow.didResignKeyNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
+                self?.onKeyChange?(false)
+            }
+
+            tokens.append(contentsOf: [become, resign])
+        }
+
+        deinit {
+            tokens.forEach(NotificationCenter.default.removeObserver)
+        }
+    }
+}
+#else
+struct InactiveAppOverlay: View {
+    var body: some View { EmptyView() }
+}
+#endif

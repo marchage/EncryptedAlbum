@@ -47,6 +47,48 @@ final class SecretVaultUITests: XCTestCase {
         }
     }
 
+    private func openPhotosPicker(app: XCUIApplication) {
+        let addPhotosButton = app.buttons["addPhotosButton"]
+        XCTAssertTrue(addPhotosButton.waitForExistence(timeout: 5.0), "Add Photos toolbar button should exist")
+        addPhotosButton.tap()
+
+        // Handle the system Photos permission alert the first time it appears
+        for _ in 0..<2 {
+            if !handlePhotosPermissionIfNeeded(app: app) {
+                break
+            }
+        }
+    }
+
+    @discardableResult
+    private func handlePhotosPermissionIfNeeded(app: XCUIApplication) -> Bool {
+        var handledAlert = false
+
+        let monitor = addUIInterruptionMonitor(withDescription: "Photos Permission") { alert -> Bool in
+            let affirmativeButtons = [
+                "Allow Full Access",
+                "Allow Access to All Photos",
+                "Allow",
+                "OK",
+                "Continue"
+            ]
+
+            for label in affirmativeButtons {
+                if alert.buttons[label].exists {
+                    alert.buttons[label].tap()
+                    handledAlert = true
+                    return true
+                }
+            }
+            return false
+        }
+
+        defer { removeUIInterruptionMonitor(monitor) }
+
+        app.tap()
+        return handledAlert
+    }
+
     // MARK: - Tests
 
     func testUnlockFlow() throws {
@@ -136,5 +178,29 @@ final class SecretVaultUITests: XCTestCase {
         // Wait a bit longer for the toggle animation and state update
         let offLabel = app.staticTexts["Privacy Mode Off"]
         XCTAssertTrue(offLabel.waitForExistence(timeout: 5.0), "Should switch to Privacy Mode Off")
+    }
+
+    func testPhotosPickerPresentsAfterToolbarTap() throws {
+        let app = XCUIApplication()
+        setupPasswordAndUnlock(app: app)
+
+        openPhotosPicker(app: app)
+
+        let pickerTitle = app.staticTexts["Select Items to Hide"]
+        XCTAssertTrue(pickerTitle.waitForExistence(timeout: 5.0), "Picker title should be visible")
+    }
+
+    func testPhotosPickerCancelDismissesSheet() throws {
+        let app = XCUIApplication()
+        setupPasswordAndUnlock(app: app)
+
+        openPhotosPicker(app: app)
+
+        let cancelButton = app.buttons["photosPickerCancelButton"]
+        XCTAssertTrue(cancelButton.waitForExistence(timeout: 5.0), "Cancel button should appear on picker")
+        cancelButton.tap()
+
+        XCTAssertFalse(cancelButton.waitForExistence(timeout: 2.0), "Picker should dismiss after tapping Cancel")
+        XCTAssertFalse(app.staticTexts["Select Items to Hide"].exists, "Picker title should disappear")
     }
 }

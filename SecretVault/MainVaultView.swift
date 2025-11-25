@@ -4,6 +4,9 @@ import SwiftUI
 #if os(macOS)
     import AppKit
 #endif
+#if os(iOS)
+    import UIKit
+#endif
 
 struct MainVaultView: View {
     @EnvironmentObject var vaultManager: VaultManager
@@ -96,6 +99,10 @@ struct MainVaultView: View {
                 .background(.ultraThickMaterial)
                 .cornerRadius(16)
                 .shadow(radius: 18)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(restorationAccessibilityLabel)
+                .accessibilityHint("Restore progress")
+                .accessibilityAddTraits(.isModal)
             }
             .transition(.opacity)
         }
@@ -106,6 +113,36 @@ struct MainVaultView: View {
             formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
             formatter.countStyle = .file
             return formatter.string(fromByteCount: value)
+        }
+
+        private var restorationAccessibilityLabel: String {
+            var parts: [String] = [progress.statusMessage.isEmpty ? "Restoring items" : progress.statusMessage]
+
+            if progress.totalItems > 0 {
+                parts.append("\(progress.processedItems) of \(progress.totalItems) items")
+            }
+
+            if progress.currentBytesTotal > 0 {
+                parts.append(
+                    "\(formattedBytes(progress.currentBytesProcessed)) of \(formattedBytes(progress.currentBytesTotal)) processed"
+                )
+            } else if progress.currentBytesProcessed > 0 {
+                parts.append("\(formattedBytes(progress.currentBytesProcessed)) processed")
+            }
+
+            if progress.successItems > 0 || progress.failedItems > 0 {
+                parts.append("\(progress.successItems) restored, \(progress.failedItems) failed")
+            }
+
+            if progress.cancelRequested {
+                parts.append("Cancellation requested")
+            }
+
+            if !progress.detailMessage.isEmpty {
+                parts.append(progress.detailMessage)
+            }
+
+            return parts.joined(separator: ", ")
         }
     }
     @State private var showingPhotosLibrary = false
@@ -129,6 +166,8 @@ struct MainVaultView: View {
     @State private var captureBytesProcessed: Int64 = 0
     @State private var captureBytesTotal: Int64 = 0
     @State private var exportInProgress = false
+    @State private var showDeleteConfirmation = false
+    @State private var pendingDeletionPhotos: [SecurePhoto] = []
     @State private var exportStatusMessage = ""
     @State private var exportDetailMessage = ""
     @State private var exportItemsProcessed = 0
@@ -140,10 +179,17 @@ struct MainVaultView: View {
     @State private var restorationTask: Task<Void, Never>? = nil
     @State private var didForcePrivacyModeThisSession = false
     @AppStorage("vaultPrivacyModeEnabled") private var privacyModeEnabled: Bool = true
+    @AppStorage("requireForegroundReauthentication") private var requireForegroundReauthentication: Bool = true
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
+    @State private var isSearchActive = false
+    @State private var isAppActive = true
+    @State private var isChoosingVaultLocation = false
     #if os(iOS)
         @Environment(\.verticalSizeClass) private var verticalSizeClass
+    #else
+        @State private var pendingForegroundLockTask: Task<Void, Never>? = nil
     #endif
+    @Environment(\.scenePhase) private var scenePhase
 
     private var actionIconFontSize: CGFloat {
         #if os(iOS)
@@ -217,6 +263,10 @@ struct MainVaultView: View {
 
     func selectAll() {
         selectedPhotos = Set(filteredPhotos.map { $0.id })
+    }
+
+    func clearSelection() {
+        selectedPhotos.removeAll()
     }
 
     func exportSelectedPhotos() {
@@ -438,6 +488,29 @@ struct MainVaultView: View {
         }
     }
 
+    private func hideNotificationAccessibilityLabel(note: HideNotification, hasUndo: Bool) -> String {
+        var parts: [String] = []
+
+        switch note.type {
+        case .success:
+            parts.append("Success notification")
+        case .failure:
+            parts.append("Failure notification")
+        case .info:
+            parts.append("Info notification")
+        }
+
+        parts.append(note.message)
+
+        if hasUndo {
+            parts.append("Undo available")
+        }
+
+        parts.append("Open Photos App button")
+
+        return parts.joined(separator: ", ")
+    }
+
     func restoreSelectedPhotos() {
         photosToRestore = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         showingRestoreOptions = true
@@ -521,11 +594,28 @@ struct MainVaultView: View {
     }
 
     func deleteSelectedPhotos() {
-        let photosToDelete = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
+        let photosToDelete: [SecurePhoto]
+        if !pendingDeletionPhotos.isEmpty {
+            photosToDelete = pendingDeletionPhotos
+        } else {
+            photosToDelete = vaultManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
+        }
+
+        guard !photosToDelete.isEmpty else { return }
+
         for photo in photosToDelete {
             vaultManager.deletePhoto(photo)
         }
-        selectedPhotos.removeAll()
+
+        let deletedIds = Set(photosToDelete.map { $0.id })
+        selectedPhotos.subtract(deletedIds)
+        pendingDeletionPhotos.removeAll()
+    }
+
+    private func requestDeletion(for photos: [SecurePhoto]) {
+        guard !photos.isEmpty else { return }
+        pendingDeletionPhotos = photos
+        showDeleteConfirmation = true
     }
 
     func importFilesToVault() {
@@ -821,11 +911,67 @@ struct MainVaultView: View {
         return formatter.string(fromByteCount: value)
     }
 
+    private var captureProgressAccessibilityLabel: String {
+        var parts: [String] = [captureStatusMessage.isEmpty ? "Encrypting items" : captureStatusMessage]
+
+        if captureItemsTotal > 0 {
+            parts.append("\(captureItemsProcessed) of \(captureItemsTotal) items")
+        }
+
+        if captureBytesTotal > 0 {
+            parts.append(
+                "\(formattedBytes(captureBytesProcessed)) of \(formattedBytes(captureBytesTotal)) processed"
+            )
+        } else if captureBytesProcessed > 0 {
+            parts.append("\(formattedBytes(captureBytesProcessed)) processed")
+        }
+
+        if !captureDetailMessage.isEmpty {
+            parts.append(captureDetailMessage)
+        }
+
+        if captureCancelRequested {
+            parts.append("Cancellation requested")
+        }
+
+        return parts.joined(separator: ", ")
+    }
+
+    private var exportProgressAccessibilityLabel: String {
+        var parts: [String] = [exportStatusMessage.isEmpty ? "Exporting items" : exportStatusMessage]
+
+        if exportItemsTotal > 0 {
+            parts.append("\(exportItemsProcessed) of \(exportItemsTotal) items")
+        }
+
+        if exportBytesTotal > 0 {
+            parts.append(
+                "\(formattedBytes(exportBytesProcessed)) of \(formattedBytes(exportBytesTotal)) processed"
+            )
+        } else if exportBytesProcessed > 0 {
+            parts.append("\(formattedBytes(exportBytesProcessed)) processed")
+        }
+
+        if !exportDetailMessage.isEmpty {
+            parts.append(exportDetailMessage)
+        }
+
+        if exportCancelRequested {
+            parts.append("Cancellation requested")
+        }
+
+        return parts.joined(separator: ", ")
+    }
+
     func chooseVaultLocation() {
         #if os(macOS)
+            isChoosingVaultLocation = true
             // Step-up authentication before allowing vault location change
             vaultManager.requireStepUpAuthentication { success in
-                guard success else { return }
+                guard success else {
+                    isChoosingVaultLocation = false
+                    return
+                }
 
                 // vaultManager.touchActivity() - removed
 
@@ -837,7 +983,10 @@ struct MainVaultView: View {
                 panel.message = "Select the folder where SecretVault should store its encrypted vault."
 
                 panel.begin { response in
-                    guard response == .OK, let baseURL = panel.url else { return }
+                    guard response == .OK, let baseURL = panel.url else {
+                        isChoosingVaultLocation = false
+                        return
+                    }
 
                     // Ask for explicit confirmation and explain implications
                     let confirmAlert = NSAlert()
@@ -849,62 +998,21 @@ struct MainVaultView: View {
                     confirmAlert.addButton(withTitle: "Cancel")
 
                     let response = confirmAlert.runModal()
-                    guard response == .alertFirstButtonReturn else { return }
+                    guard response == .alertFirstButtonReturn else {
+                        isChoosingVaultLocation = false
+                        return
+                    }
 
-                    DispatchQueue.global(qos: .userInitiated).async {
-                        let fileManager = FileManager.default
-                        let oldBase = vaultManager.vaultBaseURL
-                        let newBase = baseURL.appendingPathComponent("SecretVault", isDirectory: true)
-                        let migrationMarker = newBase.appendingPathComponent(
-                            "migration-in-progress", isDirectory: false)
-
-                        do {
-                            try fileManager.createDirectory(at: newBase, withIntermediateDirectories: true)
-                            try "".data(using: .utf8)?.write(to: migrationMarker)
-
-                            // Copy photos directory
-                            let oldPhotosURL = oldBase.appendingPathComponent("photos", isDirectory: true)
-                            let newPhotosURL = newBase.appendingPathComponent("photos", isDirectory: true)
-                            if fileManager.fileExists(atPath: oldPhotosURL.path) {
-                                try fileManager.createDirectory(at: newPhotosURL, withIntermediateDirectories: true)
-                                let items = try fileManager.contentsOfDirectory(atPath: oldPhotosURL.path)
-                                for item in items {
-                                    let src = oldPhotosURL.appendingPathComponent(item)
-                                    let dst = newPhotosURL.appendingPathComponent(item)
-                                    if fileManager.fileExists(atPath: dst.path) {
-                                        try fileManager.removeItem(at: dst)
-                                    }
-                                    try fileManager.copyItem(at: src, to: dst)
-                                }
-                            }
-
-                            // Copy metadata files (except settings, which will be regenerated)
-                            let oldPhotosFile = oldBase.appendingPathComponent("hidden_photos.json")
-                            let newPhotosFile = newBase.appendingPathComponent("hidden_photos.json")
-                            if fileManager.fileExists(atPath: oldPhotosFile.path) {
-                                if fileManager.fileExists(atPath: newPhotosFile.path) {
-                                    try fileManager.removeItem(at: newPhotosFile)
-                                }
-                                try fileManager.copyItem(at: oldPhotosFile, to: newPhotosFile)
-                            }
-
-                            DispatchQueue.main.async {
-                                vaultManager.vaultBaseURL = newBase
-                            }
-
-                            // Remove marker once migration completes
-                            try? fileManager.removeItem(at: migrationMarker)
-                        } catch {
-                            try? fileManager.removeItem(at: migrationMarker)
-                            DispatchQueue.main.async {
-                                let errorAlert = NSAlert()
-                                errorAlert.messageText = "Failed to Move Vault"
-                                errorAlert.informativeText =
-                                    "SecretVault could not copy your vault to the new location. Your existing vault remains at its previous location. Error: \(error.localizedDescription)"
-                                errorAlert.alertStyle = .critical
-                                errorAlert.addButton(withTitle: "OK")
-                                errorAlert.runModal()
-                            }
+                    vaultManager.moveVault(to: baseURL) { result in
+                        isChoosingVaultLocation = false
+                        if case .failure(let error) = result {
+                            let errorAlert = NSAlert()
+                            errorAlert.messageText = "Failed to Move Vault"
+                            errorAlert.informativeText =
+                                "SecretVault could not copy your vault to the new location. Your existing vault remains at its previous location. Error: \(error.localizedDescription)"
+                            errorAlert.alertStyle = .critical
+                            errorAlert.addButton(withTitle: "OK")
+                            errorAlert.runModal()
                         }
                     }
                 }
@@ -914,10 +1022,25 @@ struct MainVaultView: View {
 
     @ViewBuilder
     private var cameraSheet: some View {
-        CameraCaptureView()
-            #if os(iOS)
-            .ignoresSafeArea()
-            #endif
+        #if os(iOS)
+            CameraCaptureView()
+                .ignoresSafeArea()
+                .onDisappear {
+                    UltraPrivacyCoordinator.shared.endTrustedModal()
+                }
+        #else
+            SecureWrapper {
+                CameraCaptureView()
+            }
+        #endif
+    }
+
+    private var privacyCardVerticalPadding: CGFloat {
+        #if os(iOS)
+            return 6
+        #else
+            return 16
+        #endif
     }
 
     @ViewBuilder
@@ -925,15 +1048,21 @@ struct MainVaultView: View {
         Button {
             showingPhotosLibrary = true
         } label: {
-            Image(systemName: "square.and.arrow.down")
+            Image(systemName: "photo.fill.on.rectangle.fill")
         }
+        .accessibilityLabel("Add Photos from Library")
+        .accessibilityIdentifier("addPhotosButton")
 
         Button {
+            #if os(iOS)
+                UltraPrivacyCoordinator.shared.beginTrustedModal()
+            #endif
             showingCamera = true
         } label: {
             Image(systemName: "camera.fill")
         }
-        
+        .accessibilityLabel("Capture Photo or Video")
+
         #if os(macOS)
             Button {
                 showingFilePicker = true
@@ -979,6 +1108,34 @@ struct MainVaultView: View {
         } label: {
             Image(systemName: "ellipsis.circle")
         }
+        .accessibilityLabel("More Options")
+    }
+
+    @ViewBuilder
+    private var selectionToolbarControls: some View {
+        Button {
+            selectAll()
+        } label: {
+            Label {
+                Text("All")
+            } icon: {
+                Image(systemName: "square.grid.2x2.fill")
+            }
+        }
+        .disabled(filteredPhotos.isEmpty || selectedPhotos.count == filteredPhotos.count)
+        .accessibilityLabel("Select all hidden items")
+
+        Button {
+            clearSelection()
+        } label: {
+            Label {
+                Text("None")
+            } icon: {
+                Image(systemName: "square.grid.2x2")
+            }
+        }
+        .disabled(selectedPhotos.isEmpty)
+        .accessibilityLabel("Deselect all hidden items")
     }
 
     private var captureProgressOverlay: some View {
@@ -1001,16 +1158,24 @@ struct MainVaultView: View {
                     ProgressView(value: Double(captureBytesProcessed), total: Double(max(captureBytesTotal, 1)))
                         .progressViewStyle(.linear)
                         .frame(maxWidth: UIConstants.progressCardWidth)
-                    Text("\(formattedBytes(captureBytesProcessed)) of \(formattedBytes(captureBytesTotal))")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    
+                    if isAppActive {
+                        Text("\(formattedBytes(captureBytesProcessed)) of \(formattedBytes(captureBytesTotal))")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        let percent = Double(captureBytesProcessed) / Double(max(captureBytesTotal, 1))
+                        Text(String(format: "%.0f%%", percent * 100))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 } else if captureBytesProcessed > 0 {
                     Text("\(formattedBytes(captureBytesProcessed)) processed…")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
 
-                Text(captureStatusMessage.isEmpty ? "Encrypting items…" : captureStatusMessage)
+                Text(isAppActive ? (captureStatusMessage.isEmpty ? "Encrypting items…" : captureStatusMessage) : "Encrypting items…")
                     .font(.headline)
 
                 if captureItemsTotal > 0 {
@@ -1019,7 +1184,7 @@ struct MainVaultView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                if !captureDetailMessage.isEmpty {
+                if !captureDetailMessage.isEmpty && isAppActive {
                     Text(captureDetailMessage)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -1046,6 +1211,10 @@ struct MainVaultView: View {
             .background(.ultraThickMaterial)
             .cornerRadius(16)
             .shadow(radius: 18)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(captureProgressAccessibilityLabel)
+            .accessibilityHint("Import progress")
+            .accessibilityAddTraits(.isModal)
         }
         .transition(.opacity)
     }
@@ -1070,9 +1239,17 @@ struct MainVaultView: View {
                     ProgressView(value: Double(exportBytesProcessed), total: Double(max(exportBytesTotal, 1)))
                         .progressViewStyle(.linear)
                         .frame(maxWidth: UIConstants.progressCardWidth)
-                    Text("\(formattedBytes(exportBytesProcessed)) of \(formattedBytes(exportBytesTotal))")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    
+                    if isAppActive {
+                        Text("\(formattedBytes(exportBytesProcessed)) of \(formattedBytes(exportBytesTotal))")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        let percent = Double(exportBytesProcessed) / Double(max(exportBytesTotal, 1))
+                        Text(String(format: "%.0f%%", percent * 100))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 } else {
                     ProgressView()
                         .progressViewStyle(.linear)
@@ -1123,6 +1300,10 @@ struct MainVaultView: View {
             .background(.ultraThickMaterial)
             .cornerRadius(16)
             .shadow(radius: 18)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(exportProgressAccessibilityLabel)
+            .accessibilityHint("Export progress")
+            .accessibilityAddTraits(.isModal)
         }
         .transition(.opacity)
     }
@@ -1189,7 +1370,7 @@ struct MainVaultView: View {
         ZStack {
             NavigationStack {
                 ScrollView {
-                    VStack(spacing: 16) {
+                    VStack(spacing: 12) {
                         if !selectedPhotos.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
                                 HStack(spacing: 12) {
@@ -1213,7 +1394,10 @@ struct MainVaultView: View {
                                             .disabled(exportInProgress)
                                         #endif
                                         Button(role: .destructive) {
-                                            deleteSelectedPhotos()
+                                            let photosToDelete = vaultManager.hiddenPhotos.filter {
+                                                selectedPhotos.contains($0.id)
+                                            }
+                                            requestDeletion(for: photosToDelete)
                                         } label: {
                                             Label("Delete", systemImage: "trash")
                                         }
@@ -1241,6 +1425,19 @@ struct MainVaultView: View {
                                     .labelsHidden()
                             }
 
+                            HStack(alignment: .top, spacing: 12) {
+                                Label(
+                                    requireForegroundReauthentication
+                                        ? "Re-authentication Required" : "Re-authentication Optional",
+                                    systemImage: "lock.rotation"
+                                )
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                Spacer()
+                                Toggle("", isOn: $requireForegroundReauthentication)
+                                    .labelsHidden()
+                            }
+
                             #if os(macOS)
                                 HStack(spacing: 12) {
                                     Button {
@@ -1257,7 +1454,7 @@ struct MainVaultView: View {
                                     }
                                     .buttonStyle(.bordered)
                                     .disabled(captureInProgress || exportInProgress)
-                                    
+
                                     Button {
                                         showingCamera = true
                                     } label: {
@@ -1268,7 +1465,8 @@ struct MainVaultView: View {
                                 .controlSize(.small)
                             #endif
                         }
-                        .padding()
+                        .padding(.horizontal)
+                        .padding(.vertical, privacyCardVerticalPadding)
                         .background(.ultraThinMaterial)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
 
@@ -1316,6 +1514,11 @@ struct MainVaultView: View {
                                     .buttonStyle(.bordered)
                                     .controlSize(.small)
                                 }
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel(
+                                    hideNotificationAccessibilityLabel(note: note, hasUndo: !validPhotos.isEmpty)
+                                )
+                                .accessibilityHint("Hide status banner")
                                 .padding(.horizontal)
                                 .padding(.vertical, 10)
                                 .frame(maxWidth: .infinity)
@@ -1360,7 +1563,7 @@ struct MainVaultView: View {
                                 Button {
                                     showingPhotosLibrary = true
                                 } label: {
-                                    Image(systemName: "square.and.arrow.down")
+                                    Image(systemName: "lock.fill")
                                         .font(.system(size: actionIconFontSize))
                                         .foregroundColor(.white)
                                         .frame(width: actionButtonDimension, height: actionButtonDimension)
@@ -1384,7 +1587,6 @@ struct MainVaultView: View {
                             ) {
                                 ForEach(filteredPhotos) { photo in
                                     Button {
-                                        print("[DEBUG] Thumbnail single-click: id=\(photo.id)")
                                         toggleSelection(photo.id)
                                     } label: {
                                         PhotoThumbnailView(
@@ -1395,7 +1597,6 @@ struct MainVaultView: View {
                                     .focusable(false)
                                     .highPriorityGesture(
                                         TapGesture(count: 2).onEnded {
-                                            print("[DEBUG] Thumbnail double-click: id=\(photo.id)")
                                             selectedPhoto = photo
                                         }
                                     )
@@ -1411,7 +1612,7 @@ struct MainVaultView: View {
                                         Divider()
 
                                         Button(role: .destructive) {
-                                            vaultManager.deletePhoto(photo)
+                                            requestDeletion(for: [photo])
                                         } label: {
                                             Label("Delete", systemImage: "trash")
                                         }
@@ -1428,15 +1629,26 @@ struct MainVaultView: View {
                 #if os(iOS)
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
+                        ToolbarItemGroup(placement: .navigationBarLeading) {
+                            selectionToolbarControls
+                        }
                         ToolbarItemGroup(placement: .navigationBarTrailing) {
                             toolbarActions
                         }
                     }
                     .searchable(
-                        text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic),
+                        text: $searchText, isPresented: $isSearchActive, placement: .navigationBarDrawer(displayMode: .automatic),
                         prompt: "Search hidden items")
+                    .onChange(of: isSearchActive) { newValue in
+                        if !newValue {
+                            dismissKeyboard()
+                        }
+                    }
                 #else
                     .toolbar {
+                        ToolbarItemGroup(placement: .navigation) {
+                            selectionToolbarControls
+                        }
                         ToolbarItemGroup(placement: .primaryAction) {
                             toolbarActions
                         }
@@ -1486,11 +1698,35 @@ struct MainVaultView: View {
             .sheet(isPresented: $showingCamera) {
                 cameraSheet
             }
+            .confirmationDialog(
+                "Delete selected items?",
+                isPresented: $showDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button(
+                    "Delete \(pendingDeletionPhotos.count) item\(pendingDeletionPhotos.count == 1 ? "" : "s")",
+                    role: .destructive
+                ) {
+                    deleteSelectedPhotos()
+                }
+                Button("Cancel", role: .cancel) {
+                    pendingDeletionPhotos.removeAll()
+                }
+            } message: {
+                Text("This action permanently removes the selected content from Secret Vault.")
+            }
             .onChange(of: showingFilePicker) { newValue in
                 if newValue {
                     importFilesToVault()
                 }
             }
+            #if os(iOS)
+                .onChange(of: showingCamera) { isPresented in
+                    if !isPresented {
+                        UltraPrivacyCoordinator.shared.endTrustedModal()
+                    }
+                }
+            #endif
             if captureInProgress {
                 captureProgressOverlay
             }
@@ -1501,8 +1737,139 @@ struct MainVaultView: View {
                 restorationProgressOverlay
             }
         }
+        #if os(macOS)
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in
+                guard requireForegroundReauthentication else { return }
+                guard !shouldSuppressForegroundLock else {
+                    cancelScheduledForegroundLock()
+                    return
+                }
+                scheduleForegroundAutoLock()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                cancelScheduledForegroundLock()
+            }
+            .onDisappear {
+                cancelScheduledForegroundLock()
+            }
+            .onChange(of: showingPhotosLibrary) { isPresented in
+                if isPresented {
+                    cancelScheduledForegroundLock()
+                }
+            }
+            .onChange(of: showingFilePicker) { isPresented in
+                if isPresented {
+                    cancelScheduledForegroundLock()
+                }
+            }
+            .onChange(of: showingCamera) { isPresented in
+                if isPresented {
+                    cancelScheduledForegroundLock()
+                }
+            }
+            .onChange(of: vaultManager.importProgress.isImporting) { importing in
+                if importing {
+                    cancelScheduledForegroundLock()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+                isAppActive = false
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                isAppActive = true
+            }
+            .onAppear {
+                isAppActive = NSApplication.shared.isActive
+            }
+        #else
+            .onChange(of: scenePhase) { newPhase in
+                if newPhase == .active {
+                    isAppActive = true
+                } else if newPhase == .background || newPhase == .inactive {
+                    isAppActive = false
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in
+                guard requireForegroundReauthentication else { return }
+                guard !shouldSuppressForegroundLock else {
+                    cancelScheduledForegroundLock()
+                    return
+                }
+                scheduleForegroundAutoLock()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                cancelScheduledForegroundLock()
+            }
+            .onDisappear {
+                cancelScheduledForegroundLock()
+            }
+            .onChange(of: showingPhotosLibrary) { isPresented in
+                if isPresented {
+                    cancelScheduledForegroundLock()
+                }
+            }
+            .onChange(of: showingFilePicker) { isPresented in
+                if isPresented {
+                    cancelScheduledForegroundLock()
+                }
+            }
+            .onChange(of: showingCamera) { isPresented in
+                if isPresented {
+                    cancelScheduledForegroundLock()
+                }
+            }
+            .onChange(of: vaultManager.importProgress.isImporting) { importing in
+                if importing {
+                    cancelScheduledForegroundLock()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+                isAppActive = false
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                isAppActive = true
+            }
+            .onAppear {
+                isAppActive = NSApplication.shared.isActive
+            }
+        #endif
     }
 }
+#if os(macOS)
+    extension MainVaultView {
+        /// Schedule a short-delay auto lock so quick Command-Tabs don't immediately force re-auth.
+        private func scheduleForegroundAutoLock() {
+            guard !shouldSuppressForegroundLock else { return }
+            cancelScheduledForegroundLock()
+            pendingForegroundLockTask = Task {
+                let grace: TimeInterval = 1.5
+                try? await Task.sleep(nanoseconds: UInt64(grace * 1_000_000_000))
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    guard requireForegroundReauthentication, !shouldSuppressForegroundLock else { return }
+                    if vaultManager.isUnlocked {
+                        vaultManager.lock()
+                    }
+                }
+            }
+        }
+
+        private func cancelScheduledForegroundLock() {
+            pendingForegroundLockTask?.cancel()
+            pendingForegroundLockTask = nil
+        }
+
+        private var shouldSuppressForegroundLock: Bool {
+            showingPhotosLibrary
+                || showingFilePicker
+                || showingCamera
+                || vaultManager.importProgress.isImporting
+                || captureInProgress
+                || exportInProgress
+                || isChoosingVaultLocation
+        }
+    }
+#endif
 struct PhotoThumbnailView: View {
     let photo: SecurePhoto
     let isSelected: Bool
@@ -1528,7 +1895,7 @@ struct PhotoThumbnailView: View {
                         .fill(Color.gray.opacity(0.2))
                         .frame(width: thumbnailSize, height: thumbnailSize)
                         .overlay {
-                            Image(systemName: photo.mediaType == .video ? "video.slash" : "lock.fill")
+                            Image(systemName: "eye.slash.fill")
                                 .font(.title2)
                                 .foregroundStyle(.secondary)
                         }
@@ -1637,9 +2004,11 @@ struct PhotoThumbnailView: View {
                 let data = try await vaultManager.decryptThumbnail(for: photo)
 
                 if data.isEmpty {
+                    #if DEBUG
                     print(
                         "Thumbnail data empty for photo id=\(photo.id), thumbnailPath=\(photo.thumbnailPath), encryptedThumb=\(photo.encryptedThumbnailPath ?? "nil")"
                     )
+                    #endif
                     await MainActor.run {
                         failedToLoad = true
                     }
@@ -1651,22 +2020,28 @@ struct PhotoThumbnailView: View {
                         if let nsImage = NSImage(data: data) {
                             thumbnailImage = Image(nsImage: nsImage)
                         } else {
+                            #if DEBUG
                             print("Failed to create NSImage from decrypted data for photo id=\(photo.id)")
+                            #endif
                             failedToLoad = true
                         }
                     #else
                         if let uiImage = UIImage(data: data) {
                             thumbnailImage = Image(uiImage: uiImage)
                         } else {
+                            #if DEBUG
                             print(
                                 "Failed to create UIImage from decrypted data for photo id=\(photo.id), size=\(data.count) bytes"
                             )
+                            #endif
                             failedToLoad = true
                         }
                     #endif
                 }
             } catch {
+                #if DEBUG
                 print("Error decrypting thumbnail for photo id=\(photo.id): \(error)")
+                #endif
             }
         }
     }
@@ -1683,78 +2058,100 @@ struct PhotoViewerSheet: View {
     let photo: SecurePhoto
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var vaultManager: VaultManager
+    @Environment(\.scenePhase) private var scenePhase
     @State private var fullImage: Image?
     @State private var videoURL: URL?
     @State private var decryptTask: Task<Void, Never>?
+    @State private var failedToLoad = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                VStack(alignment: .leading) {
-                    Text(photo.filename)
-                        .font(.headline)
-                    HStack {
-                        if let album = photo.sourceAlbum {
-                            Text("From: \(album)")
-                                .font(.caption)
+        SecureWrapper {
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text(photo.filename)
+                            .font(.headline)
+                        HStack {
+                            if let album = photo.sourceAlbum {
+                                Text("From: \(album)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if photo.mediaType == .video, let duration = photo.duration {
+                                Text("• \(formatDuration(duration))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        #if os(iOS)
+                            .padding(.top, -6)
+                        #endif
+                    }
+
+                    Spacer()
+
+                    Button {
+                        cancelDecryptTask()
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding()
+                .background(.ultraThinMaterial)
+
+                // Media content
+                if photo.mediaType == .video {
+                    if let url = videoURL {
+                        CustomVideoPlayer(url: url)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        decryptingPlaceholder
+                    }
+                } else {
+                    if let image = fullImage {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if failedToLoad {
+                        VStack(spacing: 10) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.largeTitle)
+                                .foregroundStyle(.secondary)
+                            Text("Failed to load image")
+                                .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
-                        if photo.mediaType == .video, let duration = photo.duration {
-                            Text("• \(formatDuration(duration))")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        decryptingPlaceholder
                     }
                 }
-
-                Spacer()
-
-                Button {
-                    cancelDecryptTask()
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                }
-                .buttonStyle(.plain)
             }
-            .padding()
-            .background(.ultraThinMaterial)
-
-            // Media content
-            if photo.mediaType == .video {
-                if let url = videoURL {
-                    CustomVideoPlayer(url: url)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+            #if os(macOS)
+                .frame(minWidth: 800, minHeight: 600)
+            #endif
+            .onAppear {
+                if photo.mediaType == .video {
+                    loadVideo()
                 } else {
-                    decryptingPlaceholder
-                }
-            } else {
-                if let image = fullImage {
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    decryptingPlaceholder
+                    loadFullImage()
                 }
             }
-        }
-        #if os(macOS)
-            .frame(minWidth: 800, minHeight: 600)
-        #endif
-        .onAppear {
-            print("[DEBUG] PhotoViewerSheet onAppear for photo id=\(photo.id)")
-            if photo.mediaType == .video {
-                loadVideo()
-            } else {
-                loadFullImage()
+            .onDisappear {
+                cancelDecryptTask()
+                cleanupVideo()
             }
-        }
-        .onDisappear {
-            cancelDecryptTask()
-            cleanupVideo()
+            .onChange(of: scenePhase) { newPhase in
+                guard newPhase == .active else {
+                    dismissViewer()
+                    return
+                }
+            }
         }
     }
 
@@ -1769,12 +2166,16 @@ struct PhotoViewerSheet: View {
                         await MainActor.run {
                             fullImage = Image(nsImage: image)
                         }
+                    } else {
+                        await MainActor.run { failedToLoad = true }
                     }
                 #else
                     if let image = UIImage(data: decryptedData) {
                         await MainActor.run {
                             fullImage = Image(uiImage: image)
                         }
+                    } else {
+                        await MainActor.run { failedToLoad = true }
                     }
                 #endif
             } catch is CancellationError {
@@ -1818,6 +2219,12 @@ struct PhotoViewerSheet: View {
     private func cancelDecryptTask() {
         decryptTask?.cancel()
         decryptTask = nil
+    }
+
+    private func dismissViewer() {
+        cancelDecryptTask()
+        cleanupVideo()
+        dismiss()
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {
@@ -1867,6 +2274,21 @@ private var decryptingPlaceholder: some View {
 
         func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
             // Update if needed
+        }
+    }
+#endif
+
+#if os(iOS)
+    extension View {
+        func dismissKeyboard() {
+            UIApplication.shared.sendAction(
+                #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            
+            // Force end editing on all windows to ensure keyboard dismissal
+            UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap { $0.windows }
+                .forEach { $0.endEditing(true) }
         }
     }
 #endif

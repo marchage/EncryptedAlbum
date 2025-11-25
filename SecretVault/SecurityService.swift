@@ -269,14 +269,16 @@ class SecurityService {
 
     /// Stores data securely in Keychain
     func storeInKeychain(data: Data, for key: String) throws {
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
         ]
 
-        // Delete existing item
+        applyMacKeychainAttributes(to: &query, requireUISkip: true)
+
+        // Delete existing item in the selected keychain domain
         SecItemDelete(query as CFDictionary)
 
         // Add new item
@@ -288,12 +290,14 @@ class SecurityService {
 
     /// Retrieves data from Keychain
     func retrieveFromKeychain(for key: String) throws -> Data? {
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
+
+        applyMacKeychainAttributes(to: &query, requireUISkip: true)
 
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -311,10 +315,12 @@ class SecurityService {
 
     /// Deletes data from Keychain
     func deleteFromKeychain(for key: String) throws {
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
         ]
+
+        applyMacKeychainAttributes(to: &query, requireUISkip: false)
 
         let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
@@ -336,19 +342,22 @@ class SecurityService {
         // Instead, we'll store it securely and require biometric auth when retrieving
         #if os(macOS)
         // 1. Delete existing item first
-        let deleteQuery: [String: Any] = [
+        var deleteQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: biometricPasswordKey
         ]
+        applyMacKeychainAttributes(to: &deleteQuery, requireUISkip: true)
         SecItemDelete(deleteQuery as CFDictionary)
         
-        // 2. Add new item without biometric flags (we'll authenticate manually on retrieval)
-        let addQuery: [String: Any] = [
+        // 2. Add new item with trusted access control so keychain does not prompt repeatedly
+        var addQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: biometricPasswordKey,
             kSecValueData as String: passwordData,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            kSecUseAuthenticationUI as String: kSecUseAuthenticationUISkip
         ]
+        applyMacKeychainAttributes(to: &addQuery, requireUISkip: true)
         
         let status = SecItemAdd(addQuery as CFDictionary, nil)
         
@@ -401,12 +410,17 @@ class SecurityService {
     /// This will trigger the system biometric prompt
     func retrieveBiometricPassword() throws -> String? {
         // Simply retrieve from Keychain - authentication handled externally
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: biometricPasswordKey,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
+
+        #if os(macOS)
+            query[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        #endif
+        applyMacKeychainAttributes(to: &query, requireUISkip: true)
 
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -432,6 +446,74 @@ class SecurityService {
     func clearBiometricPassword() throws {
         try deleteFromKeychain(for: biometricPasswordKey)
     }
+
+#if os(macOS)
+    /// Tracks whether the current process can use the Data Protection Keychain.
+    private static var keychainDomainPreference: KeychainDomainPreference = .unknown
+    private static let probeAccount = "SecretVault.KeychainProbe"
+
+    private enum KeychainDomainPreference {
+        case unknown
+        case legacyLogin
+        case dataProtection
+    }
+
+    // TODO(marchage): Remove legacy login-keychain fallback once release builds ship with the entitlement.
+    private func applyMacKeychainAttributes(to query: inout [String: Any], requireUISkip: Bool) {
+        if shouldUseDataProtectionKeychain() {
+            query[kSecUseDataProtectionKeychain as String] = true
+        } else if requireUISkip {
+            query[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUISkip
+        }
+    }
+
+    private func shouldUseDataProtectionKeychain() -> Bool {
+        if #available(macOS 10.15, *) {
+            switch SecurityService.keychainDomainPreference {
+            case .dataProtection:
+                return true
+            case .legacyLogin:
+                return false
+            case .unknown:
+                break
+            }
+
+            guard let probeData = "probe".data(using: .utf8) else {
+                SecurityService.keychainDomainPreference = .legacyLogin
+                return false
+            }
+
+            let probeQuery: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrAccount as String: SecurityService.probeAccount,
+                kSecValueData as String: probeData,
+                kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                kSecUseDataProtectionKeychain as String: true,
+            ]
+
+            let status = SecItemAdd(probeQuery as CFDictionary, nil)
+            if status == errSecSuccess || status == errSecDuplicateItem {
+                SecItemDelete(probeQuery as CFDictionary)
+                SecurityService.keychainDomainPreference = .dataProtection
+                return true
+            }
+
+            if status == errSecMissingEntitlement {
+                SecurityService.keychainDomainPreference = .legacyLogin
+            } else {
+                #if DEBUG
+                    print("🔐 DEBUG: Data Protection keychain probe failed with status \(status)")
+                #endif
+                SecurityService.keychainDomainPreference = .legacyLogin
+            }
+            return false
+        } else {
+            return false
+        }
+    }
+#else
+    private func applyMacKeychainAttributes(to query: inout [String: Any], requireUISkip: Bool) {}
+#endif
 }
 
 /// Report structure for security health checks

@@ -9,10 +9,14 @@ import SwiftUI
 
 struct UnlockView: View {
     @EnvironmentObject var vaultManager: VaultManager
+    @Environment(\.scenePhase) private var scenePhase
     @State private var password = ""
     @State private var showError = false
     @State private var errorMessage = "Incorrect password"
     @State private var biometricType: LABiometryType = .none
+    @State private var autoBiometricWorkItem: DispatchWorkItem?
+    @State private var hasAutoBiometricAttempted = false
+    @State private var biometricsReady = false
 
     var body: some View {
         GeometryReader { geometry in
@@ -20,210 +24,242 @@ struct UnlockView: View {
                 VStack(spacing: 24) {
                     Spacer()
 
-            // App Icon
-            #if os(macOS)
-                if let appIcon = NSImage(named: "AppIcon") {
-                    Image(nsImage: appIcon)
-                        .resizable()
-                        .renderingMode(.original)
-                        .interpolation(.high)
-                        .aspectRatio(1, contentMode: .fit)
-                        .frame(maxWidth: 120, maxHeight: 120)
-                        // .padding(.top, 36)
-                        .clipShape(RoundedRectangle(cornerRadius: 26))
-                        .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
-                } else {
-                    // Fallback to gradient circle with lock
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.blue, .purple],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(maxWidth: 140)
-                            .padding(.top, 16)
+                    // App Icon
+                    #if os(macOS)
+                        if let appIcon = NSImage(named: "AppIcon") {
+                            Image(nsImage: appIcon)
+                                .resizable()
+                                .renderingMode(.original)
+                                .interpolation(.high)
+                                .aspectRatio(1, contentMode: .fit)
+                                .frame(maxWidth: 120, maxHeight: 120)
+                                // .padding(.top, 36)
+                                .clipShape(RoundedRectangle(cornerRadius: 26))
+                                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+                        } else {
+                            // Fallback to gradient circle with lock
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [.blue, .purple],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(maxWidth: 140)
+                                    .padding(.top, 16)
 
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 40))
-                            .foregroundStyle(.white)
-                    }
-                }
-            #else
-                if let appIcon = UIImage(named: "AppIcon") {
-                    Image(uiImage: appIcon)
-                        .resizable()
-                        .renderingMode(.original)
-                        .interpolation(.high)
-                        .aspectRatio(1, contentMode: .fit)
-                        .frame(maxWidth: 140, maxHeight: 140)
-                        // .padding(.top, 24)
-                        .clipShape(RoundedRectangle(cornerRadius: 26))
-                        .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
-                } else {
-                    // Fallback to gradient circle with lock
-                    ZStack {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.blue, .purple],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(maxWidth: 120)
-                        // .padding(.top, 36)
-
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 40))
-                            .foregroundStyle(.white)
-                    }
-                }
-            #endif
-
-            Text("Secret Vault")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-
-            Text("Enter your password to unlock")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-
-            VStack(spacing: 12) {
-                SecureField("Password", text: $password)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 300)
-                    .textContentType(.password)
-                    .autocorrectionDisabled()
-                    #if os(iOS)
-                        .textInputAutocapitalization(.never)
-                    #endif
-                    .onSubmit {
-                        Task {
-                            await unlock()
-                        }
-                    }
-
-                if showError {
-                    Text(errorMessage)
-                        .foregroundStyle(.red)
-                        .font(.callout)
-                }
-
-                HStack(spacing: 12) {
-                    if biometricType != .none {
-                        Button {
-                            authenticateWithBiometrics()
-                        } label: {
-                            HStack {
-                                Image(systemName: biometricType == .faceID ? "faceid" : "touchid")
-                                Text(biometricType == .faceID ? "Use Face ID" : "Use Touch ID")
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(.white)
                             }
-                            .frame(width: 145)
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
-                    }
+                    #else
+                        if let appIcon = UIImage(named: "AppIcon") {
+                            Image(uiImage: appIcon)
+                                .resizable()
+                                .renderingMode(.original)
+                                .interpolation(.high)
+                                .aspectRatio(1, contentMode: .fit)
+                                .frame(maxWidth: 140, maxHeight: 140)
+                                // .padding(.top, 24)
+                                .clipShape(RoundedRectangle(cornerRadius: 26))
+                                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+                        } else {
+                            // Fallback to gradient circle with lock
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [.blue, .purple],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(maxWidth: 120)
+                                // .padding(.top, 36)
 
-                    Button {
-                        Task {
-                            await unlock()
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(.white)
+                            }
                         }
-                    } label: {
-                        Text("Unlock")
-                            .frame(width: biometricType != .none ? 145 : 200)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .disabled(password.isEmpty)
-                }
-            }
+                    #endif
 
-            Spacer()
+                    Text("Secret Vault")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
 
-            #if DEBUG
-                Button {
-                    resetVaultForDevelopment()
-                } label: {
-                    Text("🔧 Reset Vault (Dev)")
-                        .font(.caption)
+                    Text("Enter your password to unlock")
+                        .font(.title3)
                         .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .padding(.bottom, 8)
-            #endif
+
+                    VStack(spacing: 12) {
+                        SecureField("Password", text: $password)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 300)
+                            .textContentType(.password)
+                            .autocorrectionDisabled()
+                            #if os(iOS)
+                                .textInputAutocapitalization(.never)
+                            #endif
+                            .onSubmit {
+                                Task {
+                                    await unlock()
+                                }
+                            }
+
+                        if showError {
+                            Text(errorMessage)
+                                .font(.callout)
+                                .foregroundStyle(.red)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.red.opacity(0.12))
+                                )
+                                .frame(maxWidth: 260)
+                        }
+
+                        HStack(spacing: 12) {
+                            if biometricType != .none {
+                                Button {
+                                    cancelAutoBiometricScheduling()
+                                    authenticateWithBiometrics()
+                                } label: {
+                                    HStack {
+                                        Image(systemName: biometricType == .faceID ? "faceid" : "touchid")
+                                        Text(biometricType == .faceID ? "Use Face ID" : "Use Touch ID")
+                                    }
+                                    .frame(width: 145)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.large)
+                            }
+
+                            Button {
+                                Task {
+                                    await unlock()
+                                }
+                            } label: {
+                                Text("Unlock")
+                                    .frame(width: biometricType != .none ? 145 : 200)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.large)
+                            .disabled(password.isEmpty)
+                        }
+                    }
+
+                    Spacer()
+
+                    #if DEBUG
+                        Button {
+                            resetVaultForDevelopment()
+                        } label: {
+                            Text("🔧 Reset Vault (Dev)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.bottom, 8)
+                    #endif
                 }
                 .frame(minWidth: geometry.size.width, minHeight: geometry.size.height)
             }
         }
         .onAppear {
-            checkBiometricAvailability()
-            // Auto-trigger biometric authentication if available
-            if biometricType != .none {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    authenticateWithBiometrics()
-                }
+            biometricsReady = checkBiometricAvailability()
+            if scenePhase == .active {
+                scheduleAutoBiometricIfNeeded(isReady: biometricsReady)
             }
         }
+        .onDisappear {
+            cancelAutoBiometricScheduling()
+            hasAutoBiometricAttempted = false
+        }
+        .onChange(of: scenePhase) { newPhase in
+            switch newPhase {
+            case .active:
+                scheduleAutoBiometricIfNeeded(isReady: biometricsReady)
+            case .inactive, .background:
+                cancelAutoBiometricScheduling()
+                hasAutoBiometricAttempted = false
+            @unknown default:
+                break
+            }
+        }
+        #if os(macOS)
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                scheduleAutoBiometricIfNeeded(isReady: biometricsReady)
+            }
+        #endif
         .safeAreaInset(edge: .top) {
             Color.clear.frame(height: 36)
         }
     }
 
-    private func checkBiometricAvailability() {
+    @discardableResult
+    private func checkBiometricAvailability() -> Bool {
         let context = LAContext()
         var error: NSError?
 
         if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
             biometricType = context.biometryType
+            return biometricType != .none
         }
+
+        biometricType = .none
+        return false
     }
 
     private func authenticateWithBiometrics() {
+        cancelAutoBiometricScheduling()
         Task {
             #if os(iOS)
-            // On iOS, the Keychain with .biometryAny handles authentication automatically
-            // No need to authenticate first - just retrieve the password
-            if let storedPassword = self.vaultManager.getBiometricPassword() {
-                self.password = storedPassword
-                await unlock()
-            } else {
-                self.errorMessage = "Biometric authentication failed or no stored password."
-                self.showError = true
-            }
-            #else
-            // On macOS, authenticate manually first, then retrieve
-            do {
-                try await vaultManager.authenticateWithBiometrics(reason: "Unlock your Secret Vault")
-                // User authenticated successfully - get stored password
+                // On iOS, the Keychain with .biometryAny handles authentication automatically
+                // No need to authenticate first - just retrieve the password
                 if let storedPassword = self.vaultManager.getBiometricPassword() {
                     self.password = storedPassword
                     await unlock()
-                }
-            } catch let error as VaultError {
-                switch error {
-                case .tooManyBiometricAttempts:
-                    self.errorMessage = "Too many failed attempts. Use password."
-                    self.showError = true
-                case .biometricCancelled:
-                    // User cancelled, do nothing
-                    break
-                case .biometricFailed:
-                    self.errorMessage = "Biometric authentication failed. Use password."
-                    self.showError = true
-                case .biometricNotAvailable:
-                    self.errorMessage = "Biometric authentication not available."
-                    self.showError = true
-                default:
-                    self.errorMessage = error.localizedDescription
+                } else {
+                    self.errorMessage = "Biometric authentication failed or no stored password."
                     self.showError = true
                 }
-            } catch {
-                self.errorMessage = "Biometric authentication failed."
-                self.showError = true
-            }
+            #else
+                // On macOS, authenticate manually first, then retrieve
+                do {
+                    try await vaultManager.authenticateWithBiometrics(reason: "Unlock your Secret Vault")
+                    // User authenticated successfully - get stored password
+                    if let storedPassword = self.vaultManager.getBiometricPassword() {
+                        self.password = storedPassword
+                        await unlock()
+                    }
+                } catch let error as VaultError {
+                    switch error {
+                    case .tooManyBiometricAttempts:
+                        self.errorMessage = "Too many failed attempts. Use password."
+                        self.showError = true
+                    case .biometricCancelled:
+                        // User cancelled, do nothing
+                        break
+                    case .biometricFailed:
+                        self.errorMessage = "Biometric authentication failed. Use password."
+                        self.showError = true
+                    case .biometricNotAvailable:
+                        self.errorMessage = "Biometric authentication not available."
+                        self.showError = true
+                    default:
+                        self.errorMessage = error.localizedDescription
+                        self.showError = true
+                    }
+                } catch {
+                    self.errorMessage = "Biometric authentication failed."
+                    self.showError = true
+                }
             #endif
         }
     }
@@ -233,6 +269,11 @@ struct UnlockView: View {
             try await vaultManager.unlock(password: password)
             showError = false
             errorMessage = "Incorrect password"
+            #if os(macOS)
+                await MainActor.run {
+                    bringAppToFrontIfNeeded()
+                }
+            #endif
         } catch let error as VaultError {
             errorMessage = error.localizedDescription
             showError = true
@@ -243,6 +284,38 @@ struct UnlockView: View {
             password = ""
         }
     }
+
+    private func scheduleAutoBiometricIfNeeded(isReady: Bool) {
+        guard isReady, !hasAutoBiometricAttempted, autoBiometricWorkItem == nil else { return }
+        hasAutoBiometricAttempted = true
+
+        let workItem = DispatchWorkItem {
+            #if os(macOS)
+                guard NSApplication.shared.isActive else {
+                    hasAutoBiometricAttempted = false
+                    autoBiometricWorkItem = nil
+                    return
+                }
+            #endif
+            authenticateWithBiometrics()
+            autoBiometricWorkItem = nil
+        }
+        autoBiometricWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
+    }
+
+    private func cancelAutoBiometricScheduling() {
+        autoBiometricWorkItem?.cancel()
+        autoBiometricWorkItem = nil
+    }
+
+    #if os(macOS)
+        @MainActor
+        private func bringAppToFrontIfNeeded() {
+            guard !NSApplication.shared.isActive else { return }
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        }
+    #endif
 
     #if DEBUG
         private func resetVaultForDevelopment() {
