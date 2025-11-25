@@ -121,8 +121,11 @@ final class UltraPrivacyCoordinator: ObservableObject {
         let hosting = UIHostingController(rootView: UltraPrivacyCoverView())
         hosting.view.backgroundColor = .clear
         hosting.view.isUserInteractionEnabled = false
+        hosting.view.translatesAutoresizingMaskIntoConstraints = true
+        hosting.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
 
         let window = UIWindow(windowScene: windowScene)
+        window.frame = windowScene.coordinateSpace.bounds
         window.windowLevel = .alert + 1
         window.isHidden = true
         window.isUserInteractionEnabled = false
@@ -160,16 +163,7 @@ final class UltraPrivacyCoordinator: ObservableObject {
 private struct UltraPrivacyCoverView: View {
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [.pink, .orange, .yellow, .green, .mint, .blue, .purple],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-            .overlay(
-                Color.black.opacity(0.45)
-                    .ignoresSafeArea()
-            )
+            PrivacyOverlayBackground()
             VStack(spacing: 16) {
                 Image(systemName: "lock.circle.fill")
                     .font(.system(size: 56, weight: .semibold))

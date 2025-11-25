@@ -41,6 +41,8 @@
 		986328EC2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */; };
 		986328EE2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328ED2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift */; };
 		988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */; };
+		98900B502ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */; };
+		98900B512ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */; };
 		989ADDDB2ED5BDE400994E72 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 989ADDD52ED5BDE400994E72 /* Preview Assets.xcassets */; };
 		989ADDDC2ED5BDE400994E72 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 989ADDD52ED5BDE400994E72 /* Preview Assets.xcassets */; };
 		989ADDDD2ED5BDE400994E72 /* VaultStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD62ED5BDE400994E72 /* VaultStorage.swift */; };
@@ -114,6 +116,7 @@
 		986328E92ECE8CEF00EAE9A9 /* SecretVaultUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SecretVaultUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultUITests.swift; sourceTree = "<group>"; };
 		986328ED2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PrivacyOverlayBackground.swift; sourceTree = "<group>"; };
 		989ADDD52ED5BDE400994E72 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		989ADDD62ED5BDE400994E72 /* VaultStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VaultStorage.swift; sourceTree = "<group>"; };
 		989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InactiveAppOverlay.swift; sourceTree = "<group>"; };
@@ -189,6 +192,7 @@
 		9849B4532EB9893D00B17DAC /* SecretVault */ = {
 			isa = PBXGroup;
 			children = (
+				98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */,
 				984EC6722ED5DDB300038F9F /* ImportService.swift */,
 				984EC6712ED5DDB200038F9F /* PasswordChangeJournal.swift */,
 				989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */,
@@ -443,6 +447,7 @@
 				989ADDE02ED5BDE400994E72 /* InactiveAppOverlay.swift in Sources */,
 				98C835FC2EC9E6CD000997CF /* SetupPasswordView.swift in Sources */,
 				98C835FD2EC9E6CD000997CF /* MainVaultView.swift in Sources */,
+				98900B512ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */,
 				98C835FE2EC9E6CD000997CF /* VaultManager.swift in Sources */,
 				9823D7782ECD7BF400FFB750 /* CameraCaptureView.swift in Sources */,
 				98C835FF2EC9E6CD000997CF /* PreferencesView.swift in Sources */,
@@ -472,6 +477,7 @@
 				989ADDDF2ED5BDE400994E72 /* InactiveAppOverlay.swift in Sources */,
 				AA11BB2233CC44DD55EE66FF /* SetupPasswordView.swift in Sources */,
 				CC33DD4455EE66FF77AA88BB /* MainVaultView.swift in Sources */,
+				98900B502ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */,
 				E48BBB324071974C8BE48D0D /* VaultManager.swift in Sources */,
 				9849B4552EB9893D00B17DAC /* SecretVaultApp.swift in Sources */,
 				A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */,
