@@ -7,7 +7,7 @@ struct ContentView: View {
         ZStack {
             if vaultManager.hasPassword() {
                 if vaultManager.isUnlocked {
-                    MainVaultView()
+                    MainVaultView(directImportProgress: vaultManager.directImportProgress)
                 } else {
                     UnlockView()
                 }

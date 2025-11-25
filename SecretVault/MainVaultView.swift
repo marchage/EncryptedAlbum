@@ -10,6 +10,7 @@ import SwiftUI
 
 struct MainVaultView: View {
     @EnvironmentObject var vaultManager: VaultManager
+    @ObservedObject var directImportProgress: DirectImportProgress
 
     private struct RestorationProgressOverlayView: View {
         @ObservedObject var progress: RestorationProgress
@@ -156,15 +157,6 @@ struct MainVaultView: View {
     @State private var photosToRestore: [SecurePhoto] = []
     @State private var showingCamera = false
     @State private var showingFilePicker = false
-    @State private var captureInProgress = false
-    @State private var captureStatusMessage = ""
-    @State private var captureDetailMessage = ""
-    @State private var captureItemsProcessed = 0
-    @State private var captureItemsTotal = 0
-    @State private var captureTask: Task<Void, Never>? = nil
-    @State private var captureCancelRequested = false
-    @State private var captureBytesProcessed: Int64 = 0
-    @State private var captureBytesTotal: Int64 = 0
     @State private var exportInProgress = false
     @State private var showDeleteConfirmation = false
     @State private var pendingDeletionPhotos: [SecurePhoto] = []
@@ -634,7 +626,7 @@ struct MainVaultView: View {
 
     func importFilesToVault() {
         #if os(macOS)
-            guard !captureInProgress else {
+            guard !directImportProgress.isImporting else {
                 showingFilePicker = false
                 let alert = NSAlert()
                 alert.messageText = "Import Already Running"
@@ -672,17 +664,8 @@ struct MainVaultView: View {
                 guard response == .OK else { return }
 
                 let urls = panel.urls
-                startDirectCaptureImport(with: urls)
-            }
-        #endif
-    }
-
-    private func startDirectCaptureImport(with urls: [URL]) {
-        #if os(macOS)
-            guard !urls.isEmpty else { return }
-            captureTask?.cancel()
-            captureTask = Task(priority: .userInitiated) {
-                await runDirectCaptureImport(urls: urls)
+                guard !urls.isEmpty else { return }
+                vaultManager.startDirectImport(urls: urls)
             }
         #endif
     }
@@ -712,180 +695,6 @@ struct MainVaultView: View {
     }
 
     #if os(macOS)
-        private func runDirectCaptureImport(urls: [URL]) async {
-            guard !urls.isEmpty else {
-                await MainActor.run {
-                    captureTask = nil
-                }
-                return
-            }
-
-            let formatter = ByteCountFormatter()
-            formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
-            formatter.countStyle = .file
-
-            await MainActor.run {
-                vaultManager.suspendIdleTimer()
-                captureInProgress = true
-                captureItemsTotal = urls.count
-                captureItemsProcessed = 0
-                captureStatusMessage = "Preparing import…"
-                captureDetailMessage = "\(urls.count) item(s)"
-                captureCancelRequested = false
-                captureBytesProcessed = 0
-                captureBytesTotal = 0
-            }
-
-            var successCount = 0
-            var failureCount = 0
-            var firstError: String?
-            var wasCancelled = false
-            let fileManager = FileManager.default
-
-            for (index, url) in urls.enumerated() {
-                if Task.isCancelled {
-                    wasCancelled = true
-                    break
-                }
-
-                // Keep vault active during long import operations
-                await MainActor.run {
-                    vaultManager.lastActivity = Date()
-                }
-
-                let filename = url.lastPathComponent
-                let sizeText = fileSizeString(for: url, formatter: formatter)
-                let detail = detailText(for: index + 1, total: urls.count, sizeDescription: sizeText)
-
-                var fileSizeValue: Int64 = 0
-                if let attributes = try? fileManager.attributesOfItem(atPath: url.path),
-                    let fileSizeNumber = attributes[.size] as? NSNumber
-                {
-                    fileSizeValue = fileSizeNumber.int64Value
-                }
-
-                if fileSizeValue > CryptoConstants.maxMediaFileSize {
-                    failureCount += 1
-                    if firstError == nil {
-                        let humanSize = formatter.string(fromByteCount: fileSizeValue)
-                        let limitString = formatter.string(fromByteCount: CryptoConstants.maxMediaFileSize)
-                        firstError = "\(filename) exceeds the \(limitString) limit (\(humanSize))."
-                    }
-                    await MainActor.run {
-                        captureStatusMessage = "Skipping \(filename)…"
-                        let limitString = formatter.string(fromByteCount: CryptoConstants.maxMediaFileSize)
-                        captureDetailMessage = "File exceeds \(limitString) limit"
-                        captureItemsProcessed = index + 1
-                        captureBytesTotal = fileSizeValue
-                        captureBytesProcessed = fileSizeValue
-                    }
-                    continue
-                }
-
-                await MainActor.run {
-                    captureStatusMessage = "Encrypting \(filename)…"
-                    captureDetailMessage = detail
-                    captureItemsProcessed = index
-                    captureBytesTotal = fileSizeValue
-                    captureBytesProcessed = 0
-                }
-
-                do {
-                    try Task.checkCancellation()
-                    let mediaType: MediaType = isVideoFile(url) ? .video : .photo
-                    try await vaultManager.hidePhoto(
-                        mediaSource: .fileURL(url),
-                        filename: filename,
-                        dateTaken: nil,
-                        sourceAlbum: "Captured to Vault",
-                        assetIdentifier: nil,
-                        mediaType: mediaType,
-                        duration: nil,
-                        location: nil,
-                        isFavorite: nil,
-                        progressHandler: { bytesRead in
-                            await MainActor.run {
-                                captureBytesProcessed = bytesRead
-                            }
-                        }
-                    )
-                    successCount += 1
-                } catch is CancellationError {
-                    wasCancelled = true
-                    break
-                } catch {
-                    failureCount += 1
-                    if firstError == nil {
-                        firstError = "\(filename): \(error.localizedDescription)"
-                    }
-                }
-
-                await MainActor.run {
-                    captureItemsProcessed = index + 1
-                    captureBytesProcessed = captureBytesTotal
-                }
-            }
-
-            if Task.isCancelled {
-                wasCancelled = true
-            }
-
-            await MainActor.run {
-                vaultManager.resumeIdleTimer()
-                captureInProgress = false
-                captureDetailMessage = ""
-                captureStatusMessage = ""
-                captureItemsProcessed = 0
-                captureItemsTotal = 0
-                captureTask = nil
-                captureCancelRequested = false
-                captureBytesProcessed = 0
-                captureBytesTotal = 0
-            }
-
-            await MainActor.run {
-                presentCaptureSummary(
-                    successCount: successCount,
-                    failureCount: failureCount,
-                    canceled: wasCancelled,
-                    errorMessage: firstError
-                )
-            }
-        }
-
-        @MainActor
-        private func presentCaptureSummary(successCount: Int, failureCount: Int, canceled: Bool, errorMessage: String?)
-        {
-            let message: String
-            let notificationType: HideNotificationType
-            
-            if canceled {
-                message = "Import canceled. Encrypted \(successCount) item(s) before canceling."
-                notificationType = .info
-            } else if failureCount == 0 {
-                message = "Import complete. Encrypted \(successCount) item(s) into the vault."
-                notificationType = .success
-            } else if successCount == 0 {
-                message = errorMessage ?? "Import failed. Unable to import the selected files."
-                notificationType = .failure
-            } else {
-                var summary = "Import completed with issues. Imported \(successCount) item(s); \(failureCount) failed."
-                if let errorMessage = errorMessage, !errorMessage.isEmpty {
-                    summary += " \(errorMessage)"
-                }
-                message = summary
-                notificationType = .info
-            }
-            
-            withAnimation {
-                vaultManager.hideNotification = HideNotification(
-                    message: message,
-                    type: notificationType,
-                    photos: nil
-                )
-            }
-        }
-
         @MainActor
         private func presentExportSummary(
             successCount: Int, failureCount: Int, canceled: Bool, destinationFolderName: String, error: Error?
@@ -918,26 +727,12 @@ struct MainVaultView: View {
         }
     #endif
 
-    private func fileSizeString(for url: URL, formatter: ByteCountFormatter) -> String? {
-        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
-            let size = attributes[.size] as? NSNumber
-        else {
-            return nil
-        }
-        return formatter.string(fromByteCount: size.int64Value)
-    }
-
     private func detailText(for index: Int, total: Int, sizeDescription: String?) -> String {
         var parts: [String] = ["Item \(index) of \(total)"]
         if let sizeDescription = sizeDescription {
             parts.append(sizeDescription)
         }
         return parts.joined(separator: " • ")
-    }
-
-    private func isVideoFile(_ url: URL) -> Bool {
-        let videoExtensions: Set<String> = ["mov", "mp4", "m4v", "avi", "mkv", "mpg", "mpeg", "hevc", "webm"]
-        return videoExtensions.contains(url.pathExtension.lowercased())
     }
 
     private func formattedBytes(_ value: Int64) -> String {
@@ -948,25 +743,26 @@ struct MainVaultView: View {
     }
 
     private var captureProgressAccessibilityLabel: String {
-        var parts: [String] = [captureStatusMessage.isEmpty ? "Encrypting items" : captureStatusMessage]
+        let status = directImportProgress.statusMessage.isEmpty ? "Encrypting items" : directImportProgress.statusMessage
+        var parts: [String] = [status]
 
-        if captureItemsTotal > 0 {
-            parts.append("\(captureItemsProcessed) of \(captureItemsTotal) items")
+        if directImportProgress.itemsTotal > 0 {
+            parts.append("\(directImportProgress.itemsProcessed) of \(directImportProgress.itemsTotal) items")
         }
 
-        if captureBytesTotal > 0 {
+        if directImportProgress.bytesTotal > 0 {
             parts.append(
-                "\(formattedBytes(captureBytesProcessed)) of \(formattedBytes(captureBytesTotal)) processed"
+                "\(formattedBytes(directImportProgress.bytesProcessed)) of \(formattedBytes(directImportProgress.bytesTotal)) processed"
             )
-        } else if captureBytesProcessed > 0 {
-            parts.append("\(formattedBytes(captureBytesProcessed)) processed")
+        } else if directImportProgress.bytesProcessed > 0 {
+            parts.append("\(formattedBytes(directImportProgress.bytesProcessed)) processed")
         }
 
-        if !captureDetailMessage.isEmpty {
-            parts.append(captureDetailMessage)
+        if !directImportProgress.detailMessage.isEmpty {
+            parts.append(directImportProgress.detailMessage)
         }
 
-        if captureCancelRequested {
+        if directImportProgress.cancelRequested {
             parts.append("Cancellation requested")
         }
 
@@ -1048,7 +844,7 @@ struct MainVaultView: View {
             } label: {
                 Label("Import Files", systemImage: "doc.badge.plus")
             }
-            .disabled(captureInProgress || exportInProgress)
+            .disabled(directImportProgress.isImporting || exportInProgress)
         #endif
 
         Menu {
@@ -1113,8 +909,11 @@ struct MainVaultView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 12) {
-                if captureItemsTotal > 0 {
-                    ProgressView(value: Double(captureItemsProcessed), total: Double(max(captureItemsTotal, 1)))
+                if directImportProgress.itemsTotal > 0 {
+                    ProgressView(
+                        value: Double(directImportProgress.itemsProcessed),
+                        total: Double(max(directImportProgress.itemsTotal, 1))
+                    )
                         .progressViewStyle(.linear)
                         .frame(maxWidth: UIConstants.progressCardWidth)
                 } else {
@@ -1123,57 +922,64 @@ struct MainVaultView: View {
                         .frame(maxWidth: UIConstants.progressCardWidth)
                 }
 
-                if captureBytesTotal > 0 {
-                    ProgressView(value: Double(captureBytesProcessed), total: Double(max(captureBytesTotal, 1)))
+                if directImportProgress.bytesTotal > 0 {
+                    ProgressView(
+                        value: Double(directImportProgress.bytesProcessed),
+                        total: Double(max(directImportProgress.bytesTotal, 1))
+                    )
                         .progressViewStyle(.linear)
                         .frame(maxWidth: UIConstants.progressCardWidth)
                     
                     if isAppActive {
-                        Text("\(formattedBytes(captureBytesProcessed)) of \(formattedBytes(captureBytesTotal))")
+                        Text(
+                            "\(formattedBytes(directImportProgress.bytesProcessed)) of \(formattedBytes(directImportProgress.bytesTotal))"
+                        )
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     } else {
-                        let percent = Double(captureBytesProcessed) / Double(max(captureBytesTotal, 1))
+                        let percent = Double(directImportProgress.bytesProcessed)
+                            / Double(max(directImportProgress.bytesTotal, 1))
                         Text(String(format: "%.0f%%", percent * 100))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
-                } else if captureBytesProcessed > 0 {
-                    Text("\(formattedBytes(captureBytesProcessed)) processed…")
+                } else if directImportProgress.bytesProcessed > 0 {
+                    Text("\(formattedBytes(directImportProgress.bytesProcessed)) processed…")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
 
-                Text(isAppActive ? (captureStatusMessage.isEmpty ? "Encrypting items…" : captureStatusMessage) : "Encrypting items…")
+                Text(
+                    isAppActive
+                        ? (directImportProgress.statusMessage.isEmpty ? "Encrypting items…" : directImportProgress.statusMessage)
+                        : "Encrypting items…"
+                )
                     .font(.headline)
 
-                if captureItemsTotal > 0 {
-                    Text("\(captureItemsProcessed) of \(captureItemsTotal)")
+                if directImportProgress.itemsTotal > 0 {
+                    Text("\(directImportProgress.itemsProcessed) of \(directImportProgress.itemsTotal)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
-                if !captureDetailMessage.isEmpty && isAppActive {
-                    Text(captureDetailMessage)
+                if !directImportProgress.detailMessage.isEmpty && isAppActive {
+                    Text(directImportProgress.detailMessage)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
 
-                if captureCancelRequested {
+                if directImportProgress.cancelRequested {
                     Text("Cancel requested… finishing current file")
                         .font(.caption2)
                         .foregroundStyle(.orange)
                 }
 
                 Button("Cancel Import") {
-                    captureCancelRequested = true
-                    captureStatusMessage = "Canceling import…"
-                    captureDetailMessage = "Finishing current file"
-                    captureTask?.cancel()
+                    vaultManager.cancelDirectImport()
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .disabled(captureCancelRequested)
+                .disabled(directImportProgress.cancelRequested)
             }
             .padding(24)
             .frame(maxWidth: UIConstants.progressCardWidth)
@@ -1422,7 +1228,7 @@ struct MainVaultView: View {
                                         Label("Files", systemImage: "doc.badge.plus")
                                     }
                                     .buttonStyle(.bordered)
-                                    .disabled(captureInProgress || exportInProgress)
+                                    .disabled(directImportProgress.isImporting || exportInProgress)
 
                                     Button {
                                         showingCamera = true
@@ -1698,7 +1504,7 @@ struct MainVaultView: View {
                     }
                 }
             #endif
-            if captureInProgress {
+            if directImportProgress.isImporting {
                 captureProgressOverlay
             }
             if exportInProgress {
@@ -1759,7 +1565,7 @@ struct MainVaultView: View {
                 } else if newPhase == .background {
                     isAppActive = false
                     if requireForegroundReauthentication {
-                        let shouldSuppress = showingPhotosLibrary || showingCamera || vaultManager.importProgress.isImporting || captureInProgress || exportInProgress
+                        let shouldSuppress = showingPhotosLibrary || showingCamera || vaultManager.importProgress.isImporting || directImportProgress.isImporting || exportInProgress
                         if !shouldSuppress {
                             vaultManager.lock()
                         }
@@ -1800,7 +1606,7 @@ struct MainVaultView: View {
                 || showingFilePicker
                 || showingCamera
                 || vaultManager.importProgress.isImporting
-                || captureInProgress
+                || directImportProgress.isImporting
                 || exportInProgress
         }
     }

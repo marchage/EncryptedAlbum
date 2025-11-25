@@ -134,6 +134,41 @@ class RestorationProgress: ObservableObject {
 
 // Import progress tracking moved to ImportService.swift
 
+/// Tracks the state of direct file imports triggered from macOS file picker
+@MainActor
+class DirectImportProgress: ObservableObject {
+    @Published var isImporting: Bool = false
+    @Published var statusMessage: String = ""
+    @Published var detailMessage: String = ""
+    @Published var itemsProcessed: Int = 0
+    @Published var itemsTotal: Int = 0
+    @Published var bytesProcessed: Int64 = 0
+    @Published var bytesTotal: Int64 = 0
+    @Published var cancelRequested: Bool = false
+
+    func reset(totalItems: Int) {
+        isImporting = true
+        statusMessage = "Preparing import…"
+        detailMessage = "\(totalItems) item(s)"
+        itemsProcessed = 0
+        itemsTotal = totalItems
+        bytesProcessed = 0
+        bytesTotal = 0
+        cancelRequested = false
+    }
+
+    func finish() {
+        isImporting = false
+        statusMessage = ""
+        detailMessage = ""
+        itemsProcessed = 0
+        itemsTotal = 0
+        bytesProcessed = 0
+        bytesTotal = 0
+        cancelRequested = false
+    }
+}
+
 
 // Notification types for hide/restore operations
 enum HideNotificationType {
@@ -223,6 +258,8 @@ class VaultManager: ObservableObject {
     @Published var securityVersion: Int = 1   // 1 = Legacy (Key as Hash), 2 = Secure (Verifier)
     @Published var restorationProgress = RestorationProgress()
     @Published var importProgress = ImportProgress()
+    let directImportProgress = DirectImportProgress()
+    private var directImportTask: Task<Void, Never>?
     
     // Vault location is now fixed and managed by VaultStorage
     var vaultBaseURL: URL {
@@ -271,6 +308,7 @@ class VaultManager: ObservableObject {
         return ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
 
+    @MainActor
     init(storage: VaultStorage? = nil) {
         let progress = ImportProgress()
         importService = ImportService(progress: progress)
@@ -1894,6 +1932,242 @@ class VaultManager: ObservableObject {
             hiddenPhotos = normalizedPhotos
         }
     }
+}
+
+// MARK: - Direct File Import (macOS)
+
+extension VaultManager {
+    #if os(macOS)
+        /// Starts encrypting files directly from disk into the vault
+        func startDirectImport(urls: [URL]) {
+            guard !urls.isEmpty else { return }
+
+            Task { @MainActor [weak self] in
+                self?.directImportProgress.reset(totalItems: urls.count)
+            }
+
+            directImportTask?.cancel()
+            directImportTask = Task(priority: .userInitiated) { [weak self] in
+                guard let self else { return }
+                await self.runDirectImport(urls: urls)
+            }
+        }
+
+        /// Signals cancellation for the active direct import task
+        func cancelDirectImport() {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                guard self.directImportProgress.isImporting, !self.directImportProgress.cancelRequested else { return }
+                self.directImportProgress.cancelRequested = true
+                self.directImportProgress.statusMessage = "Canceling import…"
+                self.directImportProgress.detailMessage = "Finishing current file"
+            }
+            directImportTask?.cancel()
+        }
+
+        private func runDirectImport(urls: [URL]) async {
+            let formatter = ByteCountFormatter()
+            formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
+            formatter.countStyle = .file
+
+            await MainActor.run {
+                suspendIdleTimer()
+            }
+
+            defer {
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.directImportProgress.finish()
+                    self.resumeIdleTimer()
+                    self.directImportTask = nil
+                }
+            }
+
+            var successCount = 0
+            var failureCount = 0
+            var firstError: String?
+            var wasCancelled = false
+            let fileManager = FileManager.default
+
+            for (index, url) in urls.enumerated() {
+                if Task.isCancelled {
+                    wasCancelled = true
+                    break
+                }
+
+                let cancelRequested = await MainActor.run { directImportProgress.cancelRequested }
+                if cancelRequested {
+                    wasCancelled = true
+                    break
+                }
+
+                await MainActor.run {
+                    lastActivity = Date()
+                }
+
+                let filename = url.lastPathComponent
+                let sizeText = fileSizeString(for: url, formatter: formatter)
+                let detail = buildDirectImportDetailText(index: index + 1, total: urls.count, sizeDescription: sizeText)
+
+                var fileSizeValue: Int64 = 0
+                if let attributes = try? fileManager.attributesOfItem(atPath: url.path),
+                    let fileSizeNumber = attributes[.size] as? NSNumber
+                {
+                    fileSizeValue = fileSizeNumber.int64Value
+                }
+
+                if fileSizeValue > CryptoConstants.maxMediaFileSize {
+                    failureCount += 1
+                    let limitString = formatter.string(fromByteCount: CryptoConstants.maxMediaFileSize)
+                    if firstError == nil {
+                        let humanSize = formatter.string(fromByteCount: fileSizeValue)
+                        firstError = "\(filename) exceeds the \(limitString) limit (\(humanSize))."
+                    }
+                    let processedCount = index + 1
+                    let totalItems = urls.count
+                    let sizeForProgress = fileSizeValue
+                    await MainActor.run {
+                        directImportProgress.statusMessage = "Skipping \(filename)…"
+                        directImportProgress.detailMessage = "File exceeds \(limitString) limit"
+                        directImportProgress.itemsProcessed = processedCount
+                        directImportProgress.itemsTotal = totalItems
+                        directImportProgress.bytesTotal = sizeForProgress
+                        directImportProgress.bytesProcessed = sizeForProgress
+                    }
+                    continue
+                }
+
+                let totalItems = urls.count
+                let sizeForProgress = fileSizeValue
+                await MainActor.run {
+                    directImportProgress.statusMessage = "Encrypting \(filename)…"
+                    directImportProgress.detailMessage = detail
+                    directImportProgress.itemsProcessed = index
+                    directImportProgress.itemsTotal = totalItems
+                    directImportProgress.bytesTotal = sizeForProgress
+                    directImportProgress.bytesProcessed = 0
+                }
+
+                do {
+                    try Task.checkCancellation()
+                    let mediaType: MediaType = isVideoFile(url) ? .video : .photo
+                    try await hidePhoto(
+                        mediaSource: .fileURL(url),
+                        filename: filename,
+                        dateTaken: nil,
+                        sourceAlbum: "Captured to Vault",
+                        assetIdentifier: nil,
+                        mediaType: mediaType,
+                        duration: nil,
+                        location: nil,
+                        isFavorite: nil,
+                        progressHandler: { [weak self] bytesRead in
+                            guard let self else { return }
+                            await MainActor.run {
+                                self.directImportProgress.bytesProcessed = bytesRead
+                            }
+                        }
+                    )
+                    successCount += 1
+                } catch is CancellationError {
+                    wasCancelled = true
+                    break
+                } catch {
+                    failureCount += 1
+                    if firstError == nil {
+                        firstError = "\(filename): \(error.localizedDescription)"
+                    }
+                    await MainActor.run {
+                        directImportProgress.statusMessage = "Failed \(filename)"
+                        directImportProgress.detailMessage = error.localizedDescription
+                    }
+                }
+
+                let completedItems = index + 1
+                await MainActor.run {
+                    directImportProgress.itemsProcessed = completedItems
+                    directImportProgress.bytesProcessed = directImportProgress.bytesTotal
+                }
+            }
+
+            if Task.isCancelled {
+                wasCancelled = true
+            }
+
+            let finalSuccessCount = successCount
+            let finalFailureCount = failureCount
+            let finalErrorMessage = firstError
+            let priorWasCancelled = wasCancelled
+
+            let cancelRequestedAtCompletion = await MainActor.run { [weak self] () -> Bool in
+                guard let self else { return false }
+                let cancelRequested = self.directImportProgress.cancelRequested
+                self.publishDirectImportSummary(
+                    successCount: finalSuccessCount,
+                    failureCount: finalFailureCount,
+                    canceled: cancelRequested || priorWasCancelled,
+                    errorMessage: finalErrorMessage
+                )
+                return cancelRequested
+            }
+
+            if cancelRequestedAtCompletion {
+                wasCancelled = true
+            }
+        }
+
+        private func buildDirectImportDetailText(index: Int, total: Int, sizeDescription: String?) -> String {
+            var parts: [String] = ["Item \(index) of \(total)"]
+            if let sizeDescription = sizeDescription {
+                parts.append(sizeDescription)
+            }
+            return parts.joined(separator: " • ")
+        }
+
+        private func fileSizeString(for url: URL, formatter: ByteCountFormatter) -> String? {
+            guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+                let fileSizeNumber = attributes[.size] as? NSNumber
+            else {
+                return nil
+            }
+            return formatter.string(fromByteCount: fileSizeNumber.int64Value)
+        }
+
+        private func isVideoFile(_ url: URL) -> Bool {
+            let videoExtensions: Set<String> = ["mov", "mp4", "m4v", "avi", "mkv", "mpg", "mpeg", "hevc", "webm"]
+            return videoExtensions.contains(url.pathExtension.lowercased())
+        }
+
+        @MainActor
+        private func publishDirectImportSummary(successCount: Int, failureCount: Int, canceled: Bool, errorMessage: String?) {
+            let message: String
+            let notificationType: HideNotificationType
+
+            if canceled {
+                message = "Import canceled. Encrypted \(successCount) item(s) before canceling."
+                notificationType = .info
+            } else if failureCount == 0 {
+                message = "Import complete. Encrypted \(successCount) item(s) into the vault."
+                notificationType = .success
+            } else if successCount == 0 {
+                message = errorMessage ?? "Import failed. Unable to import the selected files."
+                notificationType = .failure
+            } else {
+                var summary = "Import completed with issues. Imported \(successCount) item(s); \(failureCount) failed."
+                if let errorMessage = errorMessage, !errorMessage.isEmpty {
+                    summary += " \(errorMessage)"
+                }
+                message = summary
+                notificationType = .info
+            }
+
+            hideNotification = HideNotification(
+                message: message,
+                type: notificationType,
+                photos: nil
+            )
+        }
+    #endif
 }
 
 // MARK: - Import Operations
