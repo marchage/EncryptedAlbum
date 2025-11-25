@@ -761,11 +761,17 @@ class VaultManager: ObservableObject {
 
             // Skip idle check if timer is suspended (e.g., during imports)
             if self.idleTimerSuspended {
+                #if DEBUG
+                print("⏸️  Idle timer check skipped (suspended)")
+                #endif
                 return
             }
 
             let elapsed = Date().timeIntervalSince(self.lastActivity)
             if elapsed > self.idleTimeout {
+                #if DEBUG
+                print("🔐 Auto-locking vault after \(Int(elapsed))s of inactivity")
+                #endif
                 self.lock()
             }
         }
@@ -775,14 +781,22 @@ class VaultManager: ObservableObject {
     }
 
     /// Suspends the idle timer to prevent auto-lock during long operations (e.g., imports)
+    @MainActor
     func suspendIdleTimer() {
         idleTimerSuspended = true
+        #if DEBUG
+        print("🔒 Idle timer SUSPENDED - vault will not auto-lock")
+        #endif
     }
 
     /// Resumes the idle timer after long operations complete
+    @MainActor
     func resumeIdleTimer() {
         idleTimerSuspended = false
         lastActivity = Date() // Reset activity timestamp
+        #if DEBUG
+        print("🔓 Idle timer RESUMED - vault will auto-lock after \(Int(idleTimeout))s of inactivity")
+        #endif
     }
 
     /// Encrypts and stores a photo or video in the vault using either in-memory data or a file URL.
