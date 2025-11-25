@@ -90,6 +90,10 @@ class FileService {
         Data(CryptoConstants.streamingMagic.utf8)
     }
 
+    private var streamCompletionMarkerData: Data {
+        Data(CryptoConstants.streamingCompletionMarker.utf8)
+    }
+
     // MARK: - File Operations
 
     /// Saves encrypted data to file with integrity protection using SVF2 format
@@ -160,6 +164,8 @@ class FileService {
                 
                 offset += chunkSize
             }
+
+            try writeStreamCompletionMarker(to: writeHandle)
         } catch {
             try? FileManager.default.removeItem(at: fileURL)
             throw error
@@ -252,6 +258,8 @@ class FileService {
                     await progressHandler(totalProcessed)
                 }
             }
+
+            try writeStreamCompletionMarker(to: writeHandle)
         } catch {
             try? FileManager.default.removeItem(at: destinationURL)
             throw error
@@ -483,7 +491,7 @@ class FileService {
         while true {
             try Task.checkCancellation()
             guard let lengthData = try handle.read(upToCount: MemoryLayout<UInt32>.size), !lengthData.isEmpty else {
-                break
+                throw VaultError.decryptionFailed(reason: "Missing completion marker")
             }
 
             guard lengthData.count == MemoryLayout<UInt32>.size else {
@@ -491,6 +499,12 @@ class FileService {
             }
 
             let chunkLength = UInt32(littleEndian: lengthData.withUnsafeBytes { $0.load(as: UInt32.self) })
+
+            if chunkLength == 0 {
+                // 0-length chunk marks the end of the stream and must be followed by the completion trailer.
+                try verifyStreamCompletionMarker(from: handle)
+                break
+            }
 
             let nonceData = try readExact(from: handle, count: CryptoConstants.streamingNonceSize)
             guard let nonce = try? AES.GCM.Nonce(data: nonceData) else {
@@ -506,6 +520,35 @@ class FileService {
             try chunkHandler(chunk)
             totalProcessed += Int64(chunk.count)
             progressHandler?(totalProcessed)
+        }
+    }
+
+    private func writeStreamCompletionMarker(to handle: FileHandle) throws {
+        // Sentinel chunk length of 0 followed by marker bytes guarantees we can spot truncated writes.
+        var zero = UInt32(0).littleEndian
+        try handle.write(contentsOf: Data(bytes: &zero, count: MemoryLayout<UInt32>.size))
+        try handle.write(contentsOf: streamCompletionMarkerData)
+    }
+
+    private func verifyStreamCompletionMarker(from handle: FileHandle) throws {
+        let markerLength = streamCompletionMarkerData.count
+        let markerData: Data
+
+        do {
+            markerData = try readExact(from: handle, count: markerLength)
+        } catch let error as VaultError {
+            if case .fileReadFailed = error {
+                throw VaultError.decryptionFailed(reason: "Missing completion marker")
+            }
+            throw error
+        }
+
+        guard markerData == streamCompletionMarkerData else {
+            throw VaultError.decryptionFailed(reason: "Invalid completion marker")
+        }
+
+        if let trailing = try handle.read(upToCount: 1), !trailing.isEmpty {
+            throw VaultError.decryptionFailed(reason: "Unexpected data after completion marker")
         }
     }
 

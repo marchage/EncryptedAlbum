@@ -61,6 +61,46 @@ final class FileServiceTests: XCTestCase {
         // 4. Verify
         XCTAssertEqual(decryptedData, originalData)
     }
+
+    func testLoadEncryptedFileMissingCompletionMarkerThrows() async throws {
+        let dataSize = 2 * 1024 * 1024
+        let originalData = try await cryptoService.generateRandomData(length: dataSize)
+        let sourceURL = tempDir.appendingPathComponent("original2.dat")
+        try originalData.write(to: sourceURL)
+
+        let encryptionKey = SymmetricKey(size: .bits256)
+        let hmacKey = SymmetricKey(size: .bits256)
+        let encryptedFilename = "encrypted_truncated.enc"
+
+        try await sut.saveStreamEncryptedFile(
+            from: sourceURL,
+            filename: encryptedFilename,
+            mediaType: .photo,
+            to: tempDir,
+            encryptionKey: encryptionKey,
+            hmacKey: hmacKey
+        )
+
+        let encryptedURL = tempDir.appendingPathComponent(encryptedFilename)
+        var fileData = try Data(contentsOf: encryptedURL)
+        let trailerBytesToRemove = MemoryLayout<UInt32>.size + CryptoConstants.streamingCompletionMarker.count
+        fileData.removeLast(trailerBytesToRemove)
+        try fileData.write(to: encryptedURL, options: .atomic)
+
+        do {
+            _ = try await sut.loadEncryptedFile(
+                filename: encryptedFilename,
+                from: tempDir,
+                encryptionKey: encryptionKey,
+                hmacKey: hmacKey
+            )
+            XCTFail("Expected loadEncryptedFile to throw")
+        } catch let VaultError.decryptionFailed(reason) {
+            XCTAssertTrue(reason.localizedCaseInsensitiveContains("completion marker"))
+        } catch {
+            XCTFail("Expected VaultError.decryptionFailed, got \(error)")
+        }
+    }
     
     func testReEncryptFile_Success() async throws {
         // 1. Setup initial file
