@@ -10,5 +10,7 @@
 	<string>SecretVault needs camera access to capture photos directly to your encrypted vault.</string>
 	<key>LSMultipleInstancesProhibited</key>
 	<true/>
+	<key>CFBundleIdentifier</key>
+	<string>biz.front-end.SecretVault</string>
 </dict>
 </plist>

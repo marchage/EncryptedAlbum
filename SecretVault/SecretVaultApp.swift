@@ -1,8 +1,10 @@
 import SwiftUI
+import UserNotifications
 
 @main
 struct SecretVaultApp: App {
     @StateObject private var vaultManager = VaultManager.shared
+    @State private var hasNotifiedBackgroundActivity = false
     #if os(macOS)
         @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     #endif
@@ -16,9 +18,18 @@ struct SecretVaultApp: App {
                     .overlay {
                         InactiveAppOverlay()
                     }
+                    .onChange(of: vaultManager.isBusy) { isBusy in
+                        if !isBusy {
+                            hasNotifiedBackgroundActivity = false
+                        }
+                    }
                     .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in
-                        // Lock immediately when backgrounded, unless busy with import/export
-                        if !vaultManager.isBusy {
+                        if vaultManager.isBusy {
+                            if !hasNotifiedBackgroundActivity {
+                                sendBackgroundActivityNotification()
+                                hasNotifiedBackgroundActivity = true
+                            }
+                        } else {
                             vaultManager.lock()
                         }
                     }
@@ -41,10 +52,33 @@ struct SecretVaultApp: App {
         }
         #endif
     }
+
+    private func sendBackgroundActivityNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "Vault Remains Unlocked"
+        content.body = "SecretVault is performing a task in the background and will remain unlocked until it completes."
+        content.sound = .default
+
+        let request = UNNotificationRequest(identifier: "backgroundActivity", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
+    }
 }
 
 #if os(macOS)
-    class AppDelegate: NSObject, NSApplicationDelegate {
+    class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+        func applicationDidFinishLaunching(_ notification: Notification) {
+            UNUserNotificationCenter.current().delegate = self
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+                if let error = error {
+                    print("Error requesting notification authorization: \(error)")
+                }
+            }
+        }
+
+        func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+            completionHandler([.banner, .sound])
+        }
+
         func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
             return true
         }
