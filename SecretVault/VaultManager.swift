@@ -235,7 +235,7 @@ struct SecurePhoto: Identifiable, Codable {
 // MARK: - Vault Manager
 
 class VaultManager: ObservableObject {
-    static let shared = VaultManager()
+    @MainActor static let shared = VaultManager()
 
     // Services
     private let cryptoService: CryptoService
@@ -258,7 +258,7 @@ class VaultManager: ObservableObject {
     @Published var securityVersion: Int = 1   // 1 = Legacy (Key as Hash), 2 = Secure (Verifier)
     @Published var restorationProgress = RestorationProgress()
     @Published var importProgress = ImportProgress()
-    let directImportProgress = DirectImportProgress()
+    @MainActor let directImportProgress: DirectImportProgress
     private var directImportTask: Task<Void, Never>?
     
     // Vault location is now fixed and managed by VaultStorage
@@ -311,6 +311,7 @@ class VaultManager: ObservableObject {
     @MainActor
     init(storage: VaultStorage? = nil) {
         let progress = ImportProgress()
+        self.directImportProgress = DirectImportProgress()
         importService = ImportService(progress: progress)
 
         // Initialize services
