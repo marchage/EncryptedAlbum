@@ -156,7 +156,7 @@ import SwiftUI
                             Button {
                                 if model.isRecording {
                                     model.stopRecording(vaultManager: vaultManager) {
-                                        dismiss()
+                                        // Keep camera open after recording
                                     }
                                 } else {
                                     model.startRecording()
@@ -189,7 +189,7 @@ import SwiftUI
                             // Photo capture button
                             Button {
                                 model.capturePhoto(vaultManager: vaultManager) {
-                                    dismiss()
+                                    // Keep camera open after capture
                                 }
                             } label: {
                                 ZStack {
