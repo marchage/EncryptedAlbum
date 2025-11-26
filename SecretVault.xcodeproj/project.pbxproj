@@ -39,7 +39,6 @@
 		986328E32ECE894300EAE9A9 /* FileServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328E02ECE894300EAE9A9 /* FileServiceTests.swift */; };
 		986328E42ECE894300EAE9A9 /* CryptoServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */; };
 		986328EC2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */; };
-		986328EE2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328ED2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift */; };
 		988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */; };
 		98900B502ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */; };
 		98900B512ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */; };
@@ -93,8 +92,6 @@
 		8CC21B534704407E965288CF /* VaultState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultState.swift; sourceTree = "<group>"; };
 		981926522EC854B600C67291 /* SecretVault iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SecretVault iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		981926542EC854B600C67291 /* SecretVault_iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVault_iOSApp.swift; sourceTree = "<group>"; };
-		981926582EC854B800C67291 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		9819265B2EC854B800C67291 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		981926602EC8552000C67291 /* Info_iOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info_iOS.plist; sourceTree = "<group>"; };
 		981BB77D2ED5C1AA00584B7B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CameraCaptureView.swift; sourceTree = "<group>"; };
@@ -115,7 +112,6 @@
 		986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CryptoServiceTests.swift; sourceTree = "<group>"; };
 		986328E92ECE8CEF00EAE9A9 /* SecretVaultUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SecretVaultUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultUITests.swift; sourceTree = "<group>"; };
-		986328ED2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PrivacyOverlayBackground.swift; sourceTree = "<group>"; };
 		989ADDD52ED5BDE400994E72 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		989ADDD62ED5BDE400994E72 /* VaultStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VaultStorage.swift; sourceTree = "<group>"; };
@@ -174,7 +170,6 @@
 				986328D72ECE88F600EAE9A9 /* SecretVaultTests */,
 				986328EA2ECE8CEF00EAE9A9 /* SecretVaultUITests */,
 				9849B4522EB9893D00B17DAC /* Products */,
-				986328D12ECE882D00EAE9A9 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -235,15 +230,6 @@
 			path = "Preview Content";
 			sourceTree = "<group>";
 		};
-		986328D12ECE882D00EAE9A9 /* Recovered References */ = {
-			isa = PBXGroup;
-			children = (
-				9819265B2EC854B800C67291 /* Preview Assets.xcassets */,
-				981926582EC854B800C67291 /* Assets.xcassets */,
-			);
-			name = "Recovered References";
-			sourceTree = "<group>";
-		};
 		986328D72ECE88F600EAE9A9 /* SecretVaultTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -262,7 +248,6 @@
 			isa = PBXGroup;
 			children = (
 				986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */,
-				986328ED2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift */,
 			);
 			path = SecretVaultUITests;
 			sourceTree = "<group>";
@@ -511,7 +496,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				986328EC2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift in Sources */,
-				986328EE2ECE8CEF00EAE9A9 /* SecretVaultUITestsLaunchTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
