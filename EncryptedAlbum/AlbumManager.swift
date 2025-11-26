@@ -305,6 +305,9 @@ class AlbumManager: ObservableObject {
     @Published var secureDeletionEnabled: Bool = true // Default to true for security
     @Published var authenticationPromptActive: Bool = false
     @Published var isLoading: Bool = true
+    
+    // Queue for imports that arrive while the album is locked
+    private var pendingImportURLs: [URL] = []
 
     var isBusy: Bool {
         return importProgress.isImporting || restorationProgress.isRestoring
@@ -579,6 +582,17 @@ class AlbumManager: ObservableObject {
 
             await MainActor.run {
                 isUnlocked = true
+                
+                // Process any queued imports
+                if !pendingImportURLs.isEmpty {
+                    print("Processing \(pendingImportURLs.count) queued import items...")
+                    let urlsToImport = pendingImportURLs
+                    pendingImportURLs.removeAll()
+                    // Small delay to ensure UI transition completes
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                        self?.startDirectImport(urls: urlsToImport)
+                    }
+                }
             }
             try await loadPhotos()
             await MainActor.run {
@@ -2018,9 +2032,11 @@ extension AlbumManager {
             guard isUnlocked, cachedEncryptionKey != nil, cachedHMACKey != nil else {
                 Task { @MainActor [weak self] in
                     guard let self else { return }
+                    print("Album locked, queuing \(urls.count) items for import after unlock.")
+                    self.pendingImportURLs.append(contentsOf: urls)
                     self.hideNotification = HideNotification(
-                        message: "Unlock the album before importing files.",
-                        type: .failure,
+                        message: "Items queued. Unlock to complete import.",
+                        type: .info,
                         photos: nil
                     )
                 }
