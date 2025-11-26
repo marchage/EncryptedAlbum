@@ -1508,9 +1508,15 @@ struct MainVaultView: View {
             .sheet(isPresented: $showingPhotosLibrary) {
                 PhotosLibraryPicker()
             }
-            .sheet(isPresented: $showingCamera) {
-                cameraSheet
-            }
+            #if os(iOS)
+                .fullScreenCover(isPresented: $showingCamera) {
+                    cameraSheet
+                }
+            #else
+                .sheet(isPresented: $showingCamera) {
+                    cameraSheet
+                }
+            #endif
             .confirmationDialog(
                 "Delete selected items?",
                 isPresented: $showDeleteConfirmation,
