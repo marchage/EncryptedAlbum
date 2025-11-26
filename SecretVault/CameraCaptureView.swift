@@ -249,7 +249,10 @@ import SwiftUI
         let session: AVCaptureSession? = AVCaptureSession()
         private let photoOutput = AVCapturePhotoOutput()
         private let movieOutput = AVCaptureMovieFileOutput()
-        private let sessionQueue = DispatchQueue(label: "biz.front-end.secretvault.camera.session")
+        // Use a static queue to ensure serial access across all CameraModel instances
+        private static let sharedSessionQueue = DispatchQueue(label: "biz.front-end.secretvault.camera.session")
+        private var sessionQueue: DispatchQueue { Self.sharedSessionQueue }
+        
         @Published var isAuthorized = false
         @Published var captureMode: CaptureMode = .photo
         @Published var isRecording = false
@@ -352,17 +355,10 @@ import SwiftUI
                     session.stopRunning()
                 }
                 
-                // Safely remove inputs and outputs to ensure clean state for next usage
-                session.beginConfiguration()
-                let inputs = session.inputs
-                for input in inputs {
-                    session.removeInput(input)
-                }
-                let outputs = session.outputs
-                for output in outputs {
-                    session.removeOutput(output)
-                }
-                session.commitConfiguration()
+                // We do not need to explicitly remove inputs/outputs here.
+                // If the session is deallocated, they are removed.
+                // If the session is reused, we want them to stay.
+                // Removing them explicitly can cause race conditions if another session is starting up on the same device.
 
                 self?.recordingTimer?.invalidate()
                 self?.recordingTimer = nil
