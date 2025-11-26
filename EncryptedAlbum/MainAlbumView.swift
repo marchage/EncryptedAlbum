@@ -25,17 +25,8 @@ struct MainAlbumView: View {
     @State private var photosToRestore: [SecurePhoto] = []
     @State private var showingCamera = false
     @State private var showingFilePicker = false
-    @State private var exportInProgress = false
     @State private var showDeleteConfirmation = false
     @State private var pendingDeletionPhotos: [SecurePhoto] = []
-    @State private var exportStatusMessage = ""
-    @State private var exportDetailMessage = ""
-    @State private var exportItemsProcessed = 0
-    @State private var exportItemsTotal = 0
-    @State private var exportTask: Task<Void, Never>? = nil
-    @State private var exportCancelRequested = false
-    @State private var exportBytesProcessed: Int64 = 0
-    @State private var exportBytesTotal: Int64 = 0
     @State private var restorationTask: Task<Void, Never>? = nil
     @State private var didForcePrivacyModeThisSession = false
     @AppStorage("albumPrivacyModeEnabled") private var privacyModeEnabled: Bool = true
@@ -145,7 +136,7 @@ struct MainAlbumView: View {
 
     func exportSelectedPhotos() {
         #if os(macOS)
-            guard !exportInProgress else {
+            guard !albumManager.exportProgress.isExporting else {
                 let alert = NSAlert()
                 alert.messageText = "Export Already Running"
                 alert.informativeText =
@@ -174,168 +165,18 @@ struct MainAlbumView: View {
     func exportPhotos(to folderURL: URL) {
         let photosToExport = albumManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         guard !photosToExport.isEmpty else { return }
-        exportTask?.cancel()
-        exportTask = Task(priority: .userInitiated) {
-            await runExportOperation(photos: photosToExport, to: folderURL)
-        }
-    }
-
-    private func runExportOperation(photos: [SecurePhoto], to folderURL: URL) async {
-        guard !photos.isEmpty else {
-            await MainActor.run { exportTask = nil }
-            return
-        }
-
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
-        formatter.countStyle = .file
-
-        await MainActor.run {
-            exportInProgress = true
-            exportItemsTotal = photos.count
-            exportItemsProcessed = 0
-            exportStatusMessage = "Preparing export…"
-            exportDetailMessage = "\(photos.count) item(s)"
-            exportBytesProcessed = 0
-            exportBytesTotal = 0
-            exportCancelRequested = false
-        }
-
-        var successCount = 0
-        var failureCount = 0
-        var firstError: Error?
-        var wasCancelled = false
-        let fileManager = FileManager.default
-
-        for (index, photo) in photos.enumerated() {
-            if Task.isCancelled {
-                wasCancelled = true
-                break
-            }
-
-            let expectedSize = photo.fileSize
-            let expectedSizeText = expectedSize > 0 ? formatter.string(fromByteCount: expectedSize) : nil
-            await MainActor.run {
-                exportStatusMessage = "Decrypting \(photo.filename)…"
-                exportDetailMessage = detailText(for: index + 1, total: photos.count, sizeDescription: expectedSizeText)
-                exportItemsProcessed = index
-                exportBytesProcessed = 0
-                exportBytesTotal = expectedSize
-            }
-
-            var destinationURL: URL?
-
-            do {
-                let tempURL = try await albumManager.decryptPhotoToTemporaryURL(photo)
-                defer { try? fileManager.removeItem(at: tempURL) }
-
-                destinationURL = folderURL.appendingPathComponent(photo.filename)
-
-                if fileManager.fileExists(atPath: destinationURL!.path) {
-                    try fileManager.removeItem(at: destinationURL!)
-                }
-
-                let fileSizeValue = fileSizeValue(for: tempURL)
-                let sizeText = fileSizeValue > 0 ? formatter.string(fromByteCount: fileSizeValue) : nil
-                let detail = detailText(for: index + 1, total: photos.count, sizeDescription: sizeText)
-
-                await MainActor.run {
-                    exportStatusMessage = "Exporting \(photo.filename)…"
-                    exportDetailMessage = detail
-                    exportItemsProcessed = index
-                    exportBytesTotal = fileSizeValue
-                    exportBytesProcessed = 0
-                }
-
-                try Task.checkCancellation()
-                try await copyFileWithProgress(from: tempURL, to: destinationURL!, fileSize: fileSizeValue)
-                successCount += 1
-            } catch is CancellationError {
-                wasCancelled = true
-                if let destinationURL = destinationURL {
-                    try? fileManager.removeItem(at: destinationURL)
-                }
-                break
-            } catch {
-                if let destinationURL = destinationURL {
-                    try? fileManager.removeItem(at: destinationURL)
-                }
-                failureCount += 1
-                if firstError == nil {
-                    firstError = error
-                }
-                await MainActor.run {
-                    exportStatusMessage = "Failed \(photo.filename)"
-                    exportDetailMessage = error.localizedDescription
-                }
-            }
-
-            await MainActor.run {
-                exportItemsProcessed = index + 1
-                exportBytesProcessed = exportBytesTotal
-            }
-        }
-
-        if Task.isCancelled {
-            wasCancelled = true
-        }
-
-        await MainActor.run {
-            exportInProgress = false
-            exportItemsProcessed = 0
-            exportItemsTotal = 0
-            exportStatusMessage = ""
-            exportDetailMessage = ""
-            exportBytesProcessed = 0
-            exportBytesTotal = 0
-            exportCancelRequested = false
-            exportTask = nil
+        
+        albumManager.startExport(photos: photosToExport, to: folderURL) { result in
+            #if os(macOS)
+            presentExportSummary(
+                successCount: result.successCount,
+                failureCount: result.failureCount,
+                canceled: result.wasCancelled,
+                destinationFolderName: folderURL.lastPathComponent,
+                error: result.error
+            )
+            #endif
             selectedPhotos.removeAll()
-        }
-
-        #if os(macOS)
-            await MainActor.run {
-                presentExportSummary(
-                    successCount: successCount,
-                    failureCount: failureCount,
-                    canceled: wasCancelled,
-                    destinationFolderName: folderURL.lastPathComponent,
-                    error: firstError
-                )
-            }
-        #endif
-    }
-
-    private func fileSizeValue(for url: URL) -> Int64 {
-        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
-            let size = attributes[.size] as? NSNumber
-        else {
-            return 0
-        }
-        return size.int64Value
-    }
-
-    private func copyFileWithProgress(from sourceURL: URL, to destinationURL: URL, fileSize: Int64) async throws {
-        let chunkSize = 1_048_576  // 1 MB
-        let inputHandle = try FileHandle(forReadingFrom: sourceURL)
-        defer { try? inputHandle.close() }
-
-        FileManager.default.createFile(atPath: destinationURL.path, contents: nil)
-        let outputHandle = try FileHandle(forWritingTo: destinationURL)
-        defer { try? outputHandle.close() }
-
-        var totalCopied: Int64 = 0
-
-        while true {
-            try Task.checkCancellation()
-            guard let data = try inputHandle.read(upToCount: chunkSize), !data.isEmpty else {
-                break
-            }
-            try outputHandle.write(contentsOf: data)
-            totalCopied += Int64(data.count)
-            await MainActor.run {
-                exportBytesProcessed = totalCopied
-            }
         }
     }
 
@@ -657,7 +498,7 @@ struct MainAlbumView: View {
             } label: {
                 Label("Import Files", systemImage: "doc.badge.plus")
             }
-            .disabled(directImportProgress.isImporting || exportInProgress)
+            .disabled(directImportProgress.isImporting || albumManager.exportProgress.isExporting)
         #endif
 
         Menu {
@@ -738,20 +579,15 @@ struct MainAlbumView: View {
     private var exportProgressOverlay: some View {
         ProgressOverlayView(
             title: "Exporting items…",
-            statusMessage: exportStatusMessage,
-            detailMessage: exportDetailMessage,
-            itemsProcessed: exportItemsProcessed,
-            totalItems: exportItemsTotal,
-            bytesProcessed: exportBytesProcessed,
-            totalBytes: exportBytesTotal,
-            cancelRequested: exportCancelRequested,
+            statusMessage: albumManager.exportProgress.statusMessage,
+            detailMessage: albumManager.exportProgress.detailMessage,
+            itemsProcessed: albumManager.exportProgress.itemsProcessed,
+            totalItems: albumManager.exportProgress.itemsTotal,
+            bytesProcessed: albumManager.exportProgress.bytesProcessed,
+            totalBytes: albumManager.exportProgress.bytesTotal,
+            cancelRequested: albumManager.exportProgress.cancelRequested,
             onCancel: {
-                exportCancelRequested = true
-                exportStatusMessage = "Canceling export…"
-                if exportDetailMessage.isEmpty {
-                    exportDetailMessage = "Finishing current file"
-                }
-                exportTask?.cancel()
+                albumManager.cancelExport()
             },
             isAppActive: isAppActive
         )
@@ -850,7 +686,7 @@ struct MainAlbumView: View {
                                             } label: {
                                                 Label("Export", systemImage: "square.and.arrow.up")
                                             }
-                                            .disabled(exportInProgress)
+                                            .disabled(albumManager.exportProgress.isExporting)
                                         #endif
                                         Button(role: .destructive) {
                                             let photosToDelete: [SecurePhoto] = albumManager.hiddenPhotos.filter {
@@ -912,7 +748,7 @@ struct MainAlbumView: View {
                                         Label("Files", systemImage: "doc.badge.plus")
                                     }
                                     .buttonStyle(.bordered)
-                                    .disabled(directImportProgress.isImporting || exportInProgress)
+                                    .disabled(directImportProgress.isImporting || albumManager.exportProgress.isExporting)
 
                                     Button {
                                         showingCamera = true
@@ -1226,7 +1062,7 @@ struct MainAlbumView: View {
             {
                 captureProgressOverlay
             }
-            if exportInProgress {
+            if albumManager.exportProgress.isExporting {
                 exportProgressOverlay
             }
             if albumManager.restorationProgress.isRestoring {
@@ -1284,7 +1120,7 @@ struct MainAlbumView: View {
                 } else if newPhase == .background {
                     isAppActive = false
                     if requireForegroundReauthentication {
-                        let shouldSuppress = showingPhotosLibrary || showingCamera || albumManager.importProgress.isImporting || directImportProgress.isImporting || exportInProgress
+                        let shouldSuppress = showingPhotosLibrary || showingCamera || albumManager.importProgress.isImporting || directImportProgress.isImporting || albumManager.exportProgress.isExporting
                         if !shouldSuppress {
                             albumManager.lock()
                         }
@@ -1437,7 +1273,7 @@ struct MainAlbumView: View {
                 || showingCamera
                 || albumManager.importProgress.isImporting
                 || directImportProgress.isImporting
-                || exportInProgress
+                || albumManager.exportProgress.isExporting
         }
     }
 #endif

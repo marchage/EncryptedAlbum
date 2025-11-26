@@ -202,6 +202,41 @@ class DirectImportProgress: ObservableObject {
     }
 }
 
+/// Tracks the state of file exports
+@MainActor
+class ExportProgress: ObservableObject {
+    @Published var isExporting: Bool = false
+    @Published var statusMessage: String = ""
+    @Published var detailMessage: String = ""
+    @Published var itemsProcessed: Int = 0
+    @Published var itemsTotal: Int = 0
+    @Published var bytesProcessed: Int64 = 0
+    @Published var bytesTotal: Int64 = 0
+    @Published var cancelRequested: Bool = false
+    
+    func reset(totalItems: Int) {
+        isExporting = true
+        statusMessage = "Preparing export…"
+        detailMessage = "\(totalItems) item(s)"
+        itemsProcessed = 0
+        itemsTotal = totalItems
+        bytesProcessed = 0
+        bytesTotal = 0
+        cancelRequested = false
+    }
+    
+    func finish() {
+        isExporting = false
+        statusMessage = ""
+        detailMessage = ""
+        itemsProcessed = 0
+        itemsTotal = 0
+        bytesProcessed = 0
+        bytesTotal = 0
+        cancelRequested = false
+    }
+}
+
 
 // Notification types for hide/restore operations
 enum HideNotificationType {
@@ -292,7 +327,9 @@ class AlbumManager: ObservableObject {
     @Published var restorationProgress = RestorationProgress()
     @Published var importProgress = ImportProgress()
     @MainActor let directImportProgress: DirectImportProgress
+    @MainActor let exportProgress = ExportProgress()
     private var directImportTask: Task<Void, Never>?
+    private var exportTask: Task<Void, Never>?
     
     // Album location is now fixed and managed by AlbumStorage
     var albumBaseURL: URL {
