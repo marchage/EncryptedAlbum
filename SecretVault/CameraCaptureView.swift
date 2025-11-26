@@ -211,9 +211,11 @@ import SwiftUI
             }
             .frame(minWidth: 600, minHeight: 400)
             .onAppear {
+                MacPrivacyCoordinator.shared.beginTrustedModal()
                 model.checkPermissions()
             }
             .onDisappear {
+                MacPrivacyCoordinator.shared.endTrustedModal()
                 model.stopSession()
             }
             .onReceive(model.$cameraError) { error in

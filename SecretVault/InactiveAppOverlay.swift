@@ -1,12 +1,39 @@
 import SwiftUI
 
 #if os(macOS)
+@MainActor
+final class MacPrivacyCoordinator: ObservableObject {
+    static let shared = MacPrivacyCoordinator()
+
+    @Published private(set) var isTrustedModalActive = false
+    private var modalDepth = 0
+
+    func beginTrustedModal() {
+        modalDepth += 1
+        updateState()
+    }
+
+    func endTrustedModal() {
+        modalDepth = max(modalDepth - 1, 0)
+        updateState()
+    }
+
+    private func updateState() {
+        let isActive = modalDepth > 0
+        if isTrustedModalActive != isActive {
+            isTrustedModalActive = isActive
+        }
+    }
+}
+
 struct InactiveAppOverlay: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var windowIsKey = true
     @State private var appIsActive = true
+    @ObservedObject private var privacyCoordinator = MacPrivacyCoordinator.shared
 
     private var isObscured: Bool {
+        guard !privacyCoordinator.isTrustedModalActive else { return false }
         let obscured = !appIsActive || scenePhase != .active || !windowIsKey
         return obscured
     }
