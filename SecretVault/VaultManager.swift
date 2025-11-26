@@ -145,6 +145,8 @@ class DirectImportProgress: ObservableObject {
     @Published var bytesProcessed: Int64 = 0
     @Published var bytesTotal: Int64 = 0
     @Published var cancelRequested: Bool = false
+    private var lastBytesUpdateTime: CFAbsoluteTime = 0
+    private var lastReportedBytes: Int64 = 0
 
     func reset(totalItems: Int) {
         isImporting = true
@@ -155,6 +157,8 @@ class DirectImportProgress: ObservableObject {
         bytesProcessed = 0
         bytesTotal = 0
         cancelRequested = false
+        lastBytesUpdateTime = 0
+        lastReportedBytes = 0
     }
 
     func finish() {
@@ -166,6 +170,35 @@ class DirectImportProgress: ObservableObject {
         bytesProcessed = 0
         bytesTotal = 0
         cancelRequested = false
+        lastBytesUpdateTime = 0
+        lastReportedBytes = 0
+    }
+
+    func throttledUpdateBytesProcessed(_ value: Int64) {
+        let clampedValue = max(0, value)
+        let now = CFAbsoluteTimeGetCurrent()
+        let elapsed = now - lastBytesUpdateTime
+        let byteDelta = abs(clampedValue - lastReportedBytes)
+
+        let minimumInterval: CFTimeInterval = 0.05
+        let minimumByteDelta = max(bytesTotal / 200, Int64(128 * 1024))
+
+        if lastBytesUpdateTime == 0
+            || elapsed >= minimumInterval
+            || byteDelta >= minimumByteDelta
+            || clampedValue >= bytesTotal
+        {
+            bytesProcessed = min(clampedValue, bytesTotal > 0 ? bytesTotal : clampedValue)
+            lastReportedBytes = clampedValue
+            lastBytesUpdateTime = now
+        }
+    }
+
+    func forceUpdateBytesProcessed(_ value: Int64) {
+        let clampedValue = max(0, value)
+        bytesProcessed = min(clampedValue, bytesTotal > 0 ? bytesTotal : clampedValue)
+        lastReportedBytes = clampedValue
+        lastBytesUpdateTime = CFAbsoluteTimeGetCurrent()
     }
 }
 
@@ -2071,7 +2104,7 @@ extension VaultManager {
                         directImportProgress.itemsProcessed = processedCount
                         directImportProgress.itemsTotal = totalItems
                         directImportProgress.bytesTotal = sizeForProgress
-                        directImportProgress.bytesProcessed = sizeForProgress
+                        directImportProgress.forceUpdateBytesProcessed(sizeForProgress)
                     }
                     continue
                 }
@@ -2084,7 +2117,7 @@ extension VaultManager {
                     directImportProgress.itemsProcessed = index
                     directImportProgress.itemsTotal = totalItems
                     directImportProgress.bytesTotal = sizeForProgress
-                    directImportProgress.bytesProcessed = 0
+                    directImportProgress.forceUpdateBytesProcessed(0)
                 }
 
                 do {
@@ -2103,7 +2136,7 @@ extension VaultManager {
                         progressHandler: { [weak self] bytesRead in
                             guard let self else { return }
                             await MainActor.run {
-                                self.directImportProgress.bytesProcessed = bytesRead
+                                self.directImportProgress.throttledUpdateBytesProcessed(bytesRead)
                             }
                         }
                     )
@@ -2125,7 +2158,7 @@ extension VaultManager {
                 let completedItems = index + 1
                 await MainActor.run {
                     directImportProgress.itemsProcessed = completedItems
-                    directImportProgress.bytesProcessed = directImportProgress.bytesTotal
+                    directImportProgress.forceUpdateBytesProcessed(directImportProgress.bytesTotal)
                 }
             }
 

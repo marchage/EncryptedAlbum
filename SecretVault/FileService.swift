@@ -165,6 +165,7 @@ class FileService {
                 offset += chunkSize
             }
 
+            try writeHandle.synchronize()
             try writeStreamCompletionMarker(to: writeHandle)
         } catch {
             try? FileManager.default.removeItem(at: fileURL)
@@ -259,6 +260,7 @@ class FileService {
                 }
             }
 
+            try writeHandle.synchronize()
             try writeStreamCompletionMarker(to: writeHandle)
         } catch {
             try? FileManager.default.removeItem(at: destinationURL)
@@ -315,6 +317,8 @@ class FileService {
         guard let header = try readStreamHeader(from: handle) else {
             return nil
         }
+
+        try validateStreamVersion(header)
         
         // Skip metadata if present
         if header.metadataLength > 0 {
@@ -347,6 +351,8 @@ class FileService {
         guard let header = try readStreamHeader(from: handle) else {
             return nil
         }
+
+        try validateStreamVersion(header)
         
         // Skip metadata if present
         if header.metadataLength > 0 {
@@ -446,6 +452,8 @@ class FileService {
         defer { try? handle.close() }
         
         guard let header = try readStreamHeader(from: handle) else { return nil }
+
+        try validateStreamVersion(header)
         
         guard header.metadataLength > 0 else { return nil }
         
@@ -482,15 +490,27 @@ class FileService {
         return try JSONDecoder().decode(EmbeddedMetadata.self, from: decryptedData)
     }
 
+    private func validateStreamVersion(_ header: StreamFileHeader) throws {
+        guard header.version == CryptoConstants.streamingVersion else {
+            throw VaultError.invalidFileFormat(reason: "Unsupported stream version \(header.version)")
+        }
+    }
+
     private func processStreamFile(
         from handle: FileHandle, header: StreamFileHeader, encryptionKey: SymmetricKey,
         chunkHandler: (Data) throws -> Void, progressHandler: ((Int64) -> Void)? = nil
     ) async throws {
+        try validateStreamVersion(header)
+
         var totalProcessed: Int64 = 0
 
         while true {
             try Task.checkCancellation()
-            guard let lengthData = try handle.read(upToCount: MemoryLayout<UInt32>.size), !lengthData.isEmpty else {
+            guard let lengthData = try handle.read(upToCount: MemoryLayout<UInt32>.size) else {
+                throw VaultError.decryptionFailed(reason: "Missing completion marker")
+            }
+
+            if lengthData.isEmpty {
                 throw VaultError.decryptionFailed(reason: "Missing completion marker")
             }
 

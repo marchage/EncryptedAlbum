@@ -101,6 +101,85 @@ final class FileServiceTests: XCTestCase {
             XCTFail("Expected VaultError.decryptionFailed, got \(error)")
         }
     }
+
+    func testLoadEncryptedFileRejectsTrailingData() async throws {
+        let dataSize = 1 * 1024 * 1024
+        let originalData = try await cryptoService.generateRandomData(length: dataSize)
+        let sourceURL = tempDir.appendingPathComponent("original3.dat")
+        try originalData.write(to: sourceURL)
+
+        let encryptionKey = SymmetricKey(size: .bits256)
+        let hmacKey = SymmetricKey(size: .bits256)
+        let encryptedFilename = "encrypted_with_trailing.enc"
+
+        try await sut.saveStreamEncryptedFile(
+            from: sourceURL,
+            filename: encryptedFilename,
+            mediaType: .photo,
+            to: tempDir,
+            encryptionKey: encryptionKey,
+            hmacKey: hmacKey
+        )
+
+        let encryptedURL = tempDir.appendingPathComponent(encryptedFilename)
+        var fileData = try Data(contentsOf: encryptedURL)
+        fileData.append(contentsOf: [0xAA, 0xBB, 0xCC])
+        try fileData.write(to: encryptedURL, options: .atomic)
+
+        do {
+            _ = try await sut.loadEncryptedFile(
+                filename: encryptedFilename,
+                from: tempDir,
+                encryptionKey: encryptionKey,
+                hmacKey: hmacKey
+            )
+            XCTFail("Expected loadEncryptedFile to throw")
+        } catch let VaultError.decryptionFailed(reason) {
+            XCTAssertTrue(reason.localizedCaseInsensitiveContains("unexpected data"))
+        } catch {
+            XCTFail("Expected VaultError.decryptionFailed, got \(error)")
+        }
+    }
+
+    func testLoadEncryptedFileRejectsUnsupportedStreamVersion() async throws {
+        let dataSize = 1 * 1024 * 1024
+        let originalData = try await cryptoService.generateRandomData(length: dataSize)
+        let sourceURL = tempDir.appendingPathComponent("original4.dat")
+        try originalData.write(to: sourceURL)
+
+        let encryptionKey = SymmetricKey(size: .bits256)
+        let hmacKey = SymmetricKey(size: .bits256)
+        let encryptedFilename = "encrypted_legacy.enc"
+
+        try await sut.saveStreamEncryptedFile(
+            from: sourceURL,
+            filename: encryptedFilename,
+            mediaType: .photo,
+            to: tempDir,
+            encryptionKey: encryptionKey,
+            hmacKey: hmacKey
+        )
+
+        let encryptedURL = tempDir.appendingPathComponent(encryptedFilename)
+        var fileData = try Data(contentsOf: encryptedURL)
+        let versionIndex = CryptoConstants.streamingMagic.count
+        fileData[versionIndex] = 0x02
+        try fileData.write(to: encryptedURL, options: .atomic)
+
+        do {
+            _ = try await sut.loadEncryptedFile(
+                filename: encryptedFilename,
+                from: tempDir,
+                encryptionKey: encryptionKey,
+                hmacKey: hmacKey
+            )
+            XCTFail("Expected loadEncryptedFile to throw")
+        } catch let VaultError.invalidFileFormat(reason) {
+            XCTAssertTrue(reason.localizedCaseInsensitiveContains("unsupported stream version"))
+        } catch {
+            XCTFail("Expected VaultError.invalidFileFormat, got \(error)")
+        }
+    }
     
     func testReEncryptFile_Success() async throws {
         // 1. Setup initial file
