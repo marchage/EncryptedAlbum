@@ -246,7 +246,7 @@ import SwiftUI
     }
 
     class CameraModel: NSObject, ObservableObject {
-        var session: AVCaptureSession? = AVCaptureSession()
+        let session: AVCaptureSession? = AVCaptureSession()
         private let photoOutput = AVCapturePhotoOutput()
         private let movieOutput = AVCaptureMovieFileOutput()
         private let sessionQueue = DispatchQueue(label: "biz.front-end.secretvault.camera.session")
@@ -278,6 +278,11 @@ import SwiftUI
 
         func setupSession() {
             sessionQueue.async {
+                // If session is nil, we can't do anything.
+                // But we initialized it in init().
+                // If stopSession was called previously, we might have cleaned it up.
+                // But here we are in a new instance or re-using.
+                
                 guard let session = self.session else { return }
                 
                 if !session.inputs.isEmpty {
@@ -336,8 +341,8 @@ import SwiftUI
 
         func stopSession() {
             guard let session = self.session else { return }
-            self.session = nil // Release main thread reference to avoid hang on deinit
             
+            // Keep session alive until async block finishes
             sessionQueue.async { [weak self] in
                 if self?.movieOutput.isRecording == true {
                     self?.movieOutput.stopRecording()
@@ -346,11 +351,24 @@ import SwiftUI
                 if session.isRunning {
                     session.stopRunning()
                 }
+                
+                // Safely remove inputs and outputs to ensure clean state for next usage
+                session.beginConfiguration()
+                let inputs = session.inputs
+                for input in inputs {
+                    session.removeInput(input)
+                }
+                let outputs = session.outputs
+                for output in outputs {
+                    session.removeOutput(output)
+                }
+                session.commitConfiguration()
 
                 self?.recordingTimer?.invalidate()
                 self?.recordingTimer = nil
                 self?.recordingStartTime = nil
             }
+            
             DispatchQueue.main.async { [weak self] in
                 self?.isRecording = false
                 self?.recordingDuration = nil
