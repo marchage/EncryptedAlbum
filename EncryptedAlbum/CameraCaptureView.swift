@@ -250,6 +250,19 @@ import SwiftUI
 
     class CameraModel: NSObject, ObservableObject {
         let session: AVCaptureSession? = AVCaptureSession()
+
+        override init() {
+            super.init()
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(deviceDisconnected),
+                name: .AVCaptureDeviceWasDisconnected,
+                object: nil)
+        }
+
+        deinit {
+            NotificationCenter.default.removeObserver(self, name: .AVCaptureDeviceWasDisconnected, object: nil)
+        }
         private let photoOutput = AVCapturePhotoOutput()
         private let movieOutput = AVCaptureMovieFileOutput()
         // Use a static queue to ensure serial access across all CameraModel instances
@@ -282,17 +295,14 @@ import SwiftUI
             }
         }
 
-        @objc private func deviceDisconnected(_ notification: Notification) {
-            if let device = notification.object as? AVCaptureDevice {
-                // Stop session and show error
-                stopSession()
-                handleCameraError("Camera disconnected.")
-            }
+        // MARK: - Notification Handlers
+        @objc private func deviceDisconnected(notification: Notification) {
+            guard let device = notification.object as? AVCaptureDevice else { return }
+            print("Camera device disconnected: \(device.localizedName)")
+            handleCameraError("Camera device disconnected. Please reconnect your camera.")  
         }
 
         func setupSession() {
-            NotificationCenter.default.addObserver(
-                self, selector: #selector(deviceDisconnected), name: .AVCaptureDeviceWasDisconnected, object: nil)
             sessionQueue.async {
                 guard let session = self.session else { return }
 
