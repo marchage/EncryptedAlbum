@@ -485,7 +485,7 @@ class SecurityService {
                     #if DEBUG
                         print("🔐 DEBUG: biometricPasswordExists query failed with status \(status)")
                     #endif
-                    return false
+                    throw VaultError.unknownError(reason: "biometricPasswordExists failed with status \(status)")
                 }
             }
         } catch {

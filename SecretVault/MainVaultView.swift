@@ -1571,7 +1571,12 @@ struct MainVaultView: View {
                     }
                 }
             #endif
-            if directImportProgress.isImporting {
+            if directImportProgress.isImporting
+                && (directImportProgress.itemsTotal > 0
+                    || directImportProgress.bytesProcessed > 0
+                    || directImportProgress.bytesTotal > 0
+                    || directImportProgress.cancelRequested)
+            {
                 captureProgressOverlay
             }
             if exportInProgress {
