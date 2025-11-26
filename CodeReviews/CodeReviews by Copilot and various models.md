@@ -6,7 +6,7 @@ High — SecretVault/FileService.swift:62-67: The new EmbeddedMetadata struct on
 Medium — SecretVault/FileService.swift:88: saveEncryptedFile always writes a header with mediaType: .photo. When hidePhoto handles a .data source that represents a video (e.g., in-memory captures), the file will be mislabeled and downstream consumers cannot distinguish media types. Consider adding a mediaType argument to saveEncryptedFile and forwarding the caller’s value, just like saveStreamEncryptedFile already does.
 
 ## GPT-5.1-Codex
-Critical — SecretVault/VaultManager.swift:640-707: The password-change journaling never records the new salt/encryption keys (or preserves the partially re-encrypted data separately). As soon as a file is processed it is rewritten with the new key, while the stored password/salt still point to the old key until the very end. If the app crashes mid-run, the vault is left in a mixed state: processed files now require the unpublished new key, but on the next launch only the old key is derivable, so those items become unrecoverable and the journal cannot actually resume. Persist the new salt/keys (or an encrypted copy of them) in the journal and reload them on resume, or stage the re-encrypted files elsewhere until the new password is committed.
+Critical — SecretVault/VaultManager.swift:640-707: The password-change journaling never records the new salt/encryption keys (or preserves the partially re-encrypted data separately). As soon as a file is processed it is rewritten with the new key, while the stored password/salt still point to the old key until the very end. If the app crashes mid-run, the album is left in a mixed state: processed files now require the unpublished new key, but on the next launch only the old key is derivable, so those items become unrecoverable and the journal cannot actually resume. Persist the new salt/keys (or an encrypted copy of them) in the journal and reload them on resume, or stage the re-encrypted files elsewhere until the new password is committed.
 
 Critical — SecretVault/VaultManager.swift:841-856: FileService.EmbeddedMetadata no longer exposes the Location type or location: initializer argument, yet hidePhoto still tries to build FileService.EmbeddedMetadata.Location. This is now a compile-time failure. Either add location back to EmbeddedMetadata (plus its nested type) or stop passing it here.
 
@@ -42,7 +42,7 @@ This review covers critical security flaws, data integrity risks, and general co
 🟥 Critical Issues
 Data Loss Risk in Password
 Change Journal (VaultManager.swift:640-707)**
-- Problem: The PasswordChangeJournal correctly tracks which files have been re-encrypted, but it fails to save the newSalt or the newEncryptionKey. If the app crashes mid-operation, the vault is left in a corrupted state. Files that were already processed are encrypted with a key derived from the new salt, but that salt was only in memory and is now lost forever.
+- Problem: The PasswordChangeJournal correctly tracks which files have been re-encrypted, but it fails to save the newSalt or the newEncryptionKey. If the app crashes mid-operation, the album is left in a corrupted state. Files that were already processed are encrypted with a key derived from the new salt, but that salt was only in memory and is now lost forever.
 - Impact: Permanent data loss. Any files re-encrypted before the crash are unrecoverable because the key to decrypt them cannot be recreated.
 - Recommendation: The PasswordChangeJournal must be extended to securely store the newSalt and an encrypted version of the newEncryptionKey (e.g., wrapped with the old key). On resume, the service would use these stored values to continue the re-encryption process safely.
 
@@ -53,7 +53,7 @@ Recommendation: Add the Location struct back into FileService.EmbeddedMetadata a
 🟧 High-Priority Issues
 Metadata Dropped on Save (FileService.swift:58-67)
 Problem: The EmbeddedMetadata struct is missing properties for location and isFavorite. Even after fixing the compile error, this information, which is passed from VaultManager, is silently discarded during the creation of the metadata object.
-Impact: Data loss. Important metadata is not being saved to the encrypted SVF2 files, meaning location and favorite status are lost when items are added to the vault.
+Impact: Data loss. Important metadata is not being saved to the encrypted SVF2 files, meaning location and favorite status are lost when items are added to the album.
 Recommendation: Add location: Location? and isFavorite: Bool? to the EmbeddedMetadata struct to ensure all provided metadata is preserved.
 🟨 Medium-Priority Issues
 Incorrect Media Type in Header (FileService.swift:88)
@@ -73,7 +73,7 @@ Code Review: SecretVault (Claude Sonnet 4.5)
 🔴 Critical Issues
 1. Catastrophic Data Loss in Password Change Recovery (VaultManager.swift:564-690)
 
-The journal-based recovery implementation has a fundamental flaw that makes vault corruption inevitable on crash:
+The journal-based recovery implementation has a fundamental flaw that makes album corruption inevitable on crash:
 
 Root Cause: When changePassword processes files, it immediately overwrites them with new-key-encrypted versions while the keychain still holds the old credentials. The journal tracks which files were processed but not the cryptographic parameters needed to derive the new keys.
 
@@ -81,7 +81,7 @@ Attack Vector: Crash occurs at any point during re-encryption → App restarts �
 
 Blast Radius: Every file processed before the crash is permanently destroyed. The journal cannot resume because it cannot reconstruct the new keys. Users lose data proportional to processing time before crash.
 
-Fix Required: Store newSalt (plaintext acceptable since it's non-secret) and newEncryptionKey wrapped/encrypted with oldEncryptionKey in the journal. On resume, derive old keys from stored credentials, unwrap new keys, and continue re-encryption from the checkpoint.
+Fix Required: Store newSalt (plaintext acceptable since it's non-encrypted) and newEncryptionKey wrapped/encrypted with oldEncryptionKey in the journal. On resume, derive old keys from stored credentials, unwrap new keys, and continue re-encryption from the checkpoint.
 
 2. Build-Breaking Type Mismatch (VaultManager.swift:841-856)
 
@@ -92,13 +92,13 @@ Fix: Add nested Location struct to EmbeddedMetadata with latitude/longitude prop
 1. Silent Metadata Truncation (FileService.swift:58-65)
 
 Problem: EmbeddedMetadata declares only 4 fields but VaultManager passes 6 fields including location and isFavorite.
-Impact: Location data and favorite status are discarded at serialization boundary. Users cannot recover GPS coordinates or favorite flags from vault files.
+Impact: Location data and favorite status are discarded at serialization boundary. Users cannot recover GPS coordinates or favorite flags from album files.
 Fix: Add location: Location? and isFavorite: Bool? to the struct and its Codable implementation.
 2. Race Condition in Settings Persistence (VaultManager.swift:1379-1413)
 
-Problem: saveSettings() writes to disk without synchronization while loadSettings() can run concurrently on init or after vault moves.
+Problem: saveSettings() writes to disk without synchronization while loadSettings() can run concurrently on init or after album moves.
 Impact: Settings corruption if background save races with foreground load.
-Fix: Serialize all settings I/O on vaultQueue or use a dedicated serial queue for file operations.
+Fix: Serialize all settings I/O on albumQueue or use a dedicated serial queue for file operations.
 🟡 Medium-Priority Issues
 1. Media Type Mislabeling (FileService.swift:88)
 
@@ -108,7 +108,7 @@ Fix: Add mediaType: MediaType = .photo parameter and propagate to StreamFileHead
 2. Incomplete Security Version Migration (VaultManager.swift:520-540)
 
 Problem: V1→V2 migration updates the in-memory verifier but doesn't re-save settings.json, so the file still shows securityVersion: 1.
-Impact: Next launch treats the vault as V1 again, repeating migration on every unlock.
+Impact: Next launch treats the album as V1 again, repeating migration on every unlock.
 Fix: Call saveSettings() immediately after setting self.securityVersion = 2 on line 536.
 3. Biometric Self-Healing Only on macOS (VaultManager.swift:549-553)
 
@@ -149,19 +149,19 @@ Fix: Restore the Location struct within EmbeddedMetadata (with latitude and long
 Irrecoverable Data Loss in Password Change Recovery (VaultManager.swift:564-690)
 
 Problem: The PasswordChangeJournal tracks processed files but does not persist the newSalt or a wrapped version of the newEncryptionKey. During re-encryption, files are overwritten with new keys while the keychain still holds old credentials. If the app crashes, the new salt (stored only in memory) is lost, making processed files undecryptable.
-Impact: Permanent loss of any files re-encrypted before a crash. The journal cannot resume without the new keys, leading to vault corruption.
-Fix: Extend PasswordChangeJournal to store newSalt (as plaintext, since salts are not secret) and an encrypted newEncryptionKey (wrapped with the oldEncryptionKey). On resume, derive old keys from stored credentials, unwrap the new key, and continue from the checkpoint.
+Impact: Permanent loss of any files re-encrypted before a crash. The journal cannot resume without the new keys, leading to album corruption.
+Fix: Extend PasswordChangeJournal to store newSalt (as plaintext, since salts are not encrypted) and an encrypted newEncryptionKey (wrapped with the oldEncryptionKey). On resume, derive old keys from stored credentials, unwrap the new key, and continue from the checkpoint.
 🟠 High-Priority Issues
 Silent Metadata Loss (FileService.swift:58-65)
 
 Problem: EmbeddedMetadata only includes filename, dateCreated, originalAssetIdentifier, and duration. Even after fixing the compile error, VaultManager passes additional fields like location and isFavorite, which are discarded during serialization.
-Impact: Critical metadata (e.g., GPS coordinates, favorite status) is lost when files are encrypted, reducing vault utility and user experience.
+Impact: Critical metadata (e.g., GPS coordinates, favorite status) is lost when files are encrypted, reducing album utility and user experience.
 Fix: Add location: Location? and isFavorite: Bool? to EmbeddedMetadata, ensuring all passed metadata is preserved in the SVF2 format.
 Race Condition in Settings Persistence (VaultManager.swift:1379-1413)
 
-Problem: saveSettings() and loadSettings() operate on the same file (settings.json) without synchronization. Concurrent access (e.g., during vault moves or app init) can lead to corrupted settings.
-Impact: Potential loss of configuration data, such as security version or deletion settings, causing inconsistent vault behavior.
-Fix: Serialize all settings I/O on the existing vaultQueue to ensure atomic operations.
+Problem: saveSettings() and loadSettings() operate on the same file (settings.json) without synchronization. Concurrent access (e.g., during album moves or app init) can lead to corrupted settings.
+Impact: Potential loss of configuration data, such as security version or deletion settings, causing inconsistent album behavior.
+Fix: Serialize all settings I/O on the existing albumQueue to ensure atomic operations.
 🟡 Medium-Priority Issues
 Incorrect Media Type Labeling (FileService.swift:88)
 
@@ -206,7 +206,7 @@ Code Review: SecretVault
 🟥 Critical Issues
 1. Data Loss Risk in Password Change Recovery
 File: VaultManager.swift (Lines 640-707)
-Problem: The PasswordChangeJournal does not persist the newSalt or the newEncryptionKey. If the app crashes during re-encryption, the vault is left in a corrupted state. Files already processed are encrypted with a key derived from the new salt, which is lost after the crash.
+Problem: The PasswordChangeJournal does not persist the newSalt or the newEncryptionKey. If the app crashes during re-encryption, the album is left in a corrupted state. Files already processed are encrypted with a key derived from the new salt, which is lost after the crash.
 Impact: Permanent data loss for files processed before the crash.
 Recommendation: Extend PasswordChangeJournal to store the newSalt (plaintext) and an encrypted version of the newEncryptionKey (wrapped with the old key). On resume, derive the old keys, unwrap the new key, and continue re-encryption.
 2. Compile Error in Metadata Handling
@@ -223,8 +223,8 @@ Recommendation: Add location: Location? and isFavorite: Bool? to EmbeddedMetadat
 2. Race Condition in Settings Persistence
 File: VaultManager.swift (Lines 1379-1413)
 Problem: saveSettings() and loadSettings() operate on the same file without synchronization, leading to potential data corruption during concurrent access.
-Impact: Loss of configuration data, causing inconsistent vault behavior.
-Recommendation: Serialize all settings I/O on the existing vaultQueue or use a dedicated serial queue for file operations.
+Impact: Loss of configuration data, causing inconsistent album behavior.
+Recommendation: Serialize all settings I/O on the existing albumQueue or use a dedicated serial queue for file operations.
 🟨 Medium-Priority Issues
 1. Incorrect Media Type in Header
 File: FileService.swift (Line 88)
@@ -283,7 +283,7 @@ Impact: Permanent, unrecoverable data loss for any files re-encrypted before a c
 
 Recommendation: Extend PasswordChangeJournal to store:
 
-newSalt (plaintext is acceptable—salts are not secret)
+newSalt (plaintext is acceptable—salts are not encrypted)
 newEncryptionKey wrapped/encrypted with oldEncryptionKey
 On resume, derive old keys from stored credentials, unwrap the new keys, and continue re-encryption from the checkpoint.
 
@@ -300,11 +300,11 @@ Recommendation: Add isFavorite: Bool? to EmbeddedMetadata:
 1. Race Condition in Settings Persistence
 File: VaultManager.swift (Lines 1379-1413)
 
-Problem: saveSettings() writes to disk without synchronization, while loadSettings() can run concurrently during init or after vault moves. Neither method operates on vaultQueue.
+Problem: saveSettings() writes to disk without synchronization, while loadSettings() can run concurrently during init or after album moves. Neither method operates on albumQueue.
 
 Impact: Settings file corruption if background save races with foreground load, potentially losing securityVersion or secureDeletionEnabled state.
 
-Recommendation: Serialize all settings I/O on vaultQueue:
+Recommendation: Serialize all settings I/O on albumQueue:
 
 2. Incomplete Security Version Migration Persistence
 File: VaultManager.swift (Lines 520-540)
@@ -358,7 +358,7 @@ Recommendation: Add version-aware decoding with fallback or migration logic in P
 ✅ Positive Observations
 Strong Cryptographic Foundation: Proper use of PBKDF2 (600,001 iterations) + HKDF for key derivation, separate encryption/HMAC/verifier keys derived with domain separation.
 
-Streaming Encryption (SVF2): Chunked AES-GCM encryption prevents memory exhaustion on large files—excellent design for a photo vault.
+Streaming Encryption (SVF2): Chunked AES-GCM encryption prevents memory exhaustion on large files—excellent design for a photo album.
 
 Secure Memory Handling: Use of SecureMemory.allocateSecureBuffer with mlock and explicit zeroing demonstrates awareness of memory security best practices.
 
@@ -402,8 +402,8 @@ Fix: Add nested Location struct to EmbeddedMetadata:
 1. Race Condition in Settings Persistence
 File: VaultManager.swift (Lines 1379-1413)
 Problem: saveSettings() and loadSettings() lack synchronization; concurrent access can corrupt settings
-Impact: Loss of securityVersion or other config, causing vault inconsistency
-Fix: Serialize I/O on vaultQueue:
+Impact: Loss of securityVersion or other config, causing album inconsistency
+Fix: Serialize I/O on albumQueue:
 2. Silent Metadata Loss
 File: FileService.swift (Lines 58-67)
 Problem: EmbeddedMetadata missing location and isFavorite fields despite hidePhoto passing them
@@ -474,7 +474,7 @@ Impact: Permanent, unrecoverable data loss for all files re-encrypted before cra
 
 Fix: Extend PasswordChangeJournal to store:
 
-newSalt (plaintext acceptable—salts are not secret)
+newSalt (plaintext acceptable—salts are not encrypted)
 newEncryptionKey wrapped/encrypted with oldEncryptionKey
 On resume, derive old keys from stored credentials, unwrap new keys, and continue from checkpoint.
 
@@ -487,8 +487,8 @@ Fix: Add nested Location struct to EmbeddedMetadata:
 1. Race Condition in Settings Persistence
 File: VaultManager.swift (Lines 1379-1413)
 Problem: saveSettings() and loadSettings() operate without synchronization; concurrent access can corrupt settings file
-Impact: Loss of securityVersion or other configuration, causing vault inconsistency
-Fix: Serialize all I/O on vaultQueue:
+Impact: Loss of securityVersion or other configuration, causing album inconsistency
+Fix: Serialize all I/O on albumQueue:
 2. Silent Metadata Loss in Embedded Data
 File: FileService.swift (Lines 58-67)
 Problem: EmbeddedMetadata missing location and isFavorite fields despite hidePhoto passing them

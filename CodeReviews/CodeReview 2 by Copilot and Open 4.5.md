@@ -63,7 +63,7 @@ Specific Decryption Failure Reasons:
 "Unexpected data after completion marker"
 "Corrupted chunk length"
 ⚠️ Concerns
-Generic "vaultNotInitialized" Overuse
+Generic "albumNotInitialized" Overuse
 This error is thrown for multiple scenarios:
 
 Cached keys are nil

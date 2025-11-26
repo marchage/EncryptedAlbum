@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Encrypted Album needs access to import and encrypt your photos and videos.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Encrypted Album needs permission to remove photos and videos from your library after encrypting them.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Encrypted Album needs camera access to capture photos directly to your encrypted album.</string>
+	<key>LSMultipleInstancesProhibited</key>
+	<true/>
+	<key>CFBundleIdentifier</key>
+	<string>biz.front-end.EncryptedAlbum</string>
+	<key>CFBundleName</key>
+	<string>Encrypted Album</string>
+	<key>CFBundleDisplayName</key>
+	<string>Encrypted Album</string>
+</dict>
+</plist>

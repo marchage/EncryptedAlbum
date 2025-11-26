@@ -1,0 +1,1094 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0A1A2C90CFC24033BB978D99 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 312F03BA23EF4033AC165CA9 /* Constants.swift */; };
+		1CA80AC13D192EBBFCD3B516 /* PhotosLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */; };
+		432DD49F40365EA5EAEBFD23 /* AlbumDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C904A396A6B1968CDD78D9 /* AlbumDetailView.swift */; };
+		4F5E1087AAB34BAD93E89C2A /* AlbumState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC21B534704407E965288CF /* AlbumState.swift */; };
+		72601657C5564D06A303EECF /* CryptoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E6FD95D924253BFFFAD57 /* CryptoService.swift */; };
+		981926552EC854B600C67291 /* EncryptedAlbum_iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981926542EC854B600C67291 /* EncryptedAlbum_iOSApp.swift */; };
+		981BB77E2ED5C1AA00584B7B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 981BB77D2ED5C1AA00584B7B /* Assets.xcassets */; };
+		981BB77F2ED5C1AA00584B7B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 981BB77D2ED5C1AA00584B7B /* Assets.xcassets */; };
+		9823D7782ECD7BF400FFB750 /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */; };
+		982404542ECF12930078B446 /* PasswordServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 982404532ECF12930078B446 /* PasswordServiceTests.swift */; };
+		9849B4552EB9893D00B17DAC /* EncryptedAlbumApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4542EB9893D00B17DAC /* EncryptedAlbumApp.swift */; };
+		9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4562EB9893D00B17DAC /* ContentView.swift */; };
+		984EC6752ED5DDB300038F9F /* PasswordChangeJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 984EC6712ED5DDB200038F9F /* PasswordChangeJournal.swift */; };
+		984EC6762ED5DDB300038F9F /* PasswordChangeJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 984EC6712ED5DDB200038F9F /* PasswordChangeJournal.swift */; };
+		984EC6772ED5DDB300038F9F /* ImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 984EC6722ED5DDB300038F9F /* ImportService.swift */; };
+		984EC6782ED5DDB300038F9F /* ImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 984EC6722ED5DDB300038F9F /* ImportService.swift */; };
+		985C161C2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985C161B2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift */; };
+		985C161E2ECF1DA200EC1701 /* SecurityServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985C161D2ECF1DA200EC1701 /* SecurityServiceTests.swift */; };
+		986328C92ECE882D00EAE9A9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4562EB9893D00B17DAC /* ContentView.swift */; };
+		986328CA2ECE882D00EAE9A9 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 312F03BA23EF4033AC165CA9 /* Constants.swift */; };
+		986328CB2ECE882D00EAE9A9 /* CryptoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E6FD95D924253BFFFAD57 /* CryptoService.swift */; };
+		986328CC2ECE882D00EAE9A9 /* FileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ECB74A746149529B6DE078 /* FileService.swift */; };
+		986328CD2ECE882D00EAE9A9 /* PasswordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28CF564BDC0E4C9F891A9910 /* PasswordService.swift */; };
+		986328CE2ECE882D00EAE9A9 /* SecurityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC32058021C54480B2F0BD89 /* SecurityService.swift */; };
+		986328CF2ECE882D00EAE9A9 /* AlbumError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A61A2BD7A0514BCA85111D3F /* AlbumError.swift */; };
+		986328D02ECE882D00EAE9A9 /* AlbumState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC21B534704407E965288CF /* AlbumState.swift */; };
+		986328D92ECE88F600EAE9A9 /* EncryptedAlbumTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328D82ECE88F600EAE9A9 /* EncryptedAlbumTests.swift */; };
+		986328E22ECE894300EAE9A9 /* AlbumManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328DF2ECE894300EAE9A9 /* AlbumManagerTests.swift */; };
+		986328E32ECE894300EAE9A9 /* FileServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328E02ECE894300EAE9A9 /* FileServiceTests.swift */; };
+		986328E42ECE894300EAE9A9 /* CryptoServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */; };
+		986328EC2ECE8CEF00EAE9A9 /* EncryptedAlbumUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328EB2ECE8CEF00EAE9A9 /* EncryptedAlbumUITests.swift */; };
+		988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */; };
+		98900B502ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */; };
+		98900B512ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */; };
+		989ADDDD2ED5BDE400994E72 /* AlbumStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD62ED5BDE400994E72 /* AlbumStorage.swift */; };
+		989ADDDE2ED5BDE400994E72 /* AlbumStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD62ED5BDE400994E72 /* AlbumStorage.swift */; };
+		989ADDDF2ED5BDE400994E72 /* InactiveAppOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */; };
+		989ADDE02ED5BDE400994E72 /* InactiveAppOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */; };
+		989ADDE12ED5BDE400994E72 /* UltraPrivacyCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */; };
+		989ADDE22ED5BDE400994E72 /* UltraPrivacyCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */; };
+		98C835F92EC9E6CD000997CF /* PhotosLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */; };
+		98C835FA2EC9E6CD000997CF /* AlbumDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C904A396A6B1968CDD78D9 /* AlbumDetailView.swift */; };
+		98C835FB2EC9E6CD000997CF /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C068CD08B70A6DBEA00400 /* UnlockView.swift */; };
+		98C835FC2EC9E6CD000997CF /* SetupPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */; };
+		98C835FD2EC9E6CD000997CF /* MainAlbumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE5566FF77AA88BB99CC /* MainAlbumView.swift */; };
+		98C835FE2EC9E6CD000997CF /* AlbumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F96EA3625074B045C751E84 /* AlbumManager.swift */; };
+		98C835FF2EC9E6CD000997CF /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345677 /* PreferencesView.swift */; };
+		9FA39564407F407B82E34796 /* PasswordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28CF564BDC0E4C9F891A9910 /* PasswordService.swift */; };
+		A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345677 /* PreferencesView.swift */; };
+		A7F6845B3F0A4BA800D12345 /* DirectImportProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F684593F0A4BA800D12345 /* DirectImportProgressTests.swift */; };
+		AA11BB2233CC44DD55EE66FF /* SetupPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */; };
+		AB219FCE33BC4485A762BDA6 /* SecurityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC32058021C54480B2F0BD89 /* SecurityService.swift */; };
+		B4FA2CB13F8D4E0FB4F74101 /* UITestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4FA2CB03F8D4E0FB4F74101 /* UITestHelpers.swift */; };
+		B4FA2CB23F8D4E0FB4F74101 /* EncryptedAlbumMacUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4FA2CB43F8D4E0FB4F74101 /* EncryptedAlbumMacUITests.swift */; };
+		B4FA2CB33F8D4E0FB4F74101 /* UITestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4FA2CB03F8D4E0FB4F74101 /* UITestHelpers.swift */; };
+		B60166E7D2AD4B09B005BB47 /* AlbumError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A61A2BD7A0514BCA85111D3F /* AlbumError.swift */; };
+		B7C1A2D43E8C4F6A00D10010 /* PasswordServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 982404532ECF12930078B446 /* PasswordServiceTests.swift */; };
+		B7C1A2D43E8C4F6A00D10011 /* PhotosLibraryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985C161B2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift */; };
+		B7C1A2D43E8C4F6A00D10012 /* CryptoServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */; };
+		B7C1A2D43E8C4F6A00D10013 /* SecurityServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985C161D2ECF1DA200EC1701 /* SecurityServiceTests.swift */; };
+		B7C1A2D43E8C4F6A00D10014 /* FileServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328E02ECE894300EAE9A9 /* FileServiceTests.swift */; };
+		B7C1A2D43E8C4F6A00D10015 /* AlbumManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328DF2ECE894300EAE9A9 /* AlbumManagerTests.swift */; };
+		B7C1A2D43E8C4F6A00D10016 /* EncryptedAlbumTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328D82ECE88F600EAE9A9 /* EncryptedAlbumTests.swift */; };
+		B7C1A2D43E8C4F6A00D10017 /* DirectImportProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F684593F0A4BA800D12345 /* DirectImportProgressTests.swift */; };
+		CC33DD4455EE66FF77AA88BB /* MainAlbumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE5566FF77AA88BB99CC /* MainAlbumView.swift */; };
+		DD69BC27985C4D09BA6690A2 /* FileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ECB74A746149529B6DE078 /* FileService.swift */; };
+		E48BBB324071974C8BE48D0D /* AlbumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F96EA3625074B045C751E84 /* AlbumManager.swift */; };
+		F9B0EAD109417F32CF3B7D50 /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C068CD08B70A6DBEA00400 /* UnlockView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		986328DA2ECE88F600EAE9A9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9849B4492EB9893C00B17DAC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 981926512EC854B600C67291;
+			remoteInfo = "EncryptedAlbum iOS";
+		};
+		986328EF2ECE8CEF00EAE9A9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9849B4492EB9893C00B17DAC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 981926512EC854B600C67291;
+			remoteInfo = "EncryptedAlbum iOS";
+		};
+		B4FA2CBC3F8D4E0FB4F74101 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9849B4492EB9893C00B17DAC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9849B4502EB9893D00B17DAC;
+			remoteInfo = EncryptedAlbum;
+		};
+		B7C1A2DF3E8C4F6A00D10010 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9849B4492EB9893C00B17DAC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9849B4502EB9893D00B17DAC;
+			remoteInfo = EncryptedAlbum;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		28CF564BDC0E4C9F891A9910 /* PasswordService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordService.swift; sourceTree = "<group>"; };
+		312F03BA23EF4033AC165CA9 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
+		4A6E6FD95D924253BFFFAD57 /* CryptoService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoService.swift; sourceTree = "<group>"; };
+		8CC21B534704407E965288CF /* AlbumState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumState.swift; sourceTree = "<group>"; };
+		981926522EC854B600C67291 /* EncryptedAlbum iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "EncryptedAlbum iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		981926542EC854B600C67291 /* EncryptedAlbum_iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedAlbum_iOSApp.swift; sourceTree = "<group>"; };
+		981926602EC8552000C67291 /* Info_iOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info_iOS.plist; sourceTree = "<group>"; };
+		981BB77D2ED5C1AA00584B7B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CameraCaptureView.swift; sourceTree = "<group>"; };
+		982404532ECF12930078B446 /* PasswordServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordServiceTests.swift; sourceTree = "<group>"; };
+		9849B4512EB9893D00B17DAC /* EncryptedAlbum.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EncryptedAlbum.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9849B4542EB9893D00B17DAC /* EncryptedAlbumApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedAlbumApp.swift; sourceTree = "<group>"; };
+		9849B4562EB9893D00B17DAC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		9849B45D2EB9893F00B17DAC /* EncryptedAlbum.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EncryptedAlbum.entitlements; sourceTree = "<group>"; };
+		984EC6712ED5DDB200038F9F /* PasswordChangeJournal.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PasswordChangeJournal.swift; sourceTree = "<group>"; };
+		984EC6722ED5DDB300038F9F /* ImportService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImportService.swift; sourceTree = "<group>"; };
+		985C161B2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosLibraryServiceTests.swift; sourceTree = "<group>"; };
+		985C161D2ECF1DA200EC1701 /* SecurityServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityServiceTests.swift; sourceTree = "<group>"; };
+		986328D62ECE88F600EAE9A9 /* EncryptedAlbumTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EncryptedAlbumTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		986328D82ECE88F600EAE9A9 /* EncryptedAlbumTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedAlbumTests.swift; sourceTree = "<group>"; };
+		986328DF2ECE894300EAE9A9 /* AlbumManagerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlbumManagerTests.swift; sourceTree = "<group>"; };
+		986328E02ECE894300EAE9A9 /* FileServiceTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FileServiceTests.swift; sourceTree = "<group>"; };
+		986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CryptoServiceTests.swift; sourceTree = "<group>"; };
+		986328E92ECE8CEF00EAE9A9 /* EncryptedAlbumUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EncryptedAlbumUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		986328EB2ECE8CEF00EAE9A9 /* EncryptedAlbumUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedAlbumUITests.swift; sourceTree = "<group>"; };
+		98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PrivacyOverlayBackground.swift; sourceTree = "<group>"; };
+		989ADDD62ED5BDE400994E72 /* AlbumStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlbumStorage.swift; sourceTree = "<group>"; };
+		989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InactiveAppOverlay.swift; sourceTree = "<group>"; };
+		989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UltraPrivacyCoordinator.swift; sourceTree = "<group>"; };
+		9F96EA3625074B045C751E84 /* AlbumManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumManager.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6789012345677 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
+		A61A2BD7A0514BCA85111D3F /* AlbumError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumError.swift; sourceTree = "<group>"; };
+		A7F684593F0A4BA800D12345 /* DirectImportProgressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectImportProgressTests.swift; sourceTree = "<group>"; };
+		A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosLibraryService.swift; sourceTree = "<group>"; };
+		B4FA2CB03F8D4E0FB4F74101 /* UITestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestHelpers.swift; sourceTree = "<group>"; };
+		B4FA2CB43F8D4E0FB4F74101 /* EncryptedAlbumMacUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedAlbumMacUITests.swift; sourceTree = "<group>"; };
+		B4FA2CB53F8D4E0FB4F74101 /* EncryptedAlbumMacUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EncryptedAlbumMacUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B7C1A2E23E8C4F6A00D10010 /* EncryptedAlbumMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EncryptedAlbumMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupPasswordView.swift; sourceTree = "<group>"; };
+		C5C904A396A6B1968CDD78D9 /* AlbumDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumDetailView.swift; sourceTree = "<group>"; };
+		CF9ADA530C59D1A9B3039479 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		CF9ADA540C59D1A9B3039480 /* EncryptedAlbum_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EncryptedAlbum_iOS.entitlements; sourceTree = "<group>"; };
+		D4C068CD08B70A6DBEA00400 /* UnlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockView.swift; sourceTree = "<group>"; };
+		DD44EE5566FF77AA88BB99CC /* MainAlbumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainAlbumView.swift; sourceTree = "<group>"; };
+		EC32058021C54480B2F0BD89 /* SecurityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityService.swift; sourceTree = "<group>"; };
+		F2ECB74A746149529B6DE078 /* FileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileService.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		9819264F2EC854B600C67291 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9849B44E2EB9893D00B17DAC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		986328D32ECE88F600EAE9A9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		986328E62ECE8CEF00EAE9A9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B4FA2CB83F8D4E0FB4F74101 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B7C1A2D93E8C4F6A00D10010 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		9849B4482EB9893C00B17DAC = {
+			isa = PBXGroup;
+			children = (
+				9849B4532EB9893D00B17DAC /* EncryptedAlbum */,
+				986328D72ECE88F600EAE9A9 /* EncryptedAlbumTests */,
+				986328EA2ECE8CEF00EAE9A9 /* EncryptedAlbumiOSUITests */,
+				B4FA2CB63F8D4E0FB4F74101 /* EncryptedAlbumMacUITests */,
+				9849B4522EB9893D00B17DAC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		9849B4522EB9893D00B17DAC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				9849B4512EB9893D00B17DAC /* EncryptedAlbum.app */,
+				981926522EC854B600C67291 /* EncryptedAlbum iOS.app */,
+				986328D62ECE88F600EAE9A9 /* EncryptedAlbumTests.xctest */,
+				986328E92ECE8CEF00EAE9A9 /* EncryptedAlbumUITests.xctest */,
+				B7C1A2E23E8C4F6A00D10010 /* EncryptedAlbumMacTests.xctest */,
+				B4FA2CB53F8D4E0FB4F74101 /* EncryptedAlbumMacUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		9849B4532EB9893D00B17DAC /* EncryptedAlbum */ = {
+			isa = PBXGroup;
+			children = (
+				98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */,
+				984EC6722ED5DDB300038F9F /* ImportService.swift */,
+				984EC6712ED5DDB200038F9F /* PasswordChangeJournal.swift */,
+				989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */,
+				989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */,
+				989ADDD62ED5BDE400994E72 /* AlbumStorage.swift */,
+				9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */,
+				9849B4542EB9893D00B17DAC /* EncryptedAlbumApp.swift */,
+				981926542EC854B600C67291 /* EncryptedAlbum_iOSApp.swift */,
+				9849B4562EB9893D00B17DAC /* ContentView.swift */,
+				CF9ADA530C59D1A9B3039479 /* Info.plist */,
+				981926602EC8552000C67291 /* Info_iOS.plist */,
+				A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */,
+				C5C904A396A6B1968CDD78D9 /* AlbumDetailView.swift */,
+				D4C068CD08B70A6DBEA00400 /* UnlockView.swift */,
+				BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */,
+				A1B2C3D4E5F6789012345677 /* PreferencesView.swift */,
+				DD44EE5566FF77AA88BB99CC /* MainAlbumView.swift */,
+				9F96EA3625074B045C751E84 /* AlbumManager.swift */,
+				312F03BA23EF4033AC165CA9 /* Constants.swift */,
+				4A6E6FD95D924253BFFFAD57 /* CryptoService.swift */,
+				F2ECB74A746149529B6DE078 /* FileService.swift */,
+				EC32058021C54480B2F0BD89 /* SecurityService.swift */,
+				28CF564BDC0E4C9F891A9910 /* PasswordService.swift */,
+				A61A2BD7A0514BCA85111D3F /* AlbumError.swift */,
+				8CC21B534704407E965288CF /* AlbumState.swift */,
+				981BB77D2ED5C1AA00584B7B /* Assets.xcassets */,
+				9849B45D2EB9893F00B17DAC /* EncryptedAlbum.entitlements */,
+				CF9ADA540C59D1A9B3039480 /* EncryptedAlbum_iOS.entitlements */,
+			);
+			path = EncryptedAlbum;
+			sourceTree = "<group>";
+		};
+		986328D72ECE88F600EAE9A9 /* EncryptedAlbumTests */ = {
+			isa = PBXGroup;
+			children = (
+				982404532ECF12930078B446 /* PasswordServiceTests.swift */,
+				985C161B2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift */,
+				986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */,
+				985C161D2ECF1DA200EC1701 /* SecurityServiceTests.swift */,
+				986328E02ECE894300EAE9A9 /* FileServiceTests.swift */,
+				986328DF2ECE894300EAE9A9 /* AlbumManagerTests.swift */,
+				986328D82ECE88F600EAE9A9 /* EncryptedAlbumTests.swift */,
+				A7F684593F0A4BA800D12345 /* DirectImportProgressTests.swift */,
+			);
+			path = EncryptedAlbumTests;
+			sourceTree = "<group>";
+		};
+		986328EA2ECE8CEF00EAE9A9 /* EncryptedAlbumiOSUITests */ = {
+			isa = PBXGroup;
+			children = (
+				B4FA2CB03F8D4E0FB4F74101 /* UITestHelpers.swift */,
+				986328EB2ECE8CEF00EAE9A9 /* EncryptedAlbumUITests.swift */,
+			);
+			path = EncryptedAlbumiOSUITests;
+			sourceTree = "<group>";
+		};
+		B4FA2CB63F8D4E0FB4F74101 /* EncryptedAlbumMacUITests */ = {
+			isa = PBXGroup;
+			children = (
+				B4FA2CB43F8D4E0FB4F74101 /* EncryptedAlbumMacUITests.swift */,
+			);
+			path = EncryptedAlbumMacUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		981926512EC854B600C67291 /* EncryptedAlbum iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9819265F2EC854B800C67291 /* Build configuration list for PBXNativeTarget "EncryptedAlbum iOS" */;
+			buildPhases = (
+				9819264E2EC854B600C67291 /* Sources */,
+				9819264F2EC854B600C67291 /* Frameworks */,
+				981926502EC854B600C67291 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "EncryptedAlbum iOS";
+			productName = "EncryptedAlbum iOS";
+			productReference = 981926522EC854B600C67291 /* EncryptedAlbum iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		9849B4502EB9893D00B17DAC /* EncryptedAlbum */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9849B4602EB9893F00B17DAC /* Build configuration list for PBXNativeTarget "EncryptedAlbum" */;
+			buildPhases = (
+				9849B44D2EB9893D00B17DAC /* Sources */,
+				9849B44E2EB9893D00B17DAC /* Frameworks */,
+				9849B44F2EB9893D00B17DAC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = EncryptedAlbum;
+			productName = EncryptedAlbum;
+			productReference = 9849B4512EB9893D00B17DAC /* EncryptedAlbum.app */;
+			productType = "com.apple.product-type.application";
+		};
+		986328D52ECE88F600EAE9A9 /* EncryptedAlbumTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 986328DE2ECE88F600EAE9A9 /* Build configuration list for PBXNativeTarget "EncryptedAlbumTests" */;
+			buildPhases = (
+				986328D22ECE88F600EAE9A9 /* Sources */,
+				986328D32ECE88F600EAE9A9 /* Frameworks */,
+				986328D42ECE88F600EAE9A9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				986328DB2ECE88F600EAE9A9 /* PBXTargetDependency */,
+			);
+			name = EncryptedAlbumTests;
+			productName = EncryptedAlbumTests;
+			productReference = 986328D62ECE88F600EAE9A9 /* EncryptedAlbumTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		986328E82ECE8CEF00EAE9A9 /* EncryptedAlbumUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 986328F12ECE8CEF00EAE9A9 /* Build configuration list for PBXNativeTarget "EncryptedAlbumUITests" */;
+			buildPhases = (
+				986328E52ECE8CEF00EAE9A9 /* Sources */,
+				986328E62ECE8CEF00EAE9A9 /* Frameworks */,
+				986328E72ECE8CEF00EAE9A9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				986328F02ECE8CEF00EAE9A9 /* PBXTargetDependency */,
+			);
+			name = EncryptedAlbumUITests;
+			productName = EncryptedAlbumUITests;
+			productReference = 986328E92ECE8CEF00EAE9A9 /* EncryptedAlbumUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		B4FA2CBA3F8D4E0FB4F74101 /* EncryptedAlbumMacUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B4FA2CBF3F8D4E0FB4F74101 /* Build configuration list for PBXNativeTarget "EncryptedAlbumMacUITests" */;
+			buildPhases = (
+				B4FA2CB73F8D4E0FB4F74101 /* Sources */,
+				B4FA2CB83F8D4E0FB4F74101 /* Frameworks */,
+				B4FA2CB93F8D4E0FB4F74101 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B4FA2CBB3F8D4E0FB4F74101 /* PBXTargetDependency */,
+			);
+			name = EncryptedAlbumMacUITests;
+			productName = EncryptedAlbumMacUITests;
+			productReference = B4FA2CB53F8D4E0FB4F74101 /* EncryptedAlbumMacUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		B7C1A2DB3E8C4F6A00D10010 /* EncryptedAlbumMacTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 987CF2C62ED6DB93001E8019 /* Build configuration list for PBXNativeTarget "EncryptedAlbumMacTests" */;
+			buildPhases = (
+				B7C1A2D83E8C4F6A00D10010 /* Sources */,
+				B7C1A2D93E8C4F6A00D10010 /* Frameworks */,
+				B7C1A2DA3E8C4F6A00D10010 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B7C1A2E13E8C4F6A00D10010 /* PBXTargetDependency */,
+			);
+			name = EncryptedAlbumMacTests;
+			productName = EncryptedAlbumMacTests;
+			productReference = B7C1A2E23E8C4F6A00D10010 /* EncryptedAlbumMacTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		9849B4492EB9893C00B17DAC /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1520;
+				LastUpgradeCheck = 1520;
+				TargetAttributes = {
+					981926512EC854B600C67291 = {
+						CreatedOnToolsVersion = 15.2;
+					};
+					9849B4502EB9893D00B17DAC = {
+						CreatedOnToolsVersion = 15.2;
+					};
+					986328D52ECE88F600EAE9A9 = {
+						CreatedOnToolsVersion = 15.2;
+						TestTargetID = 981926512EC854B600C67291;
+					};
+					986328E82ECE8CEF00EAE9A9 = {
+						CreatedOnToolsVersion = 15.2;
+						TestTargetID = 981926512EC854B600C67291;
+					};
+					B4FA2CBA3F8D4E0FB4F74101 = {
+						CreatedOnToolsVersion = 15.2;
+						TestTargetID = 9849B4502EB9893D00B17DAC;
+					};
+					B7C1A2DB3E8C4F6A00D10010 = {
+						CreatedOnToolsVersion = 15.2;
+						TestTargetID = 9849B4502EB9893D00B17DAC;
+					};
+				};
+			};
+			buildConfigurationList = 9849B44C2EB9893C00B17DAC /* Build configuration list for PBXProject "EncryptedAlbum" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 9849B4482EB9893C00B17DAC;
+			productRefGroup = 9849B4522EB9893D00B17DAC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9849B4502EB9893D00B17DAC /* EncryptedAlbum */,
+				981926512EC854B600C67291 /* EncryptedAlbum iOS */,
+				986328D52ECE88F600EAE9A9 /* EncryptedAlbumTests */,
+				986328E82ECE8CEF00EAE9A9 /* EncryptedAlbumUITests */,
+				B4FA2CBA3F8D4E0FB4F74101 /* EncryptedAlbumMacUITests */,
+				B7C1A2DB3E8C4F6A00D10010 /* EncryptedAlbumMacTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		981926502EC854B600C67291 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				981BB77F2ED5C1AA00584B7B /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9849B44F2EB9893D00B17DAC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				981BB77E2ED5C1AA00584B7B /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		986328D42ECE88F600EAE9A9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		986328E72ECE8CEF00EAE9A9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B4FA2CB93F8D4E0FB4F74101 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B7C1A2DA3E8C4F6A00D10010 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		9819264E2EC854B600C67291 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				984EC6762ED5DDB300038F9F /* PasswordChangeJournal.swift in Sources */,
+				989ADDDE2ED5BDE400994E72 /* AlbumStorage.swift in Sources */,
+				984EC6782ED5DDB300038F9F /* ImportService.swift in Sources */,
+				986328C92ECE882D00EAE9A9 /* ContentView.swift in Sources */,
+				981926552EC854B600C67291 /* EncryptedAlbum_iOSApp.swift in Sources */,
+				98C835F92EC9E6CD000997CF /* PhotosLibraryService.swift in Sources */,
+				98C835FA2EC9E6CD000997CF /* AlbumDetailView.swift in Sources */,
+				98C835FB2EC9E6CD000997CF /* UnlockView.swift in Sources */,
+				989ADDE02ED5BDE400994E72 /* InactiveAppOverlay.swift in Sources */,
+				98C835FC2EC9E6CD000997CF /* SetupPasswordView.swift in Sources */,
+				98C835FD2EC9E6CD000997CF /* MainAlbumView.swift in Sources */,
+				98900B512ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */,
+				98C835FE2EC9E6CD000997CF /* AlbumManager.swift in Sources */,
+				9823D7782ECD7BF400FFB750 /* CameraCaptureView.swift in Sources */,
+				98C835FF2EC9E6CD000997CF /* PreferencesView.swift in Sources */,
+				986328CA2ECE882D00EAE9A9 /* Constants.swift in Sources */,
+				986328CB2ECE882D00EAE9A9 /* CryptoService.swift in Sources */,
+				989ADDE22ED5BDE400994E72 /* UltraPrivacyCoordinator.swift in Sources */,
+				986328CC2ECE882D00EAE9A9 /* FileService.swift in Sources */,
+				986328CD2ECE882D00EAE9A9 /* PasswordService.swift in Sources */,
+				986328CE2ECE882D00EAE9A9 /* SecurityService.swift in Sources */,
+				986328CF2ECE882D00EAE9A9 /* AlbumError.swift in Sources */,
+				986328D02ECE882D00EAE9A9 /* AlbumState.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9849B44D2EB9893D00B17DAC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				984EC6752ED5DDB300038F9F /* PasswordChangeJournal.swift in Sources */,
+				989ADDDD2ED5BDE400994E72 /* AlbumStorage.swift in Sources */,
+				984EC6772ED5DDB300038F9F /* ImportService.swift in Sources */,
+				988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */,
+				9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */,
+				1CA80AC13D192EBBFCD3B516 /* PhotosLibraryService.swift in Sources */,
+				432DD49F40365EA5EAEBFD23 /* AlbumDetailView.swift in Sources */,
+				F9B0EAD109417F32CF3B7D50 /* UnlockView.swift in Sources */,
+				989ADDDF2ED5BDE400994E72 /* InactiveAppOverlay.swift in Sources */,
+				AA11BB2233CC44DD55EE66FF /* SetupPasswordView.swift in Sources */,
+				CC33DD4455EE66FF77AA88BB /* MainAlbumView.swift in Sources */,
+				98900B502ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */,
+				E48BBB324071974C8BE48D0D /* AlbumManager.swift in Sources */,
+				9849B4552EB9893D00B17DAC /* EncryptedAlbumApp.swift in Sources */,
+				A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */,
+				0A1A2C90CFC24033BB978D99 /* Constants.swift in Sources */,
+				72601657C5564D06A303EECF /* CryptoService.swift in Sources */,
+				989ADDE12ED5BDE400994E72 /* UltraPrivacyCoordinator.swift in Sources */,
+				DD69BC27985C4D09BA6690A2 /* FileService.swift in Sources */,
+				9FA39564407F407B82E34796 /* PasswordService.swift in Sources */,
+				AB219FCE33BC4485A762BDA6 /* SecurityService.swift in Sources */,
+				B60166E7D2AD4B09B005BB47 /* AlbumError.swift in Sources */,
+				4F5E1087AAB34BAD93E89C2A /* AlbumState.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		986328D22ECE88F600EAE9A9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A7F6845B3F0A4BA800D12345 /* DirectImportProgressTests.swift in Sources */,
+				985C161C2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift in Sources */,
+				986328E42ECE894300EAE9A9 /* CryptoServiceTests.swift in Sources */,
+				985C161E2ECF1DA200EC1701 /* SecurityServiceTests.swift in Sources */,
+				986328E32ECE894300EAE9A9 /* FileServiceTests.swift in Sources */,
+				986328E22ECE894300EAE9A9 /* AlbumManagerTests.swift in Sources */,
+				982404542ECF12930078B446 /* PasswordServiceTests.swift in Sources */,
+				986328D92ECE88F600EAE9A9 /* EncryptedAlbumTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		986328E52ECE8CEF00EAE9A9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B4FA2CB13F8D4E0FB4F74101 /* UITestHelpers.swift in Sources */,
+				986328EC2ECE8CEF00EAE9A9 /* EncryptedAlbumUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B4FA2CB73F8D4E0FB4F74101 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B4FA2CB23F8D4E0FB4F74101 /* EncryptedAlbumMacUITests.swift in Sources */,
+				B4FA2CB33F8D4E0FB4F74101 /* UITestHelpers.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B7C1A2D83E8C4F6A00D10010 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B7C1A2D43E8C4F6A00D10010 /* PasswordServiceTests.swift in Sources */,
+				B7C1A2D43E8C4F6A00D10011 /* PhotosLibraryServiceTests.swift in Sources */,
+				B7C1A2D43E8C4F6A00D10012 /* CryptoServiceTests.swift in Sources */,
+				B7C1A2D43E8C4F6A00D10013 /* SecurityServiceTests.swift in Sources */,
+				B7C1A2D43E8C4F6A00D10014 /* FileServiceTests.swift in Sources */,
+				B7C1A2D43E8C4F6A00D10015 /* AlbumManagerTests.swift in Sources */,
+				B7C1A2D43E8C4F6A00D10016 /* EncryptedAlbumTests.swift in Sources */,
+				B7C1A2D43E8C4F6A00D10017 /* DirectImportProgressTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		986328DB2ECE88F600EAE9A9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 981926512EC854B600C67291 /* EncryptedAlbum iOS */;
+			targetProxy = 986328DA2ECE88F600EAE9A9 /* PBXContainerItemProxy */;
+		};
+		986328F02ECE8CEF00EAE9A9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 981926512EC854B600C67291 /* EncryptedAlbum iOS */;
+			targetProxy = 986328EF2ECE8CEF00EAE9A9 /* PBXContainerItemProxy */;
+		};
+		B4FA2CBB3F8D4E0FB4F74101 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9849B4502EB9893D00B17DAC /* EncryptedAlbum */;
+			targetProxy = B4FA2CBC3F8D4E0FB4F74101 /* PBXContainerItemProxy */;
+		};
+		B7C1A2E13E8C4F6A00D10010 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9849B4502EB9893D00B17DAC /* EncryptedAlbum */;
+			targetProxy = B7C1A2DF3E8C4F6A00D10010 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		9819265D2EC854B800C67291 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = EncryptedAlbum/EncryptedAlbum_iOS.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EncryptedAlbum/Info_iOS.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = EncryptedAlbum;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum.iOS";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9819265E2EC854B800C67291 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = EncryptedAlbum/EncryptedAlbum_iOS.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EncryptedAlbum/Info_iOS.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = EncryptedAlbum;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum.iOS";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		9849B45E2EB9893F00B17DAC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.7;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		9849B45F2EB9893F00B17DAC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.7;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		9849B4612EB9893F00B17DAC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = EncryptedAlbum/EncryptedAlbum.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = EncryptedAlbum/Info.plist;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		9849B4622EB9893F00B17DAC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = EncryptedAlbum/EncryptedAlbum.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = EncryptedAlbum/Info.plist;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		986328DC2ECE88F600EAE9A9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedsAlbum.EncryptedAlbumTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EncryptedAlbum iOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/EncryptedAlbum iOS";
+			};
+			name = Debug;
+		};
+		986328DD2ECE88F600EAE9A9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedsAlbum.EncryptedAlbumTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EncryptedAlbum iOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/EncryptedAlbum iOS";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		986328F22ECE8CEF00EAE9A9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedsAlbum.EncryptedAlbumUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "EncryptedAlbum iOS";
+			};
+			name = Debug;
+		};
+		986328F32ECE8CEF00EAE9A9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedsAlbum.EncryptedAlbumUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "EncryptedAlbum iOS";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		987CF2C42ED6DB8E001E8019 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				PRODUCT_NAME = EncryptedAlbumMacTests;
+			};
+			name = Debug;
+		};
+		987CF2C52ED6DB8E001E8019 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				PRODUCT_NAME = EncryptedAlbumMacTests;
+			};
+			name = Release;
+		};
+		B4FA2CBD3F8D4E0FB4F74101 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.7;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedsAlbum.EncryptedAlbumMacUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = EncryptedAlbum;
+			};
+			name = Debug;
+		};
+		B4FA2CBE3F8D4E0FB4F74101 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.7;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedsAlbum.EncryptedAlbumMacUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = EncryptedAlbum;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		9819265F2EC854B800C67291 /* Build configuration list for PBXNativeTarget "EncryptedAlbum iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9819265D2EC854B800C67291 /* Debug */,
+				9819265E2EC854B800C67291 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9849B44C2EB9893C00B17DAC /* Build configuration list for PBXProject "EncryptedAlbum" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9849B45E2EB9893F00B17DAC /* Debug */,
+				9849B45F2EB9893F00B17DAC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9849B4602EB9893F00B17DAC /* Build configuration list for PBXNativeTarget "EncryptedAlbum" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9849B4612EB9893F00B17DAC /* Debug */,
+				9849B4622EB9893F00B17DAC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		986328DE2ECE88F600EAE9A9 /* Build configuration list for PBXNativeTarget "EncryptedAlbumTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				986328DC2ECE88F600EAE9A9 /* Debug */,
+				986328DD2ECE88F600EAE9A9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		986328F12ECE8CEF00EAE9A9 /* Build configuration list for PBXNativeTarget "EncryptedAlbumUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				986328F22ECE8CEF00EAE9A9 /* Debug */,
+				986328F32ECE8CEF00EAE9A9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		987CF2C62ED6DB93001E8019 /* Build configuration list for PBXNativeTarget "EncryptedAlbumMacTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				987CF2C42ED6DB8E001E8019 /* Debug */,
+				987CF2C52ED6DB8E001E8019 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B4FA2CBF3F8D4E0FB4F74101 /* Build configuration list for PBXNativeTarget "EncryptedAlbumMacUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B4FA2CBD3F8D4E0FB4F74101 /* Debug */,
+				B4FA2CBE3F8D4E0FB4F74101 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 9849B4492EB9893C00B17DAC /* Project object */;
+}
