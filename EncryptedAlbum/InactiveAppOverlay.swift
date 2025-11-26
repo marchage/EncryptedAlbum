@@ -63,7 +63,7 @@ struct InactiveAppOverlay: View {
     @ViewBuilder
     private func overlayContent() -> some View {
         VStack(spacing: 20) {
-            Image(systemName: "lock.shield.fill")
+            Image(systemName: "lock.fill")
                 .font(.system(size: 60))
                 .foregroundStyle(.secondary)
             
