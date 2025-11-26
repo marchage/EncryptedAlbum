@@ -457,6 +457,35 @@ class SecurityService {
         return String(data: data, encoding: .utf8)
     }
 
+    /// Checks if a biometric-protected password exists without triggering user interaction
+    func biometricPasswordExists() -> Bool {
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: biometricPasswordKey,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecReturnData as String: false,
+            kSecReturnAttributes as String: false,
+            kSecUseAuthenticationUI as String: kSecUseAuthenticationUISkip,
+        ]
+
+        applyMacKeychainAttributes(to: &query, requireUISkip: true)
+
+        let status = SecItemCopyMatching(query as CFDictionary, nil)
+
+        switch status {
+        case errSecSuccess, errSecInteractionNotAllowed:
+            // errSecInteractionNotAllowed indicates the item exists but needs authentication
+            return true
+        case errSecItemNotFound:
+            return false
+        default:
+            #if DEBUG
+                print("🔐 DEBUG: biometricPasswordExists query failed with status \(status)")
+            #endif
+            return false
+        }
+    }
+
     /// Clears the stored biometric password
     func clearBiometricPassword() throws {
         try deleteFromKeychain(for: biometricPasswordKey)
