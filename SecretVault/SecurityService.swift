@@ -423,7 +423,9 @@ class SecurityService {
                     // We must manually authenticate the user to maintain security.
                     if !self.shouldUseDataProtectionKeychain() {
                         do {
-                            let success = try await context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: prompt)
+                            // Clarify that the local user password is required in this fallback scenario
+                            let fallbackPrompt = prompt + " (Please enter your Mac user password)"
+                            let success = try await context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: fallbackPrompt)
                             if !success {
                                 continuation.resume(throwing: VaultError.biometricFailed)
                                 return
