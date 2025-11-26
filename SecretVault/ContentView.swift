@@ -32,7 +32,14 @@ struct SecureWrapper<Content: View>: View {
     
     var body: some View {
         #if os(iOS)
-            IOSSecureContainer(content: content)
+            Group {
+                if SecureWrapperConfig.disableSecureScreens {
+                    content
+                } else {
+                    IOSSecureContainer(content: content)
+                }
+            }
+            .ignoresSafeArea()
         #else
             content
                 .overlay(InactiveAppOverlay())
@@ -42,6 +49,20 @@ struct SecureWrapper<Content: View>: View {
 
 #if os(iOS)
 import UIKit
+
+private enum SecureWrapperConfig {
+    static let disableSecureScreens: Bool = {
+        #if DEBUG
+            if CommandLine.arguments.contains("--disable-secure-wrapper") {
+                return true
+            }
+            if ProcessInfo.processInfo.environment["SECRET_VAULT_DISABLE_SECURE_WRAPPER"] == "1" {
+                return true
+            }
+        #endif
+        return false
+    }()
+}
 
 private struct IOSSecureContainer<Content: View>: UIViewControllerRepresentable {
     let content: Content
@@ -57,8 +78,8 @@ private struct IOSSecureContainer<Content: View>: UIViewControllerRepresentable 
 
 private final class SecureHostingController<Content: View>: UIViewController {
     private let secureField = SecureContainerField()
+    private let contentContainer = UIView()
     private let hostingController: UIHostingController<Content>
-    private var hostedConstraints: [NSLayoutConstraint] = []
 
     init(rootView: Content) {
         self.hostingController = UIHostingController(rootView: rootView)
@@ -73,6 +94,9 @@ private final class SecureHostingController<Content: View>: UIViewController {
     override func loadView() {
         secureField.isSecureTextEntry = true
         secureField.backgroundColor = .clear
+        secureField.borderStyle = .none
+        secureField.insetsLayoutMarginsFromSafeArea = false
+        secureField.translatesAutoresizingMaskIntoConstraints = true
         view = secureField
     }
 
@@ -81,38 +105,49 @@ private final class SecureHostingController<Content: View>: UIViewController {
         addChild(hostingController)
         hostingController.view.backgroundColor = .clear
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
-        attachHostedView()
-        hostingController.didMove(toParent: self)
-    }
 
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        attachHostedView()
+        contentContainer.translatesAutoresizingMaskIntoConstraints = false
+        contentContainer.backgroundColor = .clear
+        secureField.addSubview(contentContainer)
+
+        NSLayoutConstraint.activate([
+            contentContainer.topAnchor.constraint(equalTo: secureField.topAnchor),
+            contentContainer.bottomAnchor.constraint(equalTo: secureField.bottomAnchor),
+            contentContainer.leadingAnchor.constraint(equalTo: secureField.leadingAnchor),
+            contentContainer.trailingAnchor.constraint(equalTo: secureField.trailingAnchor)
+        ])
+
+        contentContainer.addSubview(hostingController.view)
+        NSLayoutConstraint.activate([
+            hostingController.view.topAnchor.constraint(equalTo: contentContainer.topAnchor),
+            hostingController.view.bottomAnchor.constraint(equalTo: contentContainer.bottomAnchor),
+            hostingController.view.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor),
+            hostingController.view.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor)
+        ])
+
+        hostingController.didMove(toParent: self)
     }
 
     func update(rootView: Content) {
         hostingController.rootView = rootView
     }
-
-    private func attachHostedView() {
-        let container = secureField.subviews.first ?? secureField
-        guard hostingController.view.superview !== container else { return }
-
-        hostingController.view.removeFromSuperview()
-        NSLayoutConstraint.deactivate(hostedConstraints)
-        container.addSubview(hostingController.view)
-
-        hostedConstraints = [
-            hostingController.view.topAnchor.constraint(equalTo: container.topAnchor),
-            hostingController.view.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            hostingController.view.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            hostingController.view.trailingAnchor.constraint(equalTo: container.trailingAnchor)
-        ]
-        NSLayoutConstraint.activate(hostedConstraints)
-    }
 }
 
 private final class SecureContainerField: UITextField {
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .clear
+        borderStyle = .none
+        clearsOnBeginEditing = false
+        contentVerticalAlignment = .fill
+        contentHorizontalAlignment = .fill
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     override var canBecomeFirstResponder: Bool { false }
 
     override func caretRect(for position: UITextPosition) -> CGRect { .zero }
