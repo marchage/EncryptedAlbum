@@ -2008,12 +2008,11 @@ class AlbumManager: ObservableObject {
     }
 }
 
-// MARK: - Direct File Import (macOS)
+// MARK: - Direct File Import
 
 extension AlbumManager {
-    #if os(macOS)
-        /// Starts encrypting files directly from disk into the album
-        func startDirectImport(urls: [URL]) {
+    /// Starts encrypting files directly from disk into the album
+    func startDirectImport(urls: [URL]) {
             guard !urls.isEmpty else { return }
 
             guard isUnlocked, cachedEncryptionKey != nil, cachedHMACKey != nil else {
@@ -2253,7 +2252,6 @@ extension AlbumManager {
                 photos: nil
             )
         }
-    #endif
 }
 
 // MARK: - Import Operations
@@ -2334,39 +2332,59 @@ extension AlbumManager {
         }
     }
 
-    #if DEBUG
-    /// Completely wipes all album data, settings, and keychain items.
-    /// DANGER: This is irreversible. Only for development/testing.
-    func nukeAllData() {
-        print("☢️ NUKING ALL VAULT DATA ☢️")
-        
-        // 1. Delete all files
-        try? FileManager.default.removeItem(at: storage.baseURL)
-        
-        // 2. Reset in-memory state
-        DispatchQueue.main.async {
-            self.hiddenPhotos = []
-            self.passwordHash = ""
-            self.passwordSalt = ""
-            self.securityVersion = 2
-            self.isUnlocked = false
-            self.showUnlockPrompt = false
+    /// Checks the App Group "ImportInbox" for files shared via the Share Extension
+    func checkAppGroupInbox() {
+        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: FileConstants.appGroupIdentifier) else {
+            return
         }
         
-        cachedMasterKey = nil
-        cachedEncryptionKey = nil
-        cachedHMACKey = nil
+        let inboxURL = containerURL.appendingPathComponent(FileConstants.appGroupInboxName)
+        guard FileManager.default.fileExists(atPath: inboxURL.path) else { return }
         
-        // 3. Clear Keychain
-        Task {
-            try? await passwordService.clearPasswordCredentials()
-            try? await securityService.clearBiometricPassword()
-            print("✅ Album nuked successfully (Keychain cleared)")
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(at: inboxURL, includingPropertiesForKeys: nil)
+            guard !contents.isEmpty else { return }
+            
+            print("Found \(contents.count) items in App Group inbox")
+            
+            // Move files to a temporary location to process them
+            // This ensures we can clear the inbox immediately so we don't import duplicates later
+            let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("InboxImport-\(UUID().uuidString)")
+            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            
+            var tempURLs: [URL] = []
+            
+            for url in contents {
+                let destURL = tempDir.appendingPathComponent(url.lastPathComponent)
+                try FileManager.default.moveItem(at: url, to: destURL)
+                tempURLs.append(destURL)
+            }
+            
+            // Start import with the temporary files
+            startDirectImport(urls: tempURLs)
+            
+        } catch {
+            print("Error reading App Group inbox: \(error)")
         }
-        
-        // 4. Clear UserDefaults
-        UserDefaults.standard.removeObject(forKey: "biometricConfigured")
     }
-    #endif
+
+#if DEBUG
+    func nukeAllData() {
+        print("Nuking all data...")
+        try? FileManager.default.removeItem(at: storage.baseURL)
+        // Reset defaults
+        if let bundleID = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleID)
+        }
+        // Reset keychain (simplified)
+        let secItemClasses = [kSecClassGenericPassword, kSecClassInternetPassword, kSecClassCertificate, kSecClassKey, kSecClassIdentity]
+        for itemClass in secItemClasses {
+            let spec: [String: Any] = [kSecClass as String: itemClass]
+            SecItemDelete(spec as CFDictionary)
+        }
+        // Re-init storage to recreate directories
+        _ = AlbumStorage()
+    }
+#endif
 }
 

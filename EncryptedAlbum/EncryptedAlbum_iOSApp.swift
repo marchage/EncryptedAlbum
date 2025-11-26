@@ -44,6 +44,11 @@ struct EncryptedAlbumApp_iOS: App {
                 .onDisappear {
                     screenshotBlocker.disableBlocking()
                 }
+                .onChange(of: scenePhase) { newPhase in
+                    if newPhase == .active {
+                        albumManager.checkAppGroupInbox()
+                    }
+                }
             }
         }
     }

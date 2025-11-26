@@ -77,6 +77,11 @@ struct EncryptedAlbumApp: App {
                 }
             }
         }
+        
+        func applicationDidBecomeActive(_ notification: Notification) {
+            // Check for shared files from Share Extension
+            AlbumManager.shared.checkAppGroupInbox()
+        }
 
         // MARK: - Services Support
         

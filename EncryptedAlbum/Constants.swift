@@ -58,6 +58,10 @@ enum FileConstants {
     static let thumbnailSuffix = "_thumb.jpg"
     static let tempWorkingDirectoryName = "EncryptedAlbumTemp"
     static let decryptedTempPrefix = "sv-decrypted"
+    
+    // TODO: Replace with your actual App Group ID
+    static let appGroupIdentifier = "group.biz.front-end.EncryptedAlbum"
+    static let appGroupInboxName = "ImportInbox"
 }
 
 /// Security validation constants

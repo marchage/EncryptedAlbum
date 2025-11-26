@@ -2454,6 +2454,7 @@ private var decryptingPlaceholder: some View {
     }
 #endif
 
+extension MainAlbumView {
     @MainActor
     private func handleDrop(providers: [NSItemProvider]) async {
         guard albumManager.isUnlocked else {
@@ -2469,19 +2470,25 @@ private var decryptingPlaceholder: some View {
         var urls: [URL] = []
         
         for provider in providers {
-            if provider.canLoadObject(ofClass: URL.self) {
+            var handled = false
+            if provider.hasItemConformingToTypeIdentifier("public.file-url") {
                 do {
-                    let url = try await provider.loadObject(ofClass: URL.self)
-                    urls.append(url)
+                    let url = try await loadURL(from: provider)
+                    if let url = url {
+                        urls.append(url)
+                        handled = true
+                    }
                 } catch {
                     print("Failed to load dropped URL: \(error)")
                 }
-            } 
+            }
+            
             #if os(macOS)
-            else if provider.canLoadObject(ofClass: NSImage.self) {
+            if !handled && provider.canLoadObject(ofClass: NSImage.self) {
                 do {
-                    let image = try await provider.loadObject(ofClass: NSImage.self)
-                    if let tiffData = image.tiffRepresentation,
+                    let image = try await loadObject(from: provider, ofClass: NSImage.self)
+                    if let image = image as? NSImage,
+                       let tiffData = image.tiffRepresentation,
                        let bitmap = NSBitmapImageRep(data: tiffData),
                        let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.9]) {
                         let filename = "Dropped Image \(Date().timeIntervalSince1970).jpg"
@@ -2498,3 +2505,34 @@ private var decryptingPlaceholder: some View {
             albumManager.startDirectImport(urls: urls)
         }
     }
+    
+    private func loadURL(from provider: NSItemProvider) async throws -> URL? {
+        return try await withCheckedThrowingContinuation { continuation in
+            provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { item, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else if let url = item as? URL {
+                    continuation.resume(returning: url)
+                } else if let data = item as? Data, let url = URL(dataRepresentation: data, relativeTo: nil) {
+                    continuation.resume(returning: url)
+                } else {
+                    continuation.resume(returning: nil)
+                }
+            }
+        }
+    }
+    
+    #if os(macOS)
+    private func loadObject<T: NSItemProviderReading>(from provider: NSItemProvider, ofClass: T.Type) async throws -> T? {
+        return try await withCheckedThrowingContinuation { continuation in
+            provider.loadObject(ofClass: ofClass) { object, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: object as? T)
+                }
+            }
+        }
+    }
+    #endif
+}
