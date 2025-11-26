@@ -375,6 +375,18 @@ struct SetupPasswordView: View {
         if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
             biometricsAvailable = true
             biometricType = context.biometryType
+            #if DEBUG
+            print("✅ Biometrics available: \(biometricType == .faceID ? "Face ID" : "Touch ID")")
+            #endif
+        } else {
+            biometricsAvailable = false
+            #if DEBUG
+            if let error = error {
+                print("❌ Biometrics NOT available. Error: \(error.localizedDescription) (Code: \(error.code))")
+            } else {
+                print("❌ Biometrics NOT available. Unknown error.")
+            }
+            #endif
         }
     }
 

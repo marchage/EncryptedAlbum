@@ -499,7 +499,7 @@ class VaultManager: ObservableObject {
         // On iOS, verify biometric storage by attempting to retrieve it
         // This triggers Face ID prompt immediately to confirm biometric works
         if !isRunningUnitTests {
-            if getBiometricPassword() == nil {
+            if await getBiometricPassword() == nil {
                 throw VaultError.biometricFailed
             }
         }
@@ -1836,13 +1836,13 @@ class VaultManager: ObservableObject {
         }
     }
 
-    func getBiometricPassword() -> String? {
-        return try? securityService.retrieveBiometricPassword()
+    func getBiometricPassword() async -> String? {
+        return try? await securityService.retrieveBiometricPassword()
     }
 
     /// Retrieves the biometric password, throwing an error if authentication fails or is cancelled.
     /// This allows the UI to distinguish between "not found" and "user cancelled".
-    func authenticateAndRetrievePassword() throws -> String {
+    func authenticateAndRetrievePassword() async throws -> String {
         let setPromptState: (Bool) -> Void = { value in
             if Thread.isMainThread {
                 self.authenticationPromptActive = value
@@ -1856,7 +1856,7 @@ class VaultManager: ObservableObject {
         setPromptState(true)
         defer { setPromptState(false) }
 
-        guard let password = try securityService.retrieveBiometricPassword() else {
+        guard let password = try await securityService.retrieveBiometricPassword() else {
             throw VaultError.biometricNotAvailable
         }
         return password

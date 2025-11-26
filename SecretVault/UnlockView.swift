@@ -221,7 +221,7 @@ struct UnlockView: View {
         Task {
             do {
                 // On both iOS and macOS, we now use SecAccessControl which handles the prompt
-                let password = try vaultManager.authenticateAndRetrievePassword()
+                let password = try await vaultManager.authenticateAndRetrievePassword()
                 self.password = password
                 await unlock()
             } catch let error as VaultError {

@@ -401,7 +401,7 @@ class SecurityService {
 
     /// Retrieves the stored biometric password
     /// This will trigger the system biometric prompt automatically due to SecAccessControl
-    func retrieveBiometricPassword(prompt: String = "Authenticate to unlock SecretVault") throws -> String? {
+    func retrieveBiometricPassword(prompt: String = "Authenticate to unlock SecretVault") async throws -> String? {
         let context = LAContext()
         context.localizedReason = prompt
         
@@ -409,57 +409,57 @@ class SecurityService {
         // If we are not using Data Protection Keychain, we likely used the fallback storage (no Access Control).
         // We must manually authenticate the user to maintain security.
         if !shouldUseDataProtectionKeychain() {
-            let semaphore = DispatchSemaphore(value: 0)
-            var authError: Error?
-            var authSuccess = false
-            
-            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: prompt) { success, error in
-                authSuccess = success
-                authError = error
-                semaphore.signal()
-            }
-            
-            _ = semaphore.wait(timeout: .now() + 30) // 30s timeout for user interaction
-            
-            if !authSuccess {
-                if let error = authError as? LAError, error.code == .userCancel {
+            do {
+                let success = try await context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: prompt)
+                if !success {
+                    throw VaultError.biometricFailed
+                }
+            } catch let error as LAError {
+                if error.code == .userCancel {
                     throw VaultError.biometricCancelled
                 }
+                throw VaultError.biometricFailed
+            } catch {
                 throw VaultError.biometricFailed
             }
         }
         #endif
         
-        return try performOnSecurityQueue {
-            var query: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrAccount as String: biometricPasswordKey,
-                kSecReturnData as String: true,
-                kSecMatchLimit as String: kSecMatchLimitOne,
-                kSecUseAuthenticationContext as String: context
-            ]
-            #if os(macOS)
-                if shouldUseDataProtectionKeychain() {
-                    query[kSecUseDataProtectionKeychain as String] = true
+        return try await withCheckedThrowingContinuation { continuation in
+            queue.async {
+                var query: [String: Any] = [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrAccount as String: self.biometricPasswordKey,
+                    kSecReturnData as String: true,
+                    kSecMatchLimit as String: kSecMatchLimitOne,
+                    kSecUseAuthenticationContext as String: context
+                ]
+                #if os(macOS)
+                    if self.shouldUseDataProtectionKeychain() {
+                        query[kSecUseDataProtectionKeychain as String] = true
+                    }
+                #endif
+
+                var result: AnyObject?
+                let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+                if status == errSecItemNotFound {
+                    continuation.resume(returning: nil)
+                    return
                 }
-            #endif
 
-            var result: AnyObject?
-            let status = SecItemCopyMatching(query as CFDictionary, &result)
+                if status == errSecUserCanceled || status == errSecAuthFailed {
+                    continuation.resume(throwing: VaultError.biometricCancelled)
+                    return
+                }
 
-            if status == errSecItemNotFound {
-                return nil
+                guard status == errSecSuccess, let data = result as? Data else {
+                    continuation.resume(throwing: VaultError.unknownError(reason: "Keychain retrieval failed with status: \(status)"))
+                    return
+                }
+
+                continuation.resume(returning: String(data: data, encoding: .utf8))
             }
-
-            if status == errSecUserCanceled || status == errSecAuthFailed {
-                throw VaultError.biometricCancelled
-            }
-
-            guard status == errSecSuccess, let data = result as? Data else {
-                throw VaultError.unknownError(reason: "Keychain retrieval failed with status: \(status)")
-            }
-
-            return String(data: data, encoding: .utf8)
         }
     }
 
