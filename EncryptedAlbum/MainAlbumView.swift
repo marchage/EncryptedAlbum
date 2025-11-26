@@ -14,140 +14,6 @@ struct MainAlbumView: View {
     @EnvironmentObject var albumManager: AlbumManager
     @ObservedObject var directImportProgress: DirectImportProgress
 
-    private struct RestorationProgressOverlayView: View {
-        @ObservedObject var progress: RestorationProgress
-        let cancelAction: () -> Void
-
-        var body: some View {
-            ZStack {
-                Color.black.opacity(0.45)
-                    .ignoresSafeArea()
-
-                VStack(spacing: 12) {
-                    if progress.totalItems > 0 {
-                        ProgressView(value: Double(progress.processedItems), total: Double(max(progress.totalItems, 1)))
-                            .progressViewStyle(.linear)
-                            .frame(maxWidth: UIConstants.progressCardWidth)
-                    } else {
-                        ProgressView()
-                            .progressViewStyle(.linear)
-                            .frame(maxWidth: UIConstants.progressCardWidth)
-                    }
-
-                    if progress.currentBytesTotal > 0 {
-                        ProgressView(
-                            value: Double(progress.currentBytesProcessed),
-                            total: Double(max(progress.currentBytesTotal, 1))
-                        )
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: UIConstants.progressCardWidth)
-                        Text(
-                            "\(formattedBytes(progress.currentBytesProcessed)) of \(formattedBytes(progress.currentBytesTotal))"
-                        )
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    } else if progress.currentBytesProcessed > 0 {
-                        ProgressView()
-                            .progressViewStyle(.linear)
-                            .frame(maxWidth: UIConstants.progressCardWidth)
-                        Text("\(formattedBytes(progress.currentBytesProcessed)) processed…")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ProgressView()
-                            .progressViewStyle(.linear)
-                            .frame(maxWidth: UIConstants.progressCardWidth)
-                        Text("Preparing file size…")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Text(progress.statusMessage.isEmpty ? "Restoring items…" : progress.statusMessage)
-                        .font(.headline)
-
-                    if progress.totalItems > 0 {
-                        Text("\(progress.processedItems) of \(progress.totalItems)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    if progress.successItems > 0 || progress.failedItems > 0 {
-                        Text("\(progress.successItems) restored • \(progress.failedItems) failed")
-                            .font(.caption2)
-                            .foregroundStyle(progress.failedItems > 0 ? Color.orange : .secondary)
-                    }
-
-                    if !progress.detailMessage.isEmpty {
-                        Text(progress.detailMessage)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-
-                    if progress.cancelRequested {
-                        Text("Cancel requested… finishing current item")
-                            .font(.caption2)
-                            .foregroundStyle(.orange)
-                    }
-
-                    Button("Cancel Restore") {
-                        cancelAction()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .disabled(progress.cancelRequested)
-                }
-                .padding(24)
-                .frame(maxWidth: UIConstants.progressCardWidth)
-                .background(.ultraThickMaterial)
-                .cornerRadius(16)
-                .shadow(radius: 18)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(restorationAccessibilityLabel)
-                .accessibilityHint("Restore progress")
-                .accessibilityAddTraits(.isModal)
-            }
-            .transition(.opacity)
-        }
-
-        private func formattedBytes(_ value: Int64) -> String {
-            guard value > 0 else { return "0 bytes" }
-            let formatter = ByteCountFormatter()
-            formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
-            formatter.countStyle = .file
-            return formatter.string(fromByteCount: value)
-        }
-
-        private var restorationAccessibilityLabel: String {
-            var parts: [String] = [progress.statusMessage.isEmpty ? "Restoring items" : progress.statusMessage]
-
-            if progress.totalItems > 0 {
-                parts.append("\(progress.processedItems) of \(progress.totalItems) items")
-            }
-
-            if progress.currentBytesTotal > 0 {
-                parts.append(
-                    "\(formattedBytes(progress.currentBytesProcessed)) of \(formattedBytes(progress.currentBytesTotal)) processed"
-                )
-            } else if progress.currentBytesProcessed > 0 {
-                parts.append("\(formattedBytes(progress.currentBytesProcessed)) processed")
-            }
-
-            if progress.successItems > 0 || progress.failedItems > 0 {
-                parts.append("\(progress.successItems) restored, \(progress.failedItems) failed")
-            }
-
-            if progress.cancelRequested {
-                parts.append("Cancellation requested")
-            }
-
-            if !progress.detailMessage.isEmpty {
-                parts.append(progress.detailMessage)
-            }
-
-            return parts.joined(separator: ", ")
-        }
-    }
     @State private var showingPhotosLibrary = false
     @State private var selectedPhoto: SecurePhoto?
     @State private var selectedPhotos: Set<UUID> = []
@@ -737,66 +603,6 @@ struct MainAlbumView: View {
         return parts.joined(separator: " • ")
     }
 
-    private func formattedBytes(_ value: Int64) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: value)
-    }
-
-    private var captureProgressAccessibilityLabel: String {
-        let status = directImportProgress.statusMessage.isEmpty ? "Encrypting items" : directImportProgress.statusMessage
-        var parts: [String] = [status]
-
-        if directImportProgress.itemsTotal > 0 {
-            parts.append("\(directImportProgress.itemsProcessed) of \(directImportProgress.itemsTotal) items")
-        }
-
-        if directImportProgress.bytesTotal > 0 {
-            parts.append(
-                "\(formattedBytes(directImportProgress.bytesProcessed)) of \(formattedBytes(directImportProgress.bytesTotal)) processed"
-            )
-        } else if directImportProgress.bytesProcessed > 0 {
-            parts.append("\(formattedBytes(directImportProgress.bytesProcessed)) processed")
-        }
-
-        if !directImportProgress.detailMessage.isEmpty {
-            parts.append(directImportProgress.detailMessage)
-        }
-
-        if directImportProgress.cancelRequested {
-            parts.append("Cancellation requested")
-        }
-
-        return parts.joined(separator: ", ")
-    }
-
-    private var exportProgressAccessibilityLabel: String {
-        var parts: [String] = [exportStatusMessage.isEmpty ? "Exporting items" : exportStatusMessage]
-
-        if exportItemsTotal > 0 {
-            parts.append("\(exportItemsProcessed) of \(exportItemsTotal) items")
-        }
-
-        if exportBytesTotal > 0 {
-            parts.append(
-                "\(formattedBytes(exportBytesProcessed)) of \(formattedBytes(exportBytesTotal)) processed"
-            )
-        } else if exportBytesProcessed > 0 {
-            parts.append("\(formattedBytes(exportBytesProcessed)) processed")
-        }
-
-        if !exportDetailMessage.isEmpty {
-            parts.append(exportDetailMessage)
-        }
-
-        if exportCancelRequested {
-            parts.append("Cancellation requested")
-        }
-
-        return parts.joined(separator: ", ")
-    }
-
     @ViewBuilder
     private var cameraSheet: some View {
         #if os(iOS)
@@ -911,225 +717,57 @@ struct MainAlbumView: View {
     }
 
     private var captureProgressOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.45)
-                .ignoresSafeArea()
-
-            VStack(spacing: 12) {
-                directImportItemsProgressView
-                directImportBytesProgressView
-
-                Text(directImportStatusText)
-                    .font(.headline)
-
-                directImportTotalsLabel
-                directImportDetailLabel
-                directImportCancelNotice
-
+        ProgressOverlayView(
+            title: "Encrypting items…",
+            statusMessage: directImportProgress.statusMessage,
+            detailMessage: directImportProgress.detailMessage,
+            itemsProcessed: directImportProgress.itemsProcessed,
+            totalItems: directImportProgress.itemsTotal,
+            bytesProcessed: directImportProgress.bytesProcessed,
+            totalBytes: directImportProgress.bytesTotal,
+            cancelRequested: directImportProgress.cancelRequested,
+            onCancel: {
                 #if os(macOS)
-                    Button("Cancel Import", action: cancelDirectImportTapped)
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                        .disabled(directImportProgress.cancelRequested)
+                albumManager.cancelDirectImport()
                 #endif
-            }
-            .padding(24)
-            .frame(maxWidth: UIConstants.progressCardWidth)
-            .background(.ultraThickMaterial)
-            .cornerRadius(16)
-            .shadow(radius: 18)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(captureProgressAccessibilityLabel)
-            .accessibilityHint("Import progress")
-            .accessibilityAddTraits(.isModal)
-        }
-        .transition(.opacity)
+            },
+            isAppActive: isAppActive
+        )
     }
-
-    @ViewBuilder
-    private var directImportItemsProgressView: some View {
-        if directImportProgress.itemsTotal > 0 {
-            ProgressView(
-                value: Double(directImportProgress.itemsProcessed),
-                total: Double(max(directImportProgress.itemsTotal, 1))
-            )
-                .progressViewStyle(.linear)
-                .frame(maxWidth: UIConstants.progressCardWidth)
-        } else {
-            ProgressView()
-                .progressViewStyle(.linear)
-                .frame(maxWidth: UIConstants.progressCardWidth)
-        }
-    }
-
-    @ViewBuilder
-    private var directImportBytesProgressView: some View {
-        if directImportProgress.bytesTotal > 0 {
-            ProgressView(
-                value: Double(directImportProgress.bytesProcessed),
-                total: Double(max(directImportProgress.bytesTotal, 1))
-            )
-                .progressViewStyle(.linear)
-                .frame(maxWidth: UIConstants.progressCardWidth)
-
-            directImportBytesStatusLabel
-        } else if directImportProgress.bytesProcessed > 0 {
-            Text("\(formattedBytes(directImportProgress.bytesProcessed)) processed…")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    @ViewBuilder
-    private var directImportBytesStatusLabel: some View {
-        if isAppActive {
-            Text("\(formattedBytes(directImportProgress.bytesProcessed)) of \(formattedBytes(directImportProgress.bytesTotal))")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        } else {
-            let percent = Double(directImportProgress.bytesProcessed)
-                / Double(max(directImportProgress.bytesTotal, 1))
-            Text(String(format: "%.0f%%", percent * 100))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private var directImportStatusText: String {
-        let activeMessage = directImportProgress.statusMessage.isEmpty
-            ? "Encrypting items…"
-            : directImportProgress.statusMessage
-        return isAppActive ? activeMessage : "Encrypting items…"
-    }
-
-    @ViewBuilder
-    private var directImportTotalsLabel: some View {
-        if directImportProgress.itemsTotal > 0 {
-            Text("\(directImportProgress.itemsProcessed) of \(directImportProgress.itemsTotal)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    @ViewBuilder
-    private var directImportDetailLabel: some View {
-        if !directImportProgress.detailMessage.isEmpty && isAppActive {
-            Text(directImportProgress.detailMessage)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    @ViewBuilder
-    private var directImportCancelNotice: some View {
-        if directImportProgress.cancelRequested {
-            Text("Cancel requested… finishing current file")
-                .font(.caption2)
-                .foregroundStyle(.orange)
-        }
-    }
-
-    #if os(macOS)
-        private func cancelDirectImportTapped() {
-            albumManager.cancelDirectImport()
-        }
-    #else
-        private func cancelDirectImportTapped() {}
-    #endif
 
     private var exportProgressOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.45)
-                .ignoresSafeArea()
-
-            VStack(spacing: 12) {
-                if exportItemsTotal > 0 {
-                    ProgressView(value: Double(exportItemsProcessed), total: Double(max(exportItemsTotal, 1)))
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: UIConstants.progressCardWidth)
-                } else {
-                    ProgressView()
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: UIConstants.progressCardWidth)
+        ProgressOverlayView(
+            title: "Exporting items…",
+            statusMessage: exportStatusMessage,
+            detailMessage: exportDetailMessage,
+            itemsProcessed: exportItemsProcessed,
+            totalItems: exportItemsTotal,
+            bytesProcessed: exportBytesProcessed,
+            totalBytes: exportBytesTotal,
+            cancelRequested: exportCancelRequested,
+            onCancel: {
+                exportCancelRequested = true
+                exportStatusMessage = "Canceling export…"
+                if exportDetailMessage.isEmpty {
+                    exportDetailMessage = "Finishing current file"
                 }
-
-                if exportBytesTotal > 0 {
-                    ProgressView(value: Double(exportBytesProcessed), total: Double(max(exportBytesTotal, 1)))
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: UIConstants.progressCardWidth)
-                    
-                    if isAppActive {
-                        Text("\(formattedBytes(exportBytesProcessed)) of \(formattedBytes(exportBytesTotal))")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        let percent = Double(exportBytesProcessed) / Double(max(exportBytesTotal, 1))
-                        Text(String(format: "%.0f%%", percent * 100))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                } else {
-                    ProgressView()
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: UIConstants.progressCardWidth)
-                    Text(
-                        exportBytesProcessed > 0
-                            ? "\(formattedBytes(exportBytesProcessed)) processed…" : "Preparing file size…"
-                    )
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                }
-
-                Text(exportStatusMessage.isEmpty ? "Exporting items…" : exportStatusMessage)
-                    .font(.headline)
-
-                if exportItemsTotal > 0 {
-                    Text("\(exportItemsProcessed) of \(exportItemsTotal)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                if !exportDetailMessage.isEmpty {
-                    Text(exportDetailMessage)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                if exportCancelRequested {
-                    Text("Cancel requested… finishing current file")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                }
-
-                Button("Cancel Export") {
-                    exportCancelRequested = true
-                    exportStatusMessage = "Canceling export…"
-                    if exportDetailMessage.isEmpty {
-                        exportDetailMessage = "Finishing current file"
-                    }
-                    exportTask?.cancel()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .disabled(exportCancelRequested)
-            }
-            .padding(24)
-            .frame(maxWidth: UIConstants.progressCardWidth)
-            .background(.ultraThickMaterial)
-            .cornerRadius(16)
-            .shadow(radius: 18)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(exportProgressAccessibilityLabel)
-            .accessibilityHint("Export progress")
-            .accessibilityAddTraits(.isModal)
-        }
-        .transition(.opacity)
+                exportTask?.cancel()
+            },
+            isAppActive: isAppActive
+        )
     }
 
     private var restorationProgressOverlay: some View {
-        RestorationProgressOverlayView(
-            progress: albumManager.restorationProgress,
-            cancelAction: {
+        ProgressOverlayView(
+            title: "Restoring items…",
+            statusMessage: albumManager.restorationProgress.statusMessage,
+            detailMessage: albumManager.restorationProgress.detailMessage,
+            itemsProcessed: albumManager.restorationProgress.processedItems,
+            totalItems: albumManager.restorationProgress.totalItems,
+            bytesProcessed: albumManager.restorationProgress.currentBytesProcessed,
+            totalBytes: albumManager.restorationProgress.currentBytesTotal,
+            cancelRequested: albumManager.restorationProgress.cancelRequested,
+            onCancel: {
                 Task { @MainActor in
                     guard !albumManager.restorationProgress.cancelRequested else { return }
                     albumManager.restorationProgress.cancelRequested = true
@@ -1142,7 +780,10 @@ struct MainAlbumView: View {
                     }
                     restorationTask?.cancel()
                 }
-            }
+            },
+            successCount: albumManager.restorationProgress.successItems,
+            failureCount: albumManager.restorationProgress.failedItems,
+            isAppActive: isAppActive
         )
     }
 
