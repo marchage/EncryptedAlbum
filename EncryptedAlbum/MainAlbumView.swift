@@ -1571,6 +1571,12 @@ struct MainAlbumView: View {
                     }
                 }
             #endif
+            .onDrop(of: ["public.file-url", "public.image"], isTargeted: nil) { providers in
+                Task {
+                    await handleDrop(providers: providers)
+                }
+                return true
+            }
             if directImportProgress.isImporting
                 && (directImportProgress.itemsTotal > 0
                     || directImportProgress.bytesProcessed > 0
@@ -2447,3 +2453,48 @@ private var decryptingPlaceholder: some View {
         }
     }
 #endif
+
+    @MainActor
+    private func handleDrop(providers: [NSItemProvider]) async {
+        guard albumManager.isUnlocked else {
+            #if os(macOS)
+            let alert = NSAlert()
+            alert.messageText = "Album Locked"
+            alert.informativeText = "Please unlock Encrypted Album before importing items."
+            alert.runModal()
+            #endif
+            return
+        }
+        
+        var urls: [URL] = []
+        
+        for provider in providers {
+            if provider.canLoadObject(ofClass: URL.self) {
+                do {
+                    let url = try await provider.loadObject(ofClass: URL.self)
+                    urls.append(url)
+                } catch {
+                    print("Failed to load dropped URL: \(error)")
+                }
+            } 
+            #if os(macOS)
+            else if provider.canLoadObject(ofClass: NSImage.self) {
+                do {
+                    let image = try await provider.loadObject(ofClass: NSImage.self)
+                    if let tiffData = image.tiffRepresentation,
+                       let bitmap = NSBitmapImageRep(data: tiffData),
+                       let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.9]) {
+                        let filename = "Dropped Image \(Date().timeIntervalSince1970).jpg"
+                        try await albumManager.hidePhoto(imageData: jpegData, filename: filename)
+                    }
+                } catch {
+                    print("Failed to load dropped image: \(error)")
+                }
+            }
+            #endif
+        }
+        
+        if !urls.isEmpty {
+            albumManager.startDirectImport(urls: urls)
+        }
+    }

@@ -67,12 +67,115 @@ struct EncryptedAlbumApp: App {
 #if os(macOS)
     class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
         func applicationDidFinishLaunching(_ notification: Notification) {
+            // Register as a service provider
+            NSApp.servicesProvider = self
+            
             UNUserNotificationCenter.current().delegate = self
             UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
                 if let error = error {
                     print("Error requesting notification authorization: \(error)")
                 }
             }
+        }
+
+        // MARK: - Services Support
+        
+        @objc func importPhotosFromService(_ pboard: NSPasteboard, userData: String, error: NSErrorPointer) {
+            guard AlbumManager.shared.isUnlocked else {
+                let alert = NSAlert()
+                alert.messageText = "Album Locked"
+                alert.informativeText = "Please unlock Encrypted Album before importing items."
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+                
+                // Set error pointer if possible, though simple alert is better UX here
+                return
+            }
+            
+            // Handle file URLs (e.g. from Finder)
+            if let urls = pboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL] {
+                Task {
+                    await importURLs(urls)
+                }
+                return
+            }
+            
+            // Handle raw images (e.g. from some apps that copy image data directly)
+            if let images = pboard.readObjects(forClasses: [NSImage.self], options: nil) as? [NSImage] {
+                Task {
+                    await importImages(images)
+                }
+                return
+            }
+        }
+        
+        @MainActor
+        private func importURLs(_ urls: [URL]) async {
+            let manager = AlbumManager.shared
+            
+            // Show import progress
+            manager.directImportProgress.reset(totalItems: urls.count)
+            
+            for url in urls {
+                // Determine media type
+                let fileExtension = url.pathExtension.lowercased()
+                let mediaType: MediaType
+                if ["mov", "mp4", "m4v"].contains(fileExtension) {
+                    mediaType = .video
+                } else {
+                    mediaType = .photo
+                }
+                
+                do {
+                    try await manager.hidePhoto(
+                        mediaSource: .fileURL(url),
+                        filename: url.lastPathComponent,
+                        mediaType: mediaType
+                    )
+                    manager.directImportProgress.itemsProcessed += 1
+                } catch {
+                    print("Failed to import \(url.lastPathComponent): \(error)")
+                }
+            }
+            
+            manager.directImportProgress.finish()
+            
+            // Notify user
+            let content = UNMutableNotificationContent()
+            content.title = "Import Complete"
+            content.body = "Successfully imported \(urls.count) items from Service."
+            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+            UNUserNotificationCenter.current().add(request)
+        }
+        
+        @MainActor
+        private func importImages(_ images: [NSImage]) async {
+            let manager = AlbumManager.shared
+            manager.directImportProgress.reset(totalItems: images.count)
+            
+            for (index, image) in images.enumerated() {
+                guard let tiffData = image.tiffRepresentation,
+                      let bitmap = NSBitmapImageRep(data: tiffData),
+                      let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.9]) else {
+                    continue
+                }
+                
+                let filename = "Imported Image \(Date().timeIntervalSince1970) \(index).jpg"
+                
+                do {
+                    try await manager.hidePhoto(
+                        mediaSource: .data(jpegData),
+                        filename: filename,
+                        mediaType: .photo
+                    )
+                    manager.directImportProgress.itemsProcessed += 1
+                } catch {
+                    print("Failed to import image: \(error)")
+                }
+            }
+            
+            manager.directImportProgress.finish()
         }
 
         func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {

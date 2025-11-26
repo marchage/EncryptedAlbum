@@ -16,5 +16,27 @@
 	<string>Encrypted Album</string>
 	<key>CFBundleDisplayName</key>
 	<string>Encrypted Album</string>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Send to Encrypted Album</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>importPhotosFromService</string>
+			<key>NSPortName</key>
+			<string>Encrypted Album</string>
+			<key>NSRequiredContext</key>
+			<dict/>
+			<key>NSSendTypes</key>
+			<array>
+				<string>public.image</string>
+				<string>public.file-url</string>
+				<string>public.movie</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
