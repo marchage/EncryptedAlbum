@@ -39,38 +39,38 @@ final class SecurityServiceTests: XCTestCase {
     
     // MARK: - Keychain Tests
     
-    func testKeychainStorage_RoundTrip() throws {
+    func testKeychainStorage_RoundTrip() async throws {
         let key = "biz.front-end.encryptedalbum.test.key"
         let data = "EncryptedData".data(using: .utf8)!
         
         // 1. Store
-        try securityService.storeInKeychain(data: data, for: key)
+        try await securityService.storeInKeychain(data: data, for: key)
         
         // 2. Retrieve
-        let retrieved = try securityService.retrieveFromKeychain(for: key)
+        let retrieved = try await securityService.retrieveFromKeychain(for: key)
         XCTAssertEqual(retrieved, data)
         
         // 3. Delete
-        try securityService.deleteFromKeychain(for: key)
+        try await securityService.deleteFromKeychain(for: key)
         
         // 4. Verify Deletion
-        let retrievedAfterDelete = try securityService.retrieveFromKeychain(for: key)
+        let retrievedAfterDelete = try await securityService.retrieveFromKeychain(for: key)
         XCTAssertNil(retrievedAfterDelete)
     }
     
-    func testKeychain_OverwriteExisting() throws {
+    func testKeychain_OverwriteExisting() async throws {
         let key = "biz.front-end.encryptedalbum.test.overwrite"
         let data1 = "Data1".data(using: .utf8)!
         let data2 = "Data2".data(using: .utf8)!
         
-        try securityService.storeInKeychain(data: data1, for: key)
-        try securityService.storeInKeychain(data: data2, for: key)
+        try await securityService.storeInKeychain(data: data1, for: key)
+        try await securityService.storeInKeychain(data: data2, for: key)
         
-        let retrieved = try securityService.retrieveFromKeychain(for: key)
+        let retrieved = try await securityService.retrieveFromKeychain(for: key)
         XCTAssertEqual(retrieved, data2)
         
         // Cleanup
-        try securityService.deleteFromKeychain(for: key)
+        try await securityService.deleteFromKeychain(for: key)
     }
     
     // MARK: - Biometric Password Storage Tests
@@ -91,6 +91,6 @@ final class SecurityServiceTests: XCTestCase {
         _ = try? await securityService.retrieveBiometricPassword()
         
         // Cleanup
-        try securityService.clearBiometricPassword()
+        try await securityService.clearBiometricPassword()
     }
 }

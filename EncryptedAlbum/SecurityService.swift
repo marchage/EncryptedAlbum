@@ -275,66 +275,81 @@ class SecurityService {
     // MARK: - Keychain Operations
 
     /// Stores data securely in Keychain
-    func storeInKeychain(data: Data, for key: String) throws {
-        try performOnSecurityQueue {
-            var query: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrAccount as String: key,
-                kSecValueData as String: data,
-                kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-            ]
+    func storeInKeychain(data: Data, for key: String) async throws {
+        return try await withCheckedThrowingContinuation { continuation in
+            queue.async {
+                do {
+                    var query: [String: Any] = [
+                        kSecClass as String: kSecClassGenericPassword,
+                        kSecAttrAccount as String: key,
+                        kSecValueData as String: data,
+                        kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                    ]
 
-            applyMacKeychainAttributes(to: &query, requireUISkip: true)
+                    self.applyMacKeychainAttributes(to: &query, requireUISkip: true)
 
-            SecItemDelete(query as CFDictionary)
+                    SecItemDelete(query as CFDictionary)
 
-            let status = SecItemAdd(query as CFDictionary, nil)
-            guard status == errSecSuccess else {
-                throw AlbumError.unknownError(reason: "Keychain storage failed with status \(status)")
+                    let status = SecItemAdd(query as CFDictionary, nil)
+                    guard status == errSecSuccess else {
+                        throw AlbumError.unknownError(reason: "Keychain storage failed with status \(status)")
+                    }
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
             }
         }
     }
 
     /// Retrieves data from Keychain
-    func retrieveFromKeychain(for key: String) throws -> Data? {
-        try performOnSecurityQueue {
-            var query: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrAccount as String: key,
-                kSecReturnData as String: true,
-                kSecMatchLimit as String: kSecMatchLimitOne,
-            ]
+    func retrieveFromKeychain(for key: String) async throws -> Data? {
+        return try await withCheckedThrowingContinuation { continuation in
+            queue.async {
+                var query: [String: Any] = [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrAccount as String: key,
+                    kSecReturnData as String: true,
+                    kSecMatchLimit as String: kSecMatchLimitOne,
+                ]
 
-            applyMacKeychainAttributes(to: &query, requireUISkip: true)
+                self.applyMacKeychainAttributes(to: &query, requireUISkip: true)
 
-            var result: AnyObject?
-            let status = SecItemCopyMatching(query as CFDictionary, &result)
+                var result: AnyObject?
+                let status = SecItemCopyMatching(query as CFDictionary, &result)
 
-            if status == errSecItemNotFound {
-                return nil
+                if status == errSecItemNotFound {
+                    continuation.resume(returning: nil)
+                    return
+                }
+
+                guard status == errSecSuccess, let data = result as? Data else {
+                    continuation.resume(throwing: AlbumError.unknownError(reason: "Keychain retrieval failed with status \(status)"))
+                    return
+                }
+
+                continuation.resume(returning: data)
             }
-
-            guard status == errSecSuccess, let data = result as? Data else {
-                throw AlbumError.unknownError(reason: "Keychain retrieval failed with status \(status)")
-            }
-
-            return data
         }
     }
 
     /// Deletes data from Keychain
-    func deleteFromKeychain(for key: String) throws {
-        try performOnSecurityQueue {
-            var query: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrAccount as String: key,
-            ]
+    func deleteFromKeychain(for key: String) async throws {
+        return try await withCheckedThrowingContinuation { continuation in
+            queue.async {
+                var query: [String: Any] = [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrAccount as String: key,
+                ]
 
-            applyMacKeychainAttributes(to: &query, requireUISkip: false)
+                self.applyMacKeychainAttributes(to: &query, requireUISkip: false)
 
-            let status = SecItemDelete(query as CFDictionary)
-            guard status == errSecSuccess || status == errSecItemNotFound else {
-                throw AlbumError.unknownError(reason: "Keychain deletion failed with status \(status)")
+                let status = SecItemDelete(query as CFDictionary)
+                guard status == errSecSuccess || status == errSecItemNotFound else {
+                    continuation.resume(throwing: AlbumError.unknownError(reason: "Keychain deletion failed with status \(status)"))
+                    return
+                }
+                continuation.resume()
             }
         }
     }
@@ -514,8 +529,8 @@ class SecurityService {
     }
 
     /// Clears the stored biometric password
-    func clearBiometricPassword() throws {
-        try deleteFromKeychain(for: biometricPasswordKey)
+    func clearBiometricPassword() async throws {
+        try await deleteFromKeychain(for: biometricPasswordKey)
     }
 
 #if os(macOS)
@@ -624,14 +639,7 @@ class SecurityService {
     private func applyMacKeychainAttributes(to query: inout [String: Any], requireUISkip: Bool) {}
 #endif
 
-    /// Ensures keychain operations run on the dedicated security queue even when invoked from the main thread.
-    private func performOnSecurityQueue<T>(_ block: () throws -> T) rethrows -> T {
-        if DispatchQueue.getSpecific(key: queueSpecificKey) != nil {
-            return try block()
-        } else {
-            return try queue.sync(execute: block)
-        }
-    }
+
 }
 
 /// Report structure for security health checks

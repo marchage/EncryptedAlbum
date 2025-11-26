@@ -19,13 +19,13 @@ final class PasswordServiceTests: XCTestCase {
         passwordService = PasswordService(cryptoService: cryptoService, securityService: securityService)
     }
     
-    override func tearDown() {
+    override func tearDown() async throws {
         // Clean up any keychain items we might have created
-        try? passwordService.clearPasswordCredentials()
+        try? await passwordService.clearPasswordCredentials()
         passwordService = nil
         securityService = nil
         cryptoService = nil
-        super.tearDown()
+        try await super.tearDown()
     }
     
     // MARK: - Password Validation Tests
@@ -140,22 +140,22 @@ final class PasswordServiceTests: XCTestCase {
     
     // MARK: - Storage Tests (Integration-like)
     
-    func testStoreAndRetrieveCredentials() throws {
+    func testStoreAndRetrieveCredentials() async throws {
         let hash = Data(repeating: 0xAA, count: 32)
         let salt = Data(repeating: 0xBB, count: 16)
         
         // 1. Store
-        try passwordService.storePasswordHash(hash, salt: salt)
+        try await passwordService.storePasswordHash(hash, salt: salt)
         
         // 2. Retrieve
-        let retrieved = try passwordService.retrievePasswordCredentials()
+        let retrieved = try await passwordService.retrievePasswordCredentials()
         XCTAssertNotNil(retrieved)
         XCTAssertEqual(retrieved?.hash, hash)
         XCTAssertEqual(retrieved?.salt, salt)
         
         // 3. Clear
-        try passwordService.clearPasswordCredentials()
-        let retrievedAfterClear = try passwordService.retrievePasswordCredentials()
+        try await passwordService.clearPasswordCredentials()
+        let retrievedAfterClear = try await passwordService.retrievePasswordCredentials()
         XCTAssertNil(retrievedAfterClear)
     }
 }

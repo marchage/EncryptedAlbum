@@ -96,15 +96,15 @@ class PasswordService {
     private let passwordSaltKey = "biz.front-end.encryptedalbum.passwordSalt"
 
     /// Stores password hash and salt securely
-    func storePasswordHash(_ hash: Data, salt: Data) throws {
-        try securityService.storeInKeychain(data: hash, for: passwordHashKey)
-        try securityService.storeInKeychain(data: salt, for: passwordSaltKey)
+    func storePasswordHash(_ hash: Data, salt: Data) async throws {
+        try await securityService.storeInKeychain(data: hash, for: passwordHashKey)
+        try await securityService.storeInKeychain(data: salt, for: passwordSaltKey)
     }
 
     /// Retrieves stored password hash and salt
-    func retrievePasswordCredentials() throws -> (hash: Data, salt: Data)? {
-        guard let hash = try securityService.retrieveFromKeychain(for: passwordHashKey),
-            let salt = try securityService.retrieveFromKeychain(for: passwordSaltKey)
+    func retrievePasswordCredentials() async throws -> (hash: Data, salt: Data)? {
+        guard let hash = try await securityService.retrieveFromKeychain(for: passwordHashKey),
+            let salt = try await securityService.retrieveFromKeychain(for: passwordSaltKey)
         else {
             return nil
         }
@@ -112,9 +112,9 @@ class PasswordService {
     }
 
     /// Clears stored password credentials
-    func clearPasswordCredentials() throws {
-        try securityService.deleteFromKeychain(for: passwordHashKey)
-        try securityService.deleteFromKeychain(for: passwordSaltKey)
+    func clearPasswordCredentials() async throws {
+        try await securityService.deleteFromKeychain(for: passwordHashKey)
+        try await securityService.deleteFromKeychain(for: passwordSaltKey)
     }
 
     // MARK: - Password Change
@@ -132,7 +132,7 @@ class PasswordService {
                         try self.validatePassword(newPassword)
 
                         // Verify old password
-                        guard let (storedHash, storedSalt) = try self.retrievePasswordCredentials() else {
+                        guard let (storedHash, storedSalt) = try await self.retrievePasswordCredentials() else {
                             continuation.resume(throwing: AlbumError.albumNotInitialized)
                             return
                         }
@@ -148,7 +148,7 @@ class PasswordService {
                         let (newHash, newSalt) = try await self.hashPassword(newPassword)
 
                         // Store new credentials
-                        try self.storePasswordHash(newHash, salt: newSalt)
+                        try await self.storePasswordHash(newHash, salt: newSalt)
 
                         // TODO: Re-encrypt all album contents with new keys derived from new password
                         // This would require:
@@ -184,7 +184,7 @@ class PasswordService {
                         try self.validatePassword(newPassword)
 
                         // 2. Verify old password
-                        guard let (storedHash, storedSalt) = try self.retrievePasswordCredentials() else {
+                        guard let (storedHash, storedSalt) = try await self.retrievePasswordCredentials() else {
                             continuation.resume(throwing: AlbumError.albumNotInitialized)
                             return
                         }

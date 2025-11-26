@@ -5,7 +5,9 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            if albumManager.hasPassword() {
+            if albumManager.isLoading {
+                ProgressView("Loading...")
+            } else if albumManager.hasPassword() {
                 if albumManager.isUnlocked {
                     MainAlbumView(directImportProgress: albumManager.directImportProgress)
                 } else {

@@ -304,6 +304,7 @@ class AlbumManager: ObservableObject {
     @Published var viewRefreshId = UUID()  // Force view refresh when needed
     @Published var secureDeletionEnabled: Bool = true // Default to true for security
     @Published var authenticationPromptActive: Bool = false
+    @Published var isLoading: Bool = true
 
     var isBusy: Bool {
         return importProgress.isImporting || restorationProgress.isRestoring
@@ -373,10 +374,10 @@ class AlbumManager: ObservableObject {
             print("Loading settings from: \(settingsFileURL.path)")
         #endif
         
-        // Load settings synchronously to ensure state is ready before init completes
-        // We use the albumQueue to ensure thread safety, though in init we are unique.
-        // However, loadSettings is also called elsewhere, so the method itself handles sync.
-        self.loadSettings()
+        // Load settings asynchronously to ensure state is ready before init completes
+        Task {
+            await self.loadSettings()
+        }
         
         restorationProgressCancellable = restorationProgress.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
@@ -385,9 +386,7 @@ class AlbumManager: ObservableObject {
             self?.objectWillChange.send()
         }
         // Settings loaded, checking password status
-        if !passwordHash.isEmpty {
-            showUnlockPrompt = true
-        }
+        // Moved to loadSettings completion
     }
 
     // MARK: - Step-up Authentication
@@ -478,7 +477,7 @@ class AlbumManager: ObservableObject {
         try passwordService.validatePassword(password)
 
         let (hash, salt) = try await passwordService.hashPassword(password)
-        try passwordService.storePasswordHash(hash, salt: salt)
+        try await passwordService.storePasswordHash(hash, salt: salt)
 
         await MainActor.run {
             passwordHash = hash.map { String(format: "%02x", $0) }.joined()
@@ -524,7 +523,7 @@ class AlbumManager: ObservableObject {
         lastUnlockAttemptTime = Date()
 
         // Verify password
-        guard let (storedHash, storedSalt) = try passwordService.retrievePasswordCredentials() else {
+        guard let (storedHash, storedSalt) = try await passwordService.retrievePasswordCredentials() else {
             failedUnlockAttempts += 1
             throw AlbumError.albumNotInitialized
         }
@@ -539,7 +538,7 @@ class AlbumManager: ObservableObject {
                 // MIGRATE TO V2
                 let (newVerifier, _) = try await passwordService.hashPassword(password) // Uses new verifier logic
                 // Salt remains the same to avoid re-encrypting data (we just change the stored verifier)
-                try passwordService.storePasswordHash(newVerifier, salt: storedSalt)
+                try await passwordService.storePasswordHash(newVerifier, salt: storedSalt)
                 
                 await MainActor.run {
                     self.passwordHash = newVerifier.map { String(format: "%02x", $0) }.joined()
@@ -730,7 +729,7 @@ class AlbumManager: ObservableObject {
         
         // 4. Commit: Store new password verifier and salt
         progressHandler?("Saving new password...")
-        try passwordService.storePasswordHash(newVerifier, salt: newSalt)
+        try await passwordService.storePasswordHash(newVerifier, salt: newSalt)
         
         // 5. Update local state
         await MainActor.run {
@@ -1769,38 +1768,48 @@ class AlbumManager: ObservableObject {
         }
     }
 
-    private func loadSettings() {
-        albumQueue.sync {
-            #if DEBUG
-                print("Attempting to load settings from: \(settingsFileURL.path)")
-            #endif
-            
-            // Load credentials from Keychain
-            if let credentials = try? passwordService.retrievePasswordCredentials() {
+    private func loadSettings() async {
+        // We use the albumQueue to ensure thread safety
+        // But since we are async, we can just run on the queue?
+        // Actually, loadSettings accesses @Published properties, so it should run on MainActor eventually?
+        // But it reads from disk/keychain.
+        
+        #if DEBUG
+            print("Attempting to load settings from: \(settingsFileURL.path)")
+        #endif
+        
+        // Load credentials from Keychain
+        if let credentials = try? await passwordService.retrievePasswordCredentials() {
+            await MainActor.run {
                 passwordHash = credentials.hash.map { String(format: "%02x", $0) }.joined()
                 passwordSalt = credentials.salt.base64EncodedString()
-                #if DEBUG
-                    print("Loaded credentials from Keychain")
-                #endif
-            } else {
-                #if DEBUG
-                    print("No credentials found in Keychain")
-                #endif
             }
-
-            guard let data = try? Data(contentsOf: settingsFileURL),
-                let settings = try? JSONDecoder().decode([String: String].self, from: data)
-            else {
-                #if DEBUG
-                    print("No settings file found or failed to decode")
-                #endif
-                return
-            }
-
             #if DEBUG
-                print("Loaded settings: [REDACTED]")
+                print("Loaded credentials from Keychain")
             #endif
-            
+        } else {
+            #if DEBUG
+                print("No credentials found in Keychain")
+            #endif
+        }
+
+        guard let data = try? Data(contentsOf: settingsFileURL),
+            let settings = try? JSONDecoder().decode([String: String].self, from: data)
+        else {
+            #if DEBUG
+                print("No settings file found or failed to decode")
+            #endif
+            await MainActor.run {
+                isLoading = false
+            }
+            return
+        }
+
+        #if DEBUG
+            print("Loaded settings: [REDACTED]")
+        #endif
+        
+        await MainActor.run {
             if let versionString = settings["securityVersion"], let version = Int(versionString) {
                 securityVersion = version
             } else {
@@ -1813,6 +1822,11 @@ class AlbumManager: ObservableObject {
             } else {
                 secureDeletionEnabled = true
             }
+            
+            if !passwordHash.isEmpty {
+                showUnlockPrompt = true
+            }
+            isLoading = false
         }
     }
 
@@ -2344,13 +2358,14 @@ extension AlbumManager {
         cachedHMACKey = nil
         
         // 3. Clear Keychain
-        try? passwordService.clearPasswordCredentials()
-        try? securityService.clearBiometricPassword()
+        Task {
+            try? await passwordService.clearPasswordCredentials()
+            try? await securityService.clearBiometricPassword()
+            print("✅ Album nuked successfully (Keychain cleared)")
+        }
         
         // 4. Clear UserDefaults
         UserDefaults.standard.removeObject(forKey: "biometricConfigured")
-        
-        print("✅ Album nuked successfully")
     }
     #endif
 }

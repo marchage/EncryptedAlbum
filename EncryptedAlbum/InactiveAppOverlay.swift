@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 #if os(macOS)
 @MainActor
@@ -8,8 +7,6 @@ final class MacPrivacyCoordinator: ObservableObject {
 
     @Published private(set) var isTrustedModalActive = false
     private var modalDepth = 0
-    private var overlayWindow: NSWindow?
-    private var overlayWindowVisible = false
 
     func beginTrustedModal() {
         modalDepth += 1
@@ -26,62 +23,6 @@ final class MacPrivacyCoordinator: ObservableObject {
         if isTrustedModalActive != isActive {
             isTrustedModalActive = isActive
         }
-    }
-
-    fileprivate func updateOverlayWindowVisibility(_ visible: Bool) {
-        guard visible != overlayWindowVisible else { return }
-        overlayWindowVisible = visible
-        if visible {
-            showOverlayWindow()
-        } else {
-            hideOverlayWindow()
-        }
-    }
-
-    private func showOverlayWindow() {
-        ensureOverlayWindow()
-        overlayWindow?.orderFrontRegardless()
-        overlayWindow?.alphaValue = 1
-    }
-
-    private func hideOverlayWindow() {
-        overlayWindow?.orderOut(nil)
-    }
-
-    private func ensureOverlayWindow() {
-        guard overlayWindow == nil else {
-            refreshOverlayFrame()
-            return
-        }
-
-        let hosting = NSHostingView(rootView: PrivacyOverlayBackground())
-        hosting.translatesAutoresizingMaskIntoConstraints = true
-        hosting.autoresizingMask = [.width, .height]
-
-        let frame = NSScreen.main?.frame ?? .zero
-        let window = NSWindow(
-            contentRect: frame,
-            styleMask: [],
-            backing: .buffered,
-            defer: false
-        )
-        window.contentView = hosting
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.hasShadow = false
-        window.level = .screenSaver + 1
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-        window.ignoresMouseEvents = true
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        overlayWindow = window
-    }
-
-    private func refreshOverlayFrame() {
-        guard let window = overlayWindow else { return }
-        let frame = NSScreen.main?.frame ?? .zero
-        window.setFrame(frame, display: true)
-        window.contentView?.setFrameSize(frame.size)
     }
 }
 
@@ -116,17 +57,13 @@ struct InactiveAppOverlay: View {
         }
         .onAppear {
             appIsActive = NSApplication.shared.isActive
-            privacyCoordinator.updateOverlayWindowVisibility(isObscured)
-        }
-        .onChange(of: isObscured) { newValue in
-            privacyCoordinator.updateOverlayWindowVisibility(newValue)
         }
     }
 
     @ViewBuilder
     private func overlayContent() -> some View {
         VStack(spacing: 20) {
-            Image(systemName: "lock.fill")
+            Image(systemName: "lock.shield.fill")
                 .font(.system(size: 60))
                 .foregroundStyle(.secondary)
             
