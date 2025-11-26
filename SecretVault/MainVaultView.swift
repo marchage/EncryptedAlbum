@@ -1512,9 +1512,15 @@ struct MainVaultView: View {
             .sheet(item: $selectedPhoto) { photo in
                 PhotoViewerSheet(photo: photo)
             }
-            .sheet(isPresented: $showingPhotosLibrary) {
-                PhotosLibraryPicker()
-            }
+            #if os(iOS)
+                .fullScreenCover(isPresented: $showingPhotosLibrary) {
+                    PhotosLibraryPicker()
+                }
+            #else
+                .sheet(isPresented: $showingPhotosLibrary) {
+                    PhotosLibraryPicker()
+                }
+            #endif
             #if os(iOS)
                 .fullScreenCover(isPresented: $showingCamera) {
                     cameraSheet
@@ -1678,12 +1684,8 @@ struct MainVaultView: View {
 
         @MainActor
         private func presentPhotoLibraryFlow() async {
-            let coordinator = UltraPrivacyCoordinator.shared
-            coordinator.beginTrustedModal()
-
             let granted = await MediaPermissionHelper.ensurePhotoLibraryAccess()
             guard granted else {
-                coordinator.endTrustedModal()
                 showPermissionDenied(
                     "Photos access is required to import from your library.")
                 return
