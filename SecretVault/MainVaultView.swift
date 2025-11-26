@@ -1166,7 +1166,7 @@ struct MainVaultView: View {
                     // Delete Keychain entry
                     let query: [String: Any] = [
                         kSecClass as String: kSecClassGenericPassword,
-                        kSecAttrService as String: "com.secretvault.password",
+                        kSecAttrService as String: "biz.front-end.secretvault.password",
                     ]
                     SecItemDelete(query as CFDictionary)
 

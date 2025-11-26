@@ -4,7 +4,7 @@ import Foundation
 
 /// Service responsible for all cryptographic operations in the vault
 class CryptoService {
-    private let queue = DispatchQueue(label: "com.secretvault.crypto", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "biz.front-end.secretvault.crypto", qos: .userInitiated)
 
     // MARK: - Key Derivation
 

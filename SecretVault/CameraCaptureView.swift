@@ -247,7 +247,7 @@ import SwiftUI
         let session = AVCaptureSession()
         private let photoOutput = AVCapturePhotoOutput()
         private let movieOutput = AVCaptureMovieFileOutput()
-        private let sessionQueue = DispatchQueue(label: "com.secretvault.camera.session")
+        private let sessionQueue = DispatchQueue(label: "biz.front-end.secretvault.camera.session")
         @Published var isAuthorized = false
         @Published var captureMode: CaptureMode = .photo
         @Published var isRecording = false

@@ -185,11 +185,9 @@ struct UnlockView: View {
             switch newPhase {
             case .active:
                 scheduleAutoBiometricIfNeeded(isReady: biometricsReady)
-            case .background:
+            case .inactive, .background:
                 cancelAutoBiometricScheduling()
                 hasAutoBiometricAttempted = false
-            case .inactive:
-                break
             @unknown default:
                 break
             }
@@ -267,10 +265,15 @@ struct UnlockView: View {
     }
 
     private func scheduleAutoBiometricIfNeeded(isReady: Bool) {
-        guard isReady, !hasAutoBiometricAttempted, autoBiometricWorkItem == nil else { return }
+        guard isReady, scenePhase == .active, !hasAutoBiometricAttempted, autoBiometricWorkItem == nil else { return }
         hasAutoBiometricAttempted = true
 
         let workItem = DispatchWorkItem {
+            guard scenePhase == .active else {
+                hasAutoBiometricAttempted = false
+                autoBiometricWorkItem = nil
+                return
+            }
             #if os(macOS)
                 guard NSApplication.shared.isActive else {
                     hasAutoBiometricAttempted = false

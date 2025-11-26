@@ -3,7 +3,7 @@ import Foundation
 
 /// Service responsible for password management and validation
 class PasswordService {
-    private let queue = DispatchQueue(label: "com.secretvault.password", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "biz.front-end.secretvault.password", qos: .userInitiated)
     private let cryptoService: CryptoService
     private let securityService: SecurityService
 
@@ -92,8 +92,8 @@ class PasswordService {
 
     // MARK: - Password Storage
 
-    private let passwordHashKey = "com.secretvault.passwordHash"
-    private let passwordSaltKey = "com.secretvault.passwordSalt"
+    private let passwordHashKey = "biz.front-end.secretvault.passwordHash"
+    private let passwordSaltKey = "biz.front-end.secretvault.passwordSalt"
 
     /// Stores password hash and salt securely
     func storePasswordHash(_ hash: Data, salt: Data) throws {

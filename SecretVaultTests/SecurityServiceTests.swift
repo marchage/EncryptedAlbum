@@ -40,7 +40,7 @@ final class SecurityServiceTests: XCTestCase {
     // MARK: - Keychain Tests
     
     func testKeychainStorage_RoundTrip() throws {
-        let key = "com.secretvault.test.key"
+        let key = "biz.front-end.secretvault.test.key"
         let data = "SecretData".data(using: .utf8)!
         
         // 1. Store
@@ -59,7 +59,7 @@ final class SecurityServiceTests: XCTestCase {
     }
     
     func testKeychain_OverwriteExisting() throws {
-        let key = "com.secretvault.test.overwrite"
+        let key = "biz.front-end.secretvault.test.overwrite"
         let data1 = "Data1".data(using: .utf8)!
         let data2 = "Data2".data(using: .utf8)!
         

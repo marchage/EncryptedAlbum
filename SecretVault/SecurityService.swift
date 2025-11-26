@@ -5,7 +5,7 @@ import Security
 
 /// Service responsible for security validation and health checks
 class SecurityService {
-    private let queue = DispatchQueue(label: "com.secretvault.security", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "biz.front-end.secretvault.security", qos: .userInitiated)
     private let cryptoService: CryptoService
 
     // Rate limiting

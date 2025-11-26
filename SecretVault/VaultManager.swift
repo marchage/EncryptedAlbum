@@ -329,7 +329,7 @@ class VaultManager: ObservableObject {
     private var idleTimerSuspendCount: Int = 0
 
     // Serial queue for thread-safe operations
-    private let vaultQueue = DispatchQueue(label: "com.secretvault.vaultQueue", qos: .userInitiated)
+    private let vaultQueue = DispatchQueue(label: "biz.front-end.secretvault.vaultQueue", qos: .userInitiated)
 
     // Derived keys cache (in-memory only, never persisted)
     private var cachedMasterKey: SymmetricKey?
