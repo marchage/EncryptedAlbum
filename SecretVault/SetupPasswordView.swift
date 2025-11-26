@@ -14,6 +14,7 @@ struct SetupPasswordView: View {
     @State private var biometricType: LABiometryType = .none
     @State private var revealPassword = false
     @State private var flashScreen = false
+    @State private var biometricLockout = false
 
     private var passwordStrength: PasswordStrength {
         evaluatePasswordStrength(useAutoPassword ? generatedPasswords[selectedPasswordIndex] : manualPassword)
@@ -152,6 +153,33 @@ struct SetupPasswordView: View {
                 )
                 .font(.title3)
                 .foregroundStyle(.secondary)
+
+                if biometricLockout {
+                    VStack(spacing: 12) {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.red)
+                            Text("Biometrics Locked Out")
+                                .font(.headline)
+                                .foregroundStyle(.red)
+                        }
+                        
+                        Text("Too many failed attempts. You need to enter your system password to re-enable biometrics.")
+                            .font(.caption)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        Button("Reset Biometrics") {
+                            resetBiometricLockout()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding()
+                    .frame(width: 400)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(12)
+                }
 
                 if biometricsAvailable {
                     // Auto-generated password mode
@@ -374,12 +402,22 @@ struct SetupPasswordView: View {
 
         if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
             biometricsAvailable = true
+            biometricLockout = false
             biometricType = context.biometryType
             #if DEBUG
             print("✅ Biometrics available: \(biometricType == .faceID ? "Face ID" : "Touch ID")")
             #endif
         } else {
             biometricsAvailable = false
+            if let error = error, error.code == LAError.biometryLockout.rawValue {
+                biometricLockout = true
+                #if DEBUG
+                print("❌ Biometrics locked out (Code: -8)")
+                #endif
+            } else {
+                biometricLockout = false
+            }
+            
             #if DEBUG
             if let error = error {
                 print("❌ Biometrics NOT available. Error: \(error.localizedDescription) (Code: \(error.code))")
@@ -521,6 +559,24 @@ struct SetupPasswordView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 withAnimation {
                     revealPassword = true
+                }
+            }
+        }
+    }
+
+    private func resetBiometricLockout() {
+        let context = LAContext()
+        // .deviceOwnerAuthentication allows passcode/password fallback which clears the lockout
+        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Enter password to re-enable biometrics") { success, error in
+            DispatchQueue.main.async {
+                if success {
+                    self.biometricLockout = false
+                    self.checkBiometrics()
+                } else {
+                    if let error = error {
+                        self.errorMessage = "Failed to reset: \(error.localizedDescription)"
+                        self.showError = true
+                    }
                 }
             }
         }

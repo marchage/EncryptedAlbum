@@ -9,6 +9,7 @@ enum VaultError: LocalizedError {
     case biometricNotAvailable
     case biometricFailed
     case biometricCancelled
+    case biometricLockout
     case tooManyBiometricAttempts(maxAttempts: Int)
 
     // MARK: - Cryptographic Errors
@@ -62,6 +63,8 @@ enum VaultError: LocalizedError {
             return "Biometric authentication failed"
         case .biometricCancelled:
             return "Biometric authentication was cancelled"
+        case .biometricLockout:
+            return "Biometric authentication is locked out due to too many failed attempts"
         case .tooManyBiometricAttempts(let maxAttempts):
             return "Too many biometric authentication attempts. Maximum allowed: \(maxAttempts)"
         case .encryptionFailed(let reason):
@@ -129,6 +132,8 @@ enum VaultError: LocalizedError {
             return "Please use password authentication instead"
         case .biometricFailed, .biometricCancelled:
             return "Please try biometric authentication again or use password authentication"
+        case .biometricLockout:
+            return "Please enter your device passcode to re-enable biometrics"
         case .tooManyBiometricAttempts:
             return "Please use password authentication and wait before trying biometric authentication again"
         case .encryptionFailed, .decryptionFailed, .keyDerivationFailed, .cryptoOperationFailed:

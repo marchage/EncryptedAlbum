@@ -51,6 +51,8 @@ class SecurityService {
                         switch error.code {
                         case LAError.biometryNotAvailable.rawValue:
                             continuation.resume(throwing: VaultError.biometricNotAvailable)
+                        case LAError.biometryLockout.rawValue:
+                            continuation.resume(throwing: VaultError.biometricLockout)
                         default:
                             continuation.resume(throwing: VaultError.biometricFailed)
                         }
