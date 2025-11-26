@@ -535,34 +535,72 @@ class SecurityService {
                 break
             }
 
-            guard let probeData = "probe".data(using: .utf8) else {
-                SecurityService.keychainDomainPreference = .legacyLogin
-                return false
-            }
-
+            // 1. Try to find the probe item first (Read-only check) to avoid write churn
             let probeQuery: [String: Any] = [
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrAccount as String: SecurityService.probeAccount,
-                kSecValueData as String: probeData,
-                kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                kSecReturnAttributes as String: true,
                 kSecUseDataProtectionKeychain as String: true,
             ]
 
-            let status = SecItemAdd(probeQuery as CFDictionary, nil)
-            if status == errSecSuccess || status == errSecDuplicateItem {
-                SecItemDelete(probeQuery as CFDictionary)
+            var result: AnyObject?
+            let status = SecItemCopyMatching(probeQuery as CFDictionary, &result)
+
+            if status == errSecSuccess {
                 SecurityService.keychainDomainPreference = .dataProtection
                 return true
             }
 
+            // 2. If not found, try to add it (Write check)
+            if status == errSecItemNotFound {
+                guard let probeData = "probe".data(using: .utf8) else {
+                    return false
+                }
+
+                let addQuery: [String: Any] = [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrAccount as String: SecurityService.probeAccount,
+                    kSecValueData as String: probeData,
+                    kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                    kSecUseDataProtectionKeychain as String: true,
+                ]
+
+                let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+
+                if addStatus == errSecSuccess {
+                    // Successfully added. Keep it to speed up future checks.
+                    SecurityService.keychainDomainPreference = .dataProtection
+                    return true
+                }
+
+                if addStatus == errSecDuplicateItem {
+                    // It exists (race condition or previous run), so we have access.
+                    SecurityService.keychainDomainPreference = .dataProtection
+                    return true
+                }
+
+                if addStatus == errSecMissingEntitlement {
+                    SecurityService.keychainDomainPreference = .legacyLogin
+                    return false
+                }
+
+                #if DEBUG
+                    print("🔐 DEBUG: Data Protection keychain probe write failed with status \(addStatus)")
+                #endif
+                // Do NOT cache legacy preference for transient errors (e.g. lock errors)
+                return false
+            }
+
+            // 3. Read failed with error other than NotFound
             if status == errSecMissingEntitlement {
                 SecurityService.keychainDomainPreference = .legacyLogin
-            } else {
-                #if DEBUG
-                    print("🔐 DEBUG: Data Protection keychain probe failed with status \(status)")
-                #endif
-                SecurityService.keychainDomainPreference = .legacyLogin
+                return false
             }
+
+            #if DEBUG
+                print("🔐 DEBUG: Data Protection keychain probe read failed with status \(status)")
+            #endif
+            // Do NOT cache legacy preference for transient errors
             return false
         } else {
             return false
