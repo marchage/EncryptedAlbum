@@ -113,8 +113,8 @@ import SwiftUI
             ZStack {
                 Color.black.ignoresSafeArea()
 
-                if model.isAuthorized {
-                    CameraPreview(session: model.session)
+                if model.isAuthorized, let session = model.session {
+                    CameraPreview(session: session)
                         .ignoresSafeArea()
                 } else {
                     Text("Camera access required")
@@ -246,7 +246,7 @@ import SwiftUI
     }
 
     class CameraModel: NSObject, ObservableObject {
-        let session = AVCaptureSession()
+        var session: AVCaptureSession? = AVCaptureSession()
         private let photoOutput = AVCapturePhotoOutput()
         private let movieOutput = AVCaptureMovieFileOutput()
         private let sessionQueue = DispatchQueue(label: "biz.front-end.secretvault.camera.session")
@@ -278,6 +278,15 @@ import SwiftUI
 
         func setupSession() {
             sessionQueue.async {
+                guard let session = self.session else { return }
+                
+                if !session.inputs.isEmpty {
+                    if !session.isRunning {
+                        session.startRunning()
+                    }
+                    return
+                }
+
                 guard let device = AVCaptureDevice.default(for: .video) else {
                     self.handleCameraError("No camera device is available. Connect one and try again.")
                     return
@@ -288,34 +297,34 @@ import SwiftUI
                     return
                 }
 
-                self.session.beginConfiguration()
+                session.beginConfiguration()
 
-                if self.session.canAddInput(input) {
-                    self.session.addInput(input)
+                if session.canAddInput(input) {
+                    session.addInput(input)
                 } else {
-                    self.session.commitConfiguration()
+                    session.commitConfiguration()
                     self.handleCameraError("Cannot add the camera input to this session.")
                     return
                 }
 
-                if self.session.canAddOutput(self.photoOutput) {
-                    self.session.addOutput(self.photoOutput)
+                if session.canAddOutput(self.photoOutput) {
+                    session.addOutput(self.photoOutput)
                 } else {
                     self.handleCameraError("Cannot add photo output to the capture session.")
                 }
 
-                if self.session.canAddOutput(self.movieOutput) {
-                    self.session.addOutput(self.movieOutput)
+                if session.canAddOutput(self.movieOutput) {
+                    session.addOutput(self.movieOutput)
                 } else {
                     self.handleCameraError("Cannot add video output to the capture session.")
                 }
 
-                self.session.commitConfiguration()
+                session.commitConfiguration()
 
-                self.session.startRunning()
+                session.startRunning()
 
                 DispatchQueue.main.async {
-                    if !self.session.isRunning {
+                    if !session.isRunning {
                         self.handleCameraError("The camera session failed to start.")
                     } else {
                         self.cameraError = nil
@@ -326,22 +335,21 @@ import SwiftUI
         }
 
         func stopSession() {
+            guard let session = self.session else { return }
+            self.session = nil // Release main thread reference to avoid hang on deinit
+            
             sessionQueue.async { [weak self] in
-                guard let self else { return }
-                if self.movieOutput.isRecording {
-                    self.movieOutput.stopRecording()
+                if self?.movieOutput.isRecording == true {
+                    self?.movieOutput.stopRecording()
                 }
-                if self.session.isRunning {
-                    self.session.stopRunning()
+                
+                if session.isRunning {
+                    session.stopRunning()
                 }
-                self.session.beginConfiguration()
-                self.session.inputs.forEach { self.session.removeInput($0) }
-                self.session.outputs.forEach { self.session.removeOutput($0) }
-                self.session.commitConfiguration()
 
-                self.recordingTimer?.invalidate()
-                self.recordingTimer = nil
-                self.recordingStartTime = nil
+                self?.recordingTimer?.invalidate()
+                self?.recordingTimer = nil
+                self?.recordingStartTime = nil
             }
             DispatchQueue.main.async { [weak self] in
                 self?.isRecording = false
@@ -512,6 +520,10 @@ import SwiftUI
 
         func updateNSView(_ nsView: NSView, context: Context) {
             // Session is already set on the layer
+        }
+
+        static func dismantleNSView(_ nsView: NSView, coordinator: ()) {
+            nsView.layer = nil
         }
     }
 #endif

@@ -105,81 +105,85 @@ class FileService {
         data: Data, filename: String, to directory: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey,
         mediaType: MediaType = .photo, metadata: EmbeddedMetadata? = nil
     ) async throws {
-        let fileURL = directory.appendingPathComponent(filename)
+        try await Task.detached(priority: .userInitiated) {
+            let fileURL = directory.appendingPathComponent(filename)
 
-        // Check if file already exists
-        if FileManager.default.fileExists(atPath: fileURL.path) {
-            throw VaultError.fileAlreadyExists(path: fileURL.path)
-        }
-
-        // Prepare metadata if provided
-        var encryptedMetadataData = Data()
-        if let metadata = metadata {
-            let jsonData = try JSONEncoder().encode(metadata)
-            // Encrypt metadata as a single block
-            let (encrypted, nonce, hmac) = try await cryptoService.encryptDataWithIntegrity(
-                jsonData, encryptionKey: encryptionKey, hmacKey: hmacKey)
-            
-            // Format: [Nonce(12)][HMAC(32)][Ciphertext]
-            encryptedMetadataData.append(nonce)
-            encryptedMetadataData.append(hmac)
-            encryptedMetadataData.append(encrypted)
-        }
-
-        // Create SVF2 Header
-        let header = StreamFileHeader(
-            version: CryptoConstants.streamingVersion,
-            mediaType: mediaType,
-            originalSize: UInt64(data.count),
-            chunkSize: UInt32(CryptoConstants.streamingChunkSize),
-            metadataLength: UInt32(encryptedMetadataData.count)
-        )
-        
-        FileManager.default.createFile(atPath: fileURL.path, contents: nil)
-        let writeHandle = try FileHandle(forWritingTo: fileURL)
-        defer { try? writeHandle.close() }
-        
-        do {
-            let headerData = try writeStreamHeader(header, to: writeHandle)
-
-            // Write metadata if present
-            if !encryptedMetadataData.isEmpty {
-                try writeHandle.write(contentsOf: encryptedMetadataData)
+            // Check if file already exists
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                throw VaultError.fileAlreadyExists(path: fileURL.path)
             }
-            
-            // Encrypt and write data in chunks
-            let chunkSize = Int(CryptoConstants.streamingChunkSize)
-            var offset = 0
-            
-            while offset < data.count {
-                let end = min(offset + chunkSize, data.count)
-                let chunkData = data[offset..<end]
-                
+
+            // Prepare metadata if provided
+            var encryptedMetadataData = Data()
+            if let metadata = metadata {
+                let jsonData = try JSONEncoder().encode(metadata)
+                // Encrypt metadata as a single block
                 let nonce = AES.GCM.Nonce()
-                let sealedBox = try AES.GCM.seal(
-                    chunkData,
-                    using: encryptionKey,
-                    nonce: nonce,
-                    authenticating: headerData
-                )
+                let sealedBox = try AES.GCM.seal(jsonData, using: encryptionKey, nonce: nonce)
+                let encrypted = sealedBox.ciphertext + sealedBox.tag
+                let hmac = HMAC<SHA256>.authenticationCode(for: encrypted, using: hmacKey)
                 
-                var chunkLength = UInt32(chunkData.count).littleEndian
-                try writeHandle.write(contentsOf: Data(bytes: &chunkLength, count: MemoryLayout<UInt32>.size))
-                
-                let nonceData = nonce.withUnsafeBytes { Data($0) }
-                try writeHandle.write(contentsOf: nonceData)
-                try writeHandle.write(contentsOf: sealedBox.ciphertext)
-                try writeHandle.write(contentsOf: sealedBox.tag)
-                
-                offset += chunkSize
+                // Format: [Nonce(12)][HMAC(32)][Ciphertext]
+                encryptedMetadataData.append(Data(nonce))
+                encryptedMetadataData.append(Data(hmac))
+                encryptedMetadataData.append(encrypted)
             }
 
-            try writeHandle.synchronize()
-            try writeStreamCompletionMarker(to: writeHandle)
-        } catch {
-            try? FileManager.default.removeItem(at: fileURL)
-            throw error
-        }
+            // Create SVF2 Header
+            let header = StreamFileHeader(
+                version: CryptoConstants.streamingVersion,
+                mediaType: mediaType,
+                originalSize: UInt64(data.count),
+                chunkSize: UInt32(CryptoConstants.streamingChunkSize),
+                metadataLength: UInt32(encryptedMetadataData.count)
+            )
+            
+            FileManager.default.createFile(atPath: fileURL.path, contents: nil)
+            let writeHandle = try FileHandle(forWritingTo: fileURL)
+            defer { try? writeHandle.close() }
+            
+            do {
+                let headerData = try self.writeStreamHeader(header, to: writeHandle)
+
+                // Write metadata if present
+                if !encryptedMetadataData.isEmpty {
+                    try writeHandle.write(contentsOf: encryptedMetadataData)
+                }
+                
+                // Encrypt and write data in chunks
+                let chunkSize = Int(CryptoConstants.streamingChunkSize)
+                var offset = 0
+                
+                while offset < data.count {
+                    let end = min(offset + chunkSize, data.count)
+                    let chunkData = data[offset..<end]
+                    
+                    let nonce = AES.GCM.Nonce()
+                    let sealedBox = try AES.GCM.seal(
+                        chunkData,
+                        using: encryptionKey,
+                        nonce: nonce,
+                        authenticating: headerData
+                    )
+                    
+                    var chunkLength = UInt32(chunkData.count).littleEndian
+                    try writeHandle.write(contentsOf: Data(bytes: &chunkLength, count: MemoryLayout<UInt32>.size))
+                    
+                    let nonceData = nonce.withUnsafeBytes { Data($0) }
+                    try writeHandle.write(contentsOf: nonceData)
+                    try writeHandle.write(contentsOf: sealedBox.ciphertext)
+                    try writeHandle.write(contentsOf: sealedBox.tag)
+                    
+                    offset += chunkSize
+                }
+
+                try writeHandle.synchronize()
+                try self.writeStreamCompletionMarker(to: writeHandle)
+            } catch {
+                try? FileManager.default.removeItem(at: fileURL)
+                throw error
+            }
+        }.value
     }
 
     /// Encrypts a file already on disk by streaming chunks to the destination file.
@@ -194,92 +198,98 @@ class FileService {
         hmacKey: SymmetricKey, 
         progressHandler: ((Int64) async -> Void)? = nil
     ) async throws {
-        let destinationURL = directory.appendingPathComponent(filename)
+        // Offload heavy I/O and encryption to a detached task to prevent blocking the Main Actor
+        try await Task.detached(priority: .userInitiated) {
+            let destinationURL = directory.appendingPathComponent(filename)
 
-        if FileManager.default.fileExists(atPath: destinationURL.path) {
-            throw VaultError.fileAlreadyExists(path: destinationURL.path)
-        }
-
-        let attributes = try FileManager.default.attributesOfItem(atPath: sourceURL.path)
-        let fileSize = attributes[.size] as? NSNumber ?? 0
-
-        FileManager.default.createFile(atPath: destinationURL.path, contents: nil)
-
-        let readHandle = try FileHandle(forReadingFrom: sourceURL)
-        let writeHandle = try FileHandle(forWritingTo: destinationURL)
-
-        defer {
-            try? readHandle.close()
-            try? writeHandle.close()
-        }
-
-        // Prepare metadata if provided
-        var encryptedMetadataData = Data()
-        if let metadata = metadata {
-            let jsonData = try JSONEncoder().encode(metadata)
-            // Encrypt metadata as a single block
-            let (encrypted, nonce, hmac) = try await cryptoService.encryptDataWithIntegrity(
-                jsonData, encryptionKey: encryptionKey, hmacKey: hmacKey)
-            
-            // Format: [Nonce(12)][HMAC(32)][Ciphertext]
-            encryptedMetadataData.append(nonce)
-            encryptedMetadataData.append(hmac)
-            encryptedMetadataData.append(encrypted)
-        }
-
-        let header = StreamFileHeader(
-            version: CryptoConstants.streamingVersion,
-            mediaType: mediaType,
-            originalSize: fileSize.uint64Value,
-            chunkSize: UInt32(CryptoConstants.streamingChunkSize),
-            metadataLength: UInt32(encryptedMetadataData.count)
-        )
-
-        do {
-            let headerData = try writeStreamHeader(header, to: writeHandle)
-
-            // Write metadata if present
-            if !encryptedMetadataData.isEmpty {
-                try writeHandle.write(contentsOf: encryptedMetadataData)
+            if FileManager.default.fileExists(atPath: destinationURL.path) {
+                throw VaultError.fileAlreadyExists(path: destinationURL.path)
             }
 
-            let chunkSize = CryptoConstants.streamingChunkSize
-            var totalProcessed: Int64 = 0
+            let attributes = try FileManager.default.attributesOfItem(atPath: sourceURL.path)
+            let fileSize = attributes[.size] as? NSNumber ?? 0
 
-            while true {
-                try Task.checkCancellation()
-                guard let chunkData = try readHandle.read(upToCount: chunkSize), !chunkData.isEmpty else {
-                    break
-                }
+            FileManager.default.createFile(atPath: destinationURL.path, contents: nil)
 
+            let readHandle = try FileHandle(forReadingFrom: sourceURL)
+            let writeHandle = try FileHandle(forWritingTo: destinationURL)
+
+            defer {
+                try? readHandle.close()
+                try? writeHandle.close()
+            }
+
+            // Prepare metadata if provided
+            var encryptedMetadataData = Data()
+            if let metadata = metadata {
+                let jsonData = try JSONEncoder().encode(metadata)
+                // Encrypt metadata as a single block
+                // Note: We use a local AES seal here instead of calling back to cryptoService to avoid actor hopping
                 let nonce = AES.GCM.Nonce()
-                let sealedBox = try AES.GCM.seal(
-                    chunkData,
-                    using: encryptionKey,
-                    nonce: nonce,
-                    authenticating: headerData
-                )
-
-                var chunkLength = UInt32(chunkData.count).littleEndian
-                try writeHandle.write(contentsOf: Data(bytes: &chunkLength, count: MemoryLayout<UInt32>.size))
-
-                let nonceData = nonce.withUnsafeBytes { Data($0) }
-                try writeHandle.write(contentsOf: nonceData)
-                try writeHandle.write(contentsOf: sealedBox.ciphertext)
-                try writeHandle.write(contentsOf: sealedBox.tag)
-
-                totalProcessed += Int64(chunkData.count)
-                if let progressHandler = progressHandler {
-                    await progressHandler(totalProcessed)
-                }
+                let sealedBox = try AES.GCM.seal(jsonData, using: encryptionKey, nonce: nonce)
+                let encrypted = sealedBox.ciphertext + sealedBox.tag
+                let hmac = HMAC<SHA256>.authenticationCode(for: encrypted, using: hmacKey)
+                
+                // Format: [Nonce(12)][HMAC(32)][Ciphertext]
+                encryptedMetadataData.append(Data(nonce))
+                encryptedMetadataData.append(Data(hmac))
+                encryptedMetadataData.append(encrypted)
             }
 
-            try writeHandle.synchronize()
-            try writeStreamCompletionMarker(to: writeHandle)
-        } catch {
-            try? FileManager.default.removeItem(at: destinationURL)
-            throw error
-        }
+            let header = StreamFileHeader(
+                version: CryptoConstants.streamingVersion,
+                mediaType: mediaType,
+                originalSize: fileSize.uint64Value,
+                chunkSize: UInt32(CryptoConstants.streamingChunkSize),
+                metadataLength: UInt32(encryptedMetadataData.count)
+            )
+
+            do {
+                let headerData = try self.writeStreamHeader(header, to: writeHandle)
+
+                // Write metadata if present
+                if !encryptedMetadataData.isEmpty {
+                    try writeHandle.write(contentsOf: encryptedMetadataData)
+                }
+
+                let chunkSize = CryptoConstants.streamingChunkSize
+                var totalProcessed: Int64 = 0
+
+                while true {
+                    try Task.checkCancellation()
+                    guard let chunkData = try readHandle.read(upToCount: chunkSize), !chunkData.isEmpty else {
+                        break
+                    }
+
+                    let nonce = AES.GCM.Nonce()
+                    let sealedBox = try AES.GCM.seal(
+                        chunkData,
+                        using: encryptionKey,
+                        nonce: nonce,
+                        authenticating: headerData
+                    )
+
+                    var chunkLength = UInt32(chunkData.count).littleEndian
+                    try writeHandle.write(contentsOf: Data(bytes: &chunkLength, count: MemoryLayout<UInt32>.size))
+
+                    let nonceData = nonce.withUnsafeBytes { Data($0) }
+                    try writeHandle.write(contentsOf: nonceData)
+                    try writeHandle.write(contentsOf: sealedBox.ciphertext)
+                    try writeHandle.write(contentsOf: sealedBox.tag)
+
+                    totalProcessed += Int64(chunkData.count)
+                    if let progressHandler = progressHandler {
+                        await progressHandler(totalProcessed)
+                    }
+                }
+
+                try writeHandle.synchronize()
+                try self.writeStreamCompletionMarker(to: writeHandle)
+            } catch {
+                try? FileManager.default.removeItem(at: destinationURL)
+                throw error
+            }
+        }.value
     }
 
     /// Loads and decrypts file with integrity verification
