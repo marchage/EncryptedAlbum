@@ -2487,7 +2487,7 @@ extension MainAlbumView {
             if !handled && provider.canLoadObject(ofClass: NSImage.self) {
                 do {
                     let image = try await loadObject(from: provider, ofClass: NSImage.self)
-                    if let image = image as? NSImage,
+                    if let image = image,
                        let tiffData = image.tiffRepresentation,
                        let bitmap = NSBitmapImageRep(data: tiffData),
                        let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.9]) {
