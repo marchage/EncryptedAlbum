@@ -22,7 +22,8 @@ class FileService {
     }
 
     /// Removes stale working files that may have been left behind after crashes or aborted operations.
-    func cleanupTemporaryArtifacts(olderThan: TimeInterval = 24 * 60 * 60) {
+    /// The default window is intentionally short to minimize plaintext exposure after crashes.
+    func cleanupTemporaryArtifacts(olderThan: TimeInterval = 60 * 60) {
         let fm = FileManager.default
         guard
             let contents = try? fm.contentsOfDirectory(
@@ -91,6 +92,9 @@ class FileService {
     }
 
     private var streamCompletionMarkerData: Data {
+        // Marker remains plaintext by design: we only need it to detect truncated writes, and
+        // the presence of the file already reveals that an import completed. Documenting this
+        // avoids the impression that it was overlooked as a confidentiality concern.
         Data(CryptoConstants.streamingCompletionMarker.utf8)
     }
 
@@ -136,7 +140,7 @@ class FileService {
         defer { try? writeHandle.close() }
         
         do {
-            try writeStreamHeader(header, to: writeHandle)
+            let headerData = try writeStreamHeader(header, to: writeHandle)
 
             // Write metadata if present
             if !encryptedMetadataData.isEmpty {
@@ -152,7 +156,12 @@ class FileService {
                 let chunkData = data[offset..<end]
                 
                 let nonce = AES.GCM.Nonce()
-                let sealedBox = try AES.GCM.seal(chunkData, using: encryptionKey, nonce: nonce)
+                let sealedBox = try AES.GCM.seal(
+                    chunkData,
+                    using: encryptionKey,
+                    nonce: nonce,
+                    authenticating: headerData
+                )
                 
                 var chunkLength = UInt32(chunkData.count).littleEndian
                 try writeHandle.write(contentsOf: Data(bytes: &chunkLength, count: MemoryLayout<UInt32>.size))
@@ -227,7 +236,7 @@ class FileService {
         )
 
         do {
-            try writeStreamHeader(header, to: writeHandle)
+            let headerData = try writeStreamHeader(header, to: writeHandle)
 
             // Write metadata if present
             if !encryptedMetadataData.isEmpty {
@@ -244,7 +253,12 @@ class FileService {
                 }
 
                 let nonce = AES.GCM.Nonce()
-                let sealedBox = try AES.GCM.seal(chunkData, using: encryptionKey, nonce: nonce)
+                let sealedBox = try AES.GCM.seal(
+                    chunkData,
+                    using: encryptionKey,
+                    nonce: nonce,
+                    authenticating: headerData
+                )
 
                 var chunkLength = UInt32(chunkData.count).littleEndian
                 try writeHandle.write(contentsOf: Data(bytes: &chunkLength, count: MemoryLayout<UInt32>.size))
@@ -314,7 +328,7 @@ class FileService {
 
         defer { try? handle.close() }
 
-        guard let header = try readStreamHeader(from: handle) else {
+        guard let (header, headerData) = try readStreamHeader(from: handle) else {
             return nil
         }
 
@@ -331,7 +345,7 @@ class FileService {
         }
 
         try await processStreamFile(
-            from: handle, header: header, encryptionKey: encryptionKey,
+            from: handle, header: header, headerData: headerData, encryptionKey: encryptionKey,
             chunkHandler: { chunk in
                 decrypted.append(chunk)
             })
@@ -348,7 +362,7 @@ class FileService {
 
         defer { try? handle.close() }
 
-        guard let header = try readStreamHeader(from: handle) else {
+        guard let (header, headerData) = try readStreamHeader(from: handle) else {
             return nil
         }
 
@@ -366,7 +380,7 @@ class FileService {
 
         do {
             try await processStreamFile(
-                from: handle, header: header, encryptionKey: encryptionKey,
+                from: handle, header: header, headerData: headerData, encryptionKey: encryptionKey,
                 chunkHandler: { chunk in
                     try writeHandle.write(contentsOf: chunk)
                 }, progressHandler: progressHandler)
@@ -377,7 +391,7 @@ class FileService {
         }
     }
 
-    private func writeStreamHeader(_ header: StreamFileHeader, to handle: FileHandle) throws {
+    private func writeStreamHeader(_ header: StreamFileHeader, to handle: FileHandle) throws -> Data {
         var data = Data()
         data.append(streamMagicData)
         data.append(header.version)
@@ -395,18 +409,23 @@ class FileService {
         data.append(Data(bytes: &metadataLength, count: MemoryLayout<UInt32>.size))
 
         try handle.write(contentsOf: data)
+        return data
     }
 
-    private func readStreamHeader(from handle: FileHandle) throws -> StreamFileHeader? {
+    private func readStreamHeader(from handle: FileHandle) throws -> (StreamFileHeader, Data)? {
         try handle.seek(toOffset: 0)
+        var serialized = Data()
+
         guard let magicData = try handle.read(upToCount: streamMagicData.count), magicData == streamMagicData else {
             try handle.seek(toOffset: 0)
             return nil
         }
+        serialized.append(magicData)
 
         // Read version first
         guard let versionData = try handle.read(upToCount: 1) else { return nil }
         let version = versionData[0]
+        serialized.append(versionData)
         
         // Read remaining V1 header fields (15 bytes)
         // Type(1) + Res(2) + Size(8) + Chunk(4)
@@ -414,6 +433,7 @@ class FileService {
         guard let v1Data = try handle.read(upToCount: v1RemainingSize), v1Data.count == v1RemainingSize else {
             throw VaultError.fileReadFailed(path: handle.description, reason: "Incomplete stream header")
         }
+        serialized.append(v1Data)
 
         let mediaByte = v1Data[0]
         let mediaType: MediaType = mediaByte == 0x02 ? .video : .photo
@@ -434,6 +454,7 @@ class FileService {
         if version >= 2 {
             // Read metadata length (4 bytes)
             if let metaLenData = try handle.read(upToCount: 4), metaLenData.count == 4 {
+                serialized.append(metaLenData)
                 metadataLength = metaLenData.withUnsafeBytes { rawBuffer in
                     var value: UInt32 = 0
                     memcpy(&value, rawBuffer.baseAddress!, MemoryLayout<UInt32>.size)
@@ -442,8 +463,9 @@ class FileService {
             }
         }
 
-        return StreamFileHeader(
+        let header = StreamFileHeader(
             version: version, mediaType: mediaType, originalSize: originalSize, chunkSize: chunkSize, metadataLength: metadataLength)
+        return (header, serialized)
     }
     
     /// Reads and decrypts embedded metadata from a file
@@ -451,7 +473,7 @@ class FileService {
         guard let handle = try? FileHandle(forReadingFrom: fileURL) else { return nil }
         defer { try? handle.close() }
         
-        guard let header = try readStreamHeader(from: handle) else { return nil }
+        guard let (header, _) = try readStreamHeader(from: handle) else { return nil }
 
         try validateStreamVersion(header)
         
@@ -497,7 +519,7 @@ class FileService {
     }
 
     private func processStreamFile(
-        from handle: FileHandle, header: StreamFileHeader, encryptionKey: SymmetricKey,
+        from handle: FileHandle, header: StreamFileHeader, headerData: Data, encryptionKey: SymmetricKey,
         chunkHandler: (Data) throws -> Void, progressHandler: ((Int64) -> Void)? = nil
     ) async throws {
         try validateStreamVersion(header)
@@ -535,7 +557,7 @@ class FileService {
             let tag = try readExact(from: handle, count: CryptoConstants.streamingTagSize)
 
             let sealedBox = try AES.GCM.SealedBox(nonce: nonce, ciphertext: ciphertext, tag: tag)
-            let chunk = try AES.GCM.open(sealedBox, using: encryptionKey)
+            let chunk = try AES.GCM.open(sealedBox, using: encryptionKey, authenticating: headerData)
 
             try chunkHandler(chunk)
             totalProcessed += Int64(chunk.count)
