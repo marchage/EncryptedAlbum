@@ -345,6 +345,11 @@ import SwiftUI
         func stopSession() {
             guard let session = self.session else { return }
             
+            // Invalidate timer on Main immediately, as it was created on Main
+            self.recordingTimer?.invalidate()
+            self.recordingTimer = nil
+            self.recordingStartTime = nil
+            
             // Keep session alive until async block finishes
             sessionQueue.async { [weak self] in
                 if self?.movieOutput.isRecording == true {
@@ -359,10 +364,6 @@ import SwiftUI
                 // If the session is deallocated, they are removed.
                 // If the session is reused, we want them to stay.
                 // Removing them explicitly can cause race conditions if another session is starting up on the same device.
-
-                self?.recordingTimer?.invalidate()
-                self?.recordingTimer = nil
-                self?.recordingStartTime = nil
             }
             
             DispatchQueue.main.async { [weak self] in

@@ -2379,6 +2379,10 @@ private var decryptingPlaceholder: some View {
             return scrollView
         }
 
+        static func dismantleNSView(_ nsView: NSScrollView, coordinator: Coordinator) {
+            NotificationCenter.default.removeObserver(coordinator)
+        }
+
         func updateNSView(_ scrollView: NSScrollView, context: Context) {
             if let imageView = scrollView.documentView as? NSImageView {
                 if imageView.image != image {
