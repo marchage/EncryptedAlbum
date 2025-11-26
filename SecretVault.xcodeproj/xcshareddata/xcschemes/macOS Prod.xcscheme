@@ -20,6 +20,20 @@
                ReferencedContainer = "container:SecretVault.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B7C1A2DB3E8C4F6A00D10010"
+               BuildableName = "SecretVaultMacTests.xctest"
+               BlueprintName = "SecretVaultMacTests"
+               ReferencedContainer = "container:SecretVault.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -27,7 +41,39 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
-      shouldAutocreateTestPlan = "YES">
+      shouldAutocreateTestPlan = "NO">
+      <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B7C1A2DB3E8C4F6A00D10010"
+               BuildableName = "SecretVaultMacTests.xctest"
+               BlueprintName = "SecretVaultMacTests"
+               ReferencedContainer = "container:SecretVault.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B4FA2CBA3F8D4E0FB4F74101"
+               BuildableName = "SecretVaultMacUITests.xctest"
+               BlueprintName = "SecretVaultMacUITests"
+               ReferencedContainer = "container:SecretVault.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "9849B4502EB9893D00B17DAC"
+            BuildableName = "SecretVault.app"
+            BlueprintName = "SecretVault"
+            ReferencedContainer = "container:SecretVault.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Release"

@@ -102,6 +102,49 @@ final class FileServiceTests: XCTestCase {
         }
     }
 
+    func testLoadEncryptedFileRejectsInvalidCompletionMarker() async throws {
+        let dataSize = 1 * 1024 * 1024
+        let originalData = try await cryptoService.generateRandomData(length: dataSize)
+        let sourceURL = tempDir.appendingPathComponent("original_invalid_marker.dat")
+        try originalData.write(to: sourceURL)
+
+        let encryptionKey = SymmetricKey(size: .bits256)
+        let hmacKey = SymmetricKey(size: .bits256)
+        let encryptedFilename = "encrypted_invalid_marker.enc"
+
+        try await sut.saveStreamEncryptedFile(
+            from: sourceURL,
+            filename: encryptedFilename,
+            mediaType: .photo,
+            to: tempDir,
+            encryptionKey: encryptionKey,
+            hmacKey: hmacKey
+        )
+
+        let encryptedURL = tempDir.appendingPathComponent(encryptedFilename)
+        var fileData = try Data(contentsOf: encryptedURL)
+        let markerData = Data(CryptoConstants.streamingCompletionMarker.utf8)
+        let markerStartIndex = fileData.count - markerData.count
+        var corruptedMarker = Array(markerData)
+        corruptedMarker[corruptedMarker.count - 1] ^= 0xFF
+        fileData.replaceSubrange(markerStartIndex..<fileData.count, with: corruptedMarker)
+        try fileData.write(to: encryptedURL, options: .atomic)
+
+        do {
+            _ = try await sut.loadEncryptedFile(
+                filename: encryptedFilename,
+                from: tempDir,
+                encryptionKey: encryptionKey,
+                hmacKey: hmacKey
+            )
+            XCTFail("Expected loadEncryptedFile to throw")
+        } catch let VaultError.decryptionFailed(reason) {
+            XCTAssertTrue(reason.localizedCaseInsensitiveContains("completion marker"))
+        } catch {
+            XCTFail("Expected VaultError.decryptionFailed, got \(error)")
+        }
+    }
+
     func testLoadEncryptedFileRejectsTrailingData() async throws {
         let dataSize = 1 * 1024 * 1024
         let originalData = try await cryptoService.generateRandomData(length: dataSize)
@@ -139,6 +182,47 @@ final class FileServiceTests: XCTestCase {
         } catch {
             XCTFail("Expected VaultError.decryptionFailed, got \(error)")
         }
+    }
+
+    func testSaveStreamEncryptedFileCancellationRemovesPartialFile() async throws {
+        let chunkSize = CryptoConstants.streamingChunkSize
+        let dataSize = (chunkSize * 2) + (chunkSize / 2)
+        let originalData = Data(repeating: 0xAB, count: dataSize)
+        let sourceURL = tempDir.appendingPathComponent("cancellable_source.dat")
+        try originalData.write(to: sourceURL)
+
+        let encryptionKey = SymmetricKey(size: .bits256)
+        let hmacKey = SymmetricKey(size: .bits256)
+        let encryptedFilename = "encrypted_cancelled.enc"
+        let destinationURL = tempDir.appendingPathComponent(encryptedFilename)
+
+        let encryptionTask = Task {
+            try await self.sut.saveStreamEncryptedFile(
+                from: sourceURL,
+                filename: encryptedFilename,
+                mediaType: .photo,
+                to: self.tempDir,
+                encryptionKey: encryptionKey,
+                hmacKey: hmacKey,
+                progressHandler: { _ in
+                    try? await Task.sleep(nanoseconds: 150_000_000)
+                }
+            )
+        }
+
+        try await Task.sleep(nanoseconds: 50_000_000)
+        encryptionTask.cancel()
+
+        do {
+            try await encryptionTask.value
+            XCTFail("Expected saveStreamEncryptedFile to be cancelled")
+        } catch is CancellationError {
+            // Expected path
+        } catch {
+            XCTFail("Expected CancellationError, got \(error)")
+        }
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: destinationURL.path))
     }
 
     func testLoadEncryptedFileRejectsUnsupportedStreamVersion() async throws {

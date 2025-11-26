@@ -168,6 +168,7 @@ struct SetupPasswordView: View {
                         .toggleStyle(.switch)
                         .padding(.horizontal)
                         .frame(width: 400)
+                        .accessibilityIdentifier("biometricToggle")
 
                         if useAutoPassword {
                             VStack(spacing: 12) {
@@ -452,6 +453,9 @@ struct SetupPasswordView: View {
     private func authenticateAndSetup() {
         let context = LAContext()
         let reason = "Authenticate to set up your Secret Vault"
+
+        // Delay slightly so the biometric sheet does not pop immediately, matching unlock behavior.
+        Thread.sleep(forTimeInterval: 1.0)
 
         context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, error in
             DispatchQueue.main.async {

@@ -63,6 +63,9 @@ class SecurityService {
                 self.lastBiometricAttempt = Date()
                 self.biometricAttemptCount += 1
 
+                // Introduce a short delay so the biometric sheet does not appear abruptly.
+                Thread.sleep(forTimeInterval: 1.0)
+
                 context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) {
                     success, error in
                     if success {
