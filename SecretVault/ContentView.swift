@@ -21,9 +21,6 @@ struct ContentView: View {
         .id(vaultManager.viewRefreshId)  // Force view recreation when refreshId changes
     }
 }
-
-// MARK: - Secure Wrapper
-
 /// A view wrapper that prevents screenshots and screen recording on iOS.
 /// On macOS, it passes the content through unchanged (as window-level protection is handled differently).
 struct SecureWrapper<Content: View>: View {
@@ -35,12 +32,10 @@ struct SecureWrapper<Content: View>: View {
     
     var body: some View {
         #if os(iOS)
-        IOSSecureView {
-            content
-        }
+            IOSSecureContainer(content: content)
         #else
-        content
-            .overlay(InactiveAppOverlay())
+            content
+                .overlay(InactiveAppOverlay())
         #endif
     }
 }
@@ -48,77 +43,84 @@ struct SecureWrapper<Content: View>: View {
 #if os(iOS)
 import UIKit
 
-struct IOSSecureView<Content: View>: UIViewRepresentable {
+private struct IOSSecureContainer<Content: View>: UIViewControllerRepresentable {
     let content: Content
-    
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
+
+    func makeUIViewController(context: Context) -> SecureHostingController<Content> {
+        SecureHostingController(rootView: content)
     }
-    
-    func makeUIView(context: Context) -> UIView {
-        let secureField = SecureContainerField()
+
+    func updateUIViewController(_ uiViewController: SecureHostingController<Content>, context: Context) {
+        uiViewController.update(rootView: content)
+    }
+}
+
+private final class SecureHostingController<Content: View>: UIViewController {
+    private let secureField = SecureContainerField()
+    private let hostingController: UIHostingController<Content>
+    private var hostedConstraints: [NSLayoutConstraint] = []
+
+    init(rootView: Content) {
+        self.hostingController = UIHostingController(rootView: rootView)
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func loadView() {
         secureField.isSecureTextEntry = true
-        
-        let hostingController = context.coordinator.hostingController
+        secureField.backgroundColor = .clear
+        view = secureField
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        addChild(hostingController)
         hostingController.view.backgroundColor = .clear
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Try to find the secure container (UITextLayoutCanvasView or similar)
-        if let secureContainer = secureField.subviews.first {
-            secureContainer.addSubview(hostingController.view)
-            
-            NSLayoutConstraint.activate([
-                hostingController.view.topAnchor.constraint(equalTo: secureContainer.topAnchor),
-                hostingController.view.bottomAnchor.constraint(equalTo: secureContainer.bottomAnchor),
-                hostingController.view.leadingAnchor.constraint(equalTo: secureContainer.leadingAnchor),
-                hostingController.view.trailingAnchor.constraint(equalTo: secureContainer.trailingAnchor)
-            ])
-        } else {
-            // Fallback if internal structure changes
-            secureField.addSubview(hostingController.view)
-             NSLayoutConstraint.activate([
-                hostingController.view.topAnchor.constraint(equalTo: secureField.topAnchor),
-                hostingController.view.bottomAnchor.constraint(equalTo: secureField.bottomAnchor),
-                hostingController.view.leadingAnchor.constraint(equalTo: secureField.leadingAnchor),
-                hostingController.view.trailingAnchor.constraint(equalTo: secureField.trailingAnchor)
-            ])
-        }
-        
-        return secureField
+        attachHostedView()
+        hostingController.didMove(toParent: self)
     }
-    
-    func updateUIView(_ uiView: UIView, context: Context) {
-        context.coordinator.hostingController.rootView = content
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        attachHostedView()
     }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(content: content)
+
+    func update(rootView: Content) {
+        hostingController.rootView = rootView
     }
-    
-    class Coordinator {
-        let hostingController: UIHostingController<Content>
-        
-        init(content: Content) {
-            self.hostingController = UIHostingController(rootView: content)
-        }
+
+    private func attachHostedView() {
+        let container = secureField.subviews.first ?? secureField
+        guard hostingController.view.superview !== container else { return }
+
+        hostingController.view.removeFromSuperview()
+        NSLayoutConstraint.deactivate(hostedConstraints)
+        container.addSubview(hostingController.view)
+
+        hostedConstraints = [
+            hostingController.view.topAnchor.constraint(equalTo: container.topAnchor),
+            hostingController.view.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            hostingController.view.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            hostingController.view.trailingAnchor.constraint(equalTo: container.trailingAnchor)
+        ]
+        NSLayoutConstraint.activate(hostedConstraints)
     }
-    
-    private class SecureContainerField: UITextField {
-        override var canBecomeFirstResponder: Bool {
-            return false
-        }
-        
-        override func caretRect(for position: UITextPosition) -> CGRect {
-            return .zero
-        }
-        
-        override func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
-            return []
-        }
-        
-        override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
-            return false
-        }
-    }
+}
+
+private final class SecureContainerField: UITextField {
+    override var canBecomeFirstResponder: Bool { false }
+
+    override func caretRect(for position: UITextPosition) -> CGRect { .zero }
+
+    override func selectionRects(for range: UITextRange) -> [UITextSelectionRect] { [] }
+
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool { false }
+
+    override var textInputContextIdentifier: String? { nil }
 }
 #endif
