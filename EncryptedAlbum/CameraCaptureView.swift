@@ -221,15 +221,18 @@ import SwiftUI
             .onReceive(model.$cameraError) { error in
                 cameraErrorMessage = error
             }
-            .alert("Camera Unavailable", isPresented: Binding(
-                get: { cameraErrorMessage != nil },
-                set: { newValue in
-                    if !newValue {
-                        cameraErrorMessage = nil
-                        model.cameraError = nil
+            .alert(
+                "Camera Unavailable",
+                isPresented: Binding(
+                    get: { cameraErrorMessage != nil },
+                    set: { newValue in
+                        if !newValue {
+                            cameraErrorMessage = nil
+                            model.cameraError = nil
+                        }
                     }
-                }
-            )) {
+                )
+            ) {
                 Button("OK", role: .cancel) {
                     cameraErrorMessage = nil
                     model.cameraError = nil
@@ -252,7 +255,7 @@ import SwiftUI
         // Use a static queue to ensure serial access across all CameraModel instances
         private static let sharedSessionQueue = DispatchQueue(label: "biz.front-end.encryptedalbum.camera.session")
         private var sessionQueue: DispatchQueue { Self.sharedSessionQueue }
-        
+
         @Published var isAuthorized = false
         @Published var captureMode: CaptureMode = .photo
         @Published var isRecording = false
@@ -279,15 +282,20 @@ import SwiftUI
             }
         }
 
+        @objc private func deviceDisconnected(_ notification: Notification) {
+            if let device = notification.object as? AVCaptureDevice {
+                // Stop session and show error
+                stopSession()
+                handleCameraError("Camera disconnected.")
+            }
+        }
+
         func setupSession() {
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(deviceDisconnected), name: .AVCaptureDeviceWasDisconnected, object: nil)
             sessionQueue.async {
-                // If session is nil, we can't do anything.
-                // But we initialized it in init().
-                // If stopSession was called previously, we might have cleaned it up.
-                // But here we are in a new instance or re-using.
-                
                 guard let session = self.session else { return }
-                
+
                 if !session.inputs.isEmpty {
                     if !session.isRunning {
                         session.startRunning()
@@ -297,6 +305,12 @@ import SwiftUI
 
                 guard let device = AVCaptureDevice.default(for: .video) else {
                     self.handleCameraError("No camera device is available. Connect one and try again.")
+                    return
+                }
+
+                // Add this check to ensure the device is connected
+                guard device.isConnected else {
+                    self.handleCameraError("Camera device is not connected. Please check your camera.")
                     return
                 }
 
@@ -344,28 +358,28 @@ import SwiftUI
 
         func stopSession() {
             guard let session = self.session else { return }
-            
+
             // Invalidate timer on Main immediately, as it was created on Main
             self.recordingTimer?.invalidate()
             self.recordingTimer = nil
             self.recordingStartTime = nil
-            
+
             // Keep session alive until async block finishes
             sessionQueue.async { [weak self] in
                 if self?.movieOutput.isRecording == true {
                     self?.movieOutput.stopRecording()
                 }
-                
+
                 if session.isRunning {
                     session.stopRunning()
                 }
-                
+
                 // We do not need to explicitly remove inputs/outputs here.
                 // If the session is deallocated, they are removed.
                 // If the session is reused, we want them to stay.
                 // Removing them explicitly can cause race conditions if another session is starting up on the same device.
             }
-            
+
             DispatchQueue.main.async { [weak self] in
                 self?.isRecording = false
                 self?.recordingDuration = nil
