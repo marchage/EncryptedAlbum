@@ -38,9 +38,6 @@
 		986328E32ECE894300EAE9A9 /* FileServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328E02ECE894300EAE9A9 /* FileServiceTests.swift */; };
 		986328E42ECE894300EAE9A9 /* CryptoServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */; };
 		986328EC2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */; };
-		B4FA2CB13F8D4E0FB4F74101 /* UITestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4FA2CB03F8D4E0FB4F74101 /* UITestHelpers.swift */; };
-		B4FA2CB23F8D4E0FB4F74101 /* SecretVaultMacUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4FA2CB43F8D4E0FB4F74101 /* SecretVaultMacUITests.swift */; };
-		B4FA2CB33F8D4E0FB4F74101 /* UITestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4FA2CB03F8D4E0FB4F74101 /* UITestHelpers.swift */; };
 		988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */; };
 		98900B502ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */; };
 		98900B512ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */; };
@@ -62,6 +59,9 @@
 		A7F6845B3F0A4BA800D12345 /* DirectImportProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F684593F0A4BA800D12345 /* DirectImportProgressTests.swift */; };
 		AA11BB2233CC44DD55EE66FF /* SetupPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */; };
 		AB219FCE33BC4485A762BDA6 /* SecurityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC32058021C54480B2F0BD89 /* SecurityService.swift */; };
+		B4FA2CB13F8D4E0FB4F74101 /* UITestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4FA2CB03F8D4E0FB4F74101 /* UITestHelpers.swift */; };
+		B4FA2CB23F8D4E0FB4F74101 /* SecretVaultMacUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4FA2CB43F8D4E0FB4F74101 /* SecretVaultMacUITests.swift */; };
+		B4FA2CB33F8D4E0FB4F74101 /* UITestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4FA2CB03F8D4E0FB4F74101 /* UITestHelpers.swift */; };
 		B60166E7D2AD4B09B005BB47 /* VaultError.swift in Sources */ = {isa = PBXBuildFile; fileRef = A61A2BD7A0514BCA85111D3F /* VaultError.swift */; };
 		B7C1A2D43E8C4F6A00D10010 /* PasswordServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 982404532ECF12930078B446 /* PasswordServiceTests.swift */; };
 		B7C1A2D43E8C4F6A00D10011 /* PhotosLibraryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985C161B2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift */; };
@@ -92,14 +92,14 @@
 			remoteGlobalIDString = 981926512EC854B600C67291;
 			remoteInfo = "SecretVault iOS";
 		};
-		B7C1A2DF3E8C4F6A00D10010 /* PBXContainerItemProxy */ = {
+		B4FA2CBC3F8D4E0FB4F74101 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9849B4492EB9893C00B17DAC /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 9849B4502EB9893D00B17DAC;
 			remoteInfo = SecretVault;
 		};
-		B4FA2CBC3F8D4E0FB4F74101 /* PBXContainerItemProxy */ = {
+		B7C1A2DF3E8C4F6A00D10010 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9849B4492EB9893C00B17DAC /* Project object */;
 			proxyType = 1;
@@ -134,9 +134,6 @@
 		986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CryptoServiceTests.swift; sourceTree = "<group>"; };
 		986328E92ECE8CEF00EAE9A9 /* SecretVaultUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SecretVaultUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		986328EB2ECE8CEF00EAE9A9 /* SecretVaultUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultUITests.swift; sourceTree = "<group>"; };
-		B4FA2CB03F8D4E0FB4F74101 /* UITestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestHelpers.swift; sourceTree = "<group>"; };
-		B4FA2CB43F8D4E0FB4F74101 /* SecretVaultMacUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultMacUITests.swift; sourceTree = "<group>"; };
-		B4FA2CB53F8D4E0FB4F74101 /* SecretVaultMacUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SecretVaultMacUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PrivacyOverlayBackground.swift; sourceTree = "<group>"; };
 		989ADDD62ED5BDE400994E72 /* VaultStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VaultStorage.swift; sourceTree = "<group>"; };
 		989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InactiveAppOverlay.swift; sourceTree = "<group>"; };
@@ -146,6 +143,9 @@
 		A61A2BD7A0514BCA85111D3F /* VaultError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultError.swift; sourceTree = "<group>"; };
 		A7F684593F0A4BA800D12345 /* DirectImportProgressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectImportProgressTests.swift; sourceTree = "<group>"; };
 		A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosLibraryService.swift; sourceTree = "<group>"; };
+		B4FA2CB03F8D4E0FB4F74101 /* UITestHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestHelpers.swift; sourceTree = "<group>"; };
+		B4FA2CB43F8D4E0FB4F74101 /* SecretVaultMacUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretVaultMacUITests.swift; sourceTree = "<group>"; };
+		B4FA2CB53F8D4E0FB4F74101 /* SecretVaultMacUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SecretVaultMacUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B7C1A2E23E8C4F6A00D10010 /* SecretVaultMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SecretVaultMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupPasswordView.swift; sourceTree = "<group>"; };
 		C5C904A396A6B1968CDD78D9 /* VaultDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VaultDetailView.swift; sourceTree = "<group>"; };
@@ -186,14 +186,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		B7C1A2D93E8C4F6A00D10010 /* Frameworks */ = {
+		B4FA2CB83F8D4E0FB4F74101 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		B4FA2CB83F8D4E0FB4F74101 /* Frameworks */ = {
+		B7C1A2D93E8C4F6A00D10010 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -492,14 +492,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		B7C1A2DA3E8C4F6A00D10010 /* Resources */ = {
+		B4FA2CB93F8D4E0FB4F74101 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		B4FA2CB93F8D4E0FB4F74101 /* Resources */ = {
+		B7C1A2DA3E8C4F6A00D10010 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -593,6 +593,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B4FA2CB73F8D4E0FB4F74101 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B4FA2CB23F8D4E0FB4F74101 /* SecretVaultMacUITests.swift in Sources */,
+				B4FA2CB33F8D4E0FB4F74101 /* UITestHelpers.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B7C1A2D83E8C4F6A00D10010 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -605,15 +614,6 @@
 				B7C1A2D43E8C4F6A00D10015 /* VaultManagerTests.swift in Sources */,
 				B7C1A2D43E8C4F6A00D10016 /* SecretVaultTests.swift in Sources */,
 				B7C1A2D43E8C4F6A00D10017 /* DirectImportProgressTests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		B4FA2CB73F8D4E0FB4F74101 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				B4FA2CB23F8D4E0FB4F74101 /* SecretVaultMacUITests.swift in Sources */,
-				B4FA2CB33F8D4E0FB4F74101 /* UITestHelpers.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -630,15 +630,15 @@
 			target = 981926512EC854B600C67291 /* SecretVault iOS */;
 			targetProxy = 986328EF2ECE8CEF00EAE9A9 /* PBXContainerItemProxy */;
 		};
-		B7C1A2E13E8C4F6A00D10010 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 9849B4502EB9893D00B17DAC /* SecretVault */;
-			targetProxy = B7C1A2DF3E8C4F6A00D10010 /* PBXContainerItemProxy */;
-		};
 		B4FA2CBB3F8D4E0FB4F74101 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 9849B4502EB9893D00B17DAC /* SecretVault */;
 			targetProxy = B4FA2CBC3F8D4E0FB4F74101 /* PBXContainerItemProxy */;
+		};
+		B7C1A2E13E8C4F6A00D10010 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9849B4502EB9893D00B17DAC /* SecretVault */;
+			targetProxy = B7C1A2DF3E8C4F6A00D10010 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -841,7 +841,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SecretVault/Preview Content\"";
 				DEVELOPMENT_TEAM = TDWHVYP98Z;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -869,7 +868,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SecretVault/Preview Content\"";
 				DEVELOPMENT_TEAM = TDWHVYP98Z;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -968,6 +966,25 @@
 			};
 			name = Release;
 		};
+		987CF2C42ED6DB8E001E8019 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				PRODUCT_NAME = SecretVaultMacTests;
+			};
+			name = Debug;
+		};
+		987CF2C52ED6DB8E001E8019 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				PRODUCT_NAME = SecretVaultMacTests;
+			};
+			name = Release;
+		};
 		B4FA2CBD3F8D4E0FB4F74101 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1002,25 +1019,6 @@
 				SWIFT_VERSION = 5.0;
 				TEST_TARGET_NAME = SecretVault;
 				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
-		987CF2C42ED6DB8E001E8019 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COPY_PHASE_STRIP = NO;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				PRODUCT_NAME = SecretVaultMacTests;
-			};
-			name = Debug;
-		};
-		987CF2C52ED6DB8E001E8019 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COPY_PHASE_STRIP = YES;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				PRODUCT_NAME = SecretVaultMacTests;
 			};
 			name = Release;
 		};

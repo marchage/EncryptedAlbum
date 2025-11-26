@@ -108,13 +108,22 @@ private final class SecureHostingController<Content: View>: UIViewController {
 
         contentContainer.translatesAutoresizingMaskIntoConstraints = false
         contentContainer.backgroundColor = .clear
-        secureField.addSubview(contentContainer)
+        
+        // Find the secure subview (usually _UITextLayoutCanvasView)
+        // If found, add content there to inherit secure traits
+        let secureView = secureField.subviews.first { subview in
+            let name = String(describing: type(of: subview))
+            return name.contains("CanvasView") || name.contains("LayoutView")
+        }
+        
+        let targetView = secureView ?? secureField
+        targetView.addSubview(contentContainer)
 
         NSLayoutConstraint.activate([
-            contentContainer.topAnchor.constraint(equalTo: secureField.topAnchor),
-            contentContainer.bottomAnchor.constraint(equalTo: secureField.bottomAnchor),
-            contentContainer.leadingAnchor.constraint(equalTo: secureField.leadingAnchor),
-            contentContainer.trailingAnchor.constraint(equalTo: secureField.trailingAnchor)
+            contentContainer.topAnchor.constraint(equalTo: targetView.topAnchor),
+            contentContainer.bottomAnchor.constraint(equalTo: targetView.bottomAnchor),
+            contentContainer.leadingAnchor.constraint(equalTo: targetView.leadingAnchor),
+            contentContainer.trailingAnchor.constraint(equalTo: targetView.trailingAnchor)
         ])
 
         contentContainer.addSubview(hostingController.view)
@@ -126,6 +135,26 @@ private final class SecureHostingController<Content: View>: UIViewController {
         ])
 
         hostingController.didMove(toParent: self)
+        
+        // If we didn't find the secure view immediately, try again after layout
+        if secureView == nil {
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                if let delayedSecureView = self.secureField.subviews.first(where: { 
+                    let name = String(describing: type(of: $0))
+                    return name.contains("CanvasView") || name.contains("LayoutView")
+                }) {
+                    self.contentContainer.removeFromSuperview()
+                    delayedSecureView.addSubview(self.contentContainer)
+                    NSLayoutConstraint.activate([
+                        self.contentContainer.topAnchor.constraint(equalTo: delayedSecureView.topAnchor),
+                        self.contentContainer.bottomAnchor.constraint(equalTo: delayedSecureView.bottomAnchor),
+                        self.contentContainer.leadingAnchor.constraint(equalTo: delayedSecureView.leadingAnchor),
+                        self.contentContainer.trailingAnchor.constraint(equalTo: delayedSecureView.trailingAnchor)
+                    ])
+                }
+            }
+        }
     }
 
     func update(rootView: Content) {
