@@ -17,8 +17,25 @@ class ShareViewController: SLComposeServiceViewController {
     // Format is usually: "group.biz.front-end.EncryptedAlbum"
     let appGroupIdentifier = "group.biz.front-end.EncryptedAlbum"
 
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        self.title = "Import to Vault"
+        self.navigationController?.navigationBar.topItem?.rightBarButtonItem?.title = "Save"
+        self.placeholder = "Tap Save to import photos/videos"
+    }
+
     override func isContentValid() -> Bool {
-        return true
+        guard let items = extensionContext?.inputItems as? [NSExtensionItem] else { return false }
+        for item in items {
+            guard let attachments = item.attachments else { continue }
+            for provider in attachments {
+                if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) ||
+                   provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     override func didSelectPost() {
