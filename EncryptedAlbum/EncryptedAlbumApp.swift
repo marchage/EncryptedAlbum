@@ -108,8 +108,9 @@ struct EncryptedAlbumApp: App {
             
             // Handle raw images (e.g. from some apps that copy image data directly)
             if let images = pboard.readObjects(forClasses: [NSImage.self], options: nil) as? [NSImage] {
+                let imageDatas = images.compactMap { $0.tiffRepresentation }
                 Task {
-                    await importImages(images)
+                    await importImages(imageDatas)
                 }
                 return
             }
@@ -151,17 +152,16 @@ struct EncryptedAlbumApp: App {
             content.title = "Import Complete"
             content.body = "Successfully imported \(urls.count) items from Service."
             let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-            UNUserNotificationCenter.current().add(request)
+            try? await UNUserNotificationCenter.current().add(request)
         }
         
         @MainActor
-        private func importImages(_ images: [NSImage]) async {
+        private func importImages(_ imageDatas: [Data]) async {
             let manager = AlbumManager.shared
-            manager.directImportProgress.reset(totalItems: images.count)
+            manager.directImportProgress.reset(totalItems: imageDatas.count)
             
-            for (index, image) in images.enumerated() {
-                guard let tiffData = image.tiffRepresentation,
-                      let bitmap = NSBitmapImageRep(data: tiffData),
+            for (index, tiffData) in imageDatas.enumerated() {
+                guard let bitmap = NSBitmapImageRep(data: tiffData),
                       let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.9]) else {
                     continue
                 }
