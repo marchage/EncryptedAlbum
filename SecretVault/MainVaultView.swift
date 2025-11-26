@@ -1,4 +1,5 @@
 import AVKit
+import AVFoundation
 import SwiftUI
 
 #if os(macOS)
@@ -6,6 +7,7 @@ import SwiftUI
 #endif
 #if os(iOS)
     import UIKit
+    import Photos
 #endif
 
 struct MainVaultView: View {
@@ -821,7 +823,11 @@ struct MainVaultView: View {
     @ViewBuilder
     private var toolbarActions: some View {
         Button {
-            showingPhotosLibrary = true
+            #if os(iOS)
+                startPhotoLibraryFlow()
+            #else
+                showingPhotosLibrary = true
+            #endif
         } label: {
             Image(systemName: "photo.fill.on.rectangle.fill")
         }
@@ -830,9 +836,10 @@ struct MainVaultView: View {
 
         Button {
             #if os(iOS)
-                UltraPrivacyCoordinator.shared.beginTrustedModal()
+                startCameraCaptureFlow()
+            #else
+                showingCamera = true
             #endif
-            showingCamera = true
         } label: {
             Image(systemName: "camera.fill")
         }
@@ -1552,6 +1559,11 @@ struct MainVaultView: View {
                         UltraPrivacyCoordinator.shared.endTrustedModal()
                     }
                 }
+                .onChange(of: showingPhotosLibrary) { isPresented in
+                    if !isPresented {
+                        UltraPrivacyCoordinator.shared.endTrustedModal()
+                    }
+                }
             #endif
             if directImportProgress.isImporting {
                 captureProgressOverlay
@@ -1626,6 +1638,121 @@ struct MainVaultView: View {
         #endif
     }
 }
+#if os(iOS)
+    extension MainVaultView {
+        private func startCameraCaptureFlow() {
+            Task { @MainActor in
+                await presentCameraCaptureFlow()
+            }
+        }
+
+        private func startPhotoLibraryFlow() {
+            Task { @MainActor in
+                await presentPhotoLibraryFlow()
+            }
+        }
+
+        @MainActor
+        private func presentCameraCaptureFlow() async {
+            let coordinator = UltraPrivacyCoordinator.shared
+            coordinator.beginTrustedModal()
+
+            let cameraGranted = await MediaPermissionHelper.ensureCameraAccess()
+            guard cameraGranted else {
+                coordinator.endTrustedModal()
+                showPermissionDenied(
+                    "Camera access is required to capture new photos or videos.")
+                return
+            }
+
+            let microphoneGranted = await MediaPermissionHelper.ensureMicrophoneAccess()
+            guard microphoneGranted else {
+                coordinator.endTrustedModal()
+                showPermissionDenied(
+                    "Microphone access is required to record audio when capturing vault videos.")
+                return
+            }
+
+            showingCamera = true
+        }
+
+        @MainActor
+        private func presentPhotoLibraryFlow() async {
+            let coordinator = UltraPrivacyCoordinator.shared
+            coordinator.beginTrustedModal()
+
+            let granted = await MediaPermissionHelper.ensurePhotoLibraryAccess()
+            guard granted else {
+                coordinator.endTrustedModal()
+                showPermissionDenied(
+                    "Photos access is required to import from your library.")
+                return
+            }
+
+            showingPhotosLibrary = true
+        }
+
+        @MainActor
+        private func showPermissionDenied(_ message: String) {
+            vaultManager.hideNotification = HideNotification(message: message, type: .failure, photos: nil)
+        }
+    }
+
+    private enum MediaPermissionHelper {
+        static func ensureCameraAccess() async -> Bool {
+            switch AVCaptureDevice.authorizationStatus(for: .video) {
+            case .authorized:
+                return true
+            case .denied, .restricted:
+                return false
+            case .notDetermined:
+                return await withCheckedContinuation { continuation in
+                    AVCaptureDevice.requestAccess(for: .video) { granted in
+                        continuation.resume(returning: granted)
+                    }
+                }
+            @unknown default:
+                return false
+            }
+        }
+
+        static func ensureMicrophoneAccess() async -> Bool {
+            let session = AVAudioSession.sharedInstance()
+            switch session.recordPermission {
+            case .granted:
+                return true
+            case .denied:
+                return false
+            case .undetermined:
+                return await withCheckedContinuation { continuation in
+                    session.requestRecordPermission { granted in
+                        continuation.resume(returning: granted)
+                    }
+                }
+            @unknown default:
+                return false
+            }
+        }
+
+        static func ensurePhotoLibraryAccess() async -> Bool {
+            let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+            switch status {
+            case .authorized, .limited:
+                return true
+            case .denied, .restricted:
+                return false
+            case .notDetermined:
+                return await withCheckedContinuation { continuation in
+                    PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
+                        continuation.resume(returning: newStatus == .authorized || newStatus == .limited)
+                    }
+                }
+            @unknown default:
+                return false
+            }
+        }
+    }
+#endif
 #if os(macOS)
     extension MainVaultView {
         /// Schedule a short-delay auto lock so quick Command-Tabs don't immediately force re-auth.
