@@ -75,7 +75,7 @@ final class SecurityServiceTests: XCTestCase {
     
     // MARK: - Biometric Password Storage Tests
     
-    func testBiometricPasswordStorage_RoundTrip() throws {
+    func testBiometricPasswordStorage_RoundTrip() async throws {
         // Note: This test might fail on Simulator if biometrics are not enrolled or if the keychain requires interaction.
         // However, storeBiometricPassword uses SecAccessControl which might not block *storage*, but retrieval might block.
         // We will test storage and basic retrieval logic, but expect nil or interaction required in a real scenario.
@@ -84,11 +84,11 @@ final class SecurityServiceTests: XCTestCase {
         let password = "BiometricPassword123"
         
         // We expect this to potentially succeed in storage
-        try securityService.storeBiometricPassword(password)
+        try await securityService.storeBiometricPassword(password)
         
         // Retrieval usually requires user interaction (biometrics), so it might return nil or throw in a headless test environment.
         // We won't assert the value, just that the method call completes.
-        _ = try? securityService.retrieveBiometricPassword()
+        _ = try? await securityService.retrieveBiometricPassword()
         
         // Cleanup
         try securityService.clearBiometricPassword()

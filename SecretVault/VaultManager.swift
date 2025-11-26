@@ -489,11 +489,11 @@ class VaultManager: ObservableObject {
             cachedEncryptionKey = nil
             cachedHMACKey = nil
             saveSettings()
-
-            // Store password for biometric unlock
-            saveBiometricPassword(password)
             UserDefaults.standard.set(true, forKey: "biometricConfigured")
         }
+
+        // Store password for biometric unlock
+        await saveBiometricPassword(password)
         
         #if os(iOS)
         // On iOS, verify biometric storage by attempting to retrieve it
@@ -568,12 +568,12 @@ class VaultManager: ObservableObject {
             // unless we believe it should be configured but isn't.
             #if os(macOS)
             if await !securityService.biometricPasswordExists() {
-                saveBiometricPassword(password)
+                await saveBiometricPassword(password)
             }
             #else
             // On iOS, avoid checking keychain (triggers prompt). Only save if we think it's not configured.
             if !UserDefaults.standard.bool(forKey: "biometricConfigured") {
-                 saveBiometricPassword(password)
+                 await saveBiometricPassword(password)
                  UserDefaults.standard.set(true, forKey: "biometricConfigured")
             }
             #endif
@@ -745,10 +745,10 @@ class VaultManager: ObservableObject {
             cachedHMACKey = newHMACKey
             
             saveSettings()
-            
-            // 7. Update biometric password
-            saveBiometricPassword(newPassword)
         }
+            
+        // 7. Update biometric password
+        await saveBiometricPassword(newPassword)
         
         // 8. Cleanup Journal
         try journalService.deleteJournal(from: vaultBaseURL)
@@ -1823,12 +1823,12 @@ class VaultManager: ObservableObject {
 
     // MARK: - Biometric Authentication Helpers
 
-    func saveBiometricPassword(_ password: String) {
+    func saveBiometricPassword(_ password: String) async {
         #if DEBUG
             // Saving biometric password
         #endif
         do {
-            try securityService.storeBiometricPassword(password)
+            try await securityService.storeBiometricPassword(password)
         } catch {
             #if DEBUG
                 print("Failed to store biometric password: \(error)")
