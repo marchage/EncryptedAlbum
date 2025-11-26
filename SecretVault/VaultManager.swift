@@ -567,7 +567,7 @@ class VaultManager: ObservableObject {
             // On iOS, checking if the password exists requires Face ID, so skip this check there
             // unless we believe it should be configured but isn't.
             #if os(macOS)
-            if !securityService.biometricPasswordExists() {
+            if await !securityService.biometricPasswordExists() {
                 saveBiometricPassword(password)
             }
             #else

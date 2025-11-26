@@ -466,38 +466,35 @@ class SecurityService {
     }
 
     /// Checks if a biometric-protected password exists without triggering user interaction
-    func biometricPasswordExists() -> Bool {
-        do {
-            return try performOnSecurityQueue {
+    func biometricPasswordExists() async -> Bool {
+        return await withCheckedContinuation { continuation in
+            queue.async {
                 var query: [String: Any] = [
                     kSecClass as String: kSecClassGenericPassword,
-                    kSecAttrAccount as String: biometricPasswordKey,
+                    kSecAttrAccount as String: self.biometricPasswordKey,
                     kSecMatchLimit as String: kSecMatchLimitOne,
                     kSecReturnData as String: false,
                     kSecReturnAttributes as String: false,
                     kSecUseAuthenticationUI as String: kSecUseAuthenticationUISkip,
                 ]
 
-                applyMacKeychainAttributes(to: &query, requireUISkip: true)
+                self.applyMacKeychainAttributes(to: &query, requireUISkip: true)
 
                 let status = SecItemCopyMatching(query as CFDictionary, nil)
                 switch status {
                 case errSecSuccess, errSecInteractionNotAllowed:
-                    return true
+                    continuation.resume(returning: true)
                 case errSecItemNotFound:
-                    return false
+                    continuation.resume(returning: false)
                 default:
                     #if DEBUG
                         print("🔐 DEBUG: biometricPasswordExists query failed with status \(status)")
                     #endif
-                    throw VaultError.unknownError(reason: "biometricPasswordExists failed with status \(status)")
+                    // Treat unknown errors as "not found" or "false" to be safe, 
+                    // or we could throw if we wanted to be strict, but Bool return implies simple check.
+                    continuation.resume(returning: false)
                 }
             }
-        } catch {
-            #if DEBUG
-                print("🔐 DEBUG: biometricPasswordExists query threw error \(error)")
-            #endif
-            return false
         }
     }
 
