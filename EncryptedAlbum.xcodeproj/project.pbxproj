@@ -96,6 +96,7 @@
 		DD69BC27985C4D09BA6690A2 /* FileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ECB74A746149529B6DE078 /* FileService.swift */; };
 		E48BBB324071974C8BE48D0D /* AlbumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F96EA3625074B045C751E84 /* AlbumManager.swift */; };
 		F9B0EAD109417F32CF3B7D50 /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C068CD08B70A6DBEA00400 /* UnlockView.swift */; };
+		F2A3B4C56D7E8F9012345678 /* TelemetryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E2D3C4B5A6978877665544 /* TelemetryService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -211,6 +212,7 @@
 		DD44EE5566FF77AA88BB99CC /* MainAlbumView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainAlbumView.swift; sourceTree = "<group>"; };
 		EC32058021C54480B2F0BD89 /* SecurityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityService.swift; sourceTree = "<group>"; };
 		F2ECB74A746149529B6DE078 /* FileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileService.swift; sourceTree = "<group>"; };
+		F1E2D3C4B5A6978877665544 /* TelemetryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -333,6 +335,7 @@
 				DD44EE5566FF77AA88BB99CC /* MainAlbumView.swift */,
 				984EC6712ED5DDB200038F9F /* PasswordChangeJournal.swift */,
 				28CF564BDC0E4C9F891A9910 /* PasswordService.swift */,
+						F1E2D3C4B5A6978877665544 /* TelemetryService.swift */,
 				A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */,
 				98797BC22ED7C9C6008E03C4 /* PhotoThumbnailView.swift */,
 				98797BC32ED7C9C6008E03C4 /* PhotoViewerSheet.swift */,
@@ -644,6 +647,7 @@
 				98C835FD2EC9E6CD000997CF /* MainAlbumView.swift in Sources */,
 				98900B512ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */,
 				98C835FE2EC9E6CD000997CF /* AlbumManager.swift in Sources */,
+						F2A3B4C56D7E8F9012345678 /* TelemetryService.swift in Sources */,
 				9823D7782ECD7BF400FFB750 /* CameraCaptureView.swift in Sources */,
 				98797BD32ED7E27B008E03C4 /* FakeCrashView.swift in Sources */,
 				98797BCD2ED7C9C6008E03C4 /* PhotoViewerSheet.swift in Sources */,

@@ -1940,6 +1940,8 @@ class AlbumManager: ObservableObject {
                 #if DEBUG
                     print("Successfully saved settings to: \(settingsFileURL.path)")
                 #endif
+                // Respect the telemetry flag: enable/disable the TelemetryService on save
+                TelemetryService.shared.setEnabled(telemetryEnabled)
             } catch {
                 #if DEBUG
                     print("Failed to save settings: \(error)")
