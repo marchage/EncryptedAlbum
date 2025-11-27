@@ -173,6 +173,8 @@ struct UnlockView: View {
                     }
                     .frame(minWidth: geometry.size.width, minHeight: geometry.size.height)
                 }
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
             }
 
             if showFakeCrash {

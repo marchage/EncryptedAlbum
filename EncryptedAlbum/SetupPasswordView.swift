@@ -309,6 +309,7 @@ struct SetupPasswordView: View {
             }
             .padding(.horizontal)
         }
+        .scrollContentBackground(.hidden)
         .background(Color.clear)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(

@@ -916,9 +916,12 @@ struct MainAlbumView: View {
                     .padding()
                     .frame(maxWidth: .infinity)
                 }
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
                 .navigationTitle("Encrypted Album")
                 #if os(iOS)
                     .navigationBarTitleDisplayMode(.inline)
+                    .toolbarBackground(.hidden, for: .navigationBar)
                     .toolbar {
                         ToolbarItemGroup(placement: .navigationBarLeading) {
                             selectionToolbarControls
