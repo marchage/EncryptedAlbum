@@ -12,6 +12,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
     case classic
     case glass
     case light
+    case nightTown
     
     var id: String { self.rawValue }
     
@@ -23,6 +24,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
         case .classic: return "Classic"
         case .glass: return "Glass"
         case .light: return "Light"
+        case .nightTown: return "Night Town"
         }
     }
 }
@@ -136,10 +138,104 @@ struct PrivacyOverlayBackground: View {
                 }
             case .light:
                 Color.white
+            case .nightTown:
+                NightTownView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
+    }
+}
+
+private struct NightTownView: View {
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // 1. Deep Night Sky
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.02, green: 0.02, blue: 0.1), // Deep midnight blue
+                        Color(red: 0.05, green: 0.05, blue: 0.2),
+                        Color(red: 0.1, green: 0.1, blue: 0.3)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                
+                // 2. Stars
+                ForEach(0..<50) { i in
+                    Circle()
+                        .fill(Color.white.opacity(Double.random(in: 0.3...0.8)))
+                        .frame(width: Double.random(in: 1...2), height: Double.random(in: 1...2))
+                        .position(
+                            x: Double.random(in: 0...geometry.size.width),
+                            y: Double.random(in: 0...geometry.size.height * 0.6)
+                        )
+                }
+                
+                // 3. Distant Mountains (Silhouette)
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: geometry.size.height))
+                    path.addLine(to: CGPoint(x: 0, y: geometry.size.height * 0.6))
+                    path.addCurve(
+                        to: CGPoint(x: geometry.size.width, y: geometry.size.height * 0.5),
+                        control1: CGPoint(x: geometry.size.width * 0.3, y: geometry.size.height * 0.4),
+                        control2: CGPoint(x: geometry.size.width * 0.7, y: geometry.size.height * 0.7)
+                    )
+                    path.addLine(to: CGPoint(x: geometry.size.width, y: geometry.size.height))
+                    path.closeSubpath()
+                }
+                .fill(
+                    LinearGradient(
+                        colors: [Color(red: 0.05, green: 0.05, blue: 0.15), Color.black],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                
+                // 4. Closer Hills/Town Base
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: geometry.size.height))
+                    path.addLine(to: CGPoint(x: 0, y: geometry.size.height * 0.7))
+                    path.addCurve(
+                        to: CGPoint(x: geometry.size.width, y: geometry.size.height * 0.8),
+                        control1: CGPoint(x: geometry.size.width * 0.4, y: geometry.size.height * 0.85),
+                        control2: CGPoint(x: geometry.size.width * 0.8, y: geometry.size.height * 0.65)
+                    )
+                    path.addLine(to: CGPoint(x: geometry.size.width, y: geometry.size.height))
+                    path.closeSubpath()
+                }
+                .fill(Color.black.opacity(0.8))
+                
+                // 5. Town Lights (The "Bokeh" effect)
+                ForEach(0..<80) { i in
+                    Circle()
+                        .fill(
+                            [Color.yellow, Color.orange, Color(red: 1.0, green: 0.9, blue: 0.8)]
+                                .randomElement()!
+                                .opacity(Double.random(in: 0.4...0.9))
+                        )
+                        .frame(width: Double.random(in: 2...4), height: Double.random(in: 2...4))
+                        .shadow(color: .orange.opacity(0.5), radius: 2, x: 0, y: 0)
+                        .position(
+                            x: Double.random(in: 0...geometry.size.width),
+                            y: Double.random(in: geometry.size.height * 0.65...geometry.size.height)
+                        )
+                }
+                
+                // 6. A few "streetlights" or brighter spots
+                ForEach(0..<15) { i in
+                    Circle()
+                        .fill(Color.white.opacity(0.9))
+                        .frame(width: 2, height: 2)
+                        .shadow(color: .white, radius: 4, x: 0, y: 0)
+                        .position(
+                            x: Double.random(in: 0...geometry.size.width),
+                            y: Double.random(in: geometry.size.height * 0.7...geometry.size.height)
+                        )
+                }
+            }
+        }
     }
 }
 
@@ -180,7 +276,7 @@ struct PrivacyCardBackground: ViewModifier {
                                 endPoint: .bottomTrailing
                             )
                         }
-                    case .dark:
+                    case .dark, .nightTown:
                         Color.black.opacity(0.6)
                     case .light:
                         Color.white.opacity(0.8)

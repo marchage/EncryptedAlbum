@@ -31,7 +31,7 @@ struct ContentView: View {
         switch style {
         case .light:
             return .light
-        case .dark, .rainbow, .mesh:
+        case .dark, .rainbow, .mesh, .nightTown:
             return .dark
         case .classic, .glass:
             return nil // Follow system
