@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var albumManager: AlbumManager
+    @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .rainbow
 
     var body: some View {
         ZStack {
@@ -23,6 +24,18 @@ struct ContentView: View {
             .frame(minWidth: 900, minHeight: 600)
         #endif
         .id(albumManager.viewRefreshId)  // Force view recreation when refreshId changes
+        .preferredColorScheme(colorScheme)
+    }
+
+    private var colorScheme: ColorScheme? {
+        switch style {
+        case .light:
+            return .light
+        case .dark, .rainbow, .mesh:
+            return .dark
+        case .classic, .glass:
+            return nil // Follow system
+        }
     }
 }
 /// A view wrapper that prevents screenshots and screen recording on iOS.

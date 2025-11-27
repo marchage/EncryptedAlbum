@@ -11,6 +11,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
     case mesh
     case classic
     case glass
+    case light
     
     var id: String { self.rawValue }
     
@@ -21,6 +22,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
         case .mesh: return "Mesh"
         case .classic: return "Classic"
         case .glass: return "Glass"
+        case .light: return "Light"
         }
     }
 }
@@ -132,6 +134,8 @@ struct PrivacyOverlayBackground: View {
                         endPoint: .bottomTrailing
                     )
                 }
+            case .light:
+                Color.white
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -166,9 +170,9 @@ struct PrivacyCardBackground: ViewModifier {
                         ZStack {
                             Color.white.opacity(0.05)
                             #if os(macOS)
-                            Material.ultraThinMaterial
+                            Rectangle().fill(.ultraThinMaterial)
                             #else
-                            Material.ultraThin
+                            Rectangle().fill(.ultraThinMaterial)
                             #endif
                             LinearGradient(
                                 colors: [.white.opacity(0.25), .clear],
@@ -178,17 +182,19 @@ struct PrivacyCardBackground: ViewModifier {
                         }
                     case .dark:
                         Color.black.opacity(0.6)
+                    case .light:
+                        Color.white.opacity(0.8)
                     case .classic:
                         #if os(macOS)
-                        Material.ultraThinMaterial
+                        Rectangle().fill(.ultraThinMaterial)
                         #else
-                        Material.ultraThin
+                        Rectangle().fill(.ultraThinMaterial)
                         #endif
                     default:
                         #if os(macOS)
-                        Material.ultraThinMaterial
+                        Rectangle().fill(.ultraThinMaterial)
                         #else
-                        Material.ultraThin
+                        Rectangle().fill(.ultraThinMaterial)
                         #endif
                     }
                 }
@@ -197,11 +203,11 @@ struct PrivacyCardBackground: ViewModifier {
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
                     .strokeBorder(
-                        style == .glass ? Color.white.opacity(0.3) : Color.clear,
+                        style == .glass ? Color.white.opacity(0.3) : (style == .light ? Color.black.opacity(0.1) : Color.clear),
                         lineWidth: 1
                     )
             )
-            .shadow(color: style == .glass ? Color.black.opacity(0.1) : Color.clear, radius: 10, x: 0, y: 5)
+            .shadow(color: style == .glass ? Color.black.opacity(0.1) : (style == .light ? Color.black.opacity(0.05) : Color.clear), radius: 10, x: 0, y: 5)
     }
 }
 

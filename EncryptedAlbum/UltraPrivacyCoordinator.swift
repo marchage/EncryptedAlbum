@@ -161,18 +161,20 @@ final class UltraPrivacyCoordinator: ObservableObject {
 }
 
 private struct UltraPrivacyCoverView: View {
+    @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .rainbow
+
     var body: some View {
         ZStack {
             PrivacyOverlayBackground()
             VStack(spacing: 20) {
                 Image(systemName: "lock.fill")
                     .font(.system(size: 60))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(style == .light ? .black : .white)
                 
                 Text("Encrypted Album Locked")
                     .font(.title2)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(style == .light ? .black : .white)
             }
         }
     }
