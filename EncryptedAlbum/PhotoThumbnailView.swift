@@ -126,7 +126,7 @@ struct PhotoThumbnailView: View {
 
                 if data.isEmpty {
                     AppLog.debugPrivate(
-                        "Thumbnail data empty for photo id=\(photo.id), thumbnailPath=\(photo.thumbnailPath), encryptedThumb=\(photo.encryptedThumbnailPath ?? \"nil\")"
+                        "Thumbnail data empty for photo id=\(photo.id), thumbnailPath=\(photo.thumbnailPath), encryptedThumb=\(photo.encryptedThumbnailPath ?? "nil")"
                     )
                     await MainActor.run {
                         failedToLoad = true

@@ -16,15 +16,15 @@ class PasswordService {
 
     /// Validates password strength and requirements
     func validatePassword(_ password: String) throws {
-        guard !password.isEmpty else {
+        let normalized = PasswordService.normalizePassword(password)
+
+        guard !normalized.isEmpty else {
             throw AlbumError.invalidPassword
         }
-
-        if password.count < CryptoConstants.minPasswordLength {
+        if normalized.count < CryptoConstants.minPasswordLength {
             throw AlbumError.passwordTooShort(minLength: CryptoConstants.minPasswordLength)
         }
-
-        if password.count > CryptoConstants.maxPasswordLength {
+        if normalized.count > CryptoConstants.maxPasswordLength {
             throw AlbumError.passwordTooLong(maxLength: CryptoConstants.maxPasswordLength)
         }
 
@@ -45,7 +45,8 @@ class PasswordService {
                     do {
                         let salt = try await self.cryptoService.generateSalt()
                         // Use the dedicated verifier derivation
-                        let verifier = try await self.cryptoService.deriveVerifier(password: password, salt: salt)
+                        let normalized = PasswordService.normalizePassword(password)
+                        let verifier = try await self.cryptoService.deriveVerifier(password: normalized, salt: salt)
                         continuation.resume(returning: (verifier, salt))
                     } catch {
                         continuation.resume(
@@ -62,8 +63,9 @@ class PasswordService {
             queue.async {
                 Task {
                     do {
+                        let normalized = PasswordService.normalizePassword(password)
                         let computedVerifier = try await self.cryptoService.deriveVerifier(
-                            password: password, salt: salt)
+                            password: normalized, salt: salt)
                         continuation.resume(returning: computedVerifier == hash)
                     } catch {
                         continuation.resume(returning: false)
@@ -80,7 +82,8 @@ class PasswordService {
             queue.async {
                 Task {
                     do {
-                        let (computedKey, _) = try await self.cryptoService.deriveKeys(password: password, salt: salt)
+                        let normalized = PasswordService.normalizePassword(password)
+                        let (computedKey, _) = try await self.cryptoService.deriveKeys(password: normalized, salt: salt)
                         let computedKeyData = computedKey.withUnsafeBytes { Data($0) }
                         continuation.resume(returning: computedKeyData == storedKey)
                     } catch {
@@ -130,7 +133,8 @@ class PasswordService {
                 Task {
                     do {
                         // Validate new password
-                        try self.validatePassword(newPassword)
+                            // 1. Validate new password (normalization handled inside validatePassword)
+                            try self.validatePassword(newPassword)
 
                         // Verify old password
                         guard let (storedHash, storedSalt) = try await self.retrievePasswordCredentials() else {
@@ -146,7 +150,7 @@ class PasswordService {
                         }
 
                         // Generate new hash and salt for new password
-                        let (newHash, newSalt) = try await self.hashPassword(newPassword)
+                            let (newHash, newSalt) = try await self.hashPassword(newPassword)
 
                         // Store new credentials
                         try await self.storePasswordHash(newHash, salt: newSalt)
@@ -203,10 +207,11 @@ class PasswordService {
 
                         // 3. Generate new salt and keys
                         let newSalt = try await self.cryptoService.generateSalt()
+                        let normalizedNew = PasswordService.normalizePassword(newPassword)
                         let newVerifier = try await self.cryptoService.deriveVerifier(
-                            password: newPassword, salt: newSalt)
+                            password: normalizedNew, salt: newSalt)
                         let (newEncryptionKey, newHMACKey) = try await self.cryptoService.deriveKeys(
-                            password: newPassword, salt: newSalt)
+                            password: normalizedNew, salt: newSalt)
 
                         continuation.resume(returning: (newVerifier, newSalt, newEncryptionKey, newHMACKey))
                     } catch let error as AlbumError {
@@ -220,6 +225,13 @@ class PasswordService {
     }
 
     // MARK: - Password Strength Analysis
+
+    /// Normalize incoming password for consistent handling (use NFKC / compatibility mapping)
+    /// This reduces surprises caused by differently composed Unicode characters.
+    static func normalizePassword(_ password: String) -> String {
+        let ns = password as NSString
+        return ns.precomposedStringWithCompatibilityMapping
+    }
 
     /// Analyzes password strength and provides feedback
     func analyzePasswordStrength(_ password: String) -> PasswordStrength {
@@ -243,7 +255,9 @@ class PasswordService {
         let hasLowercase = password.contains { $0.isLowercase }
         let hasUppercase = password.contains { $0.isUppercase }
         let hasDigits = password.contains { $0.isNumber }
-        let hasSpecialChars = password.contains { "!@#$%^&*()_+-=[]{}|;:,.<>?".contains($0) }
+        // Treat *any* Unicode punctuation or symbol as a special character for strength scoring.
+        let specialSet = CharacterSet.punctuationCharacters.union(.symbols)
+        let hasSpecialChars = password.unicodeScalars.contains { specialSet.contains($0) }
 
         if hasLowercase { score += 1 } else { feedback.append("Include lowercase letters") }
         if hasUppercase { score += 2 } else { feedback.append("Include uppercase letters") }

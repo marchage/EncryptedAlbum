@@ -137,6 +137,37 @@ final class PasswordServiceTests: XCTestCase {
         let isValid = try await passwordService.verifyPassword(password, against: hash, salt: wrongSalt)
         XCTAssertFalse(isValid)
     }
+
+    func testNormalization_ComposedAndDecomposedProduceSameVerifier() async throws {
+        // Composed é vs decomposed e + combining accent (U+0301)
+            let composed = "caféTest123!" // composed U+00E9
+            // Build with composed char explicitly and decomposed variant
+            let composedCorrect = "caféTest123!" // U+00E9
+        let decomposed = "cafe\u{0301}Test123!" // 'e' + combining acute accent
+
+        // Hash the composed form
+        let (hash, salt) = try await passwordService.hashPassword(composedCorrect)
+
+        // Verifying with the decomposed form should succeed after normalization
+        let isValid = try await passwordService.verifyPassword(decomposed, against: hash, salt: salt)
+        XCTAssertTrue(isValid)
+    }
+
+    func testValidatePassword_AllowsTurkishCharacters() {
+        let turkish = "İstanbulı9!abc" // contains dotted İ and dotless ı
+        XCTAssertNoThrow(try passwordService.validatePassword(turkish))
+    }
+
+    func testAnalyzePasswordStrength_UnicodeSymbolCountsAsSpecial() {
+        let base = "CorrectHorse123"
+        let withSymbol = base + "£"
+
+        let baseResult = passwordService.analyzePasswordStrength(base)
+        let withSymbolResult = passwordService.analyzePasswordStrength(withSymbol)
+
+        // The version with the unicode symbol should score higher due to special character credit
+        XCTAssertTrue(withSymbolResult.score >= baseResult.score + 5)
+    }
     
     // MARK: - Storage Tests (Integration-like)
     
