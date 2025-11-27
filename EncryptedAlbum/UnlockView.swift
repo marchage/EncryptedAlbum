@@ -174,7 +174,8 @@ struct UnlockView: View {
                 .frame(minWidth: geometry.size.width, minHeight: geometry.size.height)
             }
         }
-        .background(Color.clear)
+    }
+    .background(Color.clear)
         .onAppear {
             biometricsReady = checkBiometricAvailability()
             if scenePhase == .active {
