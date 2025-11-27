@@ -238,8 +238,10 @@ class PasswordService {
         var score = 0
         var feedback: [String] = []
 
+        let normalized = PasswordService.normalizePassword(password)
+
         // Length check
-        if password.count >= 20 {
+        if normalized.count >= 20 {
             score += 8
         } else if password.count >= 16 {
             score += 5
@@ -252,12 +254,12 @@ class PasswordService {
         }
 
         // Character variety
-        let hasLowercase = password.contains { $0.isLowercase }
-        let hasUppercase = password.contains { $0.isUppercase }
-        let hasDigits = password.contains { $0.isNumber }
+        let hasLowercase = normalized.contains { $0.isLowercase }
+        let hasUppercase = normalized.contains { $0.isUppercase }
+        let hasDigits = normalized.contains { $0.isNumber }
         // Treat *any* Unicode punctuation or symbol as a special character for strength scoring.
         let specialSet = CharacterSet.punctuationCharacters.union(.symbols)
-        let hasSpecialChars = password.unicodeScalars.contains { specialSet.contains($0) }
+        let hasSpecialChars = normalized.unicodeScalars.contains { specialSet.contains($0) }
 
         if hasLowercase { score += 1 } else { feedback.append("Include lowercase letters") }
         if hasUppercase { score += 2 } else { feedback.append("Include uppercase letters") }
@@ -266,7 +268,7 @@ class PasswordService {
 
         // Common patterns
         let commonPatterns = ["123456", "password", "qwerty", "abc123", "admin"]
-        if commonPatterns.contains(where: { password.lowercased().contains($0) }) {
+        if commonPatterns.contains(where: { normalized.lowercased().contains($0) }) {
             score -= 5
             feedback.append("Avoid common patterns")
         }
@@ -277,7 +279,7 @@ class PasswordService {
             for i in 0...(seq.count - 3) {
                 let substring = String(
                     seq[seq.index(seq.startIndex, offsetBy: i)...seq.index(seq.startIndex, offsetBy: i + 2)])
-                if password.lowercased().contains(substring) {
+                if normalized.lowercased().contains(substring) {
                     score -= 3
                     feedback.append("Avoid sequential characters")
                     break
@@ -287,7 +289,7 @@ class PasswordService {
 
         // Repeated characters (3 or more consecutive)
         var hasTripleRepeat = false
-        let chars = Array(password)
+        let chars = Array(normalized)
         if chars.count >= 3 {
             for i in 0...(chars.count - 3) {
                 if chars[i] == chars[i + 1] && chars[i] == chars[i + 2] {
