@@ -12,12 +12,22 @@ struct EncryptedAlbumApp: App {
     var body: some Scene {
         #if os(macOS)
             WindowGroup {
-                ContentView()
-                    .environmentObject(albumManager)
-                    .frame(minWidth: 900, minHeight: 600)
-                    .overlay {
-                        InactiveAppOverlay()
+                ZStack {
+                    ContentView()
+                        .environmentObject(albumManager)
+                        .frame(minWidth: 900, minHeight: 600)
+                        .overlay {
+                            InactiveAppOverlay()
+                        }
+
+                    // macOS: enforce passcode-on-launch by showing UnlockView when configured
+                    if albumManager.requirePasscodeOnLaunch && albumManager.showUnlockPrompt && !albumManager.isUnlocked {
+                        UnlockView()
+                            .environmentObject(albumManager)
+                            .zIndex(1000)
+                            .transition(.opacity)
                     }
+                }
                     .onChange(of: albumManager.isBusy) { isBusy in
                         if !isBusy {
                             hasNotifiedBackgroundActivity = false

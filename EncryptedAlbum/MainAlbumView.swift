@@ -759,7 +759,7 @@ struct MainAlbumView: View {
                 }
             #else
                 .sheet(isPresented: $showingPreferences) {
-                    PreferencesView()
+                    PreferencesView(isPresented: $showingPreferences)
                         .environmentObject(albumManager)
                 }
             #endif

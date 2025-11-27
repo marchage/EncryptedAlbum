@@ -22,6 +22,15 @@ struct EncryptedAlbumApp_iOS: App {
                         .environmentObject(albumManager)
                         .environmentObject(screenshotBlocker)
 
+                    // If the user requires passcode on launch and the album has a password,
+                    // present the `UnlockView` modally above the content until unlocked.
+                    if albumManager.requirePasscodeOnLaunch && albumManager.showUnlockPrompt && !albumManager.isUnlocked {
+                        UnlockView()
+                            .environmentObject(albumManager)
+                            .zIndex(1000)
+                            .transition(.opacity)
+                    }
+
                     // Privacy overlay for App Switcher
                     if scenePhase != .active && !privacyCoordinator.isTrustedModalActive {
                         PrivacyOverlayBackground()

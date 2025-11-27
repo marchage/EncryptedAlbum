@@ -20,6 +20,70 @@ struct UnlockView: View {
     @AppStorage("stealthModeEnabled") private var stealthModeEnabled = false
     @State private var showFakeCrash = false
 
+    private func appIconView() -> some View {
+        #if os(macOS)
+        if let appIcon = NSImage(named: "AppIcon") {
+            // Force loading the 2x representation if available (512px for 256pt @2x)
+            if let bitmapRep = appIcon.representations.first(where: { 
+                ($0 as? NSBitmapImageRep)?.pixelsWide == 512 
+            }) as? NSBitmapImageRep {
+                let highResImage = NSImage(size: NSSize(width: 256, height: 256))
+                highResImage.addRepresentation(bitmapRep)
+                return AnyView(Image(nsImage: highResImage)
+                    .resizable()
+                    .renderingMode(.original)
+                    .interpolation(.high)
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: 256, maxHeight: 256)
+                    // .padding(.top, 36)
+                    .clipShape(RoundedRectangle(cornerRadius: 26))
+                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+            } else {
+                return AnyView(Image(nsImage: appIcon)
+                    .resizable()
+                    .renderingMode(.original)
+                    .interpolation(.high)
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: 256, maxHeight: 256)
+                    // .padding(.top, 36)
+                    .clipShape(RoundedRectangle(cornerRadius: 26))
+                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+            }
+        }
+        return AnyView(EmptyView())
+        #else
+        // On iOS the AppIcon entries in AppIcon.appiconset are not always addressable
+        // by filename. Try the generated "AppIcon" name first (other views use this),
+        // and fall back to the marketing filename if available.
+        #if DEBUG
+        // Helpful debug logging — remove or keep behind DEBUG if you prefer.
+        let attemptNames = ["AppIconMarketingRuntime", "AppIcon", "app-icon~ios-marketing"]
+        #endif
+
+        // Try a runtime image set first (recommended). Fall back to AppIcon and marketing asset names.
+        let appIcon = UIImage(named: "AppIconMarketingRuntime") ?? UIImage(named: "AppIcon") ?? UIImage(named: "app-icon~ios-marketing")
+        #if DEBUG
+        if appIcon == nil {
+            print("UnlockView: could not load app icon using names: \(attemptNames)")
+        } else {
+            print("UnlockView: loaded app icon using a fallback name")
+        }
+        #endif
+        if let appIcon = appIcon {
+            return AnyView(Image(uiImage: appIcon)
+                .resizable()
+                .renderingMode(.original)
+                .interpolation(.high)
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: 256, maxHeight: 256)
+                // .padding(.top, 24)
+                .clipShape(RoundedRectangle(cornerRadius: 26))
+                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+        }
+        return AnyView(EmptyView())
+        #endif
+    }
+
     var body: some View {
         ZStack {
             GeometryReader { geometry in
@@ -27,68 +91,7 @@ struct UnlockView: View {
                     VStack(spacing: 24) {
                         Spacer()
 
-                        // App Icon
-                        #if os(macOS)
-                            if let appIcon = NSImage(named: "AppIcon") {
-                                Image(nsImage: appIcon)
-                                    .resizable()
-                                    .renderingMode(.original)
-                                    .interpolation(.high)
-                                    .aspectRatio(1, contentMode: .fit)
-                                    .frame(maxWidth: 120, maxHeight: 120)
-                                    // .padding(.top, 36)
-                                    .clipShape(RoundedRectangle(cornerRadius: 26))
-                                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
-                            } else {
-                                // Fallback to gradient circle with lock
-                                ZStack {
-                                    Circle()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [.blue, .purple],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .frame(maxWidth: 140)
-                                        .padding(.top, 16)
-
-                                    Image(systemName: "lock.fill")
-                                        .font(.system(size: 40))
-                                        .foregroundStyle(.white)
-                                }
-                            }
-                        #else
-                            if let appIcon = UIImage(named: "AppIcon") {
-                                Image(uiImage: appIcon)
-                                    .resizable()
-                                    .renderingMode(.original)
-                                    .interpolation(.high)
-                                    .aspectRatio(1, contentMode: .fit)
-                                    .frame(maxWidth: 140, maxHeight: 140)
-                                    // .padding(.top, 24)
-                                    .clipShape(RoundedRectangle(cornerRadius: 26))
-                                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
-                            } else {
-                                // Fallback to gradient circle with lock
-                                ZStack {
-                                    Circle()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [.blue, .purple],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .frame(maxWidth: 120)
-                                    // .padding(.top, 36)
-
-                                    Image(systemName: "lock.fill")
-                                        .font(.system(size: 40))
-                                        .foregroundStyle(.white)
-                                }
-                            }
-                        #endif
+                        appIconView()
 
                         Text("Encrypted Album")
                             .font(.largeTitle)

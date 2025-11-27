@@ -7,6 +7,8 @@ import LocalAuthentication
 import Photos
 import SwiftUI
 
+import UserNotifications
+
 // MARK: - Data Extensions
 
 extension Data {
@@ -339,6 +341,17 @@ class AlbumManager: ObservableObject {
     @Published var lastActivity: Date = Date()
     @Published var viewRefreshId = UUID()  // Force view refresh when needed
     @Published var secureDeletionEnabled: Bool = true  // Default to true for security
+    @Published var autoRemoveDuplicatesOnImport: Bool = true  // Default to true for convenience
+    @Published var enableImportNotifications: Bool = true  // Default to true for user feedback
+    @Published var autoLockTimeoutSeconds: Double = CryptoConstants.idleTimeout
+    @Published var requirePasscodeOnLaunch: Bool = false
+    @Published var biometricPolicy: String = "biometrics_preferred"
+    @Published var appTheme: String = "default"
+    @Published var compactLayoutEnabled: Bool = false
+    @Published var accentColorName: String = "blue"
+    @Published var cameraSaveToAlbumDirectly: Bool = false
+    @Published var cameraMaxQuality: Bool = true
+    @Published var cameraAutoRemoveFromPhotos: Bool = false
     @Published var authenticationPromptActive: Bool = false
     @Published var isLoading: Bool = true
     @Published var isDecoyMode: Bool = false
@@ -351,8 +364,8 @@ class AlbumManager: ObservableObject {
     }
 
     /// Idle timeout in seconds before automatically locking the album when unlocked.
-    /// Default is 600 seconds (10 minutes).
-    let idleTimeout: TimeInterval = CryptoConstants.idleTimeout
+    /// Default is taken from `autoLockTimeoutSeconds` (initially CryptoConstants.idleTimeout).
+    var idleTimeout: TimeInterval { return autoLockTimeoutSeconds }
 
     // Rate limiting for unlock attempts
     private var failedUnlockAttempts: Int = 0
@@ -1822,7 +1835,7 @@ class AlbumManager: ObservableObject {
 
         for (index, filename) in fakeFilenames.enumerated() {
             let mediaType: MediaType = filename.hasSuffix(".mov") ? .video : .photo
-            let fakeThumbnail = fallbackThumbnail(for: mediaType)
+            _ = fallbackThumbnail(for: mediaType)
             let fakeId = UUID()
             let fakeEncryptedPath = "fake/\(fakeId.uuidString).enc"
             let fakeThumbnailPath = "fake/\(fakeId.uuidString)_thumb.jpg"
@@ -1863,6 +1876,8 @@ class AlbumManager: ObservableObject {
         // when accessing @Published properties inside the background queue block
         let version = String(securityVersion)
         let secureDelete = String(secureDeletionEnabled)
+        let autoRemoveDuplicates = String(autoRemoveDuplicatesOnImport)
+        let importNotifications = String(enableImportNotifications)
 
         albumQueue.sync {
             // Ensure album directory exists before saving
@@ -1878,6 +1893,17 @@ class AlbumManager: ObservableObject {
             let settings: [String: String] = [
                 "securityVersion": version,
                 "secureDeletionEnabled": secureDelete,
+                "autoRemoveDuplicatesOnImport": autoRemoveDuplicates,
+                "enableImportNotifications": importNotifications,
+                "autoLockTimeoutSeconds": String(autoLockTimeoutSeconds),
+                "requirePasscodeOnLaunch": String(requirePasscodeOnLaunch),
+                "biometricPolicy": biometricPolicy,
+                "appTheme": appTheme,
+                "compactLayoutEnabled": String(compactLayoutEnabled),
+                "accentColorName": accentColorName,
+                "cameraSaveToAlbumDirectly": String(cameraSaveToAlbumDirectly),
+                "cameraMaxQuality": String(cameraMaxQuality),
+                "cameraAutoRemoveFromPhotos": String(cameraAutoRemoveFromPhotos),
             ]
 
             do {
@@ -1949,11 +1975,64 @@ class AlbumManager: ObservableObject {
                 secureDeletionEnabled = true
             }
 
+            if let autoRemoveString = settings["autoRemoveDuplicatesOnImport"], let autoRemove = Bool(autoRemoveString) {
+                autoRemoveDuplicatesOnImport = autoRemove
+            } else {
+                autoRemoveDuplicatesOnImport = true
+            }
+
+            if let notificationsString = settings["enableImportNotifications"], let notifications = Bool(notificationsString) {
+                enableImportNotifications = notifications
+            } else {
+                enableImportNotifications = true
+            }
+
+            if let autoLockString = settings["autoLockTimeoutSeconds"], let autoLock = Double(autoLockString) {
+                autoLockTimeoutSeconds = autoLock
+            }
+
+            if let requirePass = settings["requirePasscodeOnLaunch"], let require = Bool(requirePass) {
+                requirePasscodeOnLaunch = require
+            }
+
+            if let policy = settings["biometricPolicy"] {
+                biometricPolicy = policy
+            }
+
+            if let theme = settings["appTheme"] {
+                appTheme = theme
+            }
+
+            if let compactString = settings["compactLayoutEnabled"], let compact = Bool(compactString) {
+                compactLayoutEnabled = compact
+            }
+
+            if let accent = settings["accentColorName"] {
+                accentColorName = accent
+            }
+
+            if let saveDirectString = settings["cameraSaveToAlbumDirectly"], let saveDirect = Bool(saveDirectString) {
+                cameraSaveToAlbumDirectly = saveDirect
+            }
+
+            if let maxQualityString = settings["cameraMaxQuality"], let maxQ = Bool(maxQualityString) {
+                cameraMaxQuality = maxQ
+            }
+
+            if let autoRemoveString = settings["cameraAutoRemoveFromPhotos"], let autoRemove = Bool(autoRemoveString) {
+                cameraAutoRemoveFromPhotos = autoRemove
+            }
+
             if !passwordHash.isEmpty {
                 showUnlockPrompt = true
             }
             isLoading = false
         }
+    }
+
+    /// Public wrapper to reload settings (tests and UI can call this to refresh state)
+    func reloadSettings() async {
+        await loadSettings()
     }
 
     // MARK: - Album Location Management
@@ -2102,6 +2181,49 @@ class AlbumManager: ObservableObject {
     /// - Returns: Security health report
     func performSecurityHealthCheck() async throws -> SecurityHealthReport {
         return try await securityService.performSecurityHealthCheck()
+    }
+
+    /// Exports the in-memory session keys (encryption + HMAC) into an encrypted backup file.
+    /// The backup is protected by a password provided by the caller. The returned file is a JSON
+    /// container written to the temporary directory and must be handled securely by the caller.
+    func exportMasterKeyBackup(backupPassword: String) async throws -> URL {
+        guard let encryptionKey = cachedEncryptionKey, let hmacKey = cachedHMACKey else {
+            throw AlbumError.albumNotInitialized
+        }
+
+        // Extract raw key bytes
+        let encData = encryptionKey.withUnsafeBytes { Data($0) }
+        let hmacData = hmacKey.withUnsafeBytes { Data($0) }
+        var combined = Data()
+        combined.append(encData)
+        combined.append(hmacData)
+
+        // Generate salt for backup key derivation
+        let salt = try await cryptoService.generateSalt()
+
+        // Derive a pair of keys from the backup password -- use the derived encryption key + hmac key
+        let (backupEncKey, backupHmacKey) = try await cryptoService.deriveKeys(password: backupPassword, salt: salt)
+
+        // Encrypt the combined key material and compute integrity HMAC
+        let (encryptedData, nonce) = try await cryptoService.encryptData(combined, key: backupEncKey)
+        let integrity = await cryptoService.generateHMAC(for: encryptedData, key: backupHmacKey)
+
+        // Build JSON container
+        let container: [String: String] = [
+            "version": "1",
+            "salt": salt.base64EncodedString(),
+            "nonce": nonce.base64EncodedString(),
+            "encrypted": encryptedData.base64EncodedString(),
+            "hmac": integrity.base64EncodedString()
+        ]
+
+        let jsonData = try JSONEncoder().encode(container)
+
+        let filename = "encrypted-key-backup-\(ISO8601DateFormatter().string(from: Date())).backup"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+        try jsonData.write(to: url, options: .atomic)
+
+        return url
     }
 
     /// Performs biometric authentication
@@ -2380,6 +2502,25 @@ extension AlbumManager {
             type: notificationType,
             photos: nil
         )
+
+        // Post system notification if enabled
+        if enableImportNotifications && !canceled && (successCount > 0 || failureCount > 0) {
+            postImportCompletionNotification(title: "Import Complete", body: message)
+        }
+    }
+
+    private func postImportCompletionNotification(title: String, body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Failed to post notification: \(error)")
+            }
+        }
     }
 }
 

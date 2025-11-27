@@ -17,16 +17,62 @@ struct PreferencesView: View {
     @State private var decoyPasswordConfirm = ""
     @State private var decoyPasswordError: String?
 
+    @State private var showChangePasswordSheet = false
+    @State private var currentPasswordInput = ""
+    @State private var newPasswordInput = ""
+    @State private var confirmPasswordInput = ""
+    @State private var changePasswordError: String?
+    @State private var isChangingPassword = false
+    @State private var changePasswordProgress: String?
+
+    // New settings states for backup and UX
+    @AppStorage("autoLockTimeoutSeconds") private var storedAutoLockTimeout: Double = CryptoConstants.idleTimeout
+    @AppStorage("requirePasscodeOnLaunch") private var storedRequirePasscodeOnLaunch: Bool = false
+    @AppStorage("biometricPolicy") private var storedBiometricPolicy: String = "biometrics_preferred"
+    @AppStorage("appTheme") private var storedAppTheme: String = "default"
+    @AppStorage("compactLayoutEnabled") private var storedCompactLayoutEnabled: Bool = false
+    @AppStorage("accentColorName") private var storedAccentColorName: String = "blue"
+    @AppStorage("cameraSaveToAlbumDirectly") private var storedCameraSaveToAlbumDirectly: Bool = false
+    @AppStorage("cameraMaxQuality") private var storedCameraMaxQuality: Bool = true
+    @AppStorage("cameraAutoRemoveFromPhotos") private var storedCameraAutoRemoveFromPhotos: Bool = false
+
+    @State private var showBackupSheet = false
+    @State private var backupPassword = ""
+    @State private var backupPasswordConfirm = ""
+    @State private var backupError: String?
+    @State private var isBackingUp = false
+    @State private var backupResultURL: URL?
+    @State private var showBackupSuccessAlert = false
+    @State private var showShareSheet = false
+    @State private var showCameraAutoRemoveConfirm = false
+    @State private var pendingCameraAutoRemoveValue: Bool = false
+
     #if os(iOS)
     @Environment(\.dismiss) private var dismiss
+    #endif
+    
+    #if os(macOS)
+    @Binding var isPresented: Bool
+    private let isSheet: Bool
+    #endif
+
+    init() {
+        #if os(macOS)
+        self._isPresented = .constant(true)
+        self.isSheet = false
+        #endif
+    }
+
+    #if os(macOS)
+    init(isPresented: Binding<Bool>) {
+        self._isPresented = isPresented
+        self.isSheet = true
+    }
     #endif
 
     var body: some View {
         #if os(iOS)
-        NavigationView {
-            content
-        }
-        .navigationViewStyle(.stack)
+        content
         #else
         content
         #endif
@@ -37,140 +83,393 @@ struct PreferencesView: View {
             PrivacyOverlayBackground(asBackground: true)
 
             if albumManager.isUnlocked {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("General")
-                        .font(.headline)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("General")
+                            .font(.headline)
 
-                    HStack {
-                        Text("Privacy Screen Style")
-                        Spacer()
-                        Picker("", selection: $privacyBackgroundStyle) {
-                            ForEach(PrivacyBackgroundStyle.allCases) { style in
-                                Text(style.displayName).tag(style)
+                        HStack {
+                            Text("Privacy Screen Style")
+                            Spacer()
+                            Picker("", selection: $privacyBackgroundStyle) {
+                                ForEach(PrivacyBackgroundStyle.allCases) { style in
+                                    Text(style.displayName).tag(style)
+                                }
                             }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
                         }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                    }
 
-                    Divider()
+                        Divider()
 
-                    HStack {
-                        Text("Undo banner timeout")
-                        Spacer()
-                        Text("\(Int(undoTimeoutSeconds))s")
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Slider(value: $undoTimeoutSeconds, in: 2...20, step: 1)
-
-                    Divider()
-
-                    Text("Security")
-                        .font(.headline)
-
-                    Toggle("Require Re-authentication", isOn: $requireForegroundReauthentication)
-                    Text("When enabled, the album will lock when the app goes to the background or is inactive.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Toggle("Secure Deletion (Overwrite)", isOn: $albumManager.secureDeletionEnabled)
-                    Text(
-                        "When enabled, deleted files are overwritten 3 times. This is slower but more secure. Disable for instant deletion."
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                    Divider()
-
-                    Text("Stealth Features")
-                        .font(.headline)
-
-                    Toggle("Stealth Mode (Fake Crash)", isOn: $stealthModeEnabled)
-                    Text(
-                        "When enabled, the app will appear to crash or freeze on launch. Long press the screen for 1.5 seconds to unlock."
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                    HStack {
-                        Text("Decoy Password")
-                        Spacer()
-                        if !decoyPasswordHash.isEmpty {
-                            Button("Remove") {
-                                albumManager.clearDecoyPassword()
-                                // Force update since AppStorage might not sync immediately with direct UserDefaults modification in manager
-                                decoyPasswordHash = ""
-                            }
-                            .buttonStyle(.bordered)
-                            .tint(.red)
-
-                            Button("Change") {
-                                decoyPasswordInput = ""
-                                decoyPasswordConfirm = ""
-                                decoyPasswordError = nil
-                                showDecoyPasswordSheet = true
-                            }
-                            .buttonStyle(.bordered)
-                        } else {
-                            Button("Set Decoy Password") {
-                                decoyPasswordInput = ""
-                                decoyPasswordConfirm = ""
-                                decoyPasswordError = nil
-                                showDecoyPasswordSheet = true
-                            }
-                            .buttonStyle(.bordered)
+                        HStack {
+                            Text("Undo banner timeout")
+                            Spacer()
+                            Text("\(Int(undoTimeoutSeconds))s")
+                                .foregroundStyle(.secondary)
                         }
-                    }
-                    Text("A decoy password unlocks an empty album. Use this if forced to unlock your device.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
 
-                    Divider()
+                        Slider(value: $undoTimeoutSeconds, in: 2...20, step: 1)
 
-                    Text("Diagnostics")
-                        .font(.headline)
+                        Divider()
 
-                    Button {
-                        runHealthCheck()
-                    } label: {
-                        if isCheckingHealth {
-                            ProgressView().controlSize(.small)
-                        } else {
-                            Text("Run Security Health Check")
+                        Text("Security")
+                            .font(.headline)
+                        HStack {
+                            Text("Auto-lock timeout")
+                            Spacer()
+                            Text("\(Int(storedAutoLockTimeout))s")
+                                .foregroundStyle(.secondary)
                         }
-                    }
-                    .disabled(isCheckingHealth)
+                        Slider(value: $storedAutoLockTimeout, in: 30...3600, step: 30) {
+                        }
+                        .onChange(of: storedAutoLockTimeout) { _ in
+                            albumManager.autoLockTimeoutSeconds = storedAutoLockTimeout
+                            albumManager.saveSettings()
+                        }
 
-                    if let report = healthReport {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HealthCheckRow(label: "Random Generation (Entropy)", passed: report.randomGenerationHealthy)
-                            HealthCheckRow(label: "Crypto Operations", passed: report.cryptoOperationsHealthy)
-                            HealthCheckRow(label: "File System Security", passed: report.fileSystemSecure)
-                            HealthCheckRow(label: "Memory Security", passed: report.memorySecurityHealthy)
-                            Divider()
-                            HStack {
-                                Text("Overall Status:")
-                                Spacer()
-                                Text(report.overallHealthy ? "PASSED" : "FAILED")
-                                    .fontWeight(.bold)
-                                    .foregroundStyle(report.overallHealthy ? .green : .red)
+                        Toggle("Require Passcode On Launch", isOn: $storedRequirePasscodeOnLaunch)
+                            .onChange(of: storedRequirePasscodeOnLaunch) { _ in
+                                albumManager.requirePasscodeOnLaunch = storedRequirePasscodeOnLaunch
+                                albumManager.saveSettings()
                             }
-                        }
-                        .padding()
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(8)
-                    }
 
-                    if let error = healthCheckError {
-                        Text("Check failed: \(error)")
-                            .foregroundStyle(.red)
+                        HStack {
+                            Text("Biometric Policy")
+                            Spacer()
+                            Picker("", selection: $storedBiometricPolicy) {
+                                Text("Prefer Biometrics").tag("biometrics_preferred")
+                                Text("Require Biometrics").tag("biometrics_required")
+                                Text("Disable Biometrics").tag("biometrics_disabled")
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                        }
+                        .onChange(of: storedBiometricPolicy) { _ in
+                            albumManager.biometricPolicy = storedBiometricPolicy
+                            albumManager.saveSettings()
+                        }
+
+                        Toggle("Require Re-authentication", isOn: $requireForegroundReauthentication)
+                        Text("When enabled, the album will lock when the app goes to the background or is inactive.")
                             .font(.caption)
-                    }
+                            .foregroundStyle(.secondary)
 
-                    Spacer()
+                        Toggle("Secure Deletion (Overwrite)", isOn: $albumManager.secureDeletionEnabled)
+                        Text(
+                            "When enabled, deleted files are overwritten 3 times. This is slower but more secure. Disable for instant deletion."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                        Divider()
+                        Text("Appearance")
+                            .font(.headline)
+
+                        Toggle("Compact Layout", isOn: $storedCompactLayoutEnabled)
+                            .onChange(of: storedCompactLayoutEnabled) { _ in
+                                albumManager.compactLayoutEnabled = storedCompactLayoutEnabled
+                                albumManager.saveSettings()
+                            }
+
+                        HStack {
+                            Text("Accent Color")
+                            Spacer()
+                            Picker("Accent", selection: $storedAccentColorName) {
+                                Text("Blue").tag("blue")
+                                Text("Green").tag("green")
+                                Text("Pink").tag("pink")
+                                Text("System").tag("system")
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                        }
+                        .onChange(of: storedAccentColorName) { _ in
+                            albumManager.accentColorName = storedAccentColorName
+                            albumManager.saveSettings()
+                        }
+
+                        Divider()
+
+                        Text("Camera")
+                            .font(.headline)
+
+                        Toggle("Save captures directly to album", isOn: $storedCameraSaveToAlbumDirectly)
+                            .onChange(of: storedCameraSaveToAlbumDirectly) { _ in
+                                albumManager.cameraSaveToAlbumDirectly = storedCameraSaveToAlbumDirectly
+                                albumManager.saveSettings()
+                            }
+
+                        Toggle("Capture at max quality", isOn: $storedCameraMaxQuality)
+                            .onChange(of: storedCameraMaxQuality) { _ in
+                                albumManager.cameraMaxQuality = storedCameraMaxQuality
+                                albumManager.saveSettings()
+                            }
+
+                        Toggle("Auto-remove from Photos after import", isOn: Binding(
+                            get: { storedCameraAutoRemoveFromPhotos },
+                            set: { newValue in
+                                // Show confirmation when enabling auto-remove to respect Photos policy
+                                if newValue {
+                                    pendingCameraAutoRemoveValue = true
+                                    showCameraAutoRemoveConfirm = true
+                                } else {
+                                    storedCameraAutoRemoveFromPhotos = false
+                                    albumManager.cameraAutoRemoveFromPhotos = false
+                                    albumManager.saveSettings()
+                                }
+                            }
+                        ))
+
+                        Divider()
+
+                        // Confirmation alert for camera auto-remove
+                        .alert("Enable Auto-remove from Photos?", isPresented: $showCameraAutoRemoveConfirm) {
+                            Button("Enable", role: .destructive) {
+                                storedCameraAutoRemoveFromPhotos = true
+                                albumManager.cameraAutoRemoveFromPhotos = true
+                                albumManager.saveSettings()
+                            }
+                            Button("Cancel", role: .cancel) {
+                                // Revert
+                                pendingCameraAutoRemoveValue = false
+                            }
+                        } message: {
+                            Text("Enabling this will automatically remove photos from the Photos app after they are securely imported into Encrypted Album. This is potentially destructive — make sure you have backups and understand the behaviour.")
+                        }
+                        Button("Change Album Password") {
+                            showChangePasswordSheet = true
+                        }
+                        .buttonStyle(.bordered)
+                        Text("Change your album password. This will re-encrypt all data.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Text("Stealth Features")
+                            .font(.headline)
+
+                        Toggle("Stealth Mode (Fake Crash)", isOn: $stealthModeEnabled)
+                        Text(
+                            "When enabled, the app will appear to crash or freeze on launch. Long press the screen for 1.5 seconds to unlock."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                        HStack {
+                            Text("Decoy Password")
+                            Spacer()
+                            if !decoyPasswordHash.isEmpty {
+                                Button("Remove") {
+                                    albumManager.clearDecoyPassword()
+                                    // Force update since AppStorage might not sync immediately with direct UserDefaults modification in manager
+                                    decoyPasswordHash = ""
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(.red)
+
+                                Button("Change") {
+                                    decoyPasswordInput = ""
+                                    decoyPasswordConfirm = ""
+                                    decoyPasswordError = nil
+                                    showDecoyPasswordSheet = true
+                                }
+                                .buttonStyle(.bordered)
+                            } else {
+                                Button("Set Decoy Password") {
+                                    decoyPasswordInput = ""
+                                    decoyPasswordConfirm = ""
+                                    decoyPasswordError = nil
+                                    showDecoyPasswordSheet = true
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+                        Text("A decoy password unlocks an empty album. Use this if forced to unlock your device.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Divider()
+
+                        Text("Import & Export")
+                            .font(.headline)
+
+                        Toggle("Auto-remove duplicates on import", isOn: $albumManager.autoRemoveDuplicatesOnImport)
+                        Text("Automatically skip importing photos that are already in the album.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Toggle("Enable import notifications", isOn: $albumManager.enableImportNotifications)
+                        Text("Show system notifications when batch imports complete.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Divider()
+
+                        Text("Diagnostics")
+                            .font(.headline)
+
+                        Button {
+                            runHealthCheck()
+                        } label: {
+                            if isCheckingHealth {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Text("Run Security Health Check")
+                            }
+                        }
+                        .disabled(isCheckingHealth)
+
+                        if let report = healthReport {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HealthCheckRow(label: "Random Generation (Entropy)", passed: report.randomGenerationHealthy)
+                                HealthCheckRow(label: "Crypto Operations", passed: report.cryptoOperationsHealthy)
+                                HealthCheckRow(label: "File System Security", passed: report.fileSystemSecure)
+                                HealthCheckRow(label: "Memory Security", passed: report.memorySecurityHealthy)
+                                Divider()
+                                HStack {
+                                    Text("Overall Status:")
+                                    Spacer()
+                                    Text(report.overallHealthy ? "PASSED" : "FAILED")
+                                        .fontWeight(.bold)
+                                        .foregroundStyle(report.overallHealthy ? .green : .red)
+                                }
+                            }
+                            .padding()
+                            .background(Color.gray.opacity(0.1))
+                            .cornerRadius(8)
+                        }
+
+                        if let error = healthCheckError {
+                            Text("Check failed: \(error)")
+                                .foregroundStyle(.red)
+                                .font(.caption)
+                        }
+
+                        Divider()
+
+                        Text("Key Management")
+                            .font(.headline)
+
+                        HStack {
+                            Button("Export Encrypted Key Backup") {
+                                backupPassword = ""
+                                backupPasswordConfirm = ""
+                                backupError = nil
+                                showBackupSheet = true
+                            }
+                            .buttonStyle(.bordered)
+                            Spacer()
+                        }
+
+                        .sheet(isPresented: $showBackupSheet) {
+                            VStack(spacing: 16) {
+                                Text("Export Encrypted Key Backup")
+                                    .font(.headline)
+                                Text("Enter a password to protect the exported key backup file.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                SecureField("Backup Password", text: $backupPassword)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(maxWidth: 320)
+                                SecureField("Confirm Password", text: $backupPasswordConfirm)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(maxWidth: 320)
+
+                                if let error = backupError {
+                                    Text(error)
+                                        .foregroundStyle(.red)
+                                        .font(.caption)
+                                }
+
+                                HStack(spacing: 16) {
+                                    Button("Cancel") { showBackupSheet = false }
+                                    .buttonStyle(.bordered)
+
+                                    Button {
+                                        guard !backupPassword.isEmpty else {
+                                            backupError = "Password cannot be empty"
+                                            return
+                                        }
+                                        guard backupPassword == backupPasswordConfirm else {
+                                            backupError = "Passwords do not match"
+                                            return
+                                        }
+
+                                        isBackingUp = true
+                                        backupError = nil
+                                        Task {
+                                            do {
+                                                let url = try await albumManager.exportMasterKeyBackup(backupPassword: backupPassword)
+                                                backupResultURL = url
+                                                showBackupSheet = false
+                                                // Present share sheet on iOS; on macOS the alert will remain as fallback
+                                                showShareSheet = true
+                                            } catch {
+                                                backupError = error.localizedDescription
+                                            }
+                                            isBackingUp = false
+                                        }
+                                    } label: {
+                                        if isBackingUp { ProgressView().controlSize(.small) }
+                                        else { Text("Export") }
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                }
+                            }
+                            .padding()
+                            .presentationDetents([.height(320)])
+                        }
+
+                        // Share sheet for exported backup (iOS). After successful sharing we remove the temp file.
+                        .sheet(isPresented: $showShareSheet) {
+                            if let url = backupResultURL {
+                                ActivityView(activityItems: [url]) { completed in
+                                    if completed {
+                                        // Attempt to securely remove the temporary file after successful share
+                                        try? FileManager.default.removeItem(at: url)
+                                    }
+                                    // Clear state
+                                    backupResultURL = nil
+                                    showShareSheet = false
+                                }
+                            } else {
+                                EmptyView()
+                            }
+                        }
+
+                        Spacer()
+
+                        #if os(iOS)
+                        Divider()
+                        
+                        HStack {
+                            Spacer()
+                            Button("Close") {
+                                dismiss()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            Spacer()
+                        }
+                        #endif
+
+                        #if os(macOS)
+                        if isSheet {
+                            Divider()
+                            
+                            HStack {
+                                Spacer()
+                                Button("Close") {
+                                    isPresented = false
+                                }
+                                .buttonStyle(.borderedProminent)
+                                Spacer()
+                            }
+                        }
+                        #endif
+                    }
+                    .padding(20)
                 }
-                .padding(20)
             } else {
                 VStack(spacing: 20) {
                     Image(systemName: "lock.fill")
@@ -186,18 +485,16 @@ struct PreferencesView: View {
             }
         }
         .frame(minWidth: 360, minHeight: 450)
+        #if os(macOS)
         .navigationTitle("Settings")
-        #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Close") {
-                        dismiss()
-                    }
-                }
-            }
         #endif
         .onChange(of: albumManager.secureDeletionEnabled) { _ in
+            albumManager.saveSettings()
+        }
+        .onChange(of: albumManager.autoRemoveDuplicatesOnImport) { _ in
+            albumManager.saveSettings()
+        }
+        .onChange(of: albumManager.enableImportNotifications) { _ in
             albumManager.saveSettings()
         }
         .sheet(isPresented: $showDecoyPasswordSheet) {
@@ -253,6 +550,96 @@ struct PreferencesView: View {
             }
             .padding()
             .presentationDetents([.height(300)])
+        }
+        .sheet(isPresented: $showChangePasswordSheet) {
+            VStack(spacing: 20) {
+                Text("Change Album Password")
+                    .font(.headline)
+
+                SecureField("Current Password", text: $currentPasswordInput)
+                    .textFieldStyle(.roundedBorder)
+                    .textContentType(.password)
+                    .frame(maxWidth: 300)
+
+                SecureField("New Password", text: $newPasswordInput)
+                    .textFieldStyle(.roundedBorder)
+                    #if os(iOS)
+                    .textContentType(.newPassword)
+                    #endif
+                    .frame(maxWidth: 300)
+
+                SecureField("Confirm New Password", text: $confirmPasswordInput)
+                    .textFieldStyle(.roundedBorder)
+                    #if os(iOS)
+                    .textContentType(.newPassword)
+                    #endif
+                    .frame(maxWidth: 300)
+
+                if let error = changePasswordError {
+                    Text(error).foregroundStyle(.red).font(.caption)
+                }
+
+                if let progress = changePasswordProgress {
+                    Text(progress)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 20) {
+                    Button("Cancel") {
+                        showChangePasswordSheet = false
+                        currentPasswordInput = ""
+                        newPasswordInput = ""
+                        confirmPasswordInput = ""
+                        changePasswordError = nil
+                        changePasswordProgress = nil
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Change") {
+                        if newPasswordInput.isEmpty {
+                            changePasswordError = "New password cannot be empty"
+                        } else if newPasswordInput != confirmPasswordInput {
+                            changePasswordError = "New passwords do not match"
+                        } else {
+                            isChangingPassword = true
+                            changePasswordError = nil
+                            changePasswordProgress = nil
+                            Task {
+                                do {
+                                    try await albumManager.changePassword(
+                                        currentPassword: currentPasswordInput,
+                                        newPassword: newPasswordInput
+                                    ) { progress in
+                                        Task { @MainActor in
+                                            changePasswordProgress = progress
+                                        }
+                                    }
+                                    await MainActor.run {
+                                        showChangePasswordSheet = false
+                                        currentPasswordInput = ""
+                                        newPasswordInput = ""
+                                        confirmPasswordInput = ""
+                                        isChangingPassword = false
+                                        changePasswordProgress = nil
+                                    }
+                                } catch {
+                                    await MainActor.run {
+                                        changePasswordError = error.localizedDescription
+                                        isChangingPassword = false
+                                        changePasswordProgress = nil
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isChangingPassword)
+                }
+                .padding(.top, 10)
+            }
+            .padding()
+            .presentationDetents([.height(400)])
         }
         .preferredColorScheme(colorScheme)
     }
