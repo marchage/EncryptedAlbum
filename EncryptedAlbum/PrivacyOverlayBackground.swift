@@ -137,7 +137,7 @@ struct PrivacyOverlayBackground: View {
                     )
                 }
             case .light:
-                Color.white
+                Color(white: 0.95)
             case .nightTown:
                 NightTownView()
             }

@@ -100,6 +100,18 @@ struct PreferencesView: View {
         .onChange(of: albumManager.secureDeletionEnabled) { _ in
             albumManager.saveSettings()
         }
+        .preferredColorScheme(colorScheme)
+    }
+
+    private var colorScheme: ColorScheme? {
+        switch privacyBackgroundStyle {
+        case .light:
+            return .light
+        case .dark, .rainbow, .mesh, .nightTown:
+            return .dark
+        case .classic, .glass:
+            return nil // Follow system
+        }
     }
 
     private func runHealthCheck() {
