@@ -17,164 +17,181 @@ struct UnlockView: View {
     @State private var autoBiometricWorkItem: DispatchWorkItem?
     @State private var hasAutoBiometricAttempted = false
     @State private var biometricsReady = false
+    @AppStorage("stealthModeEnabled") private var stealthModeEnabled = false
+    @State private var showFakeCrash = false
 
     var body: some View {
-        GeometryReader { geometry in
-            ScrollView {
-                VStack(spacing: 24) {
-                    Spacer()
+        ZStack {
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack(spacing: 24) {
+                        Spacer()
 
-                    // App Icon
-                    #if os(macOS)
-                        if let appIcon = NSImage(named: "AppIcon") {
-                            Image(nsImage: appIcon)
-                                .resizable()
-                                .renderingMode(.original)
-                                .interpolation(.high)
-                                .aspectRatio(1, contentMode: .fit)
-                                .frame(maxWidth: 120, maxHeight: 120)
-                                // .padding(.top, 36)
-                                .clipShape(RoundedRectangle(cornerRadius: 26))
-                                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
-                        } else {
-                            // Fallback to gradient circle with lock
-                            ZStack {
-                                Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [.blue, .purple],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
+                        // App Icon
+                        #if os(macOS)
+                            if let appIcon = NSImage(named: "AppIcon") {
+                                Image(nsImage: appIcon)
+                                    .resizable()
+                                    .renderingMode(.original)
+                                    .interpolation(.high)
+                                    .aspectRatio(1, contentMode: .fit)
+                                    .frame(maxWidth: 120, maxHeight: 120)
+                                    // .padding(.top, 36)
+                                    .clipShape(RoundedRectangle(cornerRadius: 26))
+                                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+                            } else {
+                                // Fallback to gradient circle with lock
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [.blue, .purple],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
                                         )
-                                    )
-                                    .frame(maxWidth: 140)
-                                    .padding(.top, 16)
+                                        .frame(maxWidth: 140)
+                                        .padding(.top, 16)
 
-                                Image(systemName: "lock.fill")
-                                    .font(.system(size: 40))
-                                    .foregroundStyle(.white)
-                            }
-                        }
-                    #else
-                        if let appIcon = UIImage(named: "AppIcon") {
-                            Image(uiImage: appIcon)
-                                .resizable()
-                                .renderingMode(.original)
-                                .interpolation(.high)
-                                .aspectRatio(1, contentMode: .fit)
-                                .frame(maxWidth: 140, maxHeight: 140)
-                                // .padding(.top, 24)
-                                .clipShape(RoundedRectangle(cornerRadius: 26))
-                                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
-                        } else {
-                            // Fallback to gradient circle with lock
-                            ZStack {
-                                Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [.blue, .purple],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .frame(maxWidth: 120)
-                                // .padding(.top, 36)
-
-                                Image(systemName: "lock.fill")
-                                    .font(.system(size: 40))
-                                    .foregroundStyle(.white)
-                            }
-                        }
-                    #endif
-
-                    Text("Encrypted Album")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-
-                    Text("Enter your password to unlock")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-
-                    VStack(spacing: 12) {
-                        SecureField("Password", text: $password)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 300)
-                            .textContentType(.password)
-                            .autocorrectionDisabled()
-                            #if os(iOS)
-                                .textInputAutocapitalization(.never)
-                            #endif
-                            .onSubmit {
-                                Task {
-                                    await unlock()
+                                    Image(systemName: "lock.fill")
+                                        .font(.system(size: 40))
+                                        .foregroundStyle(.white)
                                 }
                             }
+                        #else
+                            if let appIcon = UIImage(named: "AppIcon") {
+                                Image(uiImage: appIcon)
+                                    .resizable()
+                                    .renderingMode(.original)
+                                    .interpolation(.high)
+                                    .aspectRatio(1, contentMode: .fit)
+                                    .frame(maxWidth: 140, maxHeight: 140)
+                                    // .padding(.top, 24)
+                                    .clipShape(RoundedRectangle(cornerRadius: 26))
+                                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+                            } else {
+                                // Fallback to gradient circle with lock
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [.blue, .purple],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .frame(maxWidth: 120)
+                                    // .padding(.top, 36)
 
-                        if showError {
-                            Text(errorMessage)
-                                .font(.callout)
-                                .foregroundStyle(.red)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color.red.opacity(0.12))
-                                )
-                                .frame(maxWidth: 260)
-                        }
+                                    Image(systemName: "lock.fill")
+                                        .font(.system(size: 40))
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                        #endif
 
-                        HStack(spacing: 12) {
-                            if biometricType != .none {
-                                Button {
-                                    cancelAutoBiometricScheduling()
-                                    authenticateWithBiometrics()
-                                } label: {
-                                    HStack {
-                                        Image(systemName: biometricType == .faceID ? "faceid" : "touchid")
-                                        Text(biometricType == .faceID ? "Use Face ID" : "Use Touch ID")
+                        Text("Encrypted Album")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+
+                        Text("Enter your password to unlock")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+
+                        VStack(spacing: 12) {
+                            SecureField("Password", text: $password)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 300)
+                                .textContentType(.password)
+                                .autocorrectionDisabled()
+                                #if os(iOS)
+                                    .textInputAutocapitalization(.never)
+                                #endif
+                                .onSubmit {
+                                    Task {
+                                        await unlock()
                                     }
-                                    .frame(width: 145)
                                 }
-                                .buttonStyle(.bordered)
-                                .controlSize(.large)
+
+                            if showError {
+                                Text(errorMessage)
+                                    .font(.callout)
+                                    .foregroundStyle(.red)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(Color.red.opacity(0.12))
+                                    )
+                                    .frame(maxWidth: 260)
                             }
 
-                            Button {
-                                Task {
-                                    await unlock()
+                            HStack(spacing: 12) {
+                                if biometricType != .none {
+                                    Button {
+                                        cancelAutoBiometricScheduling()
+                                        authenticateWithBiometrics()
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: biometricType == .faceID ? "faceid" : "touchid")
+                                            Text(biometricType == .faceID ? "Use Face ID" : "Use Touch ID")
+                                        }
+                                        .frame(width: 145)
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.large)
                                 }
-                            } label: {
-                                Text("Unlock")
-                                    .frame(width: biometricType != .none ? 145 : 200)
+
+                                Button {
+                                    Task {
+                                        await unlock()
+                                    }
+                                } label: {
+                                    Text("Unlock")
+                                        .frame(width: biometricType != .none ? 145 : 200)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.large)
+                                .disabled(password.isEmpty)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.large)
-                            .disabled(password.isEmpty)
+                        }
+
+                        Spacer()
+
+                        #if DEBUG
+                            Button {
+                                resetAlbumForDevelopment()
+                            } label: {
+                                Text("🔧 Reset Album (Dev)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.bottom, 8)
+                        #endif
+                    }
+                    .frame(minWidth: geometry.size.width, minHeight: geometry.size.height)
+                }
+            }
+            
+            if showFakeCrash {
+                FakeCrashView()
+                    .onLongPressGesture(minimumDuration: 1.5) {
+                        withAnimation {
+                            showFakeCrash = false
                         }
                     }
-
-                    Spacer()
-
-                    #if DEBUG
-                        Button {
-                            resetAlbumForDevelopment()
-                        } label: {
-                            Text("🔧 Reset Album (Dev)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.bottom, 8)
-                    #endif
-                }
-                .frame(minWidth: geometry.size.width, minHeight: geometry.size.height)
+                    .zIndex(999)
             }
         }
         .background(Color.clear)
         .onAppear {
+            if stealthModeEnabled {
+                showFakeCrash = true
+            }
             biometricsReady = checkBiometricAvailability()
-            if scenePhase == .active {
+            if scenePhase == .active && !showFakeCrash {
                 scheduleAutoBiometricIfNeeded(isReady: biometricsReady)
             }
         }
@@ -185,17 +202,24 @@ struct UnlockView: View {
         .onChange(of: scenePhase) { newPhase in
             switch newPhase {
             case .active:
-                scheduleAutoBiometricIfNeeded(isReady: biometricsReady)
+                if !showFakeCrash {
+                    scheduleAutoBiometricIfNeeded(isReady: biometricsReady)
+                }
             case .inactive, .background:
                 cancelAutoBiometricScheduling()
                 hasAutoBiometricAttempted = false
+                if stealthModeEnabled {
+                    showFakeCrash = true
+                }
             @unknown default:
                 break
             }
         }
         #if os(macOS)
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                scheduleAutoBiometricIfNeeded(isReady: biometricsReady)
+                if !showFakeCrash {
+                    scheduleAutoBiometricIfNeeded(isReady: biometricsReady)
+                }
             }
         #endif
         .safeAreaInset(edge: .top) {

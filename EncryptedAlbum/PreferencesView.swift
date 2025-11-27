@@ -5,10 +5,17 @@ struct PreferencesView: View {
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
     @AppStorage("privacyBackgroundStyle") private var privacyBackgroundStyle: PrivacyBackgroundStyle = .classic
     @AppStorage("requireForegroundReauthentication") private var requireForegroundReauthentication: Bool = true
+    @AppStorage("stealthModeEnabled") private var stealthModeEnabled = false
+    @AppStorage("decoyPasswordHash") private var decoyPasswordHash: String = ""
 
     @State private var healthReport: SecurityHealthReport?
     @State private var isCheckingHealth = false
     @State private var healthCheckError: String?
+    
+    @State private var showDecoyPasswordSheet = false
+    @State private var decoyPasswordInput = ""
+    @State private var decoyPasswordConfirm = ""
+    @State private var decoyPasswordError: String?
 
     var body: some View {
         ZStack {
@@ -54,6 +61,49 @@ struct PreferencesView: View {
 
                     Toggle("Secure Deletion (Overwrite)", isOn: $albumManager.secureDeletionEnabled)
                     Text("When enabled, deleted files are overwritten 3 times. This is slower but more secure. Disable for instant deletion.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Divider()
+                    
+                    Text("Stealth Features")
+                        .font(.headline)
+
+                    Toggle("Stealth Mode (Fake Crash)", isOn: $stealthModeEnabled)
+                    Text("When enabled, the app will appear to crash or freeze on launch. Long press the screen for 1.5 seconds to unlock.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    HStack {
+                        Text("Decoy Password")
+                        Spacer()
+                        if !decoyPasswordHash.isEmpty {
+                            Button("Remove") {
+                                albumManager.clearDecoyPassword()
+                                // Force update since AppStorage might not sync immediately with direct UserDefaults modification in manager
+                                decoyPasswordHash = "" 
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.red)
+                            
+                            Button("Change") {
+                                decoyPasswordInput = ""
+                                decoyPasswordConfirm = ""
+                                decoyPasswordError = nil
+                                showDecoyPasswordSheet = true
+                            }
+                            .buttonStyle(.bordered)
+                        } else {
+                            Button("Set Decoy Password") {
+                                decoyPasswordInput = ""
+                                decoyPasswordConfirm = ""
+                                decoyPasswordError = nil
+                                showDecoyPasswordSheet = true
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                    Text("A decoy password unlocks an empty album. Use this if forced to unlock your device.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -119,6 +169,60 @@ struct PreferencesView: View {
         .frame(minWidth: 360, minHeight: 450)
         .onChange(of: albumManager.secureDeletionEnabled) { _ in
             albumManager.saveSettings()
+        }
+        .sheet(isPresented: $showDecoyPasswordSheet) {
+            VStack(spacing: 20) {
+                Text("Set Decoy Password")
+                    .font(.headline)
+                
+                Text("Enter a password that will unlock a fake, empty album.")
+                    .multilineTextAlignment(.center)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                
+                SecureField("Decoy Password", text: $decoyPasswordInput)
+                    .textFieldStyle(.roundedBorder)
+                    .textContentType(.password)
+                    .frame(maxWidth: 300)
+                
+                SecureField("Confirm Password", text: $decoyPasswordConfirm)
+                    .textFieldStyle(.roundedBorder)
+                    .textContentType(.password)
+                    .frame(maxWidth: 300)
+                
+                if let error = decoyPasswordError {
+                    Text(error)
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                }
+                
+                HStack(spacing: 20) {
+                    Button("Cancel") {
+                        showDecoyPasswordSheet = false
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    Button("Save") {
+                        if decoyPasswordInput.isEmpty {
+                            decoyPasswordError = "Password cannot be empty"
+                        } else if decoyPasswordInput != decoyPasswordConfirm {
+                            decoyPasswordError = "Passwords do not match"
+                        } else {
+                            albumManager.setDecoyPassword(decoyPasswordInput)
+                            // Manually update the AppStorage to reflect the change immediately
+                            if let hash = UserDefaults.standard.string(forKey: "decoyPasswordHash") {
+                                decoyPasswordHash = hash
+                            }
+                            showDecoyPasswordSheet = false
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .padding(.top, 10)
+            }
+            .padding()
+            .presentationDetents([.height(300)])
         }
         .preferredColorScheme(colorScheme)
     }

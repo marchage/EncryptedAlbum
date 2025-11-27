@@ -280,6 +280,42 @@ private struct WebOneView: View {
     }
 }
 
+struct ShootingStarOverlay: View {
+    @State private var animate = false
+    
+    var body: some View {
+        GeometryReader { geometry in
+            // A few shooting stars crossing the logo
+            ForEach(0..<3) { i in
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [.clear, .white, .clear],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: 40, height: 2)
+                    .rotationEffect(.degrees(-45))
+                    .offset(
+                        x: animate ? geometry.size.width + 50 : -50,
+                        y: animate ? geometry.size.height + 50 : -50 + CGFloat(i * 30)
+                    )
+                    .opacity(animate ? 0 : 1)
+                    .animation(
+                        Animation.easeOut(duration: 1.5)
+                            .repeatForever(autoreverses: false)
+                            .delay(Double(i) * 0.8 + 0.5),
+                        value: animate
+                    )
+            }
+        }
+        .onAppear {
+            animate = true
+        }
+    }
+}
+
 extension View {
     func classicBevel(reversed: Bool = false) -> some View {
         self.overlay(

@@ -342,6 +342,7 @@ class AlbumManager: ObservableObject {
     @Published var secureDeletionEnabled: Bool = true // Default to true for security
     @Published var authenticationPromptActive: Bool = false
     @Published var isLoading: Bool = true
+    @Published var isDecoyMode: Bool = false
     
     // Queue for imports that arrive while the album is locked
     private var pendingImportURLs: [URL] = []
@@ -561,6 +562,21 @@ class AlbumManager: ObservableObject {
         }
 
         lastUnlockAttemptTime = Date()
+
+        // Check for Decoy Password first
+        if let decoyHash = UserDefaults.standard.string(forKey: "decoyPasswordHash"), !decoyHash.isEmpty {
+            let inputHash = SHA256.hash(data: password.data(using: .utf8)!).compactMap { String(format: "%02x", $0) }.joined()
+            if inputHash == decoyHash {
+                await MainActor.run {
+                    isDecoyMode = true
+                    isUnlocked = true
+                    hiddenPhotos = [] // Ensure empty
+                    lastActivity = Date()
+                }
+                startIdleTimer()
+                return
+            }
+        }
 
         // Verify password
         guard let (storedHash, storedSalt) = try await passwordService.retrievePasswordCredentials() else {
@@ -851,6 +867,7 @@ class AlbumManager: ObservableObject {
         cachedEncryptionKey = nil
         cachedHMACKey = nil
         isUnlocked = false
+        isDecoyMode = false
         startIdleTimer()
     }
 
@@ -2439,5 +2456,18 @@ extension AlbumManager {
         _ = AlbumStorage()
     }
 #endif
+
+    // MARK: - Decoy Password Management
+
+    /// Sets the decoy password hash in UserDefaults
+    func setDecoyPassword(_ password: String) {
+        let hash = SHA256.hash(data: password.data(using: .utf8)!).compactMap { String(format: "%02x", $0) }.joined()
+        UserDefaults.standard.set(hash, forKey: "decoyPasswordHash")
+    }
+
+    /// Clears the decoy password from UserDefaults
+    func clearDecoyPassword() {
+        UserDefaults.standard.removeObject(forKey: "decoyPasswordHash")
+    }
 }
 

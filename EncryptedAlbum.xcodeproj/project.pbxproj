@@ -55,6 +55,8 @@
 		98797BCD2ED7C9C6008E03C4 /* PhotoViewerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BC32ED7C9C6008E03C4 /* PhotoViewerSheet.swift */; };
 		98797BCF2ED7CB64008E03C4 /* AlbumManager+Export.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BCE2ED7CB64008E03C4 /* AlbumManager+Export.swift */; };
 		98797BD02ED7CB64008E03C4 /* AlbumManager+Export.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BCE2ED7CB64008E03C4 /* AlbumManager+Export.swift */; };
+		98797BD22ED7E27B008E03C4 /* FakeCrashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BD12ED7E27B008E03C4 /* FakeCrashView.swift */; };
+		98797BD32ED7E27B008E03C4 /* FakeCrashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BD12ED7E27B008E03C4 /* FakeCrashView.swift */; };
 		988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9823D7762ECD7BF400FFB750 /* CameraCaptureView.swift */; };
 		98900B502ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */; };
 		98900B512ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */; };
@@ -184,6 +186,7 @@
 		98797BC22ED7C9C6008E03C4 /* PhotoThumbnailView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PhotoThumbnailView.swift; sourceTree = "<group>"; };
 		98797BC32ED7C9C6008E03C4 /* PhotoViewerSheet.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PhotoViewerSheet.swift; sourceTree = "<group>"; };
 		98797BCE2ED7CB64008E03C4 /* AlbumManager+Export.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "AlbumManager+Export.swift"; sourceTree = "<group>"; };
+		98797BD12ED7E27B008E03C4 /* FakeCrashView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FakeCrashView.swift; sourceTree = "<group>"; };
 		98900B4F2ED624A900B92B85 /* PrivacyOverlayBackground.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PrivacyOverlayBackground.swift; sourceTree = "<group>"; };
 		989ADDD62ED5BDE400994E72 /* AlbumStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlbumStorage.swift; sourceTree = "<group>"; };
 		989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InactiveAppOverlay.swift; sourceTree = "<group>"; };
@@ -300,6 +303,7 @@
 		9849B4532EB9893D00B17DAC /* EncryptedAlbum */ = {
 			isa = PBXGroup;
 			children = (
+				98797BD12ED7E27B008E03C4 /* FakeCrashView.swift */,
 				98797BCE2ED7CB64008E03C4 /* AlbumManager+Export.swift */,
 				98797BC12ED7C9C6008E03C4 /* CustomVideoPlayer.swift */,
 				98797BC02ED7C9C5008E03C4 /* ImageHelpers.swift */,
@@ -637,6 +641,7 @@
 				98900B512ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */,
 				98C835FE2EC9E6CD000997CF /* AlbumManager.swift in Sources */,
 				9823D7782ECD7BF400FFB750 /* CameraCaptureView.swift in Sources */,
+				98797BD32ED7E27B008E03C4 /* FakeCrashView.swift in Sources */,
 				98797BCD2ED7C9C6008E03C4 /* PhotoViewerSheet.swift in Sources */,
 				98797BC52ED7C9C6008E03C4 /* ZoomableImageView.swift in Sources */,
 				98C835FF2EC9E6CD000997CF /* PreferencesView.swift in Sources */,
@@ -682,6 +687,7 @@
 				98900B502ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */,
 				E48BBB324071974C8BE48D0D /* AlbumManager.swift in Sources */,
 				9849B4552EB9893D00B17DAC /* EncryptedAlbumApp.swift in Sources */,
+				98797BD22ED7E27B008E03C4 /* FakeCrashView.swift in Sources */,
 				98797BCC2ED7C9C6008E03C4 /* PhotoViewerSheet.swift in Sources */,
 				98797BC42ED7C9C6008E03C4 /* ZoomableImageView.swift in Sources */,
 				A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */,
