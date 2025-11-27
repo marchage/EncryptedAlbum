@@ -4,6 +4,7 @@ struct PreferencesView: View {
     @EnvironmentObject var albumManager: AlbumManager
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
     @AppStorage("privacyBackgroundStyle") private var privacyBackgroundStyle: PrivacyBackgroundStyle = .classic
+    @AppStorage("requireForegroundReauthentication") private var requireForegroundReauthentication: Bool = true
 
     @State private var healthReport: SecurityHealthReport?
     @State private var isCheckingHealth = false
@@ -45,6 +46,11 @@ struct PreferencesView: View {
 
                     Text("Security")
                         .font(.headline)
+
+                    Toggle("Require Re-authentication", isOn: $requireForegroundReauthentication)
+                    Text("When enabled, the album will lock when the app goes to the background or is inactive.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
 
                     Toggle("Secure Deletion (Overwrite)", isOn: $albumManager.secureDeletionEnabled)
                     Text("When enabled, deleted files are overwritten 3 times. This is slower but more secure. Disable for instant deletion.")

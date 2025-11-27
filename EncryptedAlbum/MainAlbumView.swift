@@ -719,19 +719,6 @@ struct MainAlbumView: View {
                                     .labelsHidden()
                             }
 
-                            HStack(alignment: .top, spacing: 12) {
-                                Label(
-                                    requireForegroundReauthentication
-                                        ? "Re-authentication Required" : "Re-authentication Optional",
-                                    systemImage: "lock.rotation"
-                                )
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                Spacer()
-                                Toggle("", isOn: $requireForegroundReauthentication)
-                                    .labelsHidden()
-                            }
-
                             #if os(macOS)
                                 HStack(spacing: 12) {
                                     Button {
