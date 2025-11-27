@@ -161,60 +161,203 @@ struct PrivacyOverlayBackground: View {
 
 private struct WebOneView: View {
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            
-            // Stars
-            GeometryReader { geometry in
-                ForEach(0..<100) { _ in
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 2, height: 2)
-                        .position(
-                            x: CGFloat.random(in: 0...geometry.size.width),
-                            y: CGFloat.random(in: 0...geometry.size.height)
-                        )
-                }
-            }
-            
-            // Retro Rainbow Sunburst Header
-            VStack {
-                ZStack {
-                    // Sun
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [.white, .yellow, .orange],
-                                center: .center,
-                                startRadius: 0,
-                                endRadius: 50
-                            )
-                        )
-                        .frame(width: 100, height: 100)
-                        .offset(y: 20)
-                    
-                    // Rays
-                    HStack(spacing: 0) {
-                        ForEach([Color.red, .orange, .yellow, .green, .blue, .purple], id: \.self) { color in
-                            Rectangle()
-                                .fill(color)
-                                .frame(height: 120)
-                        }
-                    }
-                    .mask(
-                        // jagged mountain/cityscape mask
-                        Image(systemName: "building.2.crop.circle.fill")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .scaleEffect(x: 2.0, y: 1.0)
-                    )
-                }
-                .frame(height: 150)
-                .padding(.top, 50)
-                
+        VStack(spacing: 0) {
+            // 1. Title Bar
+            HStack {
+                Text("Netscape Navigator")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.leading, 4)
                 Spacer()
             }
+            .frame(height: 24)
+            .background(Color(red: 0.0, green: 0.0, blue: 0.5)) // Classic dark blue
+            
+            // 2. Menu Bar
+            HStack(spacing: 12) {
+                ForEach(["File", "Edit", "View", "Go", "Bookmarks", "Options", "Directory", "Help"], id: \.self) { menu in
+                    Text(menu)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.black)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 4)
+            .frame(height: 24)
+            .background(Color(white: 0.75))
+            
+            // 3. Toolbar
+            HStack(spacing: 4) {
+                Group {
+                    NetscapeToolbarButton(icon: "arrow.backward", label: "Back")
+                    NetscapeToolbarButton(icon: "arrow.forward", label: "Forward")
+                    NetscapeToolbarButton(icon: "house", label: "Home")
+                    NetscapeToolbarButton(icon: "arrow.clockwise", label: "Reload")
+                    NetscapeToolbarButton(icon: "photo", label: "Images")
+                    NetscapeToolbarButton(icon: "folder", label: "Open")
+                    NetscapeToolbarButton(icon: "printer", label: "Print")
+                    NetscapeToolbarButton(icon: "magnifyingglass", label: "Find")
+                    NetscapeToolbarButton(icon: "hand.raised.fill", label: "Stop")
+                }
+                
+                Spacer()
+                
+                // The Big N Logo
+                ZStack {
+                    Rectangle()
+                        .fill(Color(white: 0.75))
+                        .frame(width: 44, height: 44)
+                        .classicBevel()
+                    
+                    Text("N")
+                        .font(.system(size: 36, weight: .bold, design: .serif))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.blue, .cyan],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .shadow(color: .black.opacity(0.5), radius: 1, x: 2, y: 2)
+                        .overlay(
+                            // Simple "shooting star" animation effect
+                            ShootingStarOverlay()
+                        )
+                }
+                .padding(.trailing, 4)
+            }
+            .padding(4)
+            .background(Color(white: 0.75))
+            
+            // 4. Location Bar
+            HStack(spacing: 4) {
+                Text("Location:")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.black)
+                
+                HStack {
+                    Text("about:blank")
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(.black)
+                    Spacer()
+                }
+                .padding(4)
+                .background(Color.white)
+                .classicBevel(reversed: true)
+            }
+            .padding(6)
+            .background(Color(white: 0.75))
+            
+            // 5. Content Area
+            ZStack {
+                Color(white: 0.75).ignoresSafeArea()
+                
+                VStack(spacing: 20) {
+                    Spacer()
+                    
+                    Text("Netscape Navigator™")
+                        .font(.system(size: 32, weight: .bold, design: .serif))
+                        .foregroundStyle(.black)
+                    
+                    Text("version 1.0N")
+                        .font(.system(size: 18, weight: .bold, design: .serif))
+                        .foregroundStyle(.black)
+                    
+                    VStack(spacing: 4) {
+                        Text("Copyright © 1994 Netscape Communications Corporation,")
+                        Text("All rights reserved.")
+                    }
+                    .font(.system(size: 12, design: .serif))
+                    .foregroundStyle(.black)
+                    
+                    Divider()
+                        .background(Color.gray)
+                        .padding(.horizontal, 40)
+                    
+                    Text("This software is subject to the license agreement set forth in the LICENSE file.")
+                        .font(.system(size: 12, design: .serif))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                        .foregroundStyle(.black)
+                    
+                    Text("Report any problems to win_debug@mcom.com")
+                        .font(.system(size: 12, design: .serif))
+                        .underline()
+                        .foregroundStyle(.blue)
+                        .padding(.top, 10)
+                    
+                    Spacer()
+                }
+            }
+            .classicBevel(reversed: true)
+            .padding(4)
+            .background(Color(white: 0.75))
         }
+        .background(Color(white: 0.75))
+    }
+}
+
+struct ShootingStarOverlay: View {
+    @State private var animate = false
+    
+    var body: some View {
+        GeometryReader { geo in
+            Circle()
+                .fill(Color.white)
+                .frame(width: 4, height: 4)
+                .position(x: animate ? geo.size.width : 0, y: animate ? geo.size.height : 0)
+                .opacity(animate ? 0 : 1)
+                .onAppear {
+                    withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                        animate = true
+                    }
+                }
+        }
+    }
+}
+
+struct NetscapeToolbarButton: View {
+    let icon: String
+    let label: String
+    
+    var body: some View {
+        VStack(spacing: 2) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundStyle(.black)
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundStyle(.black)
+        }
+        .frame(width: 55, height: 45)
+        .background(Color(white: 0.75))
+        .classicBevel()
+    }
+}
+
+extension View {
+    func classicBevel(reversed: Bool = false) -> some View {
+        self.overlay(
+            GeometryReader { geo in
+                ZStack {
+                    // Top/Left Light
+                    Path { path in
+                        path.move(to: CGPoint(x: 0, y: geo.size.height))
+                        path.addLine(to: CGPoint(x: 0, y: 0))
+                        path.addLine(to: CGPoint(x: geo.size.width, y: 0))
+                    }
+                    .stroke(reversed ? Color.gray : Color.white, lineWidth: 2)
+                    
+                    // Bottom/Right Dark
+                    Path { path in
+                        path.move(to: CGPoint(x: 0, y: geo.size.height))
+                        path.addLine(to: CGPoint(x: geo.size.width, y: geo.size.height))
+                        path.addLine(to: CGPoint(x: geo.size.width, y: 0))
+                    }
+                    .stroke(reversed ? Color.white : Color.gray, lineWidth: 2)
+                }
+            }
+        )
     }
 }
 
