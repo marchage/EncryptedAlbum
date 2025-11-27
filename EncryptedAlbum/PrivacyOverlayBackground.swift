@@ -156,68 +156,106 @@ private struct NinetiesPartyView: View {
     
     var body: some View {
         ZStack {
-            // Psychedelic Background
-            AngularGradient(gradient: Gradient(colors: [.red, .yellow, .green, .blue, .purple, .red]), center: .center)
-                .rotationEffect(.degrees(animate ? 360 : 0))
-                .scaleEffect(1.5)
+            // 1. Tiled Background (Classic Web Grey Texture)
+            Color(white: 0.75).ignoresSafeArea()
             
-            // Floating Shapes
-            ForEach(0..<12) { i in
-                NinetiesShape(index: i)
+            GeometryReader { geometry in
+                // 2. Random "GIF" elements
+                ForEach(0..<15) { i in
+                    NinetiesGifElement(index: i, containerSize: geometry.size)
+                }
+            }
+            
+            // 3. Main "Shocking" Content
+            VStack(spacing: 60) {
+                // Marquee-style Text
+                Text("★ WELCOME ★")
+                    .font(.custom("Times New Roman", size: 48))
+                    .fontWeight(.black)
+                    .foregroundStyle(.blue)
+                    .shadow(color: .yellow, radius: 0, x: 4, y: 4)
+                    .offset(x: animate ? 150 : -150)
+                    .animation(.linear(duration: 2.0).repeatForever(autoreverses: true), value: animate)
+                
+                HStack(spacing: 50) {
+                    // Flashing "NEW!" Star
+                    ZStack {
+                        Image(systemName: "seal.fill")
+                            .font(.system(size: 100))
+                            .foregroundStyle(.red)
+                        Text("NEW!")
+                            .font(.system(size: 24, weight: .bold, design: .serif))
+                            .foregroundStyle(.yellow)
+                            .rotationEffect(.degrees(-15))
+                    }
+                    .scaleEffect(animate ? 1.1 : 0.9)
+                    .rotationEffect(.degrees(animate ? 10 : -10))
+                    .animation(.easeInOut(duration: 0.15).repeatForever(autoreverses: true), value: animate)
+                    
+                    // "Cool" Graphic
+                    Image(systemName: "sunglasses.fill")
+                        .font(.system(size: 80))
+                        .foregroundStyle(.black)
+                        .background(Circle().fill(Color.yellow))
+                        .offset(y: animate ? -20 : 20)
+                        .animation(.interpolatingSpring(stiffness: 300, damping: 2).repeatForever(autoreverses: true), value: animate)
+                }
+                
+                // Scrolling Text Bar
+                Text("!!! UNDER CONSTRUCTION !!!")
+                    .font(.system(.title, design: .monospaced))
+                    .fontWeight(.bold)
+                    .foregroundStyle(.white)
+                    .padding()
+                    .background(Color.black)
+                    .offset(x: animate ? -100 : 100)
+                    .animation(.linear(duration: 0.8).repeatForever(autoreverses: true), value: animate)
             }
         }
         .onAppear {
-            withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
-                animate = true
-            }
+            animate = true
         }
     }
 }
 
-struct NinetiesShape: View {
+struct NinetiesGifElement: View {
     let index: Int
-    @State private var rotation: Double = 0
-    @State private var scale: CGFloat = 1
+    let containerSize: CGSize
     @State private var position: CGPoint = .zero
+    @State private var isVisible = true
     
-    let shapes = ["triangle.fill", "circle.fill", "star.fill", "square.fill", "hexagon.fill"]
-    let colors: [Color] = [.cyan, .mint, .pink, .yellow, .white]
+    let icons = ["flame.fill", "bolt.fill", "star.fill", "heart.fill", "envelope.fill"]
+    let colors: [Color] = [.red, .yellow, .blue, .green, .purple]
     
     var body: some View {
-        GeometryReader { proxy in
-            Image(systemName: shapes[index % shapes.count])
-                .font(.system(size: CGFloat.random(in: 30...60)))
-                .foregroundStyle(colors[index % colors.count])
-                .rotationEffect(.degrees(rotation))
-                .scaleEffect(scale)
-                .position(position)
-                .onAppear {
-                    // Initial random position
-                    position = CGPoint(
-                        x: CGFloat.random(in: 0...proxy.size.width),
-                        y: CGFloat.random(in: 0...proxy.size.height)
-                    )
-                    
-                    // Animate
-                    withAnimation(
-                        .easeInOut(duration: Double.random(in: 1...3))
-                        .repeatForever(autoreverses: true)
-                    ) {
-                        scale = CGFloat.random(in: 0.5...1.5)
-                        rotation = Double.random(in: 0...360)
-                    }
-                    
-                    withAnimation(
-                        .linear(duration: Double.random(in: 5...10))
-                        .repeatForever(autoreverses: true)
-                    ) {
-                        position = CGPoint(
-                            x: CGFloat.random(in: 0...proxy.size.width),
-                            y: CGFloat.random(in: 0...proxy.size.height)
-                        )
-                    }
+        Image(systemName: icons[index % icons.count])
+            .font(.system(size: 40))
+            .foregroundStyle(colors[index % colors.count])
+            .position(position)
+            .opacity(isVisible ? 1 : 0)
+            .onAppear {
+                position = CGPoint(
+                    x: CGFloat.random(in: 0...containerSize.width),
+                    y: CGFloat.random(in: 0...containerSize.height)
+                )
+                
+                // Blink animation
+                withAnimation(
+                    .easeInOut(duration: Double.random(in: 0.1...0.5))
+                    .repeatForever(autoreverses: true)
+                ) {
+                    isVisible.toggle()
                 }
-        }
+                
+                // Jitter movement
+                withAnimation(
+                    .linear(duration: Double.random(in: 0.2...0.5))
+                    .repeatForever(autoreverses: true)
+                ) {
+                    position.x += CGFloat.random(in: -20...20)
+                    position.y += CGFloat.random(in: -20...20)
+                }
+            }
     }
 }
 
