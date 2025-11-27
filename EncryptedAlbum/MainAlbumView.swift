@@ -671,287 +671,43 @@ struct MainAlbumView: View {
     var body: some View {
         ZStack {
             NavigationStack {
-                ScrollView {
-                    VStack(spacing: 12) {
-                        if !selectedPhotos.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(spacing: 12) {
-                                    Text("\(selectedPhotos.count) selected")
-                                        .font(.headline)
-                                        .lineLimit(1)
-                                        .layoutPriority(1)
-                                    Spacer(minLength: 8)
-                                    HStack(spacing: 8) {
-                                        Button {
-                                            restoreSelectedPhotos()
-                                        } label: {
-                                            Label("Restore", systemImage: "arrow.uturn.backward")
-                                        }
-                                        #if os(macOS)
-                                            Button {
-                                                exportSelectedPhotos()
-                                            } label: {
-                                                Label("Export", systemImage: "square.and.arrow.up")
-                                            }
-                                            .disabled(albumManager.exportProgress.isExporting)
-                                        #endif
-                                        Button(role: .destructive) {
-                                            let photosToDelete: [SecurePhoto] = albumManager.hiddenPhotos.filter {
-                                                selectedPhotos.contains($0.id)
-                                            }
-                                            requestDeletion(for: photosToDelete)
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
-                                        }
-                                    }
-                                    .lineLimit(1)
-                                    .buttonStyle(.borderedProminent)
-                                    .controlSize(.small)
-                                }
+                mainContent
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
+                    .navigationTitle("Encrypted Album")
+                    #if os(iOS)
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbarBackground(.hidden, for: .navigationBar)
+                        .toolbar {
+                            ToolbarItemGroup(placement: .navigationBarLeading) {
+                                selectionToolbarControls
                             }
-                            .padding()
-                            .privacyCardStyle()
-                        }
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(alignment: .center, spacing: 12) {
-                                Label(
-                                    privacyModeEnabled ? "Privacy Mode On" : "Privacy Mode Off",
-                                    systemImage: privacyModeEnabled ? "eye.slash.fill" : "eye.fill"
-                                )
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                Spacer()
-                                Toggle("", isOn: $privacyModeEnabled)
-                                    .labelsHidden()
-                            }
-
-                            #if os(macOS)
-                                HStack(spacing: 12) {
-                                    Button {
-                                        showingPhotosLibrary = true
-                                    } label: {
-                                        Label("Photos", systemImage: "photo")
-                                    }
-                                    .buttonStyle(.bordered)
-
-                                    Button {
-                                        showingFilePicker = true
-                                    } label: {
-                                        Label("Files", systemImage: "doc.badge.plus")
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .disabled(
-                                        directImportProgress.isImporting || albumManager.exportProgress.isExporting)
-
-                                    Button {
-                                        showingCamera = true
-                                    } label: {
-                                        Label("Camera", systemImage: "camera.fill")
-                                    }
-                                    .buttonStyle(.bordered)
-                                }
-                                .controlSize(.small)
-                            #endif
-                        }
-                        .padding(.horizontal)
-                        .padding(.vertical, privacyCardVerticalPadding)
-                        .privacyCardStyle()
-
-                        if let note = albumManager.hideNotification {
-                            let validPhotos =
-                                note.photos?.filter { returned in
-                                    albumManager.hiddenPhotos.contains(where: { $0.id == returned.id })
-                                } ?? []
-
-                            VStack {
-                                HStack(spacing: 12) {
-                                    Image(systemName: iconName(for: note.type))
-                                        .foregroundStyle(.white)
-                                        .padding(6)
-                                        .background(Circle().fill(iconColor(for: note.type)))
-
-                                    Text(note.message)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.primary)
-
-                                    Spacer()
-
-                                    if !validPhotos.isEmpty {
-                                        Button("Undo") {
-                                            if startRestorationTask({
-                                                await restorePhotos(validPhotos, toSourceAlbums: true)
-                                            }) {
-                                                withAnimation {
-                                                    albumManager.hideNotification = nil
-                                                }
-                                            }
-                                        }
-                                        .buttonStyle(.borderedProminent)
-                                        .controlSize(.small)
-                                    }
-
-                                    Button("Open Photos App") {
-                                        #if os(macOS)
-                                            NSWorkspace.shared.open(URL(string: "photos://")!)
-                                        #endif
-                                        withAnimation {
-                                            albumManager.hideNotification = nil
-                                        }
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                }
-                                .accessibilityElement(children: .combine)
-                                .accessibilityLabel(
-                                    hideNotificationAccessibilityLabel(note: note, hasUndo: !validPhotos.isEmpty)
-                                )
-                                .accessibilityHint("Hide status banner")
-                                .padding(.horizontal)
-                                .padding(.vertical, 10)
-                                .frame(maxWidth: .infinity)
-                                .background(
-                                    Group {
-                                        if note.type == .success {
-                                            Color.green.opacity(0.14)
-                                        } else if note.type == .failure {
-                                            Color.red.opacity(0.14)
-                                        } else {
-                                            Color.gray.opacity(0.12)
-                                        }
-                                    }
-                                )
-                                .cornerRadius(8)
-                                .padding(.horizontal)
-                            }
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                            .onAppear {
-                                DispatchQueue.main.asyncAfter(deadline: .now() + undoTimeoutSeconds) {
-                                    withAnimation {
-                                        albumManager.hideNotification = nil
-                                    }
-                                }
+                            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                                toolbarActions
                             }
                         }
-
-                        if albumManager.hiddenPhotos.isEmpty {
-                            VStack(spacing: 20) {
-                                Image(systemName: "lock.fill")
-                                    .font(.system(size: 60))
-                                    .foregroundStyle(.secondary)
-
-                                Text("No Encrypted Items")
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-
-                                Text("Hide photos and videos from your Photos Library")
-                                    .font(.body)
-                                    .foregroundStyle(.secondary)
-
-                                Button {
-                                    showingPhotosLibrary = true
-                                } label: {
-                                    Image(systemName: "lock.fill")
-                                        .font(.system(size: actionIconFontSize))
-                                        .foregroundColor(.white)
-                                        .frame(width: actionButtonDimension, height: actionButtonDimension)
-                                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
-                                    Text("Import from Photos")
-                                        .font(.headline)
-                                        .foregroundColor(.blue)
-                                }
-                                .buttonStyle(.plain)
-                                #if os(iOS)
-                                    .controlSize(.mini)
-                                #else
-                                    .controlSize(.large)
-                                #endif
+                        .searchable(
+                            text: $searchText, isPresented: $isSearchActive,
+                            placement: .navigationBarDrawer(displayMode: .automatic),
+                            prompt: "Search encrypted items"
+                        )
+                        .onChange(of: isSearchActive) { newValue in
+                            if !newValue {
+                                dismissKeyboard()
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 40)
-                        } else {
-                            LazyVGrid(
-                                columns: [
-                                    GridItem(
-                                        .adaptive(minimum: gridMinimumItemWidth, maximum: 200), spacing: gridSpacing)
-                                ], spacing: gridSpacing
-                            ) {
-                                ForEach(filteredPhotos) { photo in
-                                    Button {
-                                        toggleSelection(photo.id)
-                                    } label: {
-                                        PhotoThumbnailView(
-                                            photo: photo, isSelected: selectedPhotos.contains(photo.id),
-                                            privacyModeEnabled: privacyModeEnabled)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .focusable(false)
-                                    .highPriorityGesture(
-                                        TapGesture(count: 2).onEnded {
-                                            selectedPhoto = photo
-                                        }
-                                    )
-                                    .contextMenu {
-                                        Button {
-                                            startRestorationTask {
-                                                await restoreSinglePhoto(photo)
-                                            }
-                                        } label: {
-                                            Label("Restore to Library", systemImage: "arrow.uturn.backward")
-                                        }
-
-                                        Divider()
-
-                                        Button(role: .destructive) {
-                                            requestDeletion(for: [photo])
-                                        } label: {
-                                            Label("Delete", systemImage: "trash")
-                                        }
-                                    }
-                                }
+                        }
+                    #else
+                        .toolbar {
+                            ToolbarItemGroup(placement: .navigation) {
+                                selectionToolbarControls
                             }
-                            .padding(.horizontal, gridSpacing)
+                            ToolbarItemGroup(placement: .primaryAction) {
+                                toolbarActions
+                            }
                         }
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                }
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
-                .navigationTitle("Encrypted Album")
-                #if os(iOS)
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbarBackground(.hidden, for: .navigationBar)
-                    .toolbar {
-                        ToolbarItemGroup(placement: .navigationBarLeading) {
-                            selectionToolbarControls
-                        }
-                        ToolbarItemGroup(placement: .navigationBarTrailing) {
-                            toolbarActions
-                        }
-                    }
-                    .searchable(
-                        text: $searchText, isPresented: $isSearchActive,
-                        placement: .navigationBarDrawer(displayMode: .automatic),
-                        prompt: "Search encrypted items"
-                    )
-                    .onChange(of: isSearchActive) { newValue in
-                        if !newValue {
-                            dismissKeyboard()
-                        }
-                    }
-                #else
-                    .toolbar {
-                        ToolbarItemGroup(placement: .navigation) {
-                            selectionToolbarControls
-                        }
-                        ToolbarItemGroup(placement: .primaryAction) {
-                            toolbarActions
-                        }
-                    }
-                    .searchable(text: $searchText, prompt: "Search encrypted items")
-                #endif
-                .scrollDismissesKeyboard(.interactively)
+                        .searchable(text: $searchText, prompt: "Search encrypted items")
+                    #endif
+                    .scrollDismissesKeyboard(.interactively)
             }
             .background(Color.clear)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1136,6 +892,296 @@ struct MainAlbumView: View {
                 }
             }
         #endif
+    }
+
+    private var mainContent: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                selectionBar
+                privacySection
+                notificationBanner
+                if albumManager.hiddenPhotos.isEmpty {
+                    emptyState
+                } else {
+                    PhotoGridView(
+                        photos: filteredPhotos,
+                        selectedPhotos: $selectedPhotos,
+                        privacyModeEnabled: privacyModeEnabled,
+                        gridMinimumItemWidth: gridMinimumItemWidth,
+                        gridSpacing: gridSpacing,
+                        onSelect: toggleSelection,
+                        onDoubleTap: { selectedPhoto = $0 },
+                        onRestore: { photo in startRestorationTask { await restoreSinglePhoto(photo) } },
+                        onDelete: { requestDeletion(for: [$0]) }
+                    )
+                }
+            }
+            .padding()
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var selectionBar: some View {
+        Group {
+            if !selectedPhotos.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        Text("\(selectedPhotos.count) selected")
+                            .font(.headline)
+                            .lineLimit(1)
+                            .layoutPriority(1)
+                        Spacer(minLength: 8)
+                        HStack(spacing: 8) {
+                            Button {
+                                restoreSelectedPhotos()
+                            } label: {
+                                Label("Restore", systemImage: "arrow.uturn.backward")
+                            }
+                            #if os(macOS)
+                                Button {
+                                    exportSelectedPhotos()
+                                } label: {
+                                    Label("Export", systemImage: "square.and.arrow.up")
+                                }
+                                .disabled(albumManager.exportProgress.isExporting)
+                            #endif
+                            Button(role: .destructive) {
+                                let photosToDelete: [SecurePhoto] = albumManager.hiddenPhotos.filter {
+                                    selectedPhotos.contains($0.id)
+                                }
+                                requestDeletion(for: photosToDelete)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                        .lineLimit(1)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                }
+                .padding()
+                .privacyCardStyle()
+            }
+        }
+    }
+
+    private var privacySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
+                Label(
+                    privacyModeEnabled ? "Privacy Mode On" : "Privacy Mode Off",
+                    systemImage: privacyModeEnabled ? "eye.slash.fill" : "eye.fill"
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                Spacer()
+                Toggle("", isOn: $privacyModeEnabled)
+                    .labelsHidden()
+            }
+
+            #if os(macOS)
+                HStack(spacing: 12) {
+                    Button {
+                        showingPhotosLibrary = true
+                    } label: {
+                        Label("Photos", systemImage: "photo")
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button {
+                        showingFilePicker = true
+                    } label: {
+                        Label("Files", systemImage: "doc.badge.plus")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(
+                        directImportProgress.isImporting || albumManager.exportProgress.isExporting)
+
+                    Button {
+                        showingCamera = true
+                    } label: {
+                        Label("Camera", systemImage: "camera.fill")
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .controlSize(.small)
+            #endif
+        }
+        .padding(.horizontal)
+        .padding(.vertical, privacyCardVerticalPadding)
+        .privacyCardStyle()
+    }
+
+    private var notificationBanner: some View {
+        Group {
+            if let note = albumManager.hideNotification {
+                let validPhotos =
+                    note.photos?.filter { returned in
+                        albumManager.hiddenPhotos.contains(where: { $0.id == returned.id })
+                    } ?? []
+
+                VStack {
+                    HStack(spacing: 12) {
+                        Image(systemName: iconName(for: note.type))
+                            .foregroundStyle(.white)
+                            .padding(6)
+                            .background(Circle().fill(iconColor(for: note.type)))
+
+                        Text(note.message)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+
+                        Spacer()
+
+                        if !validPhotos.isEmpty {
+                            Button("Undo") {
+                                if startRestorationTask({
+                                    await restorePhotos(validPhotos, toSourceAlbums: true)
+                                }) {
+                                    withAnimation {
+                                        albumManager.hideNotification = nil
+                                    }
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        }
+
+                        Button("Open Photos App") {
+                            #if os(macOS)
+                                NSWorkspace.shared.open(URL(string: "photos://")!)
+                            #endif
+                            withAnimation {
+                                albumManager.hideNotification = nil
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(
+                        hideNotificationAccessibilityLabel(note: note, hasUndo: !validPhotos.isEmpty)
+                    )
+                    .accessibilityHint("Hide status banner")
+                    .padding(.horizontal)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        Group {
+                            if note.type == .success {
+                                Color.green.opacity(0.14)
+                            } else if note.type == .failure {
+                                Color.red.opacity(0.14)
+                            } else {
+                                Color.gray.opacity(0.12)
+                            }
+                        }
+                    )
+                    .cornerRadius(8)
+                    .padding(.horizontal)
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + undoTimeoutSeconds) {
+                        withAnimation {
+                            albumManager.hideNotification = nil
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 60))
+                .foregroundStyle(.secondary)
+
+            Text("No Encrypted Items")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            Text("Hide photos and videos from your Photos Library")
+                .font(.body)
+                .foregroundStyle(.secondary)
+
+            Button {
+                showingPhotosLibrary = true
+            } label: {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: actionIconFontSize))
+                    .foregroundColor(.white)
+                    .frame(width: actionButtonDimension, height: actionButtonDimension)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.blue))
+                Text("Import from Photos")
+                    .font(.headline)
+                    .foregroundColor(.blue)
+            }
+            .buttonStyle(.plain)
+            #if os(iOS)
+                .controlSize(.mini)
+            #else
+                .controlSize(.large)
+            #endif
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+    }
+
+    // Helper view to reduce type-checking complexity in MainAlbumView
+    struct PhotoGridView: View {
+        let photos: [SecurePhoto]
+        @Binding var selectedPhotos: Set<UUID>
+        let privacyModeEnabled: Bool
+        let gridMinimumItemWidth: CGFloat
+        let gridSpacing: CGFloat
+        let onSelect: (UUID) -> Void
+        let onDoubleTap: (SecurePhoto) -> Void
+        let onRestore: (SecurePhoto) -> Void
+        let onDelete: (SecurePhoto) -> Void
+
+        var body: some View {
+            LazyVGrid(
+                columns: [
+                    GridItem(
+                        .adaptive(minimum: gridMinimumItemWidth, maximum: 200), spacing: gridSpacing)
+                ], spacing: gridSpacing
+            ) {
+                ForEach(photos) { photo in
+                    Button {
+                        onSelect(photo.id)
+                    } label: {
+                        PhotoThumbnailView(
+                            photo: photo, isSelected: selectedPhotos.contains(photo.id),
+                            privacyModeEnabled: privacyModeEnabled)
+                    }
+                    .buttonStyle(.plain)
+                    .focusable(false)
+                    .highPriorityGesture(
+                        TapGesture(count: 2).onEnded {
+                            onDoubleTap(photo)
+                        }
+                    )
+                    .contextMenu {
+                        Button {
+                            onRestore(photo)
+                        } label: {
+                            Label("Restore to Library", systemImage: "arrow.uturn.backward")
+                        }
+
+                        Divider()
+
+                        Button(role: .destructive) {
+                            onDelete(photo)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, gridSpacing)
+        }
     }
 }
 #if os(iOS)
