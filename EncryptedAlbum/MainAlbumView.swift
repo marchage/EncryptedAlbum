@@ -336,11 +336,11 @@ struct MainAlbumView: View {
 
         // Check the selected photos for large files that exceed secure delete cap.
         var foundLarge = false
-        for photo in photos {
-            let url = albumManager.resolveURL(for: photo.encryptedDataPath)
+            for photo in photos {
+            let url = albumManager.urlForStoredPath(photo.encryptedDataPath)
             if FileManager.default.fileExists(atPath: url.path) {
                 if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
-                    let size = attrs[.size] as? Int64,
+                    let size = attrs[FileAttributeKey.size] as? Int64,
                     size > CryptoConstants.maxSecureDeleteSize
                 {
                     foundLarge = true

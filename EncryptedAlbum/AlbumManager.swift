@@ -389,6 +389,9 @@ class AlbumManager: ObservableObject {
     private var photosMetadataFileURL: URL { storage.metadataFile }
     private var settingsFileURL: URL { storage.settingsFile }
     private func resolveURL(for storedPath: String) -> URL { storage.resolvePath(storedPath) }
+
+    /// Public helper used by UI components to resolve stored paths to file URLs.
+    func urlForStoredPath(_ storedPath: String) -> URL { resolveURL(for: storedPath) }
     private func relativePath(for absoluteURL: URL) -> String { storage.relativePath(for: absoluteURL) }
     private func normalizedStoredPath(_ storedPath: String) -> String { storage.normalizedStoredPath(storedPath) }
     private var idleTimer: Timer?
