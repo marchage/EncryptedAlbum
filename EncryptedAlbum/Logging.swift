@@ -17,14 +17,17 @@ struct AppLog {
         #if DEBUG
         defaultLogger.debug("\(message, privacy: .public)")
         #else
-        // In release keep noise minimal
-        defaultLogger.debug("\(message, privacy: .public)")
+        // Release: no-op so debug logs don't show in Release builds
         #endif
     }
 
     static func debugPrivate(_ message: String) {
+        #if DEBUG
         // Use private privacy to avoid putting secrets/paths in system logs
         defaultLogger.debug("\(message, privacy: .private)")
+        #else
+        // Release: no-op
+        #endif
     }
 
     static func warning(_ message: String) {
