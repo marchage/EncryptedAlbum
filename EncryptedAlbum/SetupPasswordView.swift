@@ -470,21 +470,25 @@ struct SetupPasswordView: View {
             #endif
         } else {
             // Manual password validation
-            guard manualPassword == confirmPassword else {
+            let normalizedManual = PasswordService.normalizePassword(manualPassword)
+            let normalizedConfirm = PasswordService.normalizePassword(confirmPassword)
+
+            guard normalizedManual == normalizedConfirm else {
                 errorMessage = "Passwords do not match"
                 showError = true
                 return
             }
 
-            guard manualPassword.count >= 8 else {
+            guard normalizedManual.count >= 8 else {
                 errorMessage = "Password must be at least 8 characters"
                 showError = true
                 return
             }
 
             // Enforce minimum requirements
-            let hasUppercase = manualPassword.range(of: "[A-Z]", options: .regularExpression) != nil
-            let hasNumber = manualPassword.range(of: "[0-9]", options: .regularExpression) != nil
+            // Use Unicode-aware checks so non-ASCII uppercase letters (e.g. Turkish İ) are recognized
+            let hasUppercase = normalizedManual.contains { $0.isUppercase }
+            let hasNumber = normalizedManual.contains { $0.isNumber }
 
             guard hasUppercase && hasNumber else {
                 errorMessage = "Password must include uppercase letter and number"
@@ -493,7 +497,8 @@ struct SetupPasswordView: View {
             }
 
             Task {
-                await completeSetup(with: manualPassword)
+                // Store/use the normalized value for consistent behavior
+                await completeSetup(with: normalizedManual)
             }
         }
     }

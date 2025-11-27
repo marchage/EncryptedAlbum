@@ -100,7 +100,8 @@ struct UnlockView: View {
                         VStack(spacing: 12) {
                             SecureField("Password", text: $password)
                                 .textFieldStyle(.roundedBorder)
-                                .frame(width: 300)
+                                // allow the field to shrink on narrow devices (e.g. iPhone SE)
+                                .frame(maxWidth: 300)
                                 .textContentType(.password)
                                 .autocorrectionDisabled()
                                 #if os(iOS)
@@ -154,6 +155,9 @@ struct UnlockView: View {
                                 .controlSize(.large)
                                 .disabled(password.isEmpty)
                             }
+                            // Ensure there is at least a small inset so buttons aren't flush at the edges
+                            // Respect user's compact layout setting - compact layout reduces padding.
+                            .padding(.horizontal, albumManager.compactLayoutEnabled ? 6 : 10)
                         }
 
                         Spacer()
@@ -271,7 +275,11 @@ struct UnlockView: View {
 
     private func unlock() async {
         do {
-            try await albumManager.unlock(password: password)
+            // Normalize UI input so users aren't confused by composed/decomposed unicode forms
+            let normalized = PasswordService.normalizePassword(password)
+            // Update the field so the user sees the normalized value as confirmation
+            password = normalized
+            try await albumManager.unlock(password: normalized)
             showError = false
             errorMessage = "Incorrect password"
             #if os(macOS)
