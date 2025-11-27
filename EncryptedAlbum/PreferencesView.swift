@@ -5,7 +5,7 @@ struct PreferencesView: View {
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
     @AppStorage("privacyBackgroundStyle") private var privacyBackgroundStyle: PrivacyBackgroundStyle = .classic
     @AppStorage("requireForegroundReauthentication") private var requireForegroundReauthentication: Bool = true
-    @AppStorage("stealthModeEnabled") private var stealthModeEnabled = false
+    @AppStorage("stealthModeEnabled") private var stealthModeEnabled: Bool = false
     @AppStorage("decoyPasswordHash") private var decoyPasswordHash: String = ""
 
     @State private var healthReport: SecurityHealthReport?
@@ -17,7 +17,22 @@ struct PreferencesView: View {
     @State private var decoyPasswordConfirm = ""
     @State private var decoyPasswordError: String?
 
+    #if os(iOS)
+    @Environment(\.dismiss) private var dismiss
+    #endif
+
     var body: some View {
+        #if os(iOS)
+        NavigationView {
+            content
+        }
+        .navigationViewStyle(.stack)
+        #else
+        content
+        #endif
+    }
+
+    private var content: some View {
         ZStack {
             PrivacyOverlayBackground(asBackground: true)
 
@@ -171,6 +186,17 @@ struct PreferencesView: View {
             }
         }
         .frame(minWidth: 360, minHeight: 450)
+        .navigationTitle("Settings")
+        #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+            }
+        #endif
         .onChange(of: albumManager.secureDeletionEnabled) { _ in
             albumManager.saveSettings()
         }
