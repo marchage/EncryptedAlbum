@@ -703,8 +703,7 @@ struct MainAlbumView: View {
                                 }
                             }
                             .padding()
-                            .background(.ultraThinMaterial)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .privacyCardStyle()
                         }
 
                         VStack(alignment: .leading, spacing: 12) {
@@ -762,8 +761,7 @@ struct MainAlbumView: View {
                         }
                         .padding(.horizontal)
                         .padding(.vertical, privacyCardVerticalPadding)
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .privacyCardStyle()
 
                         if let note = albumManager.hideNotification {
                             let validPhotos =

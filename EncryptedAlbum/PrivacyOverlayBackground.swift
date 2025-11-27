@@ -100,15 +100,37 @@ struct PrivacyOverlayBackground: View {
                 #endif
             case .glass:
                 ZStack {
+                    // A subtle gradient to give it some "body" so it's not just the system background color
+                    LinearGradient(
+                        colors: [
+                            Color.blue.opacity(0.1),
+                            Color.purple.opacity(0.05),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    
                     if asBackground {
-                        // For the app background, we use a subtle material
-                        // This requires the window to be configured as transparent to see the desktop,
-                        // but even without that, it gives a nice native matte look.
+                        #if os(macOS)
                         Rectangle().fill(.ultraThinMaterial)
+                        #else
+                        Rectangle().fill(.ultraThinMaterial)
+                        #endif
                     } else {
-                        // For privacy overlay, we use a thicker material to obscure content
+                        #if os(macOS)
                         Rectangle().fill(.regularMaterial)
+                        #else
+                        Rectangle().fill(.regularMaterial)
+                        #endif
                     }
+                    
+                    // Shine/Reflection
+                    LinearGradient(
+                        colors: [.white.opacity(0.15), .clear],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 }
             }
         }
@@ -131,3 +153,60 @@ private struct WindowBackgroundView: NSViewRepresentable {
     }
 }
 #endif
+
+struct PrivacyCardBackground: ViewModifier {
+    @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .rainbow
+    
+    func body(content: Content) -> some View {
+        content
+            .background(
+                Group {
+                    switch style {
+                    case .glass:
+                        ZStack {
+                            Color.white.opacity(0.05)
+                            #if os(macOS)
+                            Material.ultraThinMaterial
+                            #else
+                            Material.ultraThin
+                            #endif
+                            LinearGradient(
+                                colors: [.white.opacity(0.25), .clear],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        }
+                    case .dark:
+                        Color.black.opacity(0.6)
+                    case .classic:
+                        #if os(macOS)
+                        Material.ultraThinMaterial
+                        #else
+                        Material.ultraThin
+                        #endif
+                    default:
+                        #if os(macOS)
+                        Material.ultraThinMaterial
+                        #else
+                        Material.ultraThin
+                        #endif
+                    }
+                }
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(
+                        style == .glass ? Color.white.opacity(0.3) : Color.clear,
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: style == .glass ? Color.black.opacity(0.1) : Color.clear, radius: 10, x: 0, y: 5)
+    }
+}
+
+extension View {
+    func privacyCardStyle() -> some View {
+        modifier(PrivacyCardBackground())
+    }
+}
