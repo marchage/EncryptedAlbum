@@ -669,51 +669,55 @@ struct MainAlbumView: View {
     #endif
 
     var body: some View {
-        let baseView = NavigationStack {
-            ZStack {
-                PrivacyOverlayBackground(asBackground: true)
-                mainContent
-                    .scrollContentBackground(.hidden)
-                    .background(Color.clear)
+        let navigationContent = ZStack {
+            PrivacyOverlayBackground(asBackground: true)
+            mainContent
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
+        }
+        .background(Color.clear)
+        .navigationTitle("Encrypted Album")
+        #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItemGroup(placement: .navigationBarLeading) {
+                    selectionToolbarControls
+                }
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    toolbarActions
+                }
             }
-            .background(Color.clear)
-            .navigationTitle("Encrypted Album")
-            #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbarBackground(.hidden, for: .navigationBar)
-                .toolbar {
-                    ToolbarItemGroup(placement: .navigationBarLeading) {
-                        selectionToolbarControls
-                    }
-                    ToolbarItemGroup(placement: .navigationBarTrailing) {
-                        toolbarActions
-                    }
+            .searchable(
+                text: $searchText, isPresented: $isSearchActive,
+                placement: .navigationBarDrawer(displayMode: .automatic),
+                prompt: "Search encrypted items"
+            )
+            .onChange(of: isSearchActive) { newValue in
+                if !newValue {
+                    dismissKeyboard()
                 }
-                .searchable(
-                    text: $searchText, isPresented: $isSearchActive,
-                    placement: .navigationBarDrawer(displayMode: .automatic),
-                    prompt: "Search encrypted items"
-                )
-                .onChange(of: isSearchActive) { newValue in
-                    if !newValue {
-                        dismissKeyboard()
-                    }
+            }
+        #else
+            .toolbar {
+                ToolbarItemGroup(placement: .navigation) {
+                    selectionToolbarControls
                 }
-            #else
-                .toolbar {
-                    ToolbarItemGroup(placement: .navigation) {
-                        selectionToolbarControls
-                    }
-                    ToolbarItemGroup(placement: .primaryAction) {
-                        toolbarActions
-                    }
+                ToolbarItemGroup(placement: .primaryAction) {
+                    toolbarActions
                 }
-                .searchable(text: $searchText, prompt: "Search encrypted items")
-            #endif
-            .scrollDismissesKeyboard(.interactively)
+            }
+            .searchable(text: $searchText, prompt: "Search encrypted items")
+        #endif
+        .scrollDismissesKeyboard(.interactively)
+
+        let baseView = NavigationStack {
+            navigationContent
         }
         .background(Color.clear)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+        let viewWithInitialModifiers = baseView
             .onAppear {
                 if !didForcePrivacyModeThisSession {
                     // Ensure privacy mode starts enabled on each fresh app launch.
@@ -761,11 +765,13 @@ struct MainAlbumView: View {
             #endif
             #if os(iOS)
                 .fullScreenCover(isPresented: $showingPhotosLibrary) {
-                    PhotosLibraryService.PhotosLibraryView()
+                    PhotosLibraryPicker()
+                        .environmentObject(albumManager)
                 }
             #else
                 .sheet(isPresented: $showingPhotosLibrary) {
-                    PhotosLibraryService.PhotosLibraryView()
+                    PhotosLibraryPicker()
+                        .environmentObject(albumManager)
                 }
             #endif
             #if os(iOS)
@@ -825,7 +831,7 @@ struct MainAlbumView: View {
                 return true
             }
         let showDirectImportProgress = directImportProgress.isImporting && (directImportProgress.itemsTotal > 0 || directImportProgress.bytesProcessed > 0 || directImportProgress.bytesTotal > 0 || directImportProgress.cancelRequested)
-        let viewWithOverlays = baseView
+        let viewWithOverlays = viewWithInitialModifiers
             .overlay {
                 if showDirectImportProgress {
                     captureProgressOverlay
