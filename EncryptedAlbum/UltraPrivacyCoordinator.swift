@@ -161,7 +161,7 @@ final class UltraPrivacyCoordinator: ObservableObject {
 }
 
 private struct UltraPrivacyCoverView: View {
-    @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .rainbow
+    @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .classic
 
     var body: some View {
         ZStack {

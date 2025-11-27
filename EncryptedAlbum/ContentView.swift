@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var albumManager: AlbumManager
-    @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .rainbow
+    @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .classic
 
     var body: some View {
         ZStack {

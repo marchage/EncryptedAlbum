@@ -67,7 +67,7 @@ struct InactiveAppOverlay: View {
 }
 
 struct PrivacyContentOverlay: View {
-    @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .rainbow
+    @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .classic
     
     var body: some View {
         VStack(spacing: 20) {

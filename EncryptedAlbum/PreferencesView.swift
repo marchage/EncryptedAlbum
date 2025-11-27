@@ -3,7 +3,7 @@ import SwiftUI
 struct PreferencesView: View {
     @EnvironmentObject var albumManager: AlbumManager
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
-    @AppStorage("privacyBackgroundStyle") private var privacyBackgroundStyle: PrivacyBackgroundStyle = .rainbow
+    @AppStorage("privacyBackgroundStyle") private var privacyBackgroundStyle: PrivacyBackgroundStyle = .classic
 
     @State private var healthReport: SecurityHealthReport?
     @State private var isCheckingHealth = false

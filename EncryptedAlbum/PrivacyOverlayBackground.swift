@@ -31,7 +31,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
 
 /// Shared background used by every privacy cover in the app.
 struct PrivacyOverlayBackground: View {
-    @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .rainbow
+    @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .classic
     
     /// If true, this view is being used as the main app background (behind content).
     /// If false, it is being used as a privacy overlay (obscuring content).
@@ -255,7 +255,7 @@ private struct WindowBackgroundView: NSViewRepresentable {
 #endif
 
 struct PrivacyCardBackground: ViewModifier {
-    @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .rainbow
+    @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .classic
     
     func body(content: Content) -> some View {
         content
