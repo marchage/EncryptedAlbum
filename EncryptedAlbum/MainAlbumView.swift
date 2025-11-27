@@ -28,6 +28,29 @@ struct MainAlbumView: View {
     @State private var showDeleteConfirmation = false
     @State private var showLargeDeleteConfirmation = false
     @State private var pendingDeletionContainsLargeFiles = false
+    private var pendingLargeItemsSummary: String {
+        // Build a compact summary of filenames and sizes for the alert (limit to first 6 items)
+        let items = pendingDeletionPhotos
+        guard !items.isEmpty else { return "" }
+
+        var lines: [String] = []
+        let maxShow = 6
+        for (index, photo) in items.enumerated() {
+            if index >= maxShow { break }
+            let url = albumManager.urlForStoredPath(photo.encryptedDataPath)
+            var sizeStr = "(missing)"
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path), let size = attrs[FileAttributeKey.size] as? Int64 {
+                sizeStr = ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+            }
+            lines.append("• \(photo.filename) — \(sizeStr)")
+        }
+
+        if items.count > maxShow {
+            lines.append("… and \(items.count - maxShow) more item(s)")
+        }
+
+        return lines.joined(separator: "\n")
+    }
     @State private var pendingDeletionPhotos: [SecurePhoto] = []
     @State private var restorationTask: Task<Void, Never>? = nil
     @State private var didForcePrivacyModeThisSession = false
@@ -825,7 +848,7 @@ struct MainAlbumView: View {
                 Text("This action permanently removes the selected content from Encrypted Album.")
             }
 
-            // Large-delete confirmation: explain the secure-delete cap and require explicit confirmation
+            // Large-delete confirmation: show file names & sizes + explain the secure-delete cap and require explicit confirmation
             .alert("Delete large items?", isPresented: $showLargeDeleteConfirmation) {
                 Button("Delete Anyway", role: .destructive) {
                     // Proceed with deletion even when files are large
@@ -836,7 +859,16 @@ struct MainAlbumView: View {
                     pendingDeletionContainsLargeFiles = false
                 }
             } message: {
-                Text("One or more selected items are larger than \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)). Secure deletion will only overwrite the first \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)) (3 passes). On modern APFS/SSD devices this may not physically erase the file — confirm you want to permanently delete these items.")
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("One or more selected items are larger than \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)). Secure deletion will only overwrite the first \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)) (3 passes). On modern APFS/SSD devices this may not physically erase the file — confirm you want to permanently delete these items.")
+                    if !pendingLargeItemsSummary.isEmpty {
+                        Divider()
+                        Text(pendingLargeItemsSummary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
             }
             .onChange(of: showDeleteConfirmation) { presented in
                 if presented {
