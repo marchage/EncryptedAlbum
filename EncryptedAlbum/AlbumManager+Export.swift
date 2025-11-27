@@ -176,8 +176,9 @@ extension AlbumManager {
             }
             try outputHandle.write(contentsOf: data)
             totalCopied += Int64(data.count)
+            let currentTotal = totalCopied
             await MainActor.run {
-                exportProgress.bytesProcessed = totalCopied
+                exportProgress.bytesProcessed = currentTotal
             }
         }
     }

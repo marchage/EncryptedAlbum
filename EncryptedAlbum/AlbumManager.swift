@@ -329,7 +329,7 @@ class AlbumManager: ObservableObject {
     @MainActor let directImportProgress: DirectImportProgress
     @MainActor let exportProgress = ExportProgress()
     private var directImportTask: Task<Void, Never>?
-    private var exportTask: Task<Void, Never>?
+    var exportTask: Task<Void, Never>?
     
     // Album location is now fixed and managed by AlbumStorage
     var albumBaseURL: URL {
