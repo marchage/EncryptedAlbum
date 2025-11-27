@@ -48,14 +48,22 @@ struct PrivacyOverlayBackground: View {
         Group {
             switch style {
             case .rainbow:
-                LinearGradient(
-                    colors: [.pink, .orange, .yellow, .green, .mint, .blue, .purple],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .overlay(
-                    Color.black.opacity(0.45)
-                )
+                if asBackground {
+                    LinearGradient(
+                        colors: [.pink, .orange, .yellow, .green, .mint, .blue, .purple],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                } else {
+                    LinearGradient(
+                        colors: [.pink, .orange, .yellow, .green, .mint, .blue, .purple],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .overlay(
+                        Color.black.opacity(0.45)
+                    )
+                }
             case .dark:
                 LinearGradient(
                     colors: [Color(white: 0.12), Color.black],

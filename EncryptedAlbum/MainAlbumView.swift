@@ -670,6 +670,7 @@ struct MainAlbumView: View {
 
     var body: some View {
         ZStack {
+            PrivacyOverlayBackground(asBackground: true)
             NavigationStack {
                 mainContent
                     .scrollContentBackground(.hidden)
