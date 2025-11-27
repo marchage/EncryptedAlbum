@@ -11,9 +11,10 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
     case mesh
     case classic
     case glass
-    case light
     case nightTown
     case nineties
+    case webOne
+    case bh90210
     
     var id: String { self.rawValue }
     
@@ -27,6 +28,8 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
         case .light: return "Light"
         case .nightTown: return "Night Town"
         case .nineties: return "90s Party"
+        case .webOne: return "Web 1.0"
+        case .bh90210: return "BH 90210"
         }
     }
 }
@@ -144,10 +147,148 @@ struct PrivacyOverlayBackground: View {
                 NightTownView()
             case .nineties:
                 NinetiesPartyView()
+            case .webOne:
+                WebOneView()
+            case .bh90210:
+                BH90210View()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
+    }
+}
+
+private struct WebOneView: View {
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            
+            // Stars
+            GeometryReader { geometry in
+                ForEach(0..<100) { _ in
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 2, height: 2)
+                        .position(
+                            x: CGFloat.random(in: 0...geometry.size.width),
+                            y: CGFloat.random(in: 0...geometry.size.height)
+                        )
+                }
+            }
+            
+            // Retro Rainbow Sunburst Header
+            VStack {
+                ZStack {
+                    // Sun
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [.white, .yellow, .orange],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 50
+                            )
+                        )
+                        .frame(width: 100, height: 100)
+                        .offset(y: 20)
+                    
+                    // Rays
+                    HStack(spacing: 0) {
+                        ForEach([Color.red, .orange, .yellow, .green, .blue, .purple], id: \.self) { color in
+                            Rectangle()
+                                .fill(color)
+                                .frame(height: 120)
+                        }
+                    }
+                    .mask(
+                        // jagged mountain/cityscape mask
+                        Image(systemName: "building.2.crop.circle.fill")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .scaleEffect(x: 2.0, y: 1.0)
+                    )
+                }
+                .frame(height: 150)
+                .padding(.top, 50)
+                
+                Spacer()
+            }
+        }
+    }
+}
+
+private struct BH90210View: View {
+    var body: some View {
+        ZStack {
+            // Grid Background
+            Color(white: 0.95).ignoresSafeArea()
+            
+            GeometryReader { geometry in
+                Path { path in
+                    let spacing: CGFloat = 40
+                    for x in stride(from: 0, to: geometry.size.width, by: spacing) {
+                        path.move(to: CGPoint(x: x, y: 0))
+                        path.addLine(to: CGPoint(x: x, y: geometry.size.height))
+                    }
+                    for y in stride(from: 0, to: geometry.size.height, by: spacing) {
+                        path.move(to: CGPoint(x: 0, y: y))
+                        path.addLine(to: CGPoint(x: geometry.size.width, y: y))
+                    }
+                }
+                .stroke(Color.black.opacity(0.1), lineWidth: 1)
+            }
+            
+            // Memphis Shapes
+            GeometryReader { geometry in
+                ForEach(0..<15) { i in
+                    MemphisShape(index: i)
+                }
+            }
+        }
+    }
+}
+
+struct MemphisShape: View {
+    let index: Int
+    @State private var rotation: Double = 0
+    @State private var position: CGPoint = .zero
+    
+    // Memphis Palette
+    let colors: [Color] = [
+        Color(red: 0.2, green: 0.8, blue: 0.7), // Teal
+        Color(red: 0.9, green: 0.4, blue: 0.6), // Pink
+        Color(red: 1.0, green: 0.8, blue: 0.2), // Yellow
+        Color(red: 0.4, green: 0.3, blue: 0.8)  // Purple
+    ]
+    
+    var body: some View {
+        Group {
+            if index % 3 == 0 {
+                // Triangle
+                Image(systemName: "triangle.fill")
+            } else if index % 3 == 1 {
+                // Circle
+                Circle()
+            } else {
+                // Squiggle (using bolt as approximation)
+                Image(systemName: "bolt.fill")
+            }
+        }
+        .frame(width: 50, height: 50)
+        .foregroundStyle(colors[index % colors.count])
+        .rotationEffect(.degrees(rotation))
+        .shadow(color: .black.opacity(0.2), radius: 4, x: 4, y: 4)
+        .position(position)
+        .onAppear {
+            // Random placement
+            position = CGPoint(
+                x: CGFloat.random(in: 0...500), // Approximate screen width
+                y: CGFloat.random(in: 0...800)  // Approximate screen height
+            )
+            
+            // Static rotation
+            rotation = Double.random(in: 0...360)
+        }
     }
 }
 
@@ -388,9 +529,9 @@ struct PrivacyCardBackground: ViewModifier {
                                 endPoint: .bottomTrailing
                             )
                         }
-                    case .dark, .nightTown, .nineties:
+                    case .dark, .nightTown, .nineties, .webOne:
                         Color.black.opacity(0.6)
-                    case .light:
+                    case .light, .bh90210:
                         Color.white.opacity(0.8)
                     case .classic:
                         #if os(macOS)
