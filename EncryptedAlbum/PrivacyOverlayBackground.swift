@@ -11,6 +11,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
     case mesh
     case classic
     case glass
+    case light
     case nightTown
     case nineties
     case webOne
