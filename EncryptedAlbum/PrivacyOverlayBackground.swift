@@ -89,15 +89,15 @@ struct PrivacyOverlayBackground: View {
                 }
                 .blur(radius: 60)
             case .classic:
+                #if os(macOS)
                 if asBackground {
                     Color.clear // Allow system window background to show
                 } else {
-                    #if os(macOS)
-                    Color(nsColor: .windowBackgroundColor)
-                    #else
-                    Color(uiColor: .systemBackground)
-                    #endif
+                    WindowBackgroundView()
                 }
+                #else
+                Color(uiColor: .systemBackground)
+                #endif
             case .glass:
                 ZStack {
                     if asBackground {
@@ -116,3 +116,18 @@ struct PrivacyOverlayBackground: View {
         .ignoresSafeArea()
     }
 }
+
+#if os(macOS)
+private struct WindowBackgroundView: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .windowBackground
+        view.blendingMode = .behindWindow
+        view.state = .followsWindowActiveState
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+    }
+}
+#endif
