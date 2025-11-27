@@ -280,7 +280,7 @@ struct PhotosLibraryPicker: View {
                                 }
                                 .pickerStyle(.segmented)
                                 .frame(maxWidth: .infinity)
-                                .onChange(of: selectedLibrary) { _ in
+                                .onChange(of: selectedLibrary) { _, _ in
                                     loadPhotos()
                                 }
 
@@ -291,7 +291,7 @@ struct PhotosLibraryPicker: View {
                                         .help(
                                             "If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared."
                                         )
-                                        .onChange(of: forceSharedLibrary) { _ in
+                                        .onChange(of: forceSharedLibrary) { _, _ in
                                             loadPhotos()
                                         }
                                 }
@@ -314,7 +314,7 @@ struct PhotosLibraryPicker: View {
                             }
                             .pickerStyle(.segmented)
                             .frame(width: 280)
-                            .onChange(of: selectedLibrary) { _ in
+                            .onChange(of: selectedLibrary) { _, _ in
                                 loadPhotos()
                             }
                             // Manual fallback toggle only relevant when user selects Shared
@@ -323,7 +323,7 @@ struct PhotosLibraryPicker: View {
                                 .help(
                                     "If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared."
                                 )
-                                .onChange(of: forceSharedLibrary) { _ in
+                                .onChange(of: forceSharedLibrary) { _, _ in
                                     if selectedLibrary == .shared { loadPhotos() }
                                 }
                                 .padding(.leading, 8)
