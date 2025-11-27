@@ -478,7 +478,7 @@ private struct NinetiesPartyView: View {
                     .animation(.easeInOut(duration: 0.15).repeatForever(autoreverses: true), value: animate)
                     
                     // "Cool" Graphic
-                    Image(systemName: "sunglasses.fill")
+                    Image(systemName: "face.smiling")
                         .font(.system(size: 80))
                         .foregroundStyle(.black)
                         .background(Circle().fill(Color.yellow))
