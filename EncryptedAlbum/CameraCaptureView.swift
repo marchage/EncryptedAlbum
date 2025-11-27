@@ -111,7 +111,7 @@ import SwiftUI
 
         var body: some View {
             ZStack {
-                Color.black.ignoresSafeArea()
+                PrivacyOverlayBackground(asBackground: true)
 
                 if model.isAuthorized, let session = model.session {
                     CameraPreview(session: session)

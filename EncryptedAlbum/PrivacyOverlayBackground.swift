@@ -10,6 +10,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
     case dark
     case mesh
     case classic
+    case glass
     
     var id: String { self.rawValue }
     
@@ -19,6 +20,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
         case .dark: return "Dark"
         case .mesh: return "Mesh"
         case .classic: return "Classic"
+        case .glass: return "Glass"
         }
     }
 }
@@ -95,6 +97,18 @@ struct PrivacyOverlayBackground: View {
                     #else
                     Color(uiColor: .systemBackground)
                     #endif
+                }
+            case .glass:
+                ZStack {
+                    if asBackground {
+                        // For the app background, we use a subtle material
+                        // This requires the window to be configured as transparent to see the desktop,
+                        // but even without that, it gives a nice native matte look.
+                        Rectangle().fill(.ultraThinMaterial)
+                    } else {
+                        // For privacy overlay, we use a thicker material to obscure content
+                        Rectangle().fill(.regularMaterial)
+                    }
                 }
             }
         }

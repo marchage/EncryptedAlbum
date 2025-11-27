@@ -61,8 +61,11 @@ struct SetupPasswordView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
+        ZStack {
+            PrivacyOverlayBackground(asBackground: true)
+            
+            ScrollView {
+                VStack(spacing: 24) {
                 // Top spacing
                 Color.clear.frame(height: 20)
 
@@ -307,6 +310,7 @@ struct SetupPasswordView: View {
             }
             .padding(.horizontal)
         }
+        .background(Color.clear)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(
             // Flash overlay

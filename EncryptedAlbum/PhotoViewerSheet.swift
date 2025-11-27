@@ -20,9 +20,12 @@ struct PhotoViewerSheet: View {
 
     var body: some View {
         SecureWrapper {
-            VStack(spacing: 0) {
-                // Header
-                HStack {
+            ZStack {
+                PrivacyOverlayBackground(asBackground: true)
+                
+                VStack(spacing: 0) {
+                    // Header
+                    HStack {
                     VStack(alignment: .leading) {
                         Text(photo.filename)
                             .font(.headline)

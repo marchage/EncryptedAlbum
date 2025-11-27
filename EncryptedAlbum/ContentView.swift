@@ -6,6 +6,7 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             if albumManager.isLoading {
+                PrivacyOverlayBackground(asBackground: true)
                 ProgressView("Loading...")
             } else if albumManager.hasPassword() {
                 if albumManager.isUnlocked {
