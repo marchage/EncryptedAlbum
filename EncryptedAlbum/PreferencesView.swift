@@ -107,7 +107,7 @@ struct PreferencesView: View {
         switch privacyBackgroundStyle {
         case .light:
             return .light
-        case .dark, .rainbow, .mesh, .nightTown:
+        case .dark, .rainbow, .mesh, .nightTown, .nineties:
             return .dark
         case .classic, .glass:
             return nil // Follow system

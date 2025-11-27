@@ -13,6 +13,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
     case glass
     case light
     case nightTown
+    case nineties
     
     var id: String { self.rawValue }
     
@@ -25,6 +26,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
         case .glass: return "Glass"
         case .light: return "Light"
         case .nightTown: return "Night Town"
+        case .nineties: return "90s Party"
         }
     }
 }
@@ -140,10 +142,82 @@ struct PrivacyOverlayBackground: View {
                 Color(white: 0.95)
             case .nightTown:
                 NightTownView()
+            case .nineties:
+                NinetiesPartyView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
+    }
+}
+
+private struct NinetiesPartyView: View {
+    @State private var animate = false
+    
+    var body: some View {
+        ZStack {
+            // Psychedelic Background
+            AngularGradient(gradient: Gradient(colors: [.red, .yellow, .green, .blue, .purple, .red]), center: .center)
+                .rotationEffect(.degrees(animate ? 360 : 0))
+                .scaleEffect(1.5)
+            
+            // Floating Shapes
+            ForEach(0..<12) { i in
+                NinetiesShape(index: i)
+            }
+        }
+        .onAppear {
+            withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
+                animate = true
+            }
+        }
+    }
+}
+
+struct NinetiesShape: View {
+    let index: Int
+    @State private var rotation: Double = 0
+    @State private var scale: CGFloat = 1
+    @State private var position: CGPoint = .zero
+    
+    let shapes = ["triangle.fill", "circle.fill", "star.fill", "square.fill", "hexagon.fill"]
+    let colors: [Color] = [.cyan, .mint, .pink, .yellow, .white]
+    
+    var body: some View {
+        GeometryReader { proxy in
+            Image(systemName: shapes[index % shapes.count])
+                .font(.system(size: CGFloat.random(in: 30...60)))
+                .foregroundStyle(colors[index % colors.count])
+                .rotationEffect(.degrees(rotation))
+                .scaleEffect(scale)
+                .position(position)
+                .onAppear {
+                    // Initial random position
+                    position = CGPoint(
+                        x: CGFloat.random(in: 0...proxy.size.width),
+                        y: CGFloat.random(in: 0...proxy.size.height)
+                    )
+                    
+                    // Animate
+                    withAnimation(
+                        .easeInOut(duration: Double.random(in: 1...3))
+                        .repeatForever(autoreverses: true)
+                    ) {
+                        scale = CGFloat.random(in: 0.5...1.5)
+                        rotation = Double.random(in: 0...360)
+                    }
+                    
+                    withAnimation(
+                        .linear(duration: Double.random(in: 5...10))
+                        .repeatForever(autoreverses: true)
+                    ) {
+                        position = CGPoint(
+                            x: CGFloat.random(in: 0...proxy.size.width),
+                            y: CGFloat.random(in: 0...proxy.size.height)
+                        )
+                    }
+                }
+        }
     }
 }
 
@@ -276,7 +350,7 @@ struct PrivacyCardBackground: ViewModifier {
                                 endPoint: .bottomTrailing
                             )
                         }
-                    case .dark, .nightTown:
+                    case .dark, .nightTown, .nineties:
                         Color.black.opacity(0.6)
                     case .light:
                         Color.white.opacity(0.8)
