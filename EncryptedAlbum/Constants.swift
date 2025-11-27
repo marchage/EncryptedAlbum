@@ -27,11 +27,11 @@ enum CryptoConstants {
 
     /// Streaming encryption
     static let streamingMagic = "SVSTRM01"
-    static let streamingVersion: UInt8 = 3 // Bumped to 3 for completion marker trailer
+    static let streamingVersion: UInt8 = 3  // Bumped to 3 for completion marker trailer
     static let streamingChunkSize = 4 * 1024 * 1024  // 4MB chunks
     static let streamingNonceSize = 12
     static let streamingTagSize = 16
-    static let streamingCompletionMarker = "SVF2DONE" // Indicates encrypt completed successfully
+    static let streamingCompletionMarker = "SVF2DONE"  // Indicates encrypt completed successfully
 
     /// Thumbnail dimensions
     static let maxThumbnailDimension: CGFloat = 300
@@ -58,7 +58,7 @@ enum FileConstants {
     static let thumbnailSuffix = "_thumb.jpg"
     static let tempWorkingDirectoryName = "EncryptedAlbumTemp"
     static let decryptedTempPrefix = "sv-decrypted"
-    
+
     // TODO: Replace with your actual App Group ID
     static let appGroupIdentifier = "group.biz.front-end.EncryptedAlbum"
     static let appGroupInboxName = "ImportInbox"

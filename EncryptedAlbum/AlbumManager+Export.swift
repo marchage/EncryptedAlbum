@@ -54,7 +54,7 @@ extension AlbumManager {
                 wasCancelled = true
                 break
             }
-            
+
             let cancelRequested = await MainActor.run { exportProgress.cancelRequested }
             if cancelRequested {
                 wasCancelled = true
@@ -63,10 +63,11 @@ extension AlbumManager {
 
             let expectedSize = photo.fileSize
             let expectedSizeText = expectedSize > 0 ? formatter.string(fromByteCount: expectedSize) : nil
-            
+
             await MainActor.run {
                 exportProgress.statusMessage = "Decrypting \(photo.filename)…"
-                exportProgress.detailMessage = detailText(for: index + 1, total: photos.count, sizeDescription: expectedSizeText)
+                exportProgress.detailMessage = detailText(
+                    for: index + 1, total: photos.count, sizeDescription: expectedSizeText)
                 exportProgress.itemsProcessed = index
                 exportProgress.bytesProcessed = 0
                 exportProgress.bytesTotal = expectedSize
@@ -132,7 +133,7 @@ extension AlbumManager {
         await MainActor.run {
             exportProgress.finish()
         }
-        
+
         return ExportResult(
             successCount: successCount,
             failureCount: failureCount,
@@ -140,7 +141,7 @@ extension AlbumManager {
             error: firstError
         )
     }
-    
+
     private func detailText(for index: Int, total: Int, sizeDescription: String?) -> String {
         var parts: [String] = ["Item \(index) of \(total)"]
         if let sizeDescription = sizeDescription {
@@ -148,7 +149,7 @@ extension AlbumManager {
         }
         return parts.joined(separator: " • ")
     }
-    
+
     private func fileSizeValue(for url: URL) -> Int64 {
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
             let size = attributes[.size] as? NSNumber

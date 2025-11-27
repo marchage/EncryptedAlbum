@@ -126,9 +126,9 @@ struct PhotoThumbnailView: View {
 
                 if data.isEmpty {
                     #if DEBUG
-                    print(
-                        "Thumbnail data empty for photo id=\(photo.id), thumbnailPath=\(photo.thumbnailPath), encryptedThumb=\(photo.encryptedThumbnailPath ?? "nil")"
-                    )
+                        print(
+                            "Thumbnail data empty for photo id=\(photo.id), thumbnailPath=\(photo.thumbnailPath), encryptedThumb=\(photo.encryptedThumbnailPath ?? "nil")"
+                        )
                     #endif
                     await MainActor.run {
                         failedToLoad = true
@@ -141,14 +141,14 @@ struct PhotoThumbnailView: View {
                         thumbnailImage = image
                     } else {
                         #if DEBUG
-                        print("Failed to create Image from decrypted data for photo id=\(photo.id)")
+                            print("Failed to create Image from decrypted data for photo id=\(photo.id)")
                         #endif
                         failedToLoad = true
                     }
                 }
             } catch {
                 #if DEBUG
-                print("Error decrypting thumbnail for photo id=\(photo.id): \(error)")
+                    print("Error decrypting thumbnail for photo id=\(photo.id): \(error)")
                 #endif
             }
         }

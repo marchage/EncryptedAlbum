@@ -23,7 +23,8 @@ struct EncryptedAlbumApp: App {
                             hasNotifiedBackgroundActivity = false
                         }
                     }
-                    .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in
+                    .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) {
+                        _ in
                         if albumManager.isBusy {
                             if !hasNotifiedBackgroundActivity {
                                 sendBackgroundActivityNotification()
@@ -44,19 +45,20 @@ struct EncryptedAlbumApp: App {
             }
         #endif
         #if os(iOS)
-        // This target should use EncryptedAlbum_iOSApp.swift as entry point
-        // But if this file is included in iOS target by mistake, we provide a fallback
-        WindowGroup {
-            ContentView()
-                .environmentObject(albumManager)
-        }
+            // This target should use EncryptedAlbum_iOSApp.swift as entry point
+            // But if this file is included in iOS target by mistake, we provide a fallback
+            WindowGroup {
+                ContentView()
+                    .environmentObject(albumManager)
+            }
         #endif
     }
 
     private func sendBackgroundActivityNotification() {
         let content = UNMutableNotificationContent()
         content.title = "Album Operation in Progress"
-        content.body = "Encrypted Album is performing a task in the background and will remain unlocked until it completes."
+        content.body =
+            "Encrypted Album is performing a task in the background and will remain unlocked until it completes."
         content.sound = nil
 
         let request = UNNotificationRequest(identifier: "backgroundActivity", content: content, trigger: nil)
@@ -69,7 +71,7 @@ struct EncryptedAlbumApp: App {
         func applicationDidFinishLaunching(_ notification: Notification) {
             // Register as a service provider
             NSApp.servicesProvider = self
-            
+
             UNUserNotificationCenter.current().delegate = self
             UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
                 if let error = error {
@@ -77,14 +79,14 @@ struct EncryptedAlbumApp: App {
                 }
             }
         }
-        
+
         func applicationDidBecomeActive(_ notification: Notification) {
             // Check for shared files from Share Extension
             AlbumManager.shared.checkAppGroupInbox()
         }
 
         // MARK: - Services Support
-        
+
         @objc func importPhotosFromService(_ pboard: NSPasteboard, userData: String, error: NSErrorPointer) {
             guard AlbumManager.shared.isUnlocked else {
                 let alert = NSAlert()
@@ -93,11 +95,11 @@ struct EncryptedAlbumApp: App {
                 alert.alertStyle = .warning
                 alert.addButton(withTitle: "OK")
                 alert.runModal()
-                
+
                 // Set error pointer if possible, though simple alert is better UX here
                 return
             }
-            
+
             // Handle file URLs (e.g. from Finder)
             if let urls = pboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL] {
                 Task {
@@ -105,7 +107,7 @@ struct EncryptedAlbumApp: App {
                 }
                 return
             }
-            
+
             // Handle raw images (e.g. from some apps that copy image data directly)
             if let images = pboard.readObjects(forClasses: [NSImage.self], options: nil) as? [NSImage] {
                 let imageDatas = images.compactMap { $0.tiffRepresentation }
@@ -115,14 +117,14 @@ struct EncryptedAlbumApp: App {
                 return
             }
         }
-        
+
         @MainActor
         private func importURLs(_ urls: [URL]) async {
             let manager = AlbumManager.shared
-            
+
             // Show import progress
             manager.directImportProgress.reset(totalItems: urls.count)
-            
+
             for url in urls {
                 // Determine media type
                 let fileExtension = url.pathExtension.lowercased()
@@ -132,7 +134,7 @@ struct EncryptedAlbumApp: App {
                 } else {
                     mediaType = .photo
                 }
-                
+
                 do {
                     try await manager.hidePhoto(
                         mediaSource: .fileURL(url),
@@ -144,9 +146,9 @@ struct EncryptedAlbumApp: App {
                     print("Failed to import \(url.lastPathComponent): \(error)")
                 }
             }
-            
+
             manager.directImportProgress.finish()
-            
+
             // Notify user
             let content = UNMutableNotificationContent()
             content.title = "Import Complete"
@@ -154,20 +156,21 @@ struct EncryptedAlbumApp: App {
             let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
             try? await UNUserNotificationCenter.current().add(request)
         }
-        
+
         @MainActor
         private func importImages(_ imageDatas: [Data]) async {
             let manager = AlbumManager.shared
             manager.directImportProgress.reset(totalItems: imageDatas.count)
-            
+
             for (index, tiffData) in imageDatas.enumerated() {
                 guard let bitmap = NSBitmapImageRep(data: tiffData),
-                      let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.9]) else {
+                    let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.9])
+                else {
                     continue
                 }
-                
+
                 let filename = "Imported Image \(Date().timeIntervalSince1970) \(index).jpg"
-                
+
                 do {
                     try await manager.hidePhoto(
                         mediaSource: .data(jpegData),
@@ -179,11 +182,14 @@ struct EncryptedAlbumApp: App {
                     print("Failed to import image: \(error)")
                 }
             }
-            
+
             manager.directImportProgress.finish()
         }
 
-        func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        func userNotificationCenter(
+            _ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+        ) {
             completionHandler([.banner, .sound])
         }
 

@@ -81,7 +81,7 @@ struct SetupPasswordView: View {
                             .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
                     } else {
                         // Fallback to lock circle
-                        Image(systemName: "lock.circle.fill")
+                        Image(systemName: "lock.fill")
                             .font(.system(size: 80))
                             .foregroundStyle(
                                 LinearGradient(
@@ -105,7 +105,7 @@ struct SetupPasswordView: View {
                             .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
                     } else {
                         // Fallback to lock circle
-                        Image(systemName: "lock.circle.fill")
+                        Image(systemName: "lock.fill")
                             .font(.system(size: 72))
                             .foregroundStyle(
                                 LinearGradient(
@@ -129,7 +129,7 @@ struct SetupPasswordView: View {
                             .compositingGroup()
                             .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
                     } else {
-                        Image(systemName: "lock.circle.fill")
+                        Image(systemName: "lock.fill")
                             .font(.system(size: 80))
                             .foregroundStyle(
                                 LinearGradient(
@@ -163,13 +163,15 @@ struct SetupPasswordView: View {
                                 .font(.headline)
                                 .foregroundStyle(.red)
                         }
-                        
-                        Text("Too many failed attempts. You need to enter your system password to re-enable biometrics.")
-                            .font(.caption)
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        
+
+                        Text(
+                            "Too many failed attempts. You need to enter your system password to re-enable biometrics."
+                        )
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
                         Button("Reset Biometrics") {
                             resetBiometricLockout()
                         }
@@ -406,25 +408,25 @@ struct SetupPasswordView: View {
             biometricLockout = false
             biometricType = context.biometryType
             #if DEBUG
-            print("✅ Biometrics available: \(biometricType == .faceID ? "Face ID" : "Touch ID")")
+                print("✅ Biometrics available: \(biometricType == .faceID ? "Face ID" : "Touch ID")")
             #endif
         } else {
             biometricsAvailable = false
             if let error = error, error.code == LAError.biometryLockout.rawValue {
                 biometricLockout = true
                 #if DEBUG
-                print("❌ Biometrics locked out (Code: -8)")
+                    print("❌ Biometrics locked out (Code: -8)")
                 #endif
             } else {
                 biometricLockout = false
             }
-            
+
             #if DEBUG
-            if let error = error {
-                print("❌ Biometrics NOT available. Error: \(error.localizedDescription) (Code: \(error.code))")
-            } else {
-                print("❌ Biometrics NOT available. Unknown error.")
-            }
+                if let error = error {
+                    print("❌ Biometrics NOT available. Error: \(error.localizedDescription) (Code: \(error.code))")
+                } else {
+                    print("❌ Biometrics NOT available. Unknown error.")
+                }
             #endif
         }
     }
@@ -461,15 +463,15 @@ struct SetupPasswordView: View {
     private func setupPassword() {
         if useAutoPassword && biometricsAvailable {
             #if os(iOS)
-            // On iOS, the Keychain will prompt for Face ID when storing with .biometryAny
-            // No need to authenticate first
-            let password = generatedPasswords[0]
-            Task {
-                await completeSetup(with: password)
-            }
+                // On iOS, the Keychain will prompt for Face ID when storing with .biometryAny
+                // No need to authenticate first
+                let password = generatedPasswords[0]
+                Task {
+                    await completeSetup(with: password)
+                }
             #else
-            // On macOS, verify biometric authentication first
-            authenticateAndSetup()
+                // On macOS, verify biometric authentication first
+                authenticateAndSetup()
             #endif
         } else {
             // Manual password validation
@@ -568,7 +570,8 @@ struct SetupPasswordView: View {
     private func resetBiometricLockout() {
         let context = LAContext()
         // .deviceOwnerAuthentication allows passcode/password fallback which clears the lockout
-        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Enter password to re-enable biometrics") { success, error in
+        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Enter password to re-enable biometrics") {
+            success, error in
             DispatchQueue.main.async {
                 if success {
                     self.biometricLockout = false

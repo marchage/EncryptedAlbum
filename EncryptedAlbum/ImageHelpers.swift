@@ -18,7 +18,7 @@ extension Image {
             self.init(uiImage: uiImage)
         #endif
     }
-    
+
     init(platformImage: PlatformImage) {
         #if os(macOS)
             self.init(nsImage: platformImage)

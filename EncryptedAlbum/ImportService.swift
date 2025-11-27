@@ -37,7 +37,7 @@ class ImportProgress: ObservableObject {
 /// Service responsible for importing assets from the Photo Library into the album
 class ImportService {
     private let progress: ImportProgress
-    
+
     /// Closure type for hiding an asset. Matches AlbumManager.hidePhoto signature components.
     typealias AssetHider = (
         _ mediaSource: MediaSource,
@@ -51,11 +51,11 @@ class ImportService {
         _ isFavorite: Bool?,
         _ progressHandler: ((Int64) async -> Void)?
     ) async throws -> Void
-    
+
     init(progress: ImportProgress) {
         self.progress = progress
     }
-    
+
     /// Imports assets from Photo Library into the album
     /// - Parameters:
     ///   - assets: The assets to import
@@ -63,7 +63,7 @@ class ImportService {
     /// - Returns: The list of successfully imported assets (so they can be deleted from library)
     func importAssets(_ assets: [PHAsset], hider: @escaping AssetHider) async -> [PHAsset] {
         guard !assets.isEmpty else { return [] }
-        
+
         await MainActor.run {
             progress.reset()
             progress.isImporting = true
@@ -98,7 +98,7 @@ class ImportService {
         // Process assets in batches
         for batch in indexedAssets.chunked(into: maxConcurrentOperations) {
             if await MainActor.run(body: { progress.cancelRequested }) { break }
-            
+
             let batchSuccessful = await withTaskGroup(of: (PHAsset, Bool).self) { group -> [PHAsset] in
                 for (index, asset) in batch {
                     group.addTask {
@@ -125,18 +125,18 @@ class ImportService {
             }
             successfulAssets.append(contentsOf: batchSuccessful)
         }
-        
+
         return successfulAssets
     }
 
     private func processSingleImport(
-        asset: PHAsset, 
-        index: Int, 
-        total: Int, 
+        asset: PHAsset,
+        index: Int,
+        total: Int,
         hider: @escaping AssetHider
     ) async -> (PHAsset, Bool) {
         let itemNumber = index + 1
-        
+
         guard let mediaResult = await PhotosLibraryService.shared.getMediaDataAsync(for: asset) else {
             print("❌ Failed to get media data for asset: \(asset.localIdentifier)")
             await MainActor.run {
@@ -156,11 +156,13 @@ class ImportService {
         }
 
         let cleanupURL = mediaResult.shouldDeleteFileWhenFinished ? mediaResult.fileURL : nil
-        let progressHandler: ((Int64) async -> Void)? = mediaResult.fileURL != nil ? { bytesRead in
-            await MainActor.run {
-                self.progress.currentBytesProcessed = bytesRead
-            }
-        } : nil
+        let progressHandler: ((Int64) async -> Void)? =
+            mediaResult.fileURL != nil
+            ? { bytesRead in
+                await MainActor.run {
+                    self.progress.currentBytesProcessed = bytesRead
+                }
+            } : nil
 
         do {
             let mediaSource: MediaSource
@@ -182,7 +184,7 @@ class ImportService {
                 mediaSource,
                 mediaResult.filename,
                 mediaResult.dateTaken,
-                nil, // sourceAlbum
+                nil,  // sourceAlbum
                 asset.localIdentifier,
                 mediaResult.mediaType,
                 mediaResult.duration,

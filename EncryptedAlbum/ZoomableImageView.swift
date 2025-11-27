@@ -1,5 +1,5 @@
-import SwiftUI
 import AVKit
+import SwiftUI
 
 #if os(macOS)
     import AppKit
@@ -41,7 +41,7 @@ import AVKit
             super.viewDidLoad()
 
             view.backgroundColor = .clear
-            
+
             scrollView.delegate = self
             scrollView.frame = view.bounds
             scrollView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -59,10 +59,10 @@ import AVKit
             let doubleTapGesture = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
             doubleTapGesture.numberOfTapsRequired = 2
             scrollView.addGestureRecognizer(doubleTapGesture)
-            
+
             updateLayout()
         }
-        
+
         override func viewDidLayoutSubviews() {
             super.viewDidLayoutSubviews()
             updateLayout()
@@ -74,20 +74,20 @@ import AVKit
             imageView.image = image
             updateLayout()
         }
-        
+
         private func updateLayout() {
             // Reset zoom to calculate proper frames
             scrollView.zoomScale = 1.0
-            
+
             guard let image = imageView.image else { return }
-            
+
             let widthRatio = view.bounds.width / image.size.width
             let heightRatio = view.bounds.height / image.size.height
             let scale = min(widthRatio, heightRatio)
-            
+
             let scaledWidth = image.size.width * scale
             let scaledHeight = image.size.height * scale
-            
+
             // Center the image view within the scroll view
             imageView.frame = CGRect(
                 x: (view.bounds.width - scaledWidth) / 2,
@@ -95,18 +95,18 @@ import AVKit
                 width: scaledWidth,
                 height: scaledHeight
             )
-            
+
             scrollView.contentSize = view.bounds.size
         }
 
         func viewForZooming(in scrollView: UIScrollView) -> UIView? {
             return imageView
         }
-        
+
         func scrollViewDidZoom(_ scrollView: UIScrollView) {
             let offsetX = max((scrollView.bounds.width - scrollView.contentSize.width) * 0.5, 0)
             let offsetY = max((scrollView.bounds.height - scrollView.contentSize.height) * 0.5, 0)
-            
+
             scrollView.contentInset = UIEdgeInsets(top: offsetY, left: offsetX, bottom: 0, right: 0)
         }
 
@@ -137,11 +137,11 @@ import AVKit
             scrollView.autohidesScrollers = true
             scrollView.backgroundColor = .clear
             scrollView.drawsBackground = false
-            
+
             // Enable frame change notifications for layout updates
             scrollView.postsFrameChangedNotifications = true
             scrollView.postsBoundsChangedNotifications = true
-            
+
             let clipView = CenteredClipView()
             scrollView.contentView = clipView
 
@@ -149,12 +149,12 @@ import AVKit
             imageView.image = image
             imageView.imageScaling = .scaleProportionallyUpOrDown
             imageView.animates = false
-            
+
             // Set initial frame to image size so it's not 0
             imageView.frame = CGRect(origin: .zero, size: image.size)
-            
+
             scrollView.documentView = imageView
-            
+
             // Listen for frame changes to update layout (fit to screen)
             NotificationCenter.default.addObserver(
                 context.coordinator,
@@ -162,12 +162,12 @@ import AVKit
                 name: NSView.frameDidChangeNotification,
                 object: scrollView
             )
-            
+
             // Initial layout attempt
             DispatchQueue.main.async {
                 context.coordinator.updateLayout(scrollView: scrollView)
             }
-            
+
             return scrollView
         }
 
@@ -185,33 +185,34 @@ import AVKit
                 }
             }
         }
-        
+
         func makeCoordinator() -> Coordinator {
             Coordinator()
         }
-        
+
         class Coordinator: NSObject {
             @objc func handleResize(_ notification: Notification) {
                 guard let scrollView = notification.object as? NSScrollView else { return }
                 updateLayout(scrollView: scrollView)
             }
-            
+
             func updateLayout(scrollView: NSScrollView) {
                 guard let imageView = scrollView.documentView as? NSImageView,
-                      let image = imageView.image else { return }
-                
+                    let image = imageView.image
+                else { return }
+
                 let containerSize = scrollView.frame.size
                 guard containerSize.width > 0, containerSize.height > 0 else { return }
-                
+
                 // Only update frame if we are at min magnification (1.0) to refit
                 if scrollView.magnification == 1.0 {
-                     let widthRatio = containerSize.width / image.size.width
+                    let widthRatio = containerSize.width / image.size.width
                     let heightRatio = containerSize.height / image.size.height
                     let scale = min(widthRatio, heightRatio)
-                    
+
                     let scaledWidth = image.size.width * scale
                     let scaledHeight = image.size.height * scale
-                    
+
                     imageView.frame = CGRect(x: 0, y: 0, width: scaledWidth, height: scaledHeight)
                 }
             }
@@ -226,7 +227,7 @@ import AVKit
 
             // Use rect.width/height which corresponds to the visible bounds in document coordinates
             // This correctly accounts for magnification (zoom)
-            
+
             if documentView.frame.width < rect.width {
                 rect.origin.x = (documentView.frame.width - rect.width) / 2.0
             }

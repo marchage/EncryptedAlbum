@@ -21,12 +21,12 @@ struct EncryptedAlbumApp_iOS: App {
                     ContentView()
                         .environmentObject(albumManager)
                         .environmentObject(screenshotBlocker)
-                    
+
                     // Privacy overlay for App Switcher
                     if scenePhase != .active && !privacyCoordinator.isTrustedModalActive {
                         PrivacyOverlayBackground()
                         VStack(spacing: 16) {
-                            Image(systemName: "lock.circle.fill")
+                            Image(systemName: "lock.fill")
                                 .font(.system(size: 60))
                                 .foregroundStyle(.white)
                             Text("Encrypted Album")
@@ -34,7 +34,6 @@ struct EncryptedAlbumApp_iOS: App {
                                 .foregroundStyle(.white)
                         }
                     }
-                    
                     ScreenshotBlockerOverlay()
                         .environmentObject(screenshotBlocker)
                 }
@@ -154,4 +153,3 @@ struct ScreenshotBlockerOverlay: View {
 }
 
 // SecureWrapper moved to SecureWrapper.swift
-

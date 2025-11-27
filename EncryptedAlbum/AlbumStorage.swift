@@ -68,17 +68,18 @@ final class AlbumStorage {
             // For a "Encrypted" album, Application Support is better than Documents.
             // However, if we want to be super strict, we can use the Library directory.
             // Let's stick to Application Support as it's standard for app data.
-            
+
             guard let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
                 fatalError("Unable to locate application support directory")
             }
             return appSupport.appendingPathComponent("EncryptedAlbum", isDirectory: true)
         #else
             // macOS: Always use the App Sandbox Container's Application Support directory
-            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-                ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support", isDirectory: true)
+            let appSupport =
+                FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+                ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
+                    "Library/Application Support", isDirectory: true)
             return appSupport.appendingPathComponent("EncryptedAlbum", isDirectory: true)
         #endif
     }
 }
-

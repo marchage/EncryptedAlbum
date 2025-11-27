@@ -11,7 +11,7 @@ struct PreferencesView: View {
     @State private var healthReport: SecurityHealthReport?
     @State private var isCheckingHealth = false
     @State private var healthCheckError: String?
-    
+
     @State private var showDecoyPasswordSheet = false
     @State private var decoyPasswordInput = ""
     @State private var decoyPasswordConfirm = ""
@@ -20,7 +20,7 @@ struct PreferencesView: View {
     var body: some View {
         ZStack {
             PrivacyOverlayBackground(asBackground: true)
-            
+
             if albumManager.isUnlocked {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("General")
@@ -60,19 +60,23 @@ struct PreferencesView: View {
                         .foregroundStyle(.secondary)
 
                     Toggle("Secure Deletion (Overwrite)", isOn: $albumManager.secureDeletionEnabled)
-                    Text("When enabled, deleted files are overwritten 3 times. This is slower but more secure. Disable for instant deletion.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(
+                        "When enabled, deleted files are overwritten 3 times. This is slower but more secure. Disable for instant deletion."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                     Divider()
-                    
+
                     Text("Stealth Features")
                         .font(.headline)
 
                     Toggle("Stealth Mode (Fake Crash)", isOn: $stealthModeEnabled)
-                    Text("When enabled, the app will appear to crash or freeze on launch. Long press the screen for 1.5 seconds to unlock.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(
+                        "When enabled, the app will appear to crash or freeze on launch. Long press the screen for 1.5 seconds to unlock."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                     HStack {
                         Text("Decoy Password")
@@ -81,11 +85,11 @@ struct PreferencesView: View {
                             Button("Remove") {
                                 albumManager.clearDecoyPassword()
                                 // Force update since AppStorage might not sync immediately with direct UserDefaults modification in manager
-                                decoyPasswordHash = "" 
+                                decoyPasswordHash = ""
                             }
                             .buttonStyle(.bordered)
                             .tint(.red)
-                            
+
                             Button("Change") {
                                 decoyPasswordInput = ""
                                 decoyPasswordConfirm = ""
@@ -174,35 +178,35 @@ struct PreferencesView: View {
             VStack(spacing: 20) {
                 Text("Set Decoy Password")
                     .font(.headline)
-                
+
                 Text("Enter a password that will unlock a fake, empty album.")
                     .multilineTextAlignment(.center)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
-                
+
                 SecureField("Decoy Password", text: $decoyPasswordInput)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.password)
                     .frame(maxWidth: 300)
-                
+
                 SecureField("Confirm Password", text: $decoyPasswordConfirm)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.password)
                     .frame(maxWidth: 300)
-                
+
                 if let error = decoyPasswordError {
                     Text(error)
                         .foregroundStyle(.red)
                         .font(.caption)
                 }
-                
+
                 HStack(spacing: 20) {
                     Button("Cancel") {
                         showDecoyPasswordSheet = false
                     }
                     .buttonStyle(.bordered)
-                    
+
                     Button("Save") {
                         if decoyPasswordInput.isEmpty {
                             decoyPasswordError = "Password cannot be empty"
@@ -234,7 +238,7 @@ struct PreferencesView: View {
         case .dark, .rainbow, .mesh, .nightTown, .nineties, .webOne:
             return .dark
         case .classic, .glass:
-            return nil // Follow system
+            return nil  // Follow system
         }
     }
 

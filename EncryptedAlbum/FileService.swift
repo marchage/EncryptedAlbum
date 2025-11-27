@@ -68,8 +68,11 @@ class FileService {
         let duration: TimeInterval?
         let location: Location?
         let isFavorite: Bool?
-        
-        init(filename: String, dateCreated: Date, originalAssetIdentifier: String? = nil, duration: TimeInterval? = nil, location: Location? = nil, isFavorite: Bool? = nil) {
+
+        init(
+            filename: String, dateCreated: Date, originalAssetIdentifier: String? = nil, duration: TimeInterval? = nil,
+            location: Location? = nil, isFavorite: Bool? = nil
+        ) {
             self.filename = filename
             self.dateCreated = dateCreated
             self.originalAssetIdentifier = originalAssetIdentifier
@@ -84,7 +87,7 @@ class FileService {
         let mediaType: MediaType
         let originalSize: UInt64
         let chunkSize: UInt32
-        let metadataLength: UInt32 // New in V2
+        let metadataLength: UInt32  // New in V2
     }
 
     private var streamMagicData: Data {
@@ -122,7 +125,7 @@ class FileService {
                 let sealedBox = try AES.GCM.seal(jsonData, using: encryptionKey, nonce: nonce)
                 let encrypted = sealedBox.ciphertext + sealedBox.tag
                 let hmac = HMAC<SHA256>.authenticationCode(for: encrypted, using: hmacKey)
-                
+
                 // Format: [Nonce(12)][HMAC(32)][Ciphertext]
                 encryptedMetadataData.append(Data(nonce))
                 encryptedMetadataData.append(Data(hmac))
@@ -137,11 +140,11 @@ class FileService {
                 chunkSize: UInt32(CryptoConstants.streamingChunkSize),
                 metadataLength: UInt32(encryptedMetadataData.count)
             )
-            
+
             FileManager.default.createFile(atPath: fileURL.path, contents: nil)
             let writeHandle = try FileHandle(forWritingTo: fileURL)
             defer { try? writeHandle.close() }
-            
+
             do {
                 let headerData = try self.writeStreamHeader(header, to: writeHandle)
 
@@ -149,15 +152,15 @@ class FileService {
                 if !encryptedMetadataData.isEmpty {
                     try writeHandle.write(contentsOf: encryptedMetadataData)
                 }
-                
+
                 // Encrypt and write data in chunks
                 let chunkSize = Int(CryptoConstants.streamingChunkSize)
                 var offset = 0
-                
+
                 while offset < data.count {
                     let end = min(offset + chunkSize, data.count)
                     let chunkData = data[offset..<end]
-                    
+
                     let nonce = AES.GCM.Nonce()
                     let sealedBox = try AES.GCM.seal(
                         chunkData,
@@ -165,15 +168,15 @@ class FileService {
                         nonce: nonce,
                         authenticating: headerData
                     )
-                    
+
                     var chunkLength = UInt32(chunkData.count).littleEndian
                     try writeHandle.write(contentsOf: Data(bytes: &chunkLength, count: MemoryLayout<UInt32>.size))
-                    
+
                     let nonceData = nonce.withUnsafeBytes { Data($0) }
                     try writeHandle.write(contentsOf: nonceData)
                     try writeHandle.write(contentsOf: sealedBox.ciphertext)
                     try writeHandle.write(contentsOf: sealedBox.tag)
-                    
+
                     offset += chunkSize
                 }
 
@@ -189,13 +192,13 @@ class FileService {
     /// Encrypts a file already on disk by streaming chunks to the destination file.
     /// Supports SVF2 with embedded metadata.
     func saveStreamEncryptedFile(
-        from sourceURL: URL, 
-        filename: String, 
-        mediaType: MediaType, 
+        from sourceURL: URL,
+        filename: String,
+        mediaType: MediaType,
         metadata: EmbeddedMetadata? = nil,
-        to directory: URL, 
+        to directory: URL,
         encryptionKey: SymmetricKey,
-        hmacKey: SymmetricKey, 
+        hmacKey: SymmetricKey,
         progressHandler: ((Int64) async -> Void)? = nil
     ) async throws {
         // Offload heavy I/O and encryption to a detached task to prevent blocking the Main Actor
@@ -229,7 +232,7 @@ class FileService {
                 let sealedBox = try AES.GCM.seal(jsonData, using: encryptionKey, nonce: nonce)
                 let encrypted = sealedBox.ciphertext + sealedBox.tag
                 let hmac = HMAC<SHA256>.authenticationCode(for: encrypted, using: hmacKey)
-                
+
                 // Format: [Nonce(12)][HMAC(32)][Ciphertext]
                 encryptedMetadataData.append(Data(nonce))
                 encryptedMetadataData.append(Data(hmac))
@@ -343,7 +346,7 @@ class FileService {
         }
 
         try validateStreamVersion(header)
-        
+
         // Skip metadata if present
         if header.metadataLength > 0 {
             try handle.seek(toOffset: handle.offsetInFile + UInt64(header.metadataLength))
@@ -377,7 +380,7 @@ class FileService {
         }
 
         try validateStreamVersion(header)
-        
+
         // Skip metadata if present
         if header.metadataLength > 0 {
             try handle.seek(toOffset: handle.offsetInFile + UInt64(header.metadataLength))
@@ -413,7 +416,7 @@ class FileService {
 
         var chunkSize = header.chunkSize.littleEndian
         data.append(Data(bytes: &chunkSize, count: MemoryLayout<UInt32>.size))
-        
+
         // New in V2
         var metadataLength = header.metadataLength.littleEndian
         data.append(Data(bytes: &metadataLength, count: MemoryLayout<UInt32>.size))
@@ -436,7 +439,7 @@ class FileService {
         guard let versionData = try handle.read(upToCount: 1) else { return nil }
         let version = versionData[0]
         serialized.append(versionData)
-        
+
         // Read remaining V1 header fields (15 bytes)
         // Type(1) + Res(2) + Size(8) + Chunk(4)
         let v1RemainingSize = 1 + 2 + 8 + 4
@@ -459,7 +462,7 @@ class FileService {
             memcpy(&value, rawBuffer.baseAddress!, MemoryLayout<UInt32>.size)
             return UInt32(littleEndian: value)
         }
-        
+
         var metadataLength: UInt32 = 0
         if version >= 2 {
             // Read metadata length (4 bytes)
@@ -474,51 +477,55 @@ class FileService {
         }
 
         let header = StreamFileHeader(
-            version: version, mediaType: mediaType, originalSize: originalSize, chunkSize: chunkSize, metadataLength: metadataLength)
+            version: version, mediaType: mediaType, originalSize: originalSize, chunkSize: chunkSize,
+            metadataLength: metadataLength)
         return (header, serialized)
     }
-    
+
     /// Reads and decrypts embedded metadata from a file
-    func readMetadata(from fileURL: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws -> EmbeddedMetadata? {
+    func readMetadata(from fileURL: URL, encryptionKey: SymmetricKey, hmacKey: SymmetricKey) async throws
+        -> EmbeddedMetadata?
+    {
         guard let handle = try? FileHandle(forReadingFrom: fileURL) else { return nil }
         defer { try? handle.close() }
-        
+
         guard let (header, _) = try readStreamHeader(from: handle) else { return nil }
 
         try validateStreamVersion(header)
-        
+
         guard header.metadataLength > 0 else { return nil }
-        
+
         guard let metadataData = try handle.read(upToCount: Int(header.metadataLength)),
-              metadataData.count == Int(header.metadataLength) else {
+            metadataData.count == Int(header.metadataLength)
+        else {
             return nil
         }
-        
+
         // Decrypt metadata
         // Format: [Nonce(12)][HMAC(32)][Ciphertext]
         let nonceSize = CryptoConstants.streamingNonceSize
-        
+
         // Parse components
         // Nonce is 12 bytes (AES.GCM.Nonce)
         // HMAC is 32 bytes (SHA256)
         // Ciphertext is the rest
-        
-        let hmacLength = 32 // SHA256
-        
+
+        let hmacLength = 32  // SHA256
+
         guard metadataData.count > nonceSize + hmacLength else { return nil }
-        
+
         let nonceData = metadataData.prefix(nonceSize)
         let hmacData = metadataData.dropFirst(nonceSize).prefix(hmacLength)
         let ciphertext = metadataData.dropFirst(nonceSize + hmacLength)
-        
+
         let decryptedData = try await cryptoService.decryptDataWithIntegrity(
-            ciphertext, 
-            nonce: nonceData, 
-            hmac: hmacData, 
-            encryptionKey: encryptionKey, 
+            ciphertext,
+            nonce: nonceData,
+            hmac: hmacData,
+            encryptionKey: encryptionKey,
             hmacKey: hmacKey
         )
-        
+
         return try JSONDecoder().decode(EmbeddedMetadata.self, from: decryptedData)
     }
 
@@ -767,7 +774,7 @@ class FileService {
         // We use the existing decryptEncryptedFileToTemporaryURL which handles both legacy and stream formats
         let tempURL = try await decryptEncryptedFileToTemporaryURL(
             filename: filename,
-            originalExtension: nil, // We don't care about extension for the temp file
+            originalExtension: nil,  // We don't care about extension for the temp file
             from: directory,
             encryptionKey: oldEncryptionKey,
             hmacKey: oldHMACKey
@@ -789,13 +796,14 @@ class FileService {
             from: tempURL,
             filename: newFilename,
             mediaType: mediaType,
-            metadata: metadata, // Pass the preserved metadata
+            metadata: metadata,  // Pass the preserved metadata
             to: directory,
             encryptionKey: newEncryptionKey,
             hmacKey: newHMACKey
         )
 
         // 3. Atomic Swap: Replace the old file with the new one
-        _ = try FileManager.default.replaceItemAt(fileURL, withItemAt: newFileURL, backupItemName: nil, options: .usingNewMetadataOnly)
+        _ = try FileManager.default.replaceItemAt(
+            fileURL, withItemAt: newFileURL, backupItemName: nil, options: .usingNewMetadataOnly)
     }
 }

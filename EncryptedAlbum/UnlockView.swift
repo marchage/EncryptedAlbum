@@ -174,7 +174,7 @@ struct UnlockView: View {
                     .frame(minWidth: geometry.size.width, minHeight: geometry.size.height)
                 }
             }
-            
+
             if showFakeCrash {
                 FakeCrashView()
                     .onLongPressGesture(minimumDuration: 1.5) {

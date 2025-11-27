@@ -4,23 +4,23 @@ struct ProgressOverlayView: View {
     let title: String
     let statusMessage: String
     let detailMessage: String
-    
+
     let itemsProcessed: Int
     let totalItems: Int
-    
+
     let bytesProcessed: Int64
     let totalBytes: Int64
-    
+
     let cancelRequested: Bool
     let onCancel: () -> Void
-    
+
     // Optional: Success/Failure counts for restoration
     var successCount: Int = 0
     var failureCount: Int = 0
-    
+
     // Optional: Whether the app is active (affects display of bytes)
     var isAppActive: Bool = true
-    
+
     var body: some View {
         ZStack {
             Color.black.opacity(0.45)
@@ -46,7 +46,7 @@ struct ProgressOverlayView: View {
                     )
                     .progressViewStyle(.linear)
                     .frame(maxWidth: UIConstants.progressCardWidth)
-                    
+
                     if isAppActive {
                         Text("\(formattedBytes(bytesProcessed)) of \(formattedBytes(totalBytes))")
                             .font(.caption2)
@@ -131,7 +131,7 @@ struct ProgressOverlayView: View {
         formatter.countStyle = .file
         return formatter.string(fromByteCount: value)
     }
-    
+
     private var accessibilityLabel: String {
         var parts: [String] = [statusMessage.isEmpty ? title : statusMessage]
 

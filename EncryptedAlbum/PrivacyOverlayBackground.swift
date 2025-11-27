@@ -1,8 +1,9 @@
 import SwiftUI
+
 #if os(macOS)
-import AppKit
+    import AppKit
 #elseif os(iOS)
-import UIKit
+    import UIKit
 #endif
 
 enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
@@ -16,9 +17,9 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
     case nineties
     case webOne
     case bh90210
-    
+
     var id: String { self.rawValue }
-    
+
     var displayName: String {
         switch self {
         case .rainbow: return "Rainbow"
@@ -38,7 +39,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
 /// Shared background used by every privacy cover in the app.
 struct PrivacyOverlayBackground: View {
     @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .classic
-    
+
     /// If true, this view is being used as the main app background (behind content).
     /// If false, it is being used as a privacy overlay (obscuring content).
     var asBackground: Bool = false
@@ -64,7 +65,7 @@ struct PrivacyOverlayBackground: View {
             case .mesh:
                 ZStack {
                     Color.black
-                    
+
                     // Blue/Purple orb
                     RadialGradient(
                         colors: [.blue.opacity(0.6), .clear],
@@ -72,7 +73,7 @@ struct PrivacyOverlayBackground: View {
                         startRadius: 100,
                         endRadius: 600
                     )
-                    
+
                     // Pink/Red orb
                     RadialGradient(
                         colors: [.pink.opacity(0.5), .clear],
@@ -80,7 +81,7 @@ struct PrivacyOverlayBackground: View {
                         startRadius: 100,
                         endRadius: 500
                     )
-                    
+
                     // Cyan/Mint orb
                     RadialGradient(
                         colors: [.cyan.opacity(0.4), .clear],
@@ -88,7 +89,7 @@ struct PrivacyOverlayBackground: View {
                         startRadius: 50,
                         endRadius: 400
                     )
-                    
+
                     // Orange orb
                     RadialGradient(
                         colors: [.orange.opacity(0.3), .clear],
@@ -100,13 +101,13 @@ struct PrivacyOverlayBackground: View {
                 .blur(radius: 60)
             case .classic:
                 #if os(macOS)
-                if asBackground {
-                    Color.clear // Allow system window background to show
-                } else {
-                    WindowBackgroundView()
-                }
+                    if asBackground {
+                        Color.clear  // Allow system window background to show
+                    } else {
+                        WindowBackgroundView()
+                    }
                 #else
-                Color(uiColor: .systemBackground)
+                    Color(uiColor: .systemBackground)
                 #endif
             case .glass:
                 ZStack {
@@ -115,26 +116,26 @@ struct PrivacyOverlayBackground: View {
                         colors: [
                             Color.blue.opacity(0.1),
                             Color.purple.opacity(0.05),
-                            Color.clear
+                            Color.clear,
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
-                    
+
                     if asBackground {
                         #if os(macOS)
-                        Rectangle().fill(.ultraThinMaterial)
+                            Rectangle().fill(.ultraThinMaterial)
                         #else
-                        Rectangle().fill(.ultraThinMaterial)
+                            Rectangle().fill(.ultraThinMaterial)
                         #endif
                     } else {
                         #if os(macOS)
-                        Rectangle().fill(.regularMaterial)
+                            Rectangle().fill(.regularMaterial)
                         #else
-                        Rectangle().fill(.regularMaterial)
+                            Rectangle().fill(.regularMaterial)
                         #endif
                     }
-                    
+
                     // Shine/Reflection
                     LinearGradient(
                         colors: [.white.opacity(0.15), .clear],
@@ -164,7 +165,7 @@ private struct WebOneView: View {
         ZStack {
             // Classic Teal Desktop
             Color(red: 0, green: 0.5, blue: 0.5).ignoresSafeArea()
-            
+
             // The "App Window"
             VStack(spacing: 0) {
                 // Title Bar
@@ -187,33 +188,33 @@ private struct WebOneView: View {
                 .frame(height: 24)
                 .background(Color(red: 0, green: 0, blue: 0.5))
                 .padding(3)
-                
+
                 // Menu Bar
                 HStack(spacing: 12) {
                     ForEach(["File", "View", "Help"], id: \.self) { menu in
                         Text(menu)
                             .font(.system(size: 12))
                             .foregroundStyle(.black)
-                            .underline(true, color: .black) // Alt-key style
+                            .underline(true, color: .black)  // Alt-key style
                     }
                     Spacer()
                 }
                 .padding(.horizontal, 8)
                 .frame(height: 20)
-                
+
                 Divider().background(Color.gray)
-                
+
                 // Main Content Area
                 VStack(spacing: 20) {
                     Spacer()
-                    
+
                     // The "E" Logo (Netscape Style)
                     ZStack {
                         Rectangle()
                             .fill(Color(white: 0.75))
                             .frame(width: 100, height: 100)
                             .classicBevel(reversed: true)
-                        
+
                         Text("E")
                             .font(.system(size: 80, weight: .bold, design: .serif))
                             .foregroundStyle(
@@ -226,7 +227,7 @@ private struct WebOneView: View {
                             .shadow(color: .black.opacity(0.5), radius: 0, x: 4, y: 4)
                             .overlay(ShootingStarOverlay())
                     }
-                    
+
                     VStack(spacing: 4) {
                         Text("Encrypted Album")
                             .font(.system(size: 28, weight: .bold, design: .serif))
@@ -235,7 +236,7 @@ private struct WebOneView: View {
                             .italic()
                     }
                     .foregroundStyle(.black)
-                    
+
                     // Status / Loading
                     VStack(spacing: 4) {
                         HStack {
@@ -245,26 +246,26 @@ private struct WebOneView: View {
                         }
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(.black)
-                        
+
                         // Indeterminate Progress Bar
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
                                 Rectangle()
                                     .fill(Color.white)
                                     .classicBevel(reversed: true)
-                                
+
                                 Rectangle()
                                     .fill(Color.blue)
                                     .frame(width: geo.size.width * 0.3)
-                                    .offset(x: geo.size.width * 0.35) // Static for now
+                                    .offset(x: geo.size.width * 0.35)  // Static for now
                             }
                         }
                         .frame(height: 20)
                         .padding(.horizontal, 40)
                     }
-                    
+
                     Spacer()
-                    
+
                     Text("Copyright © 1995 Marchage Corp.")
                         .font(.system(size: 10, design: .serif))
                         .foregroundStyle(.gray)
@@ -282,7 +283,7 @@ private struct WebOneView: View {
 
 struct ShootingStarOverlay: View {
     @State private var animate = false
-    
+
     var body: some View {
         GeometryReader { geometry in
             // A few shooting stars crossing the logo
@@ -328,7 +329,7 @@ extension View {
                         path.addLine(to: CGPoint(x: geo.size.width, y: 0))
                     }
                     .stroke(reversed ? Color.gray : Color.white, lineWidth: 2)
-                    
+
                     // Bottom/Right Dark
                     Path { path in
                         path.move(to: CGPoint(x: 0, y: geo.size.height))
@@ -347,7 +348,7 @@ private struct BH90210View: View {
         ZStack {
             // Grid Background
             Color(white: 0.95).ignoresSafeArea()
-            
+
             GeometryReader { geometry in
                 Path { path in
                     let spacing: CGFloat = 40
@@ -362,7 +363,7 @@ private struct BH90210View: View {
                 }
                 .stroke(Color.black.opacity(0.1), lineWidth: 1)
             }
-            
+
             // Memphis Shapes
             GeometryReader { geometry in
                 ForEach(0..<15) { i in
@@ -377,15 +378,15 @@ struct MemphisShape: View {
     let index: Int
     @State private var rotation: Double = 0
     @State private var position: CGPoint = .zero
-    
+
     // Memphis Palette
     let colors: [Color] = [
-        Color(red: 0.2, green: 0.8, blue: 0.7), // Teal
-        Color(red: 0.9, green: 0.4, blue: 0.6), // Pink
-        Color(red: 1.0, green: 0.8, blue: 0.2), // Yellow
-        Color(red: 0.4, green: 0.3, blue: 0.8)  // Purple
+        Color(red: 0.2, green: 0.8, blue: 0.7),  // Teal
+        Color(red: 0.9, green: 0.4, blue: 0.6),  // Pink
+        Color(red: 1.0, green: 0.8, blue: 0.2),  // Yellow
+        Color(red: 0.4, green: 0.3, blue: 0.8),  // Purple
     ]
-    
+
     var body: some View {
         Group {
             if index % 3 == 0 {
@@ -407,10 +408,10 @@ struct MemphisShape: View {
         .onAppear {
             // Random placement
             position = CGPoint(
-                x: CGFloat.random(in: 0...500), // Approximate screen width
+                x: CGFloat.random(in: 0...500),  // Approximate screen width
                 y: CGFloat.random(in: 0...800)  // Approximate screen height
             )
-            
+
             // Static rotation
             rotation = Double.random(in: 0...360)
         }
@@ -419,19 +420,19 @@ struct MemphisShape: View {
 
 private struct NinetiesPartyView: View {
     @State private var animate = false
-    
+
     var body: some View {
         ZStack {
             // 1. Tiled Background (Classic Web Grey Texture)
             Color(white: 0.75).ignoresSafeArea()
-            
+
             GeometryReader { geometry in
                 // 2. Random "GIF" elements
                 ForEach(0..<15) { i in
                     NinetiesGifElement(index: i, containerSize: geometry.size)
                 }
             }
-            
+
             // 3. Main "Shocking" Content
             VStack(spacing: 60) {
                 // Marquee-style Text
@@ -442,7 +443,7 @@ private struct NinetiesPartyView: View {
                     .shadow(color: .yellow, radius: 0, x: 4, y: 4)
                     .offset(x: animate ? 150 : -150)
                     .animation(.linear(duration: 2.0).repeatForever(autoreverses: true), value: animate)
-                
+
                 HStack(spacing: 50) {
                     // Flashing "NEW!" Star
                     ZStack {
@@ -457,16 +458,18 @@ private struct NinetiesPartyView: View {
                     .scaleEffect(animate ? 1.1 : 0.9)
                     .rotationEffect(.degrees(animate ? 10 : -10))
                     .animation(.easeInOut(duration: 0.15).repeatForever(autoreverses: true), value: animate)
-                    
+
                     // "Cool" Graphic
                     Image(systemName: "face.smiling")
                         .font(.system(size: 80))
                         .foregroundStyle(.black)
                         .background(Circle().fill(Color.yellow))
                         .offset(y: animate ? -20 : 20)
-                        .animation(.interpolatingSpring(stiffness: 300, damping: 2).repeatForever(autoreverses: true), value: animate)
+                        .animation(
+                            .interpolatingSpring(stiffness: 300, damping: 2).repeatForever(autoreverses: true),
+                            value: animate)
                 }
-                
+
                 // Scrolling Text Bar
                 Text("!!! UNDER CONSTRUCTION !!!")
                     .font(.system(.title, design: .monospaced))
@@ -489,10 +492,10 @@ struct NinetiesGifElement: View {
     let containerSize: CGSize
     @State private var position: CGPoint = .zero
     @State private var isVisible = true
-    
+
     let icons = ["flame.fill", "bolt.fill", "star.fill", "heart.fill", "envelope.fill"]
     let colors: [Color] = [.red, .yellow, .blue, .green, .purple]
-    
+
     var body: some View {
         Image(systemName: icons[index % icons.count])
             .font(.system(size: 40))
@@ -504,19 +507,19 @@ struct NinetiesGifElement: View {
                     x: CGFloat.random(in: 0...containerSize.width),
                     y: CGFloat.random(in: 0...containerSize.height)
                 )
-                
+
                 // Blink animation
                 withAnimation(
                     .easeInOut(duration: Double.random(in: 0.1...0.5))
-                    .repeatForever(autoreverses: true)
+                        .repeatForever(autoreverses: true)
                 ) {
                     isVisible.toggle()
                 }
-                
+
                 // Jitter movement
                 withAnimation(
                     .linear(duration: Double.random(in: 0.2...0.5))
-                    .repeatForever(autoreverses: true)
+                        .repeatForever(autoreverses: true)
                 ) {
                     position.x += CGFloat.random(in: -20...20)
                     position.y += CGFloat.random(in: -20...20)
@@ -532,14 +535,14 @@ private struct NightTownView: View {
                 // 1. Deep Night Sky
                 LinearGradient(
                     colors: [
-                        Color(red: 0.02, green: 0.02, blue: 0.1), // Deep midnight blue
+                        Color(red: 0.02, green: 0.02, blue: 0.1),  // Deep midnight blue
                         Color(red: 0.05, green: 0.05, blue: 0.2),
-                        Color(red: 0.1, green: 0.1, blue: 0.3)
+                        Color(red: 0.1, green: 0.1, blue: 0.3),
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                
+
                 // 2. Stars
                 ForEach(0..<50) { i in
                     Circle()
@@ -550,7 +553,7 @@ private struct NightTownView: View {
                             y: Double.random(in: 0...geometry.size.height * 0.6)
                         )
                 }
-                
+
                 // 3. Distant Mountains (Silhouette)
                 Path { path in
                     path.move(to: CGPoint(x: 0, y: geometry.size.height))
@@ -570,7 +573,7 @@ private struct NightTownView: View {
                         endPoint: .bottom
                     )
                 )
-                
+
                 // 4. Closer Hills/Town Base
                 Path { path in
                     path.move(to: CGPoint(x: 0, y: geometry.size.height))
@@ -584,7 +587,7 @@ private struct NightTownView: View {
                     path.closeSubpath()
                 }
                 .fill(Color.black.opacity(0.8))
-                
+
                 // 5. Town Lights (The "Bokeh" effect)
                 ForEach(0..<80) { i in
                     Circle()
@@ -600,7 +603,7 @@ private struct NightTownView: View {
                             y: Double.random(in: geometry.size.height * 0.65...geometry.size.height)
                         )
                 }
-                
+
                 // 6. A few "streetlights" or brighter spots
                 ForEach(0..<15) { i in
                     Circle()
@@ -618,23 +621,23 @@ private struct NightTownView: View {
 }
 
 #if os(macOS)
-private struct WindowBackgroundView: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = .windowBackground
-        view.blendingMode = .behindWindow
-        view.state = .followsWindowActiveState
-        return view
-    }
+    private struct WindowBackgroundView: NSViewRepresentable {
+        func makeNSView(context: Context) -> NSVisualEffectView {
+            let view = NSVisualEffectView()
+            view.material = .windowBackground
+            view.blendingMode = .behindWindow
+            view.state = .followsWindowActiveState
+            return view
+        }
 
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        }
     }
-}
 #endif
 
 struct PrivacyCardBackground: ViewModifier {
     @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .classic
-    
+
     func body(content: Content) -> some View {
         content
             .background(
@@ -644,9 +647,9 @@ struct PrivacyCardBackground: ViewModifier {
                         ZStack {
                             Color.white.opacity(0.05)
                             #if os(macOS)
-                            Rectangle().fill(.ultraThinMaterial)
+                                Rectangle().fill(.ultraThinMaterial)
                             #else
-                            Rectangle().fill(.ultraThinMaterial)
+                                Rectangle().fill(.ultraThinMaterial)
                             #endif
                             LinearGradient(
                                 colors: [.white.opacity(0.25), .clear],
@@ -660,15 +663,15 @@ struct PrivacyCardBackground: ViewModifier {
                         Color.white.opacity(0.8)
                     case .classic:
                         #if os(macOS)
-                        Rectangle().fill(.ultraThinMaterial)
+                            Rectangle().fill(.ultraThinMaterial)
                         #else
-                        Rectangle().fill(.ultraThinMaterial)
+                            Rectangle().fill(.ultraThinMaterial)
                         #endif
                     default:
                         #if os(macOS)
-                        Rectangle().fill(.ultraThinMaterial)
+                            Rectangle().fill(.ultraThinMaterial)
                         #else
-                        Rectangle().fill(.ultraThinMaterial)
+                            Rectangle().fill(.ultraThinMaterial)
                         #endif
                     }
                 }
@@ -677,11 +680,15 @@ struct PrivacyCardBackground: ViewModifier {
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
                     .strokeBorder(
-                        style == .glass ? Color.white.opacity(0.3) : (style == .light ? Color.black.opacity(0.1) : Color.clear),
+                        style == .glass
+                            ? Color.white.opacity(0.3) : (style == .light ? Color.black.opacity(0.1) : Color.clear),
                         lineWidth: 1
                     )
             )
-            .shadow(color: style == .glass ? Color.black.opacity(0.1) : (style == .light ? Color.black.opacity(0.05) : Color.clear), radius: 10, x: 0, y: 5)
+            .shadow(
+                color: style == .glass
+                    ? Color.black.opacity(0.1) : (style == .light ? Color.black.opacity(0.05) : Color.clear),
+                radius: 10, x: 0, y: 5)
     }
 }
 

@@ -2,10 +2,10 @@ import AVFoundation
 import Combine
 import CryptoKit
 import Foundation
-import LocalAuthentication
-import SwiftUI
-import Photos
 import ImageIO
+import LocalAuthentication
+import Photos
+import SwiftUI
 
 // MARK: - Data Extensions
 
@@ -68,7 +68,7 @@ class SecureMemory {
         // Lock memory to prevent swapping
         if mlock(ptr, count) != 0 {
             #if DEBUG
-            print("Warning: mlock failed with error: \(errno)")
+                print("Warning: mlock failed with error: \(errno)")
             #endif
         }
 
@@ -79,7 +79,7 @@ class SecureMemory {
     static func deallocateSecureBuffer(_ buffer: UnsafeMutableRawBufferPointer) {
         // Zero before deallocating
         zero(buffer)
-        
+
         if let baseAddress = buffer.baseAddress {
             munlock(baseAddress, buffer.count)
             free(baseAddress)
@@ -213,7 +213,7 @@ class ExportProgress: ObservableObject {
     @Published var bytesProcessed: Int64 = 0
     @Published var bytesTotal: Int64 = 0
     @Published var cancelRequested: Bool = false
-    
+
     func reset(totalItems: Int) {
         isExporting = true
         statusMessage = "Preparing export…"
@@ -224,7 +224,7 @@ class ExportProgress: ObservableObject {
         bytesTotal = 0
         cancelRequested = false
     }
-    
+
     func finish() {
         isExporting = false
         statusMessage = ""
@@ -236,7 +236,6 @@ class ExportProgress: ObservableObject {
         cancelRequested = false
     }
 }
-
 
 // Notification types for hide/restore operations
 enum HideNotificationType {
@@ -323,27 +322,27 @@ class AlbumManager: ObservableObject {
     @Published var showUnlockPrompt = false
     @Published var passwordHash: String = ""
     @Published var passwordSalt: String = ""  // Salt for password hashing
-    @Published var securityVersion: Int = 1   // 1 = Legacy (Key as Hash), 2 = Secure (Verifier)
+    @Published var securityVersion: Int = 1  // 1 = Legacy (Key as Hash), 2 = Secure (Verifier)
     @Published var restorationProgress = RestorationProgress()
     @Published var importProgress = ImportProgress()
     @MainActor let directImportProgress: DirectImportProgress
     @MainActor let exportProgress = ExportProgress()
     private var directImportTask: Task<Void, Never>?
     var exportTask: Task<Void, Never>?
-    
+
     // Album location is now fixed and managed by AlbumStorage
     var albumBaseURL: URL {
         return storage.baseURL
     }
-    
+
     @Published var hideNotification: HideNotification? = nil
     @Published var lastActivity: Date = Date()
     @Published var viewRefreshId = UUID()  // Force view refresh when needed
-    @Published var secureDeletionEnabled: Bool = true // Default to true for security
+    @Published var secureDeletionEnabled: Bool = true  // Default to true for security
     @Published var authenticationPromptActive: Bool = false
     @Published var isLoading: Bool = true
     @Published var isDecoyMode: Bool = false
-    
+
     // Queue for imports that arrive while the album is locked
     private var pendingImportURLs: [URL] = []
 
@@ -397,29 +396,29 @@ class AlbumManager: ObservableObject {
         fileService = FileService(cryptoService: cryptoService)
         albumState = AlbumState()
         self.storage = storage ?? AlbumStorage()
-        
+
         self.importProgress = progress
-        
+
         fileService.cleanupTemporaryArtifacts()
         // albumBaseURL is now computed from storage.baseURL
 
         #if DEBUG
-        // Handle Test Mode Reset
-        print("DEBUG: CommandLine arguments: \(CommandLine.arguments)")
-        if CommandLine.arguments.contains("--reset-state") {
-            nukeAllData()
-        }
+            // Handle Test Mode Reset
+            print("DEBUG: CommandLine arguments: \(CommandLine.arguments)")
+            if CommandLine.arguments.contains("--reset-state") {
+                nukeAllData()
+            }
         #endif
 
         #if DEBUG
             print("Loading settings from: \(settingsFileURL.path)")
         #endif
-        
+
         // Load settings asynchronously to ensure state is ready before init completes
         Task {
             await self.loadSettings()
         }
-        
+
         restorationProgressCancellable = restorationProgress.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }
@@ -460,7 +459,8 @@ class AlbumManager: ObservableObject {
                 #if os(macOS)
                     let alert = NSAlert()
                     alert.messageText = "Authenticate to Continue"
-                    alert.informativeText = "Enter your EncryptedAlbum password to proceed with this sensitive operation."
+                    alert.informativeText =
+                        "Enter your EncryptedAlbum password to proceed with this sensitive operation."
                     alert.alertStyle = .warning
 
                     let textField = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 220, height: 24))
@@ -478,7 +478,6 @@ class AlbumManager: ObservableObject {
 
                     let enteredPassword = textField.stringValue
 
-                   
                     // Reuse the same salted hashing logic as `unlock(password:)` so that
                     // step-up authentication behaves identically to a normal unlock.
                     guard let passwordData = enteredPassword.data(using: .utf8),
@@ -523,7 +522,7 @@ class AlbumManager: ObservableObject {
         await MainActor.run {
             passwordHash = hash.map { String(format: "%02x", $0) }.joined()
             passwordSalt = salt.base64EncodedString()
-            securityVersion = 2 // New setups are always V2
+            securityVersion = 2  // New setups are always V2
 
             cachedMasterKey = nil
             cachedEncryptionKey = nil
@@ -534,15 +533,15 @@ class AlbumManager: ObservableObject {
 
         // Store password for biometric unlock
         await saveBiometricPassword(password)
-        
+
         #if os(iOS)
-        // On iOS, verify biometric storage by attempting to retrieve it
-        // This triggers Face ID prompt immediately to confirm biometric works
-        if !isRunningUnitTests {
-            if await getBiometricPassword() == nil {
-                throw AlbumError.biometricFailed
+            // On iOS, verify biometric storage by attempting to retrieve it
+            // This triggers Face ID prompt immediately to confirm biometric works
+            if !isRunningUnitTests {
+                if await getBiometricPassword() == nil {
+                    throw AlbumError.biometricFailed
+                }
             }
-        }
         #endif
     }
 
@@ -565,12 +564,13 @@ class AlbumManager: ObservableObject {
 
         // Check for Decoy Password first
         if let decoyHash = UserDefaults.standard.string(forKey: "decoyPasswordHash"), !decoyHash.isEmpty {
-            let inputHash = SHA256.hash(data: password.data(using: .utf8)!).compactMap { String(format: "%02x", $0) }.joined()
+            let inputHash = SHA256.hash(data: password.data(using: .utf8)!).compactMap { String(format: "%02x", $0) }
+                .joined()
             if inputHash == decoyHash {
                 await MainActor.run {
                     isDecoyMode = true
                     isUnlocked = true
-                    hiddenPhotos = [] // Ensure empty
+                    hiddenPhotos = []  // Ensure empty
                     lastActivity = Date()
                 }
                 startIdleTimer()
@@ -589,13 +589,13 @@ class AlbumManager: ObservableObject {
         if securityVersion < 2 {
             // Legacy verification (V1)
             isValid = try await passwordService.verifyLegacyPassword(password, against: storedHash, salt: storedSalt)
-            
+
             if isValid {
                 // MIGRATE TO V2
-                let (newVerifier, _) = try await passwordService.hashPassword(password) // Uses new verifier logic
+                let (newVerifier, _) = try await passwordService.hashPassword(password)  // Uses new verifier logic
                 // Salt remains the same to avoid re-encrypting data (we just change the stored verifier)
                 try await passwordService.storePasswordHash(newVerifier, salt: storedSalt)
-                
+
                 await MainActor.run {
                     self.passwordHash = newVerifier.map { String(format: "%02x", $0) }.joined()
                     self.securityVersion = 2
@@ -622,20 +622,20 @@ class AlbumManager: ObservableObject {
             // On iOS, checking if the password exists requires Face ID, so skip this check there
             // unless we believe it should be configured but isn't.
             #if os(macOS)
-            if await !securityService.biometricPasswordExists() {
-                await saveBiometricPassword(password)
-            }
+                if await !securityService.biometricPasswordExists() {
+                    await saveBiometricPassword(password)
+                }
             #else
-            // On iOS, avoid checking keychain (triggers prompt). Only save if we think it's not configured.
-            if !UserDefaults.standard.bool(forKey: "biometricConfigured") {
-                 await saveBiometricPassword(password)
-                 UserDefaults.standard.set(true, forKey: "biometricConfigured")
-            }
+                // On iOS, avoid checking keychain (triggers prompt). Only save if we think it's not configured.
+                if !UserDefaults.standard.bool(forKey: "biometricConfigured") {
+                    await saveBiometricPassword(password)
+                    UserDefaults.standard.set(true, forKey: "biometricConfigured")
+                }
             #endif
 
             await MainActor.run {
                 isUnlocked = true
-                
+
                 // Process any queued imports
                 if !pendingImportURLs.isEmpty {
                     print("Processing \(pendingImportURLs.count) queued import items...")
@@ -658,7 +658,7 @@ class AlbumManager: ObservableObject {
                 // If we just migrated, passwordHash is already updated above.
                 // If not, we update it here just in case.
                 if securityVersion >= 2 {
-                     // In V2, storedHash is the verifier, which is safe to expose to UI if needed (though ideally we wouldn't)
+                    // In V2, storedHash is the verifier, which is safe to expose to UI if needed (though ideally we wouldn't)
                 }
                 passwordSalt = storedSalt.base64EncodedString()
             }
@@ -682,7 +682,7 @@ class AlbumManager: ObservableObject {
         async throws
     {
         await MainActor.run { lastActivity = Date() }
-        
+
         // Verify system entropy before generating new keys
         let health = try await securityService.performSecurityHealthCheck()
         guard health.randomGenerationHealthy else {
@@ -695,37 +695,38 @@ class AlbumManager: ObservableObject {
             currentPassword: currentPassword,
             newPassword: newPassword
         )
-        
+
         guard let oldEncryptionKey = cachedEncryptionKey, let oldHMACKey = cachedHMACKey else {
             throw AlbumError.albumNotInitialized
         }
-        
+
         // 2. Initialize or Resume Journal
-        let photos = hiddenPhotos // Capture current list
+        let photos = hiddenPhotos  // Capture current list
         let total = photos.count
-        
+
         // Calculate hash prefixes for verification
         let oldHashPrefix = String(passwordHash.prefix(8))
         let newHashPrefix = String(newVerifier.map { String(format: "%02x", $0) }.joined().prefix(8))
-        
+
         // Encrypt the new key with the old key for recovery
         let newKeyData = newEncryptionKey.withUnsafeBytes { Data($0) }
         // Use a simple seal (nonce + ciphertext + tag)
         let sealedBox = try AES.GCM.seal(newKeyData, using: oldEncryptionKey)
         let encryptedNewKey = sealedBox.combined!
-        
+
         var journal: PasswordChangeJournal
-        
+
         // Check for existing journal to resume
         if let existingJournal = try? journalService.readJournal(from: albumBaseURL),
-           existingJournal.status != .completed,
-           existingJournal.oldPasswordHashPrefix == oldHashPrefix,
-           existingJournal.newPasswordHashPrefix == newHashPrefix {
-            
+            existingJournal.status != .completed,
+            existingJournal.oldPasswordHashPrefix == oldHashPrefix,
+            existingJournal.newPasswordHashPrefix == newHashPrefix
+        {
+
             progressHandler?("Resuming interrupted password change...")
             journal = existingJournal
-            
-            // If we are resuming, we might have more files now than before, or fewer. 
+
+            // If we are resuming, we might have more files now than before, or fewer.
             // Ideally we should respect the journal's state, but for simplicity in this monolithic structure,
             // we'll just use the current list and skip what's marked as processed.
         } else {
@@ -739,22 +740,22 @@ class AlbumManager: ObservableObject {
             )
             try journalService.writeJournal(journal, to: albumBaseURL)
         }
-        
+
         // 3. Re-encrypt all photos
         do {
             for (index, photo) in photos.enumerated() {
                 let encryptedURL = resolveURL(for: photo.encryptedDataPath)
                 let filename = encryptedURL.lastPathComponent
-                
+
                 // Skip if already processed (in case of resume logic, though this is a fresh start)
                 if journal.isProcessed(filename) {
                     continue
                 }
-                
+
                 progressHandler?("Re-encrypting item \(index + 1) of \(total)...")
-                
+
                 let photosDir = photosDirectoryURL
-                
+
                 // Re-encrypt main file
                 try await fileService.reEncryptFile(
                     filename: filename,
@@ -765,7 +766,7 @@ class AlbumManager: ObservableObject {
                     newEncryptionKey: newEncryptionKey,
                     newHMACKey: newHMACKey
                 )
-                
+
                 // Re-encrypt thumbnail
                 let thumbSourcePath = photo.encryptedThumbnailPath ?? photo.thumbnailPath
                 let thumbURL = resolveURL(for: thumbSourcePath)
@@ -775,14 +776,14 @@ class AlbumManager: ObservableObject {
                     try await fileService.reEncryptFile(
                         filename: thumbFilename,
                         directory: photosDir,
-                        mediaType: .photo, // Thumbnails are always images
+                        mediaType: .photo,  // Thumbnails are always images
                         oldEncryptionKey: oldEncryptionKey,
                         oldHMACKey: oldHMACKey,
                         newEncryptionKey: newEncryptionKey,
                         newHMACKey: newHMACKey
                     )
                 }
-                
+
                 // Update Journal
                 journal.markProcessed(filename)
                 try journalService.writeJournal(journal, to: albumBaseURL)
@@ -793,32 +794,32 @@ class AlbumManager: ObservableObject {
             try? journalService.writeJournal(journal, to: albumBaseURL)
             throw error
         }
-        
+
         // 4. Commit: Store new password verifier and salt
         progressHandler?("Saving new password...")
         try await passwordService.storePasswordHash(newVerifier, salt: newSalt)
-        
+
         // 5. Update local state
         await MainActor.run {
             self.passwordHash = newVerifier.map { String(format: "%02x", $0) }.joined()
             self.passwordSalt = newSalt.base64EncodedString()
             self.securityVersion = 2
         }
-        
+
         // 6. Update cached keys & Save settings
         await MainActor.run {
             cachedEncryptionKey = newEncryptionKey
             cachedHMACKey = newHMACKey
-            
+
             saveSettings()
         }
-            
+
         // 7. Update biometric password
         await saveBiometricPassword(newPassword)
-        
+
         // 8. Cleanup Journal
         try journalService.deleteJournal(from: albumBaseURL)
-        
+
         progressHandler?("Password changed successfully")
     }
 
@@ -828,12 +829,12 @@ class AlbumManager: ObservableObject {
         guard let journal = try? journalService.readJournal(from: albumBaseURL) else {
             return nil
         }
-        
+
         // Only return if it's in progress or failed
         if journal.status == .inProgress || journal.status == .failed {
             return journal
         }
-        
+
         return nil
     }
 
@@ -901,7 +902,7 @@ class AlbumManager: ObservableObject {
             // Skip idle check if timer is suspended (e.g., during imports)
             if self.idleTimerSuspendCount > 0 {
                 #if DEBUG
-                print("⏸️  Idle timer check skipped (suspended)")
+                    print("⏸️  Idle timer check skipped (suspended)")
                 #endif
                 return
             }
@@ -909,7 +910,7 @@ class AlbumManager: ObservableObject {
             let elapsed = Date().timeIntervalSince(self.lastActivity)
             if elapsed > self.idleTimeout {
                 #if DEBUG
-                print("🔐 Auto-locking album after \(Int(elapsed))s of inactivity")
+                    print("🔐 Auto-locking album after \(Int(elapsed))s of inactivity")
                 #endif
                 self.lock()
             }
@@ -924,11 +925,11 @@ class AlbumManager: ObservableObject {
     func suspendIdleTimer() {
         idleTimerSuspendCount += 1
         #if DEBUG
-        if idleTimerSuspendCount == 1 {
-            print("🔒 Idle timer SUSPENDED - album will not auto-lock")
-        } else {
-            print("🔒 Idle timer suspension depth now \(idleTimerSuspendCount)")
-        }
+            if idleTimerSuspendCount == 1 {
+                print("🔒 Idle timer SUSPENDED - album will not auto-lock")
+            } else {
+                print("🔒 Idle timer suspension depth now \(idleTimerSuspendCount)")
+            }
         #endif
     }
 
@@ -944,7 +945,7 @@ class AlbumManager: ObservableObject {
 
         idleTimerSuspendCount -= 1
         if idleTimerSuspendCount == 0 {
-            lastActivity = Date() // Reset activity timestamp
+            lastActivity = Date()  // Reset activity timestamp
             #if DEBUG
                 print("🔓 Idle timer RESUMED - album will auto-lock after \(Int(idleTimeout))s of inactivity")
             #endif
@@ -991,7 +992,7 @@ class AlbumManager: ObservableObject {
             isDuplicate = await MainActor.run {
                 hiddenPhotos.contains(where: { $0.originalAssetIdentifier == assetId })
             }
-            
+
             if isDuplicate {
                 #if DEBUG
                     print("Media already hidden: \(filename) (assetId: \(assetId))")
@@ -1023,7 +1024,7 @@ class AlbumManager: ObservableObject {
             hmacKey: hmacKey)
 
         let encryptedFilename = "\(photoId.uuidString).enc"
-        
+
         // Create metadata for SVF2
         let metadataLocation: FileService.EmbeddedMetadata.Location?
         if let loc = location {
@@ -1031,7 +1032,7 @@ class AlbumManager: ObservableObject {
         } else {
             metadataLocation = nil
         }
-        
+
         let metadata = FileService.EmbeddedMetadata(
             filename: filename,
             dateCreated: dateTaken ?? Date(),
@@ -1048,7 +1049,7 @@ class AlbumManager: ObservableObject {
                 hmacKey: hmacKey, mediaType: mediaType, metadata: metadata)
         case .fileURL(let url):
             try await fileService.saveStreamEncryptedFile(
-                from: url, filename: encryptedFilename, mediaType: mediaType, 
+                from: url, filename: encryptedFilename, mediaType: mediaType,
                 metadata: metadata,
                 to: photosURL,
                 encryptionKey: encryptionKey, hmacKey: hmacKey, progressHandler: progressHandler)
@@ -1170,9 +1171,9 @@ class AlbumManager: ObservableObject {
                         encryptionKey: encryptionKey, hmacKey: hmacKey)
                 } catch {
                     #if DEBUG
-                    print(
-                        "[AlbumManager] decryptThumbnail: error reading encrypted thumbnail for id=\(photo.id): \(error)."
-                    )
+                        print(
+                            "[AlbumManager] decryptThumbnail: error reading encrypted thumbnail for id=\(photo.id): \(error)."
+                        )
                     #endif
                 }
             }
@@ -1571,19 +1572,21 @@ class AlbumManager: ObservableObject {
             let options: [CFString: Any] = [
                 kCGImageSourceCreateThumbnailFromImageAlways: true,
                 kCGImageSourceCreateThumbnailWithTransform: true,
-                kCGImageSourceThumbnailMaxPixelSize: 300
+                kCGImageSourceThumbnailMaxPixelSize: 300,
             ]
-            
+
             guard let source = CGImageSourceCreateWithData(mediaData as CFData, nil),
-                  let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+                let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+            else {
                 return Data()
             }
-            
+
             #if os(macOS)
                 let image = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
                 guard let tiffData = image.tiffRepresentation,
-                      let bitmapImage = NSBitmapImageRep(data: tiffData),
-                      let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) else {
+                    let bitmapImage = NSBitmapImageRep(data: tiffData),
+                    let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8])
+                else {
                     return Data()
                 }
                 return jpegData
@@ -1600,19 +1603,21 @@ class AlbumManager: ObservableObject {
             let options: [CFString: Any] = [
                 kCGImageSourceCreateThumbnailFromImageAlways: true,
                 kCGImageSourceCreateThumbnailWithTransform: true,
-                kCGImageSourceThumbnailMaxPixelSize: 300
+                kCGImageSourceThumbnailMaxPixelSize: 300,
             ]
-            
+
             guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-                  let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+                let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+            else {
                 return Data()
             }
-            
+
             #if os(macOS)
                 let image = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
                 guard let tiffData = image.tiffRepresentation,
-                      let bitmapImage = NSBitmapImageRep(data: tiffData),
-                      let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) else {
+                    let bitmapImage = NSBitmapImageRep(data: tiffData),
+                    let jpegData = bitmapImage.representation(using: .jpeg, properties: [.compressionFactor: 0.8])
+                else {
                     return Data()
                 }
                 return jpegData
@@ -1622,8 +1627,6 @@ class AlbumManager: ObservableObject {
             #endif
         }.value
     }
-
-
 
     /// Generates a thumbnail from video data (synchronous, call from background queue).
     private func generateVideoThumbnail(from videoData: Data) async -> Data {
@@ -1819,7 +1822,7 @@ class AlbumManager: ObservableObject {
 
             let settings: [String: String] = [
                 "securityVersion": version,
-                "secureDeletionEnabled": secureDelete
+                "secureDeletionEnabled": secureDelete,
             ]
 
             do {
@@ -1841,11 +1844,11 @@ class AlbumManager: ObservableObject {
         // But since we are async, we can just run on the queue?
         // Actually, loadSettings accesses @Published properties, so it should run on MainActor eventually?
         // But it reads from disk/keychain.
-        
+
         #if DEBUG
             print("Attempting to load settings from: \(settingsFileURL.path)")
         #endif
-        
+
         // Load credentials from Keychain
         if let credentials = try? await passwordService.retrievePasswordCredentials() {
             await MainActor.run {
@@ -1876,7 +1879,7 @@ class AlbumManager: ObservableObject {
         #if DEBUG
             print("Loaded settings: [REDACTED]")
         #endif
-        
+
         await MainActor.run {
             if let versionString = settings["securityVersion"], let version = Int(versionString) {
                 securityVersion = version
@@ -1890,7 +1893,7 @@ class AlbumManager: ObservableObject {
             } else {
                 secureDeletionEnabled = true
             }
-            
+
             if !passwordHash.isEmpty {
                 showUnlockPrompt = true
             }
@@ -2081,247 +2084,248 @@ class AlbumManager: ObservableObject {
 extension AlbumManager {
     /// Starts encrypting files directly from disk into the album
     func startDirectImport(urls: [URL]) {
-            guard !urls.isEmpty else { return }
+        guard !urls.isEmpty else { return }
 
-            guard isUnlocked, cachedEncryptionKey != nil, cachedHMACKey != nil else {
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    print("Album locked, queuing \(urls.count) items for import after unlock.")
-                    self.pendingImportURLs.append(contentsOf: urls)
-                    self.hideNotification = HideNotification(
-                        message: "Items queued. Unlock to complete import.",
-                        type: .info,
-                        photos: nil
-                    )
-                }
-                return
-            }
-
+        guard isUnlocked, cachedEncryptionKey != nil, cachedHMACKey != nil else {
             Task { @MainActor [weak self] in
-                self?.directImportProgress.reset(totalItems: urls.count)
-            }
-
-            directImportTask?.cancel()
-            directImportTask = Task(priority: .userInitiated) { [weak self] in
                 guard let self else { return }
-                await self.runDirectImport(urls: urls)
+                print("Album locked, queuing \(urls.count) items for import after unlock.")
+                self.pendingImportURLs.append(contentsOf: urls)
+                self.hideNotification = HideNotification(
+                    message: "Items queued. Unlock to complete import.",
+                    type: .info,
+                    photos: nil
+                )
+            }
+            return
+        }
+
+        Task { @MainActor [weak self] in
+            self?.directImportProgress.reset(totalItems: urls.count)
+        }
+
+        directImportTask?.cancel()
+        directImportTask = Task(priority: .userInitiated) { [weak self] in
+            guard let self else { return }
+            await self.runDirectImport(urls: urls)
+        }
+    }
+
+    /// Signals cancellation for the active direct import task
+    func cancelDirectImport() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            guard self.directImportProgress.isImporting, !self.directImportProgress.cancelRequested else { return }
+            self.directImportProgress.cancelRequested = true
+            self.directImportProgress.statusMessage = "Canceling import…"
+            self.directImportProgress.detailMessage = "Finishing current file"
+        }
+        directImportTask?.cancel()
+    }
+
+    private func runDirectImport(urls: [URL]) async {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
+        formatter.countStyle = .file
+
+        await MainActor.run {
+            suspendIdleTimer()
+        }
+
+        defer {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.directImportProgress.finish()
+                self.resumeIdleTimer()
+                self.directImportTask = nil
             }
         }
 
-        /// Signals cancellation for the active direct import task
-        func cancelDirectImport() {
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                guard self.directImportProgress.isImporting, !self.directImportProgress.cancelRequested else { return }
-                self.directImportProgress.cancelRequested = true
-                self.directImportProgress.statusMessage = "Canceling import…"
-                self.directImportProgress.detailMessage = "Finishing current file"
-            }
-            directImportTask?.cancel()
-        }
+        var successCount = 0
+        var failureCount = 0
+        var firstError: String?
+        var wasCancelled = false
+        let fileManager = FileManager.default
 
-        private func runDirectImport(urls: [URL]) async {
-            let formatter = ByteCountFormatter()
-            formatter.allowedUnits = [.useKB, .useMB, .useGB, .useTB]
-            formatter.countStyle = .file
+        for (index, url) in urls.enumerated() {
+            if Task.isCancelled {
+                wasCancelled = true
+                break
+            }
+
+            let cancelRequested = await MainActor.run { directImportProgress.cancelRequested }
+            if cancelRequested {
+                wasCancelled = true
+                break
+            }
 
             await MainActor.run {
-                suspendIdleTimer()
+                lastActivity = Date()
             }
 
-            defer {
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    self.directImportProgress.finish()
-                    self.resumeIdleTimer()
-                    self.directImportTask = nil
-                }
+            let filename = url.lastPathComponent
+            let sizeText = fileSizeString(for: url, formatter: formatter)
+            let detail = buildDirectImportDetailText(index: index + 1, total: urls.count, sizeDescription: sizeText)
+
+            var fileSizeValue: Int64 = 0
+            if let attributes = try? fileManager.attributesOfItem(atPath: url.path),
+                let fileSizeNumber = attributes[.size] as? NSNumber
+            {
+                fileSizeValue = fileSizeNumber.int64Value
             }
 
-            var successCount = 0
-            var failureCount = 0
-            var firstError: String?
-            var wasCancelled = false
-            let fileManager = FileManager.default
-
-            for (index, url) in urls.enumerated() {
-                if Task.isCancelled {
-                    wasCancelled = true
-                    break
+            if fileSizeValue > CryptoConstants.maxMediaFileSize {
+                failureCount += 1
+                let limitString = formatter.string(fromByteCount: CryptoConstants.maxMediaFileSize)
+                if firstError == nil {
+                    let humanSize = formatter.string(fromByteCount: fileSizeValue)
+                    firstError = "\(filename) exceeds the \(limitString) limit (\(humanSize))."
                 }
-
-                let cancelRequested = await MainActor.run { directImportProgress.cancelRequested }
-                if cancelRequested {
-                    wasCancelled = true
-                    break
-                }
-
-                await MainActor.run {
-                    lastActivity = Date()
-                }
-
-                let filename = url.lastPathComponent
-                let sizeText = fileSizeString(for: url, formatter: formatter)
-                let detail = buildDirectImportDetailText(index: index + 1, total: urls.count, sizeDescription: sizeText)
-
-                var fileSizeValue: Int64 = 0
-                if let attributes = try? fileManager.attributesOfItem(atPath: url.path),
-                    let fileSizeNumber = attributes[.size] as? NSNumber
-                {
-                    fileSizeValue = fileSizeNumber.int64Value
-                }
-
-                if fileSizeValue > CryptoConstants.maxMediaFileSize {
-                    failureCount += 1
-                    let limitString = formatter.string(fromByteCount: CryptoConstants.maxMediaFileSize)
-                    if firstError == nil {
-                        let humanSize = formatter.string(fromByteCount: fileSizeValue)
-                        firstError = "\(filename) exceeds the \(limitString) limit (\(humanSize))."
-                    }
-                    let processedCount = index + 1
-                    let totalItems = urls.count
-                    let sizeForProgress = fileSizeValue
-                    await MainActor.run {
-                        directImportProgress.statusMessage = "Skipping \(filename)…"
-                        directImportProgress.detailMessage = "File exceeds \(limitString) limit"
-                        directImportProgress.itemsProcessed = processedCount
-                        directImportProgress.itemsTotal = totalItems
-                        directImportProgress.bytesTotal = sizeForProgress
-                        directImportProgress.forceUpdateBytesProcessed(sizeForProgress)
-                    }
-                    continue
-                }
-
+                let processedCount = index + 1
                 let totalItems = urls.count
                 let sizeForProgress = fileSizeValue
                 await MainActor.run {
-                    directImportProgress.statusMessage = "Encrypting \(filename)…"
-                    directImportProgress.detailMessage = detail
-                    directImportProgress.itemsProcessed = index
+                    directImportProgress.statusMessage = "Skipping \(filename)…"
+                    directImportProgress.detailMessage = "File exceeds \(limitString) limit"
+                    directImportProgress.itemsProcessed = processedCount
                     directImportProgress.itemsTotal = totalItems
                     directImportProgress.bytesTotal = sizeForProgress
-                    directImportProgress.forceUpdateBytesProcessed(0)
+                    directImportProgress.forceUpdateBytesProcessed(sizeForProgress)
                 }
+                continue
+            }
 
-                do {
-                    try Task.checkCancellation()
-                    let mediaType: MediaType = isVideoFile(url) ? .video : .photo
-                    try await hidePhoto(
-                        mediaSource: .fileURL(url),
-                        filename: filename,
-                        dateTaken: nil,
-                        sourceAlbum: "Captured to Album",
-                        assetIdentifier: nil,
-                        mediaType: mediaType,
-                        duration: nil,
-                        location: nil,
-                        isFavorite: nil,
-                        progressHandler: { [weak self] bytesRead in
-                            guard let self else { return }
-                            await MainActor.run {
-                                self.directImportProgress.throttledUpdateBytesProcessed(bytesRead)
-                            }
+            let totalItems = urls.count
+            let sizeForProgress = fileSizeValue
+            await MainActor.run {
+                directImportProgress.statusMessage = "Encrypting \(filename)…"
+                directImportProgress.detailMessage = detail
+                directImportProgress.itemsProcessed = index
+                directImportProgress.itemsTotal = totalItems
+                directImportProgress.bytesTotal = sizeForProgress
+                directImportProgress.forceUpdateBytesProcessed(0)
+            }
+
+            do {
+                try Task.checkCancellation()
+                let mediaType: MediaType = isVideoFile(url) ? .video : .photo
+                try await hidePhoto(
+                    mediaSource: .fileURL(url),
+                    filename: filename,
+                    dateTaken: nil,
+                    sourceAlbum: "Captured to Album",
+                    assetIdentifier: nil,
+                    mediaType: mediaType,
+                    duration: nil,
+                    location: nil,
+                    isFavorite: nil,
+                    progressHandler: { [weak self] bytesRead in
+                        guard let self else { return }
+                        await MainActor.run {
+                            self.directImportProgress.throttledUpdateBytesProcessed(bytesRead)
                         }
-                    )
-                    successCount += 1
-                } catch is CancellationError {
-                    wasCancelled = true
-                    break
-                } catch {
-                    failureCount += 1
-                    if firstError == nil {
-                        firstError = "\(filename): \(error.localizedDescription)"
                     }
-                    await MainActor.run {
-                        directImportProgress.statusMessage = "Failed \(filename)"
-                        directImportProgress.detailMessage = error.localizedDescription
-                    }
-                }
-
-                let completedItems = index + 1
-                await MainActor.run {
-                    directImportProgress.itemsProcessed = completedItems
-                    directImportProgress.forceUpdateBytesProcessed(directImportProgress.bytesTotal)
-                }
-            }
-
-            if Task.isCancelled {
-                wasCancelled = true
-            }
-
-            let finalSuccessCount = successCount
-            let finalFailureCount = failureCount
-            let finalErrorMessage = firstError
-            let priorWasCancelled = wasCancelled
-
-            let cancelRequestedAtCompletion = await MainActor.run { [weak self] () -> Bool in
-                guard let self else { return false }
-                let cancelRequested = self.directImportProgress.cancelRequested
-                self.publishDirectImportSummary(
-                    successCount: finalSuccessCount,
-                    failureCount: finalFailureCount,
-                    canceled: cancelRequested || priorWasCancelled,
-                    errorMessage: finalErrorMessage
                 )
-                return cancelRequested
-            }
-
-            if cancelRequestedAtCompletion {
+                successCount += 1
+            } catch is CancellationError {
                 wasCancelled = true
-            }
-        }
-
-        private func buildDirectImportDetailText(index: Int, total: Int, sizeDescription: String?) -> String {
-            var parts: [String] = ["Item \(index) of \(total)"]
-            if let sizeDescription = sizeDescription {
-                parts.append(sizeDescription)
-            }
-            return parts.joined(separator: " • ")
-        }
-
-        private func fileSizeString(for url: URL, formatter: ByteCountFormatter) -> String? {
-            guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
-                let fileSizeNumber = attributes[.size] as? NSNumber
-            else {
-                return nil
-            }
-            return formatter.string(fromByteCount: fileSizeNumber.int64Value)
-        }
-
-        private func isVideoFile(_ url: URL) -> Bool {
-            let videoExtensions: Set<String> = ["mov", "mp4", "m4v", "avi", "mkv", "mpg", "mpeg", "hevc", "webm"]
-            return videoExtensions.contains(url.pathExtension.lowercased())
-        }
-
-        @MainActor
-        private func publishDirectImportSummary(successCount: Int, failureCount: Int, canceled: Bool, errorMessage: String?) {
-            let message: String
-            let notificationType: HideNotificationType
-
-            if canceled {
-                message = "Import canceled. Encrypted \(successCount) item(s) before canceling."
-                notificationType = .info
-            } else if failureCount == 0 {
-                message = "Import complete. Encrypted \(successCount) item(s) into the album."
-                notificationType = .success
-            } else if successCount == 0 {
-                message = errorMessage ?? "Import failed. Unable to import the selected files."
-                notificationType = .failure
-            } else {
-                var summary = "Import completed with issues. Imported \(successCount) item(s); \(failureCount) failed."
-                if let errorMessage = errorMessage, !errorMessage.isEmpty {
-                    summary += " \(errorMessage)"
+                break
+            } catch {
+                failureCount += 1
+                if firstError == nil {
+                    firstError = "\(filename): \(error.localizedDescription)"
                 }
-                message = summary
-                notificationType = .info
+                await MainActor.run {
+                    directImportProgress.statusMessage = "Failed \(filename)"
+                    directImportProgress.detailMessage = error.localizedDescription
+                }
             }
 
-            hideNotification = HideNotification(
-                message: message,
-                type: notificationType,
-                photos: nil
-            )
+            let completedItems = index + 1
+            await MainActor.run {
+                directImportProgress.itemsProcessed = completedItems
+                directImportProgress.forceUpdateBytesProcessed(directImportProgress.bytesTotal)
+            }
         }
+
+        if Task.isCancelled {
+            wasCancelled = true
+        }
+
+        let finalSuccessCount = successCount
+        let finalFailureCount = failureCount
+        let finalErrorMessage = firstError
+        let priorWasCancelled = wasCancelled
+
+        let cancelRequestedAtCompletion = await MainActor.run { [weak self] () -> Bool in
+            guard let self else { return false }
+            let cancelRequested = self.directImportProgress.cancelRequested
+            self.publishDirectImportSummary(
+                successCount: finalSuccessCount,
+                failureCount: finalFailureCount,
+                canceled: cancelRequested || priorWasCancelled,
+                errorMessage: finalErrorMessage
+            )
+            return cancelRequested
+        }
+
+        if cancelRequestedAtCompletion {
+            wasCancelled = true
+        }
+    }
+
+    private func buildDirectImportDetailText(index: Int, total: Int, sizeDescription: String?) -> String {
+        var parts: [String] = ["Item \(index) of \(total)"]
+        if let sizeDescription = sizeDescription {
+            parts.append(sizeDescription)
+        }
+        return parts.joined(separator: " • ")
+    }
+
+    private func fileSizeString(for url: URL, formatter: ByteCountFormatter) -> String? {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+            let fileSizeNumber = attributes[.size] as? NSNumber
+        else {
+            return nil
+        }
+        return formatter.string(fromByteCount: fileSizeNumber.int64Value)
+    }
+
+    private func isVideoFile(_ url: URL) -> Bool {
+        let videoExtensions: Set<String> = ["mov", "mp4", "m4v", "avi", "mkv", "mpg", "mpeg", "hevc", "webm"]
+        return videoExtensions.contains(url.pathExtension.lowercased())
+    }
+
+    @MainActor
+    private func publishDirectImportSummary(successCount: Int, failureCount: Int, canceled: Bool, errorMessage: String?)
+    {
+        let message: String
+        let notificationType: HideNotificationType
+
+        if canceled {
+            message = "Import canceled. Encrypted \(successCount) item(s) before canceling."
+            notificationType = .info
+        } else if failureCount == 0 {
+            message = "Import complete. Encrypted \(successCount) item(s) into the album."
+            notificationType = .success
+        } else if successCount == 0 {
+            message = errorMessage ?? "Import failed. Unable to import the selected files."
+            notificationType = .failure
+        } else {
+            var summary = "Import completed with issues. Imported \(successCount) item(s); \(failureCount) failed."
+            if let errorMessage = errorMessage, !errorMessage.isEmpty {
+                summary += " \(errorMessage)"
+            }
+            message = summary
+            notificationType = .info
+        }
+
+        hideNotification = HideNotification(
+            message: message,
+            type: notificationType,
+            photos: nil
+        )
+    }
 }
 
 // MARK: - Import Operations
@@ -2342,7 +2346,10 @@ extension AlbumManager {
             return
         }
 
-        let successfulAssets = await importService.importAssets(assets) { [weak self] mediaSource, filename, dateTaken, sourceAlbum, assetIdentifier, mediaType, duration, location, isFavorite, progressHandler in
+        let successfulAssets = await importService.importAssets(assets) {
+            [weak self]
+            mediaSource, filename, dateTaken, sourceAlbum, assetIdentifier, mediaType, duration, location, isFavorite,
+            progressHandler in
             guard let self = self else { throw AlbumError.albumNotInitialized }
             try await self.hidePhoto(
                 mediaSource: mediaSource,
@@ -2363,10 +2370,10 @@ extension AlbumManager {
             await MainActor.run {
                 importProgress.statusMessage = "Cleaning up library…"
             }
-            
+
             // Deduplicate assets
             let uniqueAssets = Array(Set(successfulAssets))
-            
+
             await withCheckedContinuation { continuation in
                 PhotosLibraryService.shared.batchDeleteAssets(uniqueAssets) { success in
                     if success {
@@ -2377,7 +2384,7 @@ extension AlbumManager {
                     continuation.resume()
                 }
             }
-            
+
             // Notify UI
             let ids = Set(uniqueAssets.map { $0.localIdentifier })
             let newlyHidden = hiddenPhotos.filter { photo in
@@ -2386,7 +2393,7 @@ extension AlbumManager {
                 }
                 return false
             }
-            
+
             await MainActor.run {
                 hideNotification = HideNotification(
                     message: "Hidden \(uniqueAssets.count) item(s). Moved to Recently Deleted.",
@@ -2404,58 +2411,65 @@ extension AlbumManager {
 
     /// Checks the App Group "ImportInbox" for files shared via the Share Extension
     func checkAppGroupInbox() {
-        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: FileConstants.appGroupIdentifier) else {
+        guard
+            let containerURL = FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: FileConstants.appGroupIdentifier)
+        else {
             return
         }
-        
+
         let inboxURL = containerURL.appendingPathComponent(FileConstants.appGroupInboxName)
         guard FileManager.default.fileExists(atPath: inboxURL.path) else { return }
-        
+
         do {
             let contents = try FileManager.default.contentsOfDirectory(at: inboxURL, includingPropertiesForKeys: nil)
             guard !contents.isEmpty else { return }
-            
+
             print("Found \(contents.count) items in App Group inbox")
-            
+
             // Move files to a temporary location to process them
             // This ensures we can clear the inbox immediately so we don't import duplicates later
-            let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("InboxImport-\(UUID().uuidString)")
+            let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+                "InboxImport-\(UUID().uuidString)")
             try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-            
+
             var tempURLs: [URL] = []
-            
+
             for url in contents {
                 let destURL = tempDir.appendingPathComponent(url.lastPathComponent)
                 try FileManager.default.moveItem(at: url, to: destURL)
                 tempURLs.append(destURL)
             }
-            
+
             // Start import with the temporary files
             startDirectImport(urls: tempURLs)
-            
+
         } catch {
             print("Error reading App Group inbox: \(error)")
         }
     }
 
-#if DEBUG
-    func nukeAllData() {
-        print("Nuking all data...")
-        try? FileManager.default.removeItem(at: storage.baseURL)
-        // Reset defaults
-        if let bundleID = Bundle.main.bundleIdentifier {
-            UserDefaults.standard.removePersistentDomain(forName: bundleID)
+    #if DEBUG
+        func nukeAllData() {
+            print("Nuking all data...")
+            try? FileManager.default.removeItem(at: storage.baseURL)
+            // Reset defaults
+            if let bundleID = Bundle.main.bundleIdentifier {
+                UserDefaults.standard.removePersistentDomain(forName: bundleID)
+            }
+            // Reset keychain (simplified)
+            let secItemClasses = [
+                kSecClassGenericPassword, kSecClassInternetPassword, kSecClassCertificate, kSecClassKey,
+                kSecClassIdentity,
+            ]
+            for itemClass in secItemClasses {
+                let spec: [String: Any] = [kSecClass as String: itemClass]
+                SecItemDelete(spec as CFDictionary)
+            }
+            // Re-init storage to recreate directories
+            _ = AlbumStorage()
         }
-        // Reset keychain (simplified)
-        let secItemClasses = [kSecClassGenericPassword, kSecClassInternetPassword, kSecClassCertificate, kSecClassKey, kSecClassIdentity]
-        for itemClass in secItemClasses {
-            let spec: [String: Any] = [kSecClass as String: itemClass]
-            SecItemDelete(spec as CFDictionary)
-        }
-        // Re-init storage to recreate directories
-        _ = AlbumStorage()
-    }
-#endif
+    #endif
 
     // MARK: - Decoy Password Management
 
@@ -2470,4 +2484,3 @@ extension AlbumManager {
         UserDefaults.standard.removeObject(forKey: "decoyPasswordHash")
     }
 }
-

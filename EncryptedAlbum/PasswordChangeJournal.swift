@@ -17,10 +17,10 @@ struct PasswordChangeJournal: Codable {
 
     /// First 8 characters of new password hash (for verification only)
     let newPasswordHashPrefix: String
-    
+
     /// The new salt used for key derivation (stored in plaintext as salts are not encrypted)
     let newSalt: Data
-    
+
     /// The new encryption key, encrypted with the OLD encryption key.
     /// This allows recovery if the app crashes before the keychain is updated.
     let encryptedNewKey: Data

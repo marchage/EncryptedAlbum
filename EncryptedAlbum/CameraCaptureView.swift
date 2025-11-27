@@ -299,7 +299,7 @@ import SwiftUI
         @objc private func deviceDisconnected(notification: Notification) {
             guard let device = notification.object as? AVCaptureDevice else { return }
             print("Camera device disconnected: \(device.localizedName)")
-            handleCameraError("Camera device disconnected. Please reconnect your camera.")  
+            handleCameraError("Camera device disconnected. Please reconnect your camera.")
         }
 
         func setupSession() {

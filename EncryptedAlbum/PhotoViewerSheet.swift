@@ -1,5 +1,5 @@
-import SwiftUI
 import AVKit
+import SwiftUI
 
 #if os(macOS)
     import AppKit
@@ -22,99 +22,99 @@ struct PhotoViewerSheet: View {
         SecureWrapper {
             ZStack {
                 PrivacyOverlayBackground(asBackground: true)
-                
+
                 VStack(spacing: 0) {
                     // Header
                     HStack {
-                    VStack(alignment: .leading) {
-                        Text(photo.filename)
-                            .font(.headline)
-                        HStack {
-                            if let album = photo.sourceAlbum {
-                                Text("From: \(album)")
-                                    .font(.caption)
+                        VStack(alignment: .leading) {
+                            Text(photo.filename)
+                                .font(.headline)
+                            HStack {
+                                if let album = photo.sourceAlbum {
+                                    Text("From: \(album)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                if photo.mediaType == .video, let duration = photo.duration {
+                                    Text("• \(formatDuration(duration))")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            #if os(iOS)
+                                .padding(.top, -6)
+                            #endif
+                        }
+
+                        Spacer()
+
+                        Button {
+                            cancelDecryptTask()
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title2)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding()
+                    .background(.ultraThinMaterial)
+
+                    // Media content
+                    if photo.mediaType == .video {
+                        if let url = videoURL {
+                            CustomVideoPlayer(url: url)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            decryptingPlaceholder
+                        }
+                    } else {
+                        if let image = fullImage {
+                            #if os(macOS)
+                                ZoomableImageView(image: image)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            #else
+                                ZoomableImageView(image: image)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            #endif
+                        } else if failedToLoad {
+                            VStack(spacing: 10) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(.secondary)
+                                Text("Failed to load image")
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
-                            if photo.mediaType == .video, let duration = photo.duration {
-                                Text("• \(formatDuration(duration))")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            decryptingPlaceholder
                         }
-                        #if os(iOS)
-                            .padding(.top, -6)
-                        #endif
                     }
-
-                    Spacer()
-
-                    Button {
-                        cancelDecryptTask()
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                    }
-                    .buttonStyle(.plain)
                 }
-                .padding()
-                .background(.ultraThinMaterial)
-
-                // Media content
-                if photo.mediaType == .video {
-                    if let url = videoURL {
-                        CustomVideoPlayer(url: url)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                #if os(macOS)
+                    .frame(minWidth: 800, minHeight: 600)
+                #endif
+                .onAppear {
+                    if photo.mediaType == .video {
+                        loadVideo()
                     } else {
-                        decryptingPlaceholder
-                    }
-                } else {
-                    if let image = fullImage {
-                        #if os(macOS)
-                        ZoomableImageView(image: image)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        #else
-                        ZoomableImageView(image: image)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        #endif
-                    } else if failedToLoad {
-                        VStack(spacing: 10) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.largeTitle)
-                                .foregroundStyle(.secondary)
-                            Text("Failed to load image")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        decryptingPlaceholder
+                        loadFullImage()
                     }
                 }
-            }
-            #if os(macOS)
-                .frame(minWidth: 800, minHeight: 600)
-            #endif
-            .onAppear {
-                if photo.mediaType == .video {
-                    loadVideo()
-                } else {
-                    loadFullImage()
+                .onDisappear {
+                    cancelDecryptTask()
+                    cleanupVideo()
                 }
-            }
-            .onDisappear {
-                cancelDecryptTask()
-                cleanupVideo()
-            }
-            .onChange(of: scenePhase) { newPhase in
-                guard newPhase == .active else {
-                    dismissViewer()
-                    return
+                .onChange(of: scenePhase) { newPhase in
+                    guard newPhase == .active else {
+                        dismissViewer()
+                        return
+                    }
                 }
             }
         }
-    }
-    .onAppear {
+        .onAppear {
             albumManager.suspendIdleTimer()
         }
         .onDisappear {
@@ -128,7 +128,7 @@ struct PhotoViewerSheet: View {
             do {
                 let decryptedData = try await albumManager.decryptPhoto(photo)
                 try Task.checkCancellation()
-                
+
                 #if os(macOS)
                     if let image = NSImage(data: decryptedData) {
                         await MainActor.run {

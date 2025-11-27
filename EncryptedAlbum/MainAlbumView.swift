@@ -1,5 +1,5 @@
-import AVKit
 import AVFoundation
+import AVKit
 import SwiftUI
 
 #if os(macOS)
@@ -34,6 +34,7 @@ struct MainAlbumView: View {
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
     @State private var isSearchActive = false
     @State private var isAppActive = true
+    @State private var showingPreferences = false
     #if os(iOS)
         @Environment(\.verticalSizeClass) private var verticalSizeClass
     #else
@@ -165,16 +166,16 @@ struct MainAlbumView: View {
     func exportPhotos(to folderURL: URL) {
         let photosToExport = albumManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         guard !photosToExport.isEmpty else { return }
-        
+
         albumManager.startExport(photos: photosToExport, to: folderURL) { result in
             #if os(macOS)
-            presentExportSummary(
-                successCount: result.successCount,
-                failureCount: result.failureCount,
-                canceled: result.wasCancelled,
-                destinationFolderName: folderURL.lastPathComponent,
-                error: result.error
-            )
+                presentExportSummary(
+                    successCount: result.successCount,
+                    failureCount: result.failureCount,
+                    canceled: result.wasCancelled,
+                    destinationFolderName: folderURL.lastPathComponent,
+                    error: result.error
+                )
             #endif
             selectedPhotos.removeAll()
         }
@@ -346,7 +347,7 @@ struct MainAlbumView: View {
                 alert.runModal()
                 return
             }
-            
+
             // Verify album is unlocked before starting import
             guard albumManager.isUnlocked else {
                 showingFilePicker = false
@@ -516,6 +517,12 @@ struct MainAlbumView: View {
                 Label("Lock Album", systemImage: "lock.fill")
             }
 
+            Button(action: {
+                showingPreferences = true
+            }) {
+                Label("Settings", systemImage: "gear")
+            }
+
             #if DEBUG
                 Divider()
                 Button(role: .destructive) {
@@ -569,7 +576,7 @@ struct MainAlbumView: View {
             cancelRequested: directImportProgress.cancelRequested,
             onCancel: {
                 #if os(macOS)
-                albumManager.cancelDirectImport()
+                    albumManager.cancelDirectImport()
                 #endif
             },
             isAppActive: isAppActive
@@ -734,7 +741,8 @@ struct MainAlbumView: View {
                                         Label("Files", systemImage: "doc.badge.plus")
                                     }
                                     .buttonStyle(.bordered)
-                                    .disabled(directImportProgress.isImporting || albumManager.exportProgress.isExporting)
+                                    .disabled(
+                                        directImportProgress.isImporting || albumManager.exportProgress.isExporting)
 
                                     Button {
                                         showingCamera = true
@@ -863,8 +871,9 @@ struct MainAlbumView: View {
                             .padding(.vertical, 40)
                         } else {
                             LazyVGrid(
-                                columns: [GridItem(
-                                    .adaptive(minimum: gridMinimumItemWidth, maximum: 200), spacing: gridSpacing)
+                                columns: [
+                                    GridItem(
+                                        .adaptive(minimum: gridMinimumItemWidth, maximum: 200), spacing: gridSpacing)
                                 ], spacing: gridSpacing
                             ) {
                                 ForEach(filteredPhotos) { photo in
@@ -919,8 +928,10 @@ struct MainAlbumView: View {
                         }
                     }
                     .searchable(
-                        text: $searchText, isPresented: $isSearchActive, placement: .navigationBarDrawer(displayMode: .automatic),
-                        prompt: "Search encrypted items")
+                        text: $searchText, isPresented: $isSearchActive,
+                        placement: .navigationBarDrawer(displayMode: .automatic),
+                        prompt: "Search encrypted items"
+                    )
                     .onChange(of: isSearchActive) { newValue in
                         if !newValue {
                             dismissKeyboard()
@@ -974,6 +985,10 @@ struct MainAlbumView: View {
             }
             .sheet(item: $selectedPhoto) { photo in
                 PhotoViewerSheet(photo: photo)
+            }
+            .sheet(isPresented: $showingPreferences) {
+                PreferencesView()
+                    .environmentObject(albumManager)
             }
             #if os(iOS)
                 .fullScreenCover(isPresented: $showingPhotosLibrary) {
@@ -1106,7 +1121,9 @@ struct MainAlbumView: View {
                 } else if newPhase == .background {
                     isAppActive = false
                     if requireForegroundReauthentication {
-                        let shouldSuppress = showingPhotosLibrary || showingCamera || albumManager.importProgress.isImporting || directImportProgress.isImporting || albumManager.exportProgress.isExporting
+                        let shouldSuppress =
+                            showingPhotosLibrary || showingCamera || albumManager.importProgress.isImporting
+                            || directImportProgress.isImporting || albumManager.exportProgress.isExporting
                         if !shouldSuppress {
                             albumManager.lock()
                         }
@@ -1266,22 +1283,18 @@ struct MainAlbumView: View {
 
 // PhotoThumbnailView moved to PhotoThumbnailView.swift
 
-
 // PhotoViewerSheet moved to PhotoViewerSheet.swift
-
 
 // decryptingPlaceholder moved to PhotoViewerSheet.swift
 
-
 // CustomVideoPlayer moved to CustomVideoPlayer.swift
-
 
 #if os(iOS)
     extension View {
         func dismissKeyboard() {
             UIApplication.shared.sendAction(
                 #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            
+
             // Force end editing on all windows to ensure keyboard dismissal
             UIApplication.shared.connectedScenes
                 .compactMap { $0 as? UIWindowScene }
@@ -1296,16 +1309,16 @@ extension MainAlbumView {
     private func handleDrop(providers: [NSItemProvider]) async {
         guard albumManager.isUnlocked else {
             #if os(macOS)
-            let alert = NSAlert()
-            alert.messageText = "Album Locked"
-            alert.informativeText = "Please unlock Encrypted Album before importing items."
-            alert.runModal()
+                let alert = NSAlert()
+                alert.messageText = "Album Locked"
+                alert.informativeText = "Please unlock Encrypted Album before importing items."
+                alert.runModal()
             #endif
             return
         }
-        
+
         var urls: [URL] = []
-        
+
         for provider in providers {
             var handled = false
             if provider.hasItemConformingToTypeIdentifier("public.file-url") {
@@ -1319,30 +1332,31 @@ extension MainAlbumView {
                     print("Failed to load dropped URL: \(error)")
                 }
             }
-            
+
             #if os(macOS)
-            if !handled && provider.canLoadObject(ofClass: NSImage.self) {
-                do {
-                    let image = try await loadObject(from: provider, ofClass: NSImage.self)
-                    if let image = image,
-                       let tiffData = image.tiffRepresentation,
-                       let bitmap = NSBitmapImageRep(data: tiffData),
-                       let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.9]) {
-                        let filename = "Dropped Image \(Date().timeIntervalSince1970).jpg"
-                        try await albumManager.hidePhoto(imageData: jpegData, filename: filename)
+                if !handled && provider.canLoadObject(ofClass: NSImage.self) {
+                    do {
+                        let image = try await loadObject(from: provider, ofClass: NSImage.self)
+                        if let image = image,
+                            let tiffData = image.tiffRepresentation,
+                            let bitmap = NSBitmapImageRep(data: tiffData),
+                            let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.9])
+                        {
+                            let filename = "Dropped Image \(Date().timeIntervalSince1970).jpg"
+                            try await albumManager.hidePhoto(imageData: jpegData, filename: filename)
+                        }
+                    } catch {
+                        print("Failed to load dropped image: \(error)")
                     }
-                } catch {
-                    print("Failed to load dropped image: \(error)")
                 }
-            }
             #endif
         }
-        
+
         if !urls.isEmpty {
             albumManager.startDirectImport(urls: urls)
         }
     }
-    
+
     private func loadURL(from provider: NSItemProvider) async throws -> URL? {
         return try await withCheckedThrowingContinuation { continuation in
             provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { item, error in
@@ -1358,18 +1372,20 @@ extension MainAlbumView {
             }
         }
     }
-    
+
     #if os(macOS)
-    private func loadObject<T: NSItemProviderReading>(from provider: NSItemProvider, ofClass: T.Type) async throws -> T? {
-        return try await withCheckedThrowingContinuation { continuation in
-            provider.loadObject(ofClass: ofClass) { object, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume(returning: object as? T)
+        private func loadObject<T: NSItemProviderReading>(from provider: NSItemProvider, ofClass: T.Type) async throws
+            -> T?
+        {
+            return try await withCheckedThrowingContinuation { continuation in
+                provider.loadObject(ofClass: ofClass) { object, error in
+                    if let error = error {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume(returning: object as? T)
+                    }
                 }
             }
         }
-    }
     #endif
 }

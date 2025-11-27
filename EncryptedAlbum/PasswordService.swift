@@ -62,7 +62,8 @@ class PasswordService {
             queue.async {
                 Task {
                     do {
-                        let computedVerifier = try await self.cryptoService.deriveVerifier(password: password, salt: salt)
+                        let computedVerifier = try await self.cryptoService.deriveVerifier(
+                            password: password, salt: salt)
                         continuation.resume(returning: computedVerifier == hash)
                     } catch {
                         continuation.resume(returning: false)
@@ -194,7 +195,7 @@ class PasswordService {
                         // Assuming V2 for simplicity as migration is enforced on unlock.
                         let oldPasswordValid = try await self.verifyPassword(
                             currentPassword, against: storedHash, salt: storedSalt)
-                        
+
                         guard oldPasswordValid else {
                             continuation.resume(throwing: AlbumError.invalidPassword)
                             return
@@ -202,8 +203,10 @@ class PasswordService {
 
                         // 3. Generate new salt and keys
                         let newSalt = try await self.cryptoService.generateSalt()
-                        let newVerifier = try await self.cryptoService.deriveVerifier(password: newPassword, salt: newSalt)
-                        let (newEncryptionKey, newHMACKey) = try await self.cryptoService.deriveKeys(password: newPassword, salt: newSalt)
+                        let newVerifier = try await self.cryptoService.deriveVerifier(
+                            password: newPassword, salt: newSalt)
+                        let (newEncryptionKey, newHMACKey) = try await self.cryptoService.deriveKeys(
+                            password: newPassword, salt: newSalt)
 
                         continuation.resume(returning: (newVerifier, newSalt, newEncryptionKey, newHMACKey))
                     } catch let error as AlbumError {
@@ -273,13 +276,13 @@ class PasswordService {
         let chars = Array(password)
         if chars.count >= 3 {
             for i in 0...(chars.count - 3) {
-                if chars[i] == chars[i+1] && chars[i] == chars[i+2] {
+                if chars[i] == chars[i + 1] && chars[i] == chars[i + 2] {
                     hasTripleRepeat = true
                     break
                 }
             }
         }
-        
+
         if hasTripleRepeat {
             score -= 3
             feedback.append("Avoid repeated characters")

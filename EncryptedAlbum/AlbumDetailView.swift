@@ -135,7 +135,7 @@ struct AlbumPhotoView: View {
             } catch {
                 // Thumbnail decryption failed, keep placeholder
                 #if DEBUG
-                print("Failed to load thumbnail for \(photo.filename): \(error)")
+                    print("Failed to load thumbnail for \(photo.filename): \(error)")
                 #endif
             }
         }
@@ -177,99 +177,135 @@ struct PhotosLibraryPicker: View {
                 // Sidebar with albums
                 VStack(alignment: .leading, spacing: 0) {
                     Text("Albums")
-                    .font(.headline)
-                    .padding()
+                        .font(.headline)
+                        .padding()
 
-                Divider()
+                    Divider()
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 2) {
-                        // "All Items" option
-                        Button {
-                            selectedAlbumFilter = nil
-                        } label: {
-                            HStack {
-                                Image(systemName: "photo.on.rectangle.angled")
-                                    .frame(width: 20)
-                                Text("All Items")
-                                Spacer()
-                                Text("\(uniqueAllPhotosCount)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(selectedAlbumFilter == nil ? Color.accentColor.opacity(0.2) : Color.clear)
-                            .cornerRadius(6)
-                        }
-                        .buttonStyle(.plain)
-
-                        Divider()
-                            .padding(.vertical, 4)
-
-                        // Album list
-                        ForEach(uniqueAlbums.sorted(), id: \.self) { album in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 2) {
+                            // "All Items" option
                             Button {
-                                selectedAlbumFilter = album
+                                selectedAlbumFilter = nil
                             } label: {
                                 HStack {
-                                    Image(systemName: album.albumIcon)
+                                    Image(systemName: "photo.on.rectangle.angled")
                                         .frame(width: 20)
-                                    Text(album)
-                                        .lineLimit(1)
+                                    Text("All Items")
                                     Spacer()
-                                    Text("\(albumPhotoCount(album))")
+                                    Text("\(uniqueAllPhotosCount)")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(selectedAlbumFilter == album ? Color.accentColor.opacity(0.2) : Color.clear)
+                                .background(selectedAlbumFilter == nil ? Color.accentColor.opacity(0.2) : Color.clear)
                                 .cornerRadius(6)
                             }
                             .buttonStyle(.plain)
+
+                            Divider()
+                                .padding(.vertical, 4)
+
+                            // Album list
+                            ForEach(uniqueAlbums.sorted(), id: \.self) { album in
+                                Button {
+                                    selectedAlbumFilter = album
+                                } label: {
+                                    HStack {
+                                        Image(systemName: album.albumIcon)
+                                            .frame(width: 20)
+                                        Text(album)
+                                            .lineLimit(1)
+                                        Spacer()
+                                        Text("\(albumPhotoCount(album))")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(
+                                        selectedAlbumFilter == album ? Color.accentColor.opacity(0.2) : Color.clear
+                                    )
+                                    .cornerRadius(6)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
+                        .padding(8)
                     }
-                    .padding(8)
                 }
-            }
-            #if os(macOS)
-                .frame(width: 220)
-            #else
-                // On iOS (especially portrait) constrain the sidebar so it doesn't take
-                // an excessive portion of the screen. Keep it flexible but bounded.
-                .frame(minWidth: 80, idealWidth: 110, maxWidth: 140)
-            #endif
-            .background(.ultraThinMaterial)
+                #if os(macOS)
+                    .frame(width: 220)
+                #else
+                    // On iOS (especially portrait) constrain the sidebar so it doesn't take
+                    // an excessive portion of the screen. Keep it flexible but bounded.
+                    .frame(minWidth: 80, idealWidth: 110, maxWidth: 140)
+                #endif
+                .background(.ultraThinMaterial)
 
-            Divider()
+                Divider()
 
-            // Main content area
-            VStack(spacing: 0) {
-                // Header with library selector
-                #if os(iOS)
-                    VStack(alignment: .leading, spacing: 12) {
-                        // Title and main buttons
-                        HStack(spacing: 8) {
+                // Main content area
+                VStack(spacing: 0) {
+                    // Header with library selector
+                    #if os(iOS)
+                        VStack(alignment: .leading, spacing: 12) {
+                            // Title and main buttons
+                            HStack(spacing: 8) {
+                                Text("Select Items to Hide")
+                                    .font(.headline)
+                                    .fontWeight(.semibold)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.65)
+
+                                Spacer()
+
+                                headerSelectionControls
+
+                                headerCancelButton
+
+                                headerHideButton
+                            }
+
+                            // Library selector and options
+                            HStack(spacing: 12) {
+                                // Compact library selector with icons
+                                Picker("", selection: $selectedLibrary) {
+                                    Label("Personal", systemImage: "person.fill").tag(LibraryType.personal)
+                                    Label("Shared", systemImage: "person.2.fill").tag(LibraryType.shared)
+                                    Label("All", systemImage: "square.grid.2x2.fill").tag(LibraryType.both)
+                                }
+                                .pickerStyle(.segmented)
+                                .frame(maxWidth: .infinity)
+                                .onChange(of: selectedLibrary) { _ in
+                                    loadPhotos()
+                                }
+
+                                // Manual fallback toggle only relevant when user selects Shared
+                                if selectedLibrary == .shared {
+                                    Toggle("Force Shared", isOn: $forceSharedLibrary)
+                                        .toggleStyle(.switch)
+                                        .help(
+                                            "If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared."
+                                        )
+                                        .onChange(of: forceSharedLibrary) { _ in
+                                            loadPhotos()
+                                        }
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(.ultraThinMaterial)
+                    #else
+                        HStack {
                             Text("Select Items to Hide")
                                 .font(.headline)
-                                .fontWeight(.semibold)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.65)
 
                             Spacer()
 
-                            headerSelectionControls
-
-                            headerCancelButton
-
-                            headerHideButton
-                        }
-
-                        // Library selector and options
-                        HStack(spacing: 12) {
                             // Compact library selector with icons
                             Picker("", selection: $selectedLibrary) {
                                 Label("Personal", systemImage: "person.fill").tag(LibraryType.personal)
@@ -277,142 +313,109 @@ struct PhotosLibraryPicker: View {
                                 Label("All", systemImage: "square.grid.2x2.fill").tag(LibraryType.both)
                             }
                             .pickerStyle(.segmented)
-                            .frame(maxWidth: .infinity)
+                            .frame(width: 280)
                             .onChange(of: selectedLibrary) { _ in
                                 loadPhotos()
                             }
-
                             // Manual fallback toggle only relevant when user selects Shared
-                            if selectedLibrary == .shared {
-                                Toggle("Force Shared", isOn: $forceSharedLibrary)
-                                    .toggleStyle(.switch)
-                                    .help(
-                                        "If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared."
-                                    )
-                                    .onChange(of: forceSharedLibrary) { _ in
-                                        loadPhotos()
-                                    }
+                            Toggle("Force Shared", isOn: $forceSharedLibrary)
+                                .toggleStyle(.switch)
+                                .help(
+                                    "If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared."
+                                )
+                                .onChange(of: forceSharedLibrary) { _ in
+                                    if selectedLibrary == .shared { loadPhotos() }
+                                }
+                                .padding(.leading, 8)
+                                .frame(maxWidth: 130)
+
+                            Button("Cancel") {
+                                dismiss()
                             }
-                        }
-                    }
-                    .padding()
-                    .background(.ultraThinMaterial)
-                #else
-                    HStack {
-                        Text("Select Items to Hide")
-                            .font(.headline)
+                            .accessibilityIdentifier("photosPickerCancelButton")
+                            .keyboardShortcut(.cancelAction)
 
-                        Spacer()
-
-                        // Compact library selector with icons
-                        Picker("", selection: $selectedLibrary) {
-                            Label("Personal", systemImage: "person.fill").tag(LibraryType.personal)
-                            Label("Shared", systemImage: "person.2.fill").tag(LibraryType.shared)
-                            Label("All", systemImage: "square.grid.2x2.fill").tag(LibraryType.both)
-                        }
-                        .pickerStyle(.segmented)
-                        .frame(width: 280)
-                        .onChange(of: selectedLibrary) { _ in
-                            loadPhotos()
-                        }
-                        // Manual fallback toggle only relevant when user selects Shared
-                        Toggle("Force Shared", isOn: $forceSharedLibrary)
-                            .toggleStyle(.switch)
-                            .help(
-                                "If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared."
-                            )
-                            .onChange(of: forceSharedLibrary) { _ in
-                                if selectedLibrary == .shared { loadPhotos() }
-                            }
-                            .padding(.leading, 8)
-                            .frame(maxWidth: 130)
-
-                        Button("Cancel") {
-                            dismiss()
-                        }
-                        .accessibilityIdentifier("photosPickerCancelButton")
-                        .keyboardShortcut(.cancelAction)
-
-                        Button("Hide Selected (\(selectedAssets.count))") {
-                            Task {
-                                await hideSelectedPhotos()
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(selectedAssets.isEmpty)
-                        .keyboardShortcut(.defaultAction)
-                    }
-                    .padding()
-                    .background(.ultraThinMaterial)
-                #endif
-
-                Divider()
-
-                // Photos grid
-                if isLoading {
-                    VStack {
-                        ProgressView()
-                        Text("Loading items...")
-                            .foregroundStyle(.secondary)
-                            .padding(.top)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if allPhotos.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "photo.on.rectangle")
-                            .font(.system(size: 48))
-                            .foregroundStyle(.secondary)
-                        Text("No items found")
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 20, pinnedViews: [.sectionHeaders]) {
-                            ForEach(groupedPhotos, id: \.album) { group in
-                                Section {
-                                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 8)], spacing: 8) {
-                                        ForEach(group.photos, id: \.asset.localIdentifier) { photo in
-                                            PhotoAssetView(
-                                                asset: photo.asset,
-                                                isSelected: selectedAssets.contains(photo.asset.localIdentifier)
-                                            )
-                                            .onTapGesture {
-                                                toggleSelection(photo.asset.localIdentifier)
-                                            }
-                                        }
-                                    }
-                                } header: {
-                                    HStack {
-                                        Text(group.album)
-                                            .font(.headline)
-                                        Spacer()
-                                        Text("\(group.photos.count) items")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-
-                                        Button(action: {
-                                            toggleAlbumSelection(group.photos.map { $0.asset.localIdentifier })
-                                        }) {
-                                            Text(
-                                                isAlbumSelected(group.photos.map { $0.asset.localIdentifier })
-                                                    ? "Deselect All" : "Select All"
-                                            )
-                                            .font(.caption)
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .controlSize(.small)
-                                    }
-                                    .padding(.horizontal)
-                                    .padding(.vertical, 8)
-                                    .background(.ultraThinMaterial)
+                            Button("Hide Selected (\(selectedAssets.count))") {
+                                Task {
+                                    await hideSelectedPhotos()
                                 }
                             }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(selectedAssets.isEmpty)
+                            .keyboardShortcut(.defaultAction)
                         }
                         .padding()
+                        .background(.ultraThinMaterial)
+                    #endif
+
+                    Divider()
+
+                    // Photos grid
+                    if isLoading {
+                        VStack {
+                            ProgressView()
+                            Text("Loading items...")
+                                .foregroundStyle(.secondary)
+                                .padding(.top)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if allPhotos.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "photo.on.rectangle")
+                                .font(.system(size: 48))
+                                .foregroundStyle(.secondary)
+                            Text("No items found")
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: 20, pinnedViews: [.sectionHeaders]) {
+                                ForEach(groupedPhotos, id: \.album) { group in
+                                    Section {
+                                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 8)], spacing: 8)
+                                        {
+                                            ForEach(group.photos, id: \.asset.localIdentifier) { photo in
+                                                PhotoAssetView(
+                                                    asset: photo.asset,
+                                                    isSelected: selectedAssets.contains(photo.asset.localIdentifier)
+                                                )
+                                                .onTapGesture {
+                                                    toggleSelection(photo.asset.localIdentifier)
+                                                }
+                                            }
+                                        }
+                                    } header: {
+                                        HStack {
+                                            Text(group.album)
+                                                .font(.headline)
+                                            Spacer()
+                                            Text("\(group.photos.count) items")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+
+                                            Button(action: {
+                                                toggleAlbumSelection(group.photos.map { $0.asset.localIdentifier })
+                                            }) {
+                                                Text(
+                                                    isAlbumSelected(group.photos.map { $0.asset.localIdentifier })
+                                                        ? "Deselect All" : "Select All"
+                                                )
+                                                .font(.caption)
+                                            }
+                                            .buttonStyle(.bordered)
+                                            .controlSize(.small)
+                                        }
+                                        .padding(.horizontal)
+                                        .padding(.vertical, 8)
+                                        .background(.ultraThinMaterial)
+                                    }
+                                }
+                            }
+                            .padding()
+                        }
                     }
                 }
-            }
             }
         }
         #if os(macOS)
@@ -480,18 +483,25 @@ struct PhotosLibraryPicker: View {
 
                         if albumManager.importProgress.currentBytesTotal > 0 {
                             ProgressView(
-                                value: Double(min(albumManager.importProgress.currentBytesProcessed, albumManager.importProgress.currentBytesTotal)),
+                                value: Double(
+                                    min(
+                                        albumManager.importProgress.currentBytesProcessed,
+                                        albumManager.importProgress.currentBytesTotal)),
                                 total: Double(max(albumManager.importProgress.currentBytesTotal, 1))
                             )
                             .progressViewStyle(.linear)
                             .frame(maxWidth: UIConstants.progressCardWidth)
-                            
+
                             if isAppActive {
-                                Text("\(formattedBytes(albumManager.importProgress.currentBytesProcessed)) of \(formattedBytes(albumManager.importProgress.currentBytesTotal))")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                Text(
+                                    "\(formattedBytes(albumManager.importProgress.currentBytesProcessed)) of \(formattedBytes(albumManager.importProgress.currentBytesTotal))"
+                                )
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                             } else {
-                                let percent = Double(albumManager.importProgress.currentBytesProcessed) / Double(max(albumManager.importProgress.currentBytesTotal, 1))
+                                let percent =
+                                    Double(albumManager.importProgress.currentBytesProcessed)
+                                    / Double(max(albumManager.importProgress.currentBytesTotal, 1))
                                 Text(String(format: "%.0f%%", percent * 100))
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
@@ -502,19 +512,27 @@ struct PhotosLibraryPicker: View {
                                 .frame(maxWidth: UIConstants.progressCardWidth)
                             Text(
                                 albumManager.importProgress.currentBytesProcessed > 0
-                                    ? "\(formattedBytes(albumManager.importProgress.currentBytesProcessed)) processed…" : "Preparing file size…"
+                                    ? "\(formattedBytes(albumManager.importProgress.currentBytesProcessed)) processed…"
+                                    : "Preparing file size…"
                             )
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         }
 
-                        Text(isAppActive ? (albumManager.importProgress.statusMessage.isEmpty ? "Encrypting items…" : albumManager.importProgress.statusMessage) : "Encrypting items…")
-                            .font(.headline)
+                        Text(
+                            isAppActive
+                                ? (albumManager.importProgress.statusMessage.isEmpty
+                                    ? "Encrypting items…" : albumManager.importProgress.statusMessage)
+                                : "Encrypting items…"
+                        )
+                        .font(.headline)
 
                         if albumManager.importProgress.totalItems > 0 {
-                            Text("\(albumManager.importProgress.processedItems) of \(albumManager.importProgress.totalItems)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            Text(
+                                "\(albumManager.importProgress.processedItems) of \(albumManager.importProgress.totalItems)"
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                         }
 
                         if !albumManager.importProgress.detailMessage.isEmpty && isAppActive {
@@ -533,23 +551,23 @@ struct PhotosLibraryPicker: View {
             }
         }
         #if os(macOS)
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
-            isAppActive = false
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            isAppActive = true
-        }
-        .onAppear {
-            isAppActive = NSApplication.shared.isActive
-        }
-        #else
-        .onChange(of: scenePhase) { newPhase in
-            if newPhase == .active {
-                isAppActive = true
-            } else if newPhase == .background || newPhase == .inactive {
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
                 isAppActive = false
             }
-        }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                isAppActive = true
+            }
+            .onAppear {
+                isAppActive = NSApplication.shared.isActive
+            }
+        #else
+            .onChange(of: scenePhase) { newPhase in
+                if newPhase == .active {
+                    isAppActive = true
+                } else if newPhase == .background || newPhase == .inactive {
+                    isAppActive = false
+                }
+            }
         #endif
     }
 
@@ -696,162 +714,162 @@ struct PhotosLibraryPicker: View {
 }
 
 #if os(iOS)
-extension PhotosLibraryPicker {
-    private var isCompactHeader: Bool {
-        guard let horizontalSizeClass else { return false }
-        if horizontalSizeClass == .compact {
-            if let verticalSizeClass, verticalSizeClass == .compact {
-                return false
-            }
-            return true
-        }
-        return false
-    }
-
-    @ViewBuilder
-    private var headerSelectionControls: some View {
-        if !visibleAssetIdentifiers.isEmpty {
-            HStack(spacing: isCompactHeader ? 4 : 8) {
-                Button(action: selectAllVisibleAssets) {
-                    Group {
-                        if isCompactHeader {
-                            compactSelectAllIcon
-                        } else {
-                            Label {
-                                Text("All")
-                            } icon: {
-                                Image(systemName: "square.grid.2x2.fill")
-                            }
-                                .font(.subheadline)
-                        }
-                    }
-                    .padding(isCompactHeader ? 0 : 0)
+    extension PhotosLibraryPicker {
+        private var isCompactHeader: Bool {
+            guard let horizontalSizeClass else { return false }
+            if horizontalSizeClass == .compact {
+                if let verticalSizeClass, verticalSizeClass == .compact {
+                    return false
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(allVisibleAssetsSelected)
-                .accessibilityLabel("Select all visible items")
+                return true
+            }
+            return false
+        }
 
-                Button(action: deselectAllVisibleAssets) {
-                    Group {
-                        if isCompactHeader {
-                            compactDeselectAllIcon
-                        } else {
-                            Label {
-                                Text("None")
-                            } icon: {
-                                Image(systemName: "square.grid.2x2")
-                            }
+        @ViewBuilder
+        private var headerSelectionControls: some View {
+            if !visibleAssetIdentifiers.isEmpty {
+                HStack(spacing: isCompactHeader ? 4 : 8) {
+                    Button(action: selectAllVisibleAssets) {
+                        Group {
+                            if isCompactHeader {
+                                compactSelectAllIcon
+                            } else {
+                                Label {
+                                    Text("All")
+                                } icon: {
+                                    Image(systemName: "square.grid.2x2.fill")
+                                }
                                 .font(.subheadline)
+                            }
                         }
+                        .padding(isCompactHeader ? 0 : 0)
                     }
-                    .padding(isCompactHeader ? 0 : 0)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(allVisibleAssetsSelected)
+                    .accessibilityLabel("Select all visible items")
+
+                    Button(action: deselectAllVisibleAssets) {
+                        Group {
+                            if isCompactHeader {
+                                compactDeselectAllIcon
+                            } else {
+                                Label {
+                                    Text("None")
+                                } icon: {
+                                    Image(systemName: "square.grid.2x2")
+                                }
+                                .font(.subheadline)
+                            }
+                        }
+                        .padding(isCompactHeader ? 0 : 0)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(!anyVisibleAssetsSelected)
+                    .accessibilityLabel("Deselect all visible items")
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(!anyVisibleAssetsSelected)
-                .accessibilityLabel("Deselect all visible items")
             }
         }
-    }
 
-    private var compactSelectAllIcon: some View {
-        Image(systemName: "square.grid.2x2.fill")
-            .font(.system(size: 20, weight: .semibold))
-            .foregroundStyle(Color.accentColor)
-    }
+        private var compactSelectAllIcon: some View {
+            Image(systemName: "square.grid.2x2.fill")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+        }
 
-    private var compactDeselectAllIcon: some View {
-        Image(systemName: "square.grid.2x2")
-            .font(.system(size: 20, weight: .semibold))
-            .foregroundStyle(Color.secondary)
-    }
+        private var compactDeselectAllIcon: some View {
+            Image(systemName: "square.grid.2x2")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(Color.secondary)
+        }
 
-    private var headerCancelButton: some View {
-        Button(action: { dismiss() }) {
-            Group {
-                if isCompactHeader {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title3)
-                        .symbolRenderingMode(.hierarchical)
-                } else {
-                    Label {
-                        Text("Canc")
-                            .font(.subheadline)
-                    } icon: {
+        private var headerCancelButton: some View {
+            Button(action: { dismiss() }) {
+                Group {
+                    if isCompactHeader {
                         Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                            .symbolRenderingMode(.hierarchical)
+                    } else {
+                        Label {
+                            Text("Canc")
+                                .font(.subheadline)
+                        } icon: {
+                            Image(systemName: "xmark.circle.fill")
+                        }
                     }
                 }
+                .padding(isCompactHeader ? 6 : 0)
             }
-            .padding(isCompactHeader ? 6 : 0)
+            .accessibilityIdentifier("photosPickerCancelButton")
+            .keyboardShortcut(.cancelAction)
+            .controlSize(.small)
+            .accessibilityLabel("Cancel selection")
         }
-        .accessibilityIdentifier("photosPickerCancelButton")
-        .keyboardShortcut(.cancelAction)
-        .controlSize(.small)
-        .accessibilityLabel("Cancel selection")
-    }
 
-    private var headerHideButton: some View {
-        Button(action: {
-            Task {
-                await hideSelectedPhotos()
+        private var headerHideButton: some View {
+            Button(action: {
+                Task {
+                    await hideSelectedPhotos()
+                }
+            }) {
+                Group {
+                    if isCompactHeader {
+                        compactHideIcon
+                    } else {
+                        Label {
+                            Text("Hide (\(selectedAssets.count))")
+                                .font(.subheadline)
+                        } icon: {
+                            Image(systemName: "lock.fill")
+                        }
+                    }
+                }
+                .frame(minWidth: isCompactHeader ? 36 : nil, minHeight: isCompactHeader ? 36 : nil)
             }
-        }) {
-            Group {
-                if isCompactHeader {
-                    compactHideIcon
-                } else {
-                    Label {
-                        Text("Hide (\(selectedAssets.count))")
-                            .font(.subheadline)
-                    } icon: {
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .disabled(selectedAssets.isEmpty)
+            .keyboardShortcut(.defaultAction)
+            .accessibilityLabel("Hide \(selectedAssets.count) items")
+        }
+
+        private var compactHideIcon: some View {
+            ZStack(alignment: .topTrailing) {
+                Circle()
+                    .fill(selectedAssets.isEmpty ? Color.secondary.opacity(0.18) : Color.accentColor)
+                    .frame(width: 44, height: 44)
+                    .overlay(
                         Image(systemName: "lock.fill")
-                    }
+                            .font(.callout)
+                            .foregroundStyle(selectedAssets.isEmpty ? Color.secondary : Color.white)
+                    )
+
+                if selectedAssets.count > 0 {
+                    Text(selectionBadgeText)
+                        .font(.caption.bold())
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(Color.white)
+                                .shadow(color: .black.opacity(0.15), radius: 1, x: 0, y: 1)
+                        )
+                        .offset(x: 8, y: -8)
                 }
             }
-            .frame(minWidth: isCompactHeader ? 36 : nil, minHeight: isCompactHeader ? 36 : nil)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.small)
-        .disabled(selectedAssets.isEmpty)
-        .keyboardShortcut(.defaultAction)
-        .accessibilityLabel("Hide \(selectedAssets.count) items")
-    }
 
-    private var compactHideIcon: some View {
-        ZStack(alignment: .topTrailing) {
-            Circle()
-                .fill(selectedAssets.isEmpty ? Color.secondary.opacity(0.18) : Color.accentColor)
-                .frame(width: 44, height: 44)
-                .overlay(
-                    Image(systemName: "lock.fill")
-                        .font(.callout)
-                        .foregroundStyle(selectedAssets.isEmpty ? Color.secondary : Color.white)
-                )
-
-            if selectedAssets.count > 0 {
-                Text(selectionBadgeText)
-                    .font(.caption.bold())
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(Color.white)
-                            .shadow(color: .black.opacity(0.15), radius: 1, x: 0, y: 1)
-                    )
-                    .offset(x: 8, y: -8)
-            }
+        private var selectionBadgeText: String {
+            if selectedAssets.count > 99 { return "99+" }
+            return "\(selectedAssets.count)"
         }
     }
 
-    private var selectionBadgeText: String {
-        if selectedAssets.count > 99 { return "99+" }
-        return "\(selectedAssets.count)"
-    }
- }
- 
- #endif
+#endif
 
 struct PhotoAssetView: View {
     let asset: PHAsset

@@ -324,7 +324,8 @@ class SecurityService {
                 }
 
                 guard status == errSecSuccess, let data = result as? Data else {
-                    continuation.resume(throwing: AlbumError.unknownError(reason: "Keychain retrieval failed with status \(status)"))
+                    continuation.resume(
+                        throwing: AlbumError.unknownError(reason: "Keychain retrieval failed with status \(status)"))
                     return
                 }
 
@@ -346,7 +347,8 @@ class SecurityService {
 
                 let status = SecItemDelete(query as CFDictionary)
                 guard status == errSecSuccess || status == errSecItemNotFound else {
-                    continuation.resume(throwing: AlbumError.unknownError(reason: "Keychain deletion failed with status \(status)"))
+                    continuation.resume(
+                        throwing: AlbumError.unknownError(reason: "Keychain deletion failed with status \(status)"))
                     return
                 }
                 continuation.resume()
@@ -363,24 +365,26 @@ class SecurityService {
         guard let passwordData = password.data(using: .utf8) else {
             throw AlbumError.unknownError(reason: "Failed to encode password")
         }
-        
+
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
                 do {
                     var error: Unmanaged<CFError>?
-                    guard let accessControl = SecAccessControlCreateWithFlags(
-                        kCFAllocatorDefault,
-                        kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-                        .biometryAny,
-                        &error
-                    ) else {
+                    guard
+                        let accessControl = SecAccessControlCreateWithFlags(
+                            kCFAllocatorDefault,
+                            kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                            .biometryAny,
+                            &error
+                        )
+                    else {
                         let errorDesc = error?.takeRetainedValue().localizedDescription ?? "Unknown error"
                         throw AlbumError.unknownError(reason: "Failed to create access control: \(errorDesc)")
                     }
 
                     var deleteQuery: [String: Any] = [
                         kSecClass as String: kSecClassGenericPassword,
-                        kSecAttrAccount as String: self.biometricPasswordKey
+                        kSecAttrAccount as String: self.biometricPasswordKey,
                     ]
                     #if os(macOS)
                         if self.shouldUseDataProtectionKeychain() {
@@ -393,7 +397,7 @@ class SecurityService {
                         kSecClass as String: kSecClassGenericPassword,
                         kSecAttrAccount as String: self.biometricPasswordKey,
                         kSecValueData as String: passwordData,
-                        kSecAttrAccessControl as String: accessControl
+                        kSecAttrAccessControl as String: accessControl,
                     ]
                     #if os(macOS)
                         if self.shouldUseDataProtectionKeychain() {
@@ -410,7 +414,9 @@ class SecurityService {
                             let fallbackStatus = SecItemAdd(fallbackQuery as CFDictionary, nil)
 
                             guard fallbackStatus == errSecSuccess else {
-                                throw AlbumError.unknownError(reason: "Keychain storage failed with status \(status) and fallback \(fallbackStatus)")
+                                throw AlbumError.unknownError(
+                                    reason:
+                                        "Keychain storage failed with status \(status) and fallback \(fallbackStatus)")
                             }
                         #else
                             throw AlbumError.unknownError(reason: "Keychain storage failed with status \(status)")
@@ -429,41 +435,42 @@ class SecurityService {
     func retrieveBiometricPassword(prompt: String = "Authenticate to unlock Encrypted Album") async throws -> String? {
         let context = LAContext()
         context.localizedReason = prompt
-        
+
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
                 Task {
                     #if os(macOS)
-                    // If we are not using Data Protection Keychain, we likely used the fallback storage (no Access Control).
-                    // We must manually authenticate the user to maintain security.
-                    if !self.shouldUseDataProtectionKeychain() {
-                        do {
-                            // Authenticate user before accessing legacy keychain item
-                            let success = try await context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: prompt)
-                            if !success {
+                        // If we are not using Data Protection Keychain, we likely used the fallback storage (no Access Control).
+                        // We must manually authenticate the user to maintain security.
+                        if !self.shouldUseDataProtectionKeychain() {
+                            do {
+                                // Authenticate user before accessing legacy keychain item
+                                let success = try await context.evaluatePolicy(
+                                    .deviceOwnerAuthenticationWithBiometrics, localizedReason: prompt)
+                                if !success {
+                                    continuation.resume(throwing: AlbumError.biometricFailed)
+                                    return
+                                }
+                            } catch let error as LAError {
+                                if error.code == .userCancel {
+                                    continuation.resume(throwing: AlbumError.biometricCancelled)
+                                } else {
+                                    continuation.resume(throwing: AlbumError.biometricFailed)
+                                }
+                                return
+                            } catch {
                                 continuation.resume(throwing: AlbumError.biometricFailed)
                                 return
                             }
-                        } catch let error as LAError {
-                            if error.code == .userCancel {
-                                continuation.resume(throwing: AlbumError.biometricCancelled)
-                            } else {
-                                continuation.resume(throwing: AlbumError.biometricFailed)
-                            }
-                            return
-                        } catch {
-                            continuation.resume(throwing: AlbumError.biometricFailed)
-                            return
                         }
-                    }
                     #endif
-                    
+
                     var query: [String: Any] = [
                         kSecClass as String: kSecClassGenericPassword,
                         kSecAttrAccount as String: self.biometricPasswordKey,
                         kSecReturnData as String: true,
                         kSecMatchLimit as String: kSecMatchLimitOne,
-                        kSecUseAuthenticationContext as String: context
+                        kSecUseAuthenticationContext as String: context,
                     ]
                     #if os(macOS)
                         if self.shouldUseDataProtectionKeychain() {
@@ -485,7 +492,9 @@ class SecurityService {
                     }
 
                     guard status == errSecSuccess, let data = result as? Data else {
-                        continuation.resume(throwing: AlbumError.unknownError(reason: "Keychain retrieval failed with status: \(status)"))
+                        continuation.resume(
+                            throwing: AlbumError.unknownError(
+                                reason: "Keychain retrieval failed with status: \(status)"))
                         return
                     }
 
@@ -520,7 +529,7 @@ class SecurityService {
                     #if DEBUG
                         print("🔐 DEBUG: biometricPasswordExists query failed with status \(status)")
                     #endif
-                    // Treat unknown errors as "not found" or "false" to be safe, 
+                    // Treat unknown errors as "not found" or "false" to be safe,
                     // or we could throw if we wanted to be strict, but Bool return implies simple check.
                     continuation.resume(returning: false)
                 }
@@ -533,112 +542,111 @@ class SecurityService {
         try await deleteFromKeychain(for: biometricPasswordKey)
     }
 
-#if os(macOS)
-    /// Tracks whether the current process can use the Data Protection Keychain.
-    private static var keychainDomainPreference: KeychainDomainPreference = .unknown
-    private static let probeAccount = "EncryptedAlbum.KeychainProbe"
+    #if os(macOS)
+        /// Tracks whether the current process can use the Data Protection Keychain.
+        private static var keychainDomainPreference: KeychainDomainPreference = .unknown
+        private static let probeAccount = "EncryptedAlbum.KeychainProbe"
 
-    private enum KeychainDomainPreference {
-        case unknown
-        case legacyLogin
-        case dataProtection
-    }
-
-    // TODO(marchage): Remove legacy login-keychain fallback once release builds ship with the entitlement.
-    private func applyMacKeychainAttributes(to query: inout [String: Any], requireUISkip: Bool) {
-        if shouldUseDataProtectionKeychain() {
-            query[kSecUseDataProtectionKeychain as String] = true
-        } else if requireUISkip {
-            query[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUISkip
+        private enum KeychainDomainPreference {
+            case unknown
+            case legacyLogin
+            case dataProtection
         }
-    }
 
-    func shouldUseDataProtectionKeychain() -> Bool {
-        if #available(macOS 10.15, *) {
-            switch SecurityService.keychainDomainPreference {
-            case .dataProtection:
-                return true
-            case .legacyLogin:
-                return false
-            case .unknown:
-                break
+        // TODO(marchage): Remove legacy login-keychain fallback once release builds ship with the entitlement.
+        private func applyMacKeychainAttributes(to query: inout [String: Any], requireUISkip: Bool) {
+            if shouldUseDataProtectionKeychain() {
+                query[kSecUseDataProtectionKeychain as String] = true
+            } else if requireUISkip {
+                query[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUISkip
             }
+        }
 
-            // 1. Try to find the probe item first (Read-only check) to avoid write churn
-            let probeQuery: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrAccount as String: SecurityService.probeAccount,
-                kSecReturnAttributes as String: true,
-                kSecUseDataProtectionKeychain as String: true,
-            ]
-
-            var result: AnyObject?
-            let status = SecItemCopyMatching(probeQuery as CFDictionary, &result)
-
-            if status == errSecSuccess {
-                SecurityService.keychainDomainPreference = .dataProtection
-                return true
-            }
-
-            // 2. If not found, try to add it (Write check)
-            if status == errSecItemNotFound {
-                guard let probeData = "probe".data(using: .utf8) else {
+        func shouldUseDataProtectionKeychain() -> Bool {
+            if #available(macOS 10.15, *) {
+                switch SecurityService.keychainDomainPreference {
+                case .dataProtection:
+                    return true
+                case .legacyLogin:
                     return false
+                case .unknown:
+                    break
                 }
 
-                let addQuery: [String: Any] = [
+                // 1. Try to find the probe item first (Read-only check) to avoid write churn
+                let probeQuery: [String: Any] = [
                     kSecClass as String: kSecClassGenericPassword,
                     kSecAttrAccount as String: SecurityService.probeAccount,
-                    kSecValueData as String: probeData,
-                    kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                    kSecReturnAttributes as String: true,
                     kSecUseDataProtectionKeychain as String: true,
                 ]
 
-                let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+                var result: AnyObject?
+                let status = SecItemCopyMatching(probeQuery as CFDictionary, &result)
 
-                if addStatus == errSecSuccess {
-                    // Successfully added. Keep it to speed up future checks.
+                if status == errSecSuccess {
                     SecurityService.keychainDomainPreference = .dataProtection
                     return true
                 }
 
-                if addStatus == errSecDuplicateItem {
-                    // It exists (race condition or previous run), so we have access.
-                    SecurityService.keychainDomainPreference = .dataProtection
-                    return true
+                // 2. If not found, try to add it (Write check)
+                if status == errSecItemNotFound {
+                    guard let probeData = "probe".data(using: .utf8) else {
+                        return false
+                    }
+
+                    let addQuery: [String: Any] = [
+                        kSecClass as String: kSecClassGenericPassword,
+                        kSecAttrAccount as String: SecurityService.probeAccount,
+                        kSecValueData as String: probeData,
+                        kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                        kSecUseDataProtectionKeychain as String: true,
+                    ]
+
+                    let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+
+                    if addStatus == errSecSuccess {
+                        // Successfully added. Keep it to speed up future checks.
+                        SecurityService.keychainDomainPreference = .dataProtection
+                        return true
+                    }
+
+                    if addStatus == errSecDuplicateItem {
+                        // It exists (race condition or previous run), so we have access.
+                        SecurityService.keychainDomainPreference = .dataProtection
+                        return true
+                    }
+
+                    if addStatus == errSecMissingEntitlement {
+                        SecurityService.keychainDomainPreference = .legacyLogin
+                        return false
+                    }
+
+                    #if DEBUG
+                        print("🔐 DEBUG: Data Protection keychain probe write failed with status \(addStatus)")
+                    #endif
+                    // Do NOT cache legacy preference for transient errors (e.g. lock errors)
+                    return false
                 }
 
-                if addStatus == errSecMissingEntitlement {
+                // 3. Read failed with error other than NotFound
+                if status == errSecMissingEntitlement {
                     SecurityService.keychainDomainPreference = .legacyLogin
                     return false
                 }
 
                 #if DEBUG
-                    print("🔐 DEBUG: Data Protection keychain probe write failed with status \(addStatus)")
+                    print("🔐 DEBUG: Data Protection keychain probe read failed with status \(status)")
                 #endif
-                // Do NOT cache legacy preference for transient errors (e.g. lock errors)
+                // Do NOT cache legacy preference for transient errors
+                return false
+            } else {
                 return false
             }
-
-            // 3. Read failed with error other than NotFound
-            if status == errSecMissingEntitlement {
-                SecurityService.keychainDomainPreference = .legacyLogin
-                return false
-            }
-
-            #if DEBUG
-                print("🔐 DEBUG: Data Protection keychain probe read failed with status \(status)")
-            #endif
-            // Do NOT cache legacy preference for transient errors
-            return false
-        } else {
-            return false
         }
-    }
-#else
-    private func applyMacKeychainAttributes(to query: inout [String: Any], requireUISkip: Bool) {}
-#endif
-
+    #else
+        private func applyMacKeychainAttributes(to query: inout [String: Any], requireUISkip: Bool) {}
+    #endif
 
 }
 
