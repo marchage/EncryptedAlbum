@@ -167,12 +167,12 @@ private struct UltraPrivacyCoverView: View {
             VStack(spacing: 20) {
                 Image(systemName: "lock.fill")
                     .font(.system(size: 60))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white)
                 
                 Text("Encrypted Album Locked")
                     .font(.title2)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white)
             }
         }
     }

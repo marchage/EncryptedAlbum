@@ -3,6 +3,7 @@ import SwiftUI
 struct PreferencesView: View {
     @EnvironmentObject var albumManager: AlbumManager
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
+    @AppStorage("privacyBackgroundStyle") private var privacyBackgroundStyle: PrivacyBackgroundStyle = .rainbow
 
     @State private var healthReport: SecurityHealthReport?
     @State private var isCheckingHealth = false
@@ -12,6 +13,20 @@ struct PreferencesView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("General")
                 .font(.headline)
+
+            HStack {
+                Text("Privacy Screen Style")
+                Spacer()
+                Picker("", selection: $privacyBackgroundStyle) {
+                    ForEach(PrivacyBackgroundStyle.allCases) { style in
+                        Text(style.displayName).tag(style)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+            }
+
+            Divider()
 
             HStack {
                 Text("Undo banner timeout")
