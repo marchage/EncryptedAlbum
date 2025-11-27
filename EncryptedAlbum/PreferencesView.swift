@@ -155,6 +155,29 @@ struct PreferencesView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
+                        // Auto-wipe on failed unlock attempts
+                        Toggle("Auto-wipe on repeated failed unlocks", isOn: $albumManager.autoWipeOnFailedAttemptsEnabled)
+                            .onChange(of: albumManager.autoWipeOnFailedAttemptsEnabled) { _ in
+                                albumManager.saveSettings()
+                            }
+
+                        if albumManager.autoWipeOnFailedAttemptsEnabled {
+                            HStack {
+                                Text("Wipe threshold")
+                                Spacer()
+                                Stepper("\(albumManager.autoWipeFailedAttemptsThreshold)", value: $albumManager.autoWipeFailedAttemptsThreshold, in: 1...100)
+                                    .labelsHidden()
+                            }
+                            .onChange(of: albumManager.autoWipeFailedAttemptsThreshold) { _ in
+                                albumManager.saveSettings()
+                            }
+                        }
+
+                        Toggle("Enable Recovery Key", isOn: $albumManager.enableRecoveryKey)
+                            .onChange(of: albumManager.enableRecoveryKey) { _ in
+                                albumManager.saveSettings()
+                            }
+
                         Toggle("Secure Deletion (Overwrite)", isOn: $albumManager.secureDeletionEnabled)
                         Text(
                             "When enabled, deleted files are overwritten 3 times. This is slower but more secure. Disable for instant deletion."
@@ -292,6 +315,87 @@ struct PreferencesView: View {
 
                         Text("Import & Export")
                             .font(.headline)
+
+                        // Export & privacy controls
+                        Toggle("Require re-auth for exports", isOn: $albumManager.requireReauthForExports)
+                            .onChange(of: albumManager.requireReauthForExports) { _ in
+                                albumManager.saveSettings()
+                            }
+
+                        HStack {
+                            Text("Backup Schedule")
+                            Spacer()
+                            Picker("Backup", selection: $albumManager.backupSchedule) {
+                                Text("Manual").tag("manual")
+                                Text("Weekly").tag("weekly")
+                                Text("Monthly").tag("monthly")
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                        }
+                        .onChange(of: albumManager.backupSchedule) { _ in
+                            albumManager.saveSettings()
+                        }
+
+                        Toggle("Encrypted Cloud Sync", isOn: $albumManager.encryptedCloudSyncEnabled)
+                            .onChange(of: albumManager.encryptedCloudSyncEnabled) { _ in
+                                albumManager.saveSettings()
+                            }
+
+                        HStack {
+                            Text("Thumbnail Privacy")
+                            Spacer()
+                            Picker("Thumbnail", selection: $albumManager.thumbnailPrivacy) {
+                                Text("Blur").tag("blur")
+                                Text("Hide").tag("hide")
+                                Text("None").tag("none")
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                        }
+                        .onChange(of: albumManager.thumbnailPrivacy) { _ in
+                            albumManager.saveSettings()
+                        }
+
+                        Toggle("Strip metadata on export", isOn: $albumManager.stripMetadataOnExport)
+                            .onChange(of: albumManager.stripMetadataOnExport) { _ in
+                                albumManager.saveSettings()
+                            }
+
+                        Toggle("Password-protect exports", isOn: $albumManager.exportPasswordProtect)
+                            .onChange(of: albumManager.exportPasswordProtect) { _ in
+                                albumManager.saveSettings()
+                            }
+
+                        HStack {
+                            Text("Export expiry (days)")
+                            Spacer()
+                            Stepper("\(albumManager.exportExpiryDays)", value: $albumManager.exportExpiryDays, in: 1...365)
+                                .labelsHidden()
+                        }
+                        .onChange(of: albumManager.exportExpiryDays) { _ in
+                            albumManager.saveSettings()
+                        }
+
+                        Toggle("Enable verbose logging", isOn: $albumManager.enableVerboseLogging)
+                            .onChange(of: albumManager.enableVerboseLogging) { _ in
+                                albumManager.saveSettings()
+                            }
+
+                        HStack {
+                            Text("Passphrase minimum length")
+                            Spacer()
+                            Stepper("\(albumManager.passphraseMinLength)", value: $albumManager.passphraseMinLength, in: 6...64)
+                                .labelsHidden()
+                        }
+                        .onChange(of: albumManager.passphraseMinLength) { _ in
+                            albumManager.saveSettings()
+                        }
+
+                        Toggle("Telemetry (opt-in)", isOn: $albumManager.telemetryEnabled)
+                            .onChange(of: albumManager.telemetryEnabled) { _ in
+                                albumManager.saveSettings()
+                            }
 
                         Toggle("Auto-remove duplicates on import", isOn: $albumManager.autoRemoveDuplicatesOnImport)
                         Text("Automatically skip importing photos that are already in the album.")

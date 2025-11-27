@@ -355,6 +355,20 @@ class AlbumManager: ObservableObject {
     @Published var authenticationPromptActive: Bool = false
     @Published var isLoading: Bool = true
     @Published var isDecoyMode: Bool = false
+    // New settings implemented: security, backups, privacy and telemetry toggles
+    @Published var autoWipeOnFailedAttemptsEnabled: Bool = false
+    @Published var autoWipeFailedAttemptsThreshold: Int = 10
+    @Published var requireReauthForExports: Bool = true
+    @Published var backupSchedule: String = "manual" // manual | weekly | monthly
+    @Published var encryptedCloudSyncEnabled: Bool = false
+    @Published var thumbnailPrivacy: String = "blur" // none | blur | hide
+    @Published var stripMetadataOnExport: Bool = true
+    @Published var exportPasswordProtect: Bool = true
+    @Published var exportExpiryDays: Int = 30
+    @Published var enableVerboseLogging: Bool = false
+    @Published var telemetryEnabled: Bool = false
+    @Published var passphraseMinLength: Int = 8
+    @Published var enableRecoveryKey: Bool = false
 
     // Queue for imports that arrive while the album is locked
     private var pendingImportURLs: [URL] = []
@@ -1904,6 +1918,20 @@ class AlbumManager: ObservableObject {
                 "cameraSaveToAlbumDirectly": String(cameraSaveToAlbumDirectly),
                 "cameraMaxQuality": String(cameraMaxQuality),
                 "cameraAutoRemoveFromPhotos": String(cameraAutoRemoveFromPhotos),
+                // New settings
+                "autoWipeOnFailedAttemptsEnabled": String(autoWipeOnFailedAttemptsEnabled),
+                "autoWipeFailedAttemptsThreshold": String(autoWipeFailedAttemptsThreshold),
+                "requireReauthForExports": String(requireReauthForExports),
+                "backupSchedule": backupSchedule,
+                "encryptedCloudSyncEnabled": String(encryptedCloudSyncEnabled),
+                "thumbnailPrivacy": thumbnailPrivacy,
+                "stripMetadataOnExport": String(stripMetadataOnExport),
+                "exportPasswordProtect": String(exportPasswordProtect),
+                "exportExpiryDays": String(exportExpiryDays),
+                "enableVerboseLogging": String(enableVerboseLogging),
+                "telemetryEnabled": String(telemetryEnabled),
+                "passphraseMinLength": String(passphraseMinLength),
+                "enableRecoveryKey": String(enableRecoveryKey),
             ]
 
             do {
@@ -2023,9 +2051,90 @@ class AlbumManager: ObservableObject {
                 cameraAutoRemoveFromPhotos = autoRemove
             }
 
+            // New settings mapping (provide safe defaults when missing)
+            if let awString = settings["autoWipeOnFailedAttemptsEnabled"], let aw = Bool(awString) {
+                autoWipeOnFailedAttemptsEnabled = aw
+            } else {
+                autoWipeOnFailedAttemptsEnabled = false
+            }
+
+            if let awThreshold = settings["autoWipeFailedAttemptsThreshold"], let t = Int(awThreshold) {
+                autoWipeFailedAttemptsThreshold = t
+            } else {
+                autoWipeFailedAttemptsThreshold = 10
+            }
+
+            if let reauthString = settings["requireReauthForExports"], let reauth = Bool(reauthString) {
+                requireReauthForExports = reauth
+            } else {
+                requireReauthForExports = true
+            }
+
+            if let schedule = settings["backupSchedule"] {
+                backupSchedule = schedule
+            } else {
+                backupSchedule = "manual"
+            }
+
+            if let cloudSyncString = settings["encryptedCloudSyncEnabled"], let cloudSync = Bool(cloudSyncString) {
+                encryptedCloudSyncEnabled = cloudSync
+            } else {
+                encryptedCloudSyncEnabled = false
+            }
+
+            if let thumbPrivacy = settings["thumbnailPrivacy"] {
+                thumbnailPrivacy = thumbPrivacy
+            } else {
+                thumbnailPrivacy = "blur"
+            }
+
+            if let stripMetaString = settings["stripMetadataOnExport"], let stripMeta = Bool(stripMetaString) {
+                stripMetadataOnExport = stripMeta
+            } else {
+                stripMetadataOnExport = true
+            }
+
+            if let exportProtectString = settings["exportPasswordProtect"], let exportProtect = Bool(exportProtectString) {
+                exportPasswordProtect = exportProtect
+            } else {
+                exportPasswordProtect = true
+            }
+
+            if let expiryString = settings["exportExpiryDays"], let expiry = Int(expiryString) {
+                exportExpiryDays = expiry
+            } else {
+                exportExpiryDays = 30
+            }
+
+            if let verboseString = settings["enableVerboseLogging"], let verbose = Bool(verboseString) {
+                enableVerboseLogging = verbose
+            } else {
+                enableVerboseLogging = false
+            }
+
+            if let telemetryString = settings["telemetryEnabled"], let telemetry = Bool(telemetryString) {
+                telemetryEnabled = telemetry
+            } else {
+                // Respect user preference: default to disabled
+                telemetryEnabled = false
+            }
+
+            if let passMinString = settings["passphraseMinLength"], let passMin = Int(passMinString) {
+                passphraseMinLength = passMin
+            } else {
+                passphraseMinLength = 8
+            }
+
+            if let recoveryString = settings["enableRecoveryKey"], let recovery = Bool(recoveryString) {
+                enableRecoveryKey = recovery
+            } else {
+                enableRecoveryKey = false
+            }
+
             if !passwordHash.isEmpty {
                 showUnlockPrompt = true
             }
+
             isLoading = false
         }
     }
