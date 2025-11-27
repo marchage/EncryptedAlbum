@@ -17,6 +17,7 @@ struct PhotoViewerSheet: View {
     @State private var videoURL: URL?
     @State private var decryptTask: Task<Void, Never>?
     @State private var failedToLoad = false
+    @State private var isMaximized: Bool = false
 
     var body: some View {
         SecureWrapper {
@@ -63,8 +64,27 @@ struct PhotoViewerSheet: View {
                     // Media content
                     if photo.mediaType == .video {
                         if let url = videoURL {
-                            CustomVideoPlayer(url: url)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            ZStack(alignment: .topTrailing) {
+                                CustomVideoPlayer(url: url)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                                // Maximize button for iOS to present a full-screen player
+                                #if os(iOS)
+                                Button(action: { isMaximized = true }) {
+                                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                        .padding(10)
+                                        .background(.ultraThinMaterial)
+                                        .clipShape(Circle())
+                                }
+                                .padding(12)
+                                #endif
+                            }
+                            #if os(iOS)
+                                .fullScreenCover(isPresented: $isMaximized) {
+                                    CustomVideoPlayer(url: url)
+                                        .edgesIgnoringSafeArea(.all)
+                                }
+                            #endif
                         } else {
                             decryptingPlaceholder
                         }

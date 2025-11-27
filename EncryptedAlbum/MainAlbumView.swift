@@ -847,6 +847,21 @@ struct MainAlbumView: View {
                     restorationProgressOverlay
                 }
             }
+            .overlay {
+                // When the search UI is active, allow taps on the content area to dismiss it.
+                #if os(iOS)
+                if isSearchActive {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation {
+                                isSearchActive = false
+                                dismissKeyboard()
+                            }
+                        }
+                }
+                #endif
+            }
         #if os(macOS)
         return viewWithOverlays
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in

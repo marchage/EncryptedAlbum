@@ -55,20 +55,16 @@ struct UnlockView: View {
         // On iOS the AppIcon entries in AppIcon.appiconset are not always addressable
         // by filename. Try the generated "AppIcon" name first (other views use this),
         // and fall back to the marketing filename if available.
-        #if DEBUG
-        // Helpful debug logging — remove or keep behind DEBUG if you prefer.
+        // Helpful debug logging — no DEBUG guard required; AppLog handles gating.
         let attemptNames = ["AppIconMarketingRuntime", "AppIcon", "app-icon~ios-marketing"]
-        #endif
 
         // Try a runtime image set first (recommended). Fall back to AppIcon and marketing asset names.
         let appIcon = UIImage(named: "AppIconMarketingRuntime") ?? UIImage(named: "AppIcon") ?? UIImage(named: "app-icon~ios-marketing")
-        #if DEBUG
         if appIcon == nil {
             AppLog.debugPublic("UnlockView: could not load app icon using names: \(attemptNames)")
         } else {
             AppLog.debugPublic("UnlockView: loaded app icon using a fallback name")
         }
-        #endif
         if let appIcon = appIcon {
             return AnyView(Image(uiImage: appIcon)
                 .resizable()

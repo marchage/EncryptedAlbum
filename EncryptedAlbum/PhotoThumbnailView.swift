@@ -125,11 +125,9 @@ struct PhotoThumbnailView: View {
                 let data = try await albumManager.decryptThumbnail(for: photo)
 
                 if data.isEmpty {
-                    #if DEBUG
-                        AppLog.debugPrivate(
-                            "Thumbnail data empty for photo id=\(photo.id), thumbnailPath=\(photo.thumbnailPath), encryptedThumb=\(photo.encryptedThumbnailPath ?? "nil")"
-                        )
-                    #endif
+                    AppLog.debugPrivate(
+                        "Thumbnail data empty for photo id=\(photo.id), thumbnailPath=\(photo.thumbnailPath), encryptedThumb=\(photo.encryptedThumbnailPath ?? \"nil\")"
+                    )
                     await MainActor.run {
                         failedToLoad = true
                     }
@@ -140,16 +138,12 @@ struct PhotoThumbnailView: View {
                     if let image = Image(data: data) {
                         thumbnailImage = image
                     } else {
-                        #if DEBUG
-                            AppLog.debugPrivate("Failed to create Image from decrypted data for photo id=\(photo.id)")
-                        #endif
+                        AppLog.debugPrivate("Failed to create Image from decrypted data for photo id=\(photo.id)")
                         failedToLoad = true
                     }
                 }
             } catch {
-                #if DEBUG
-                    AppLog.error("Error decrypting thumbnail for photo id=\(photo.id): \(error.localizedDescription)")
-                #endif
+                AppLog.error("Error decrypting thumbnail for photo id=\(photo.id): \(error.localizedDescription)")
             }
         }
     }

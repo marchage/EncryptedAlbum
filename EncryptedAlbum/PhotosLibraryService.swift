@@ -241,9 +241,7 @@ class PhotosLibraryService {
 
     /// Retrieves media data for a Photos asset asynchronously, preferring file-backed results for streaming encryption.
     func getMediaDataAsync(for asset: PHAsset) async -> MediaFetchResult? {
-        #if DEBUG
-            AppLog.debugPrivate("getMediaDataAsync called for asset: \(asset.localIdentifier), mediaType: \(asset.mediaType.rawValue)")
-        #endif
+        AppLog.debugPrivate("getMediaDataAsync called for asset: \(asset.localIdentifier), mediaType: \(asset.mediaType.rawValue)")
 
         let result = await withTaskGroup(of: MediaFetchResult?.self) { group in
             // Add fetch task first (higher priority)
@@ -275,13 +273,11 @@ class PhotosLibraryService {
                 }
             }
 
-            #if DEBUG
-                if fetchResult != nil {
-                    AppLog.debugPrivate("getMediaDataAsync succeeded for asset: \(asset.localIdentifier)")
-                } else {
-                    AppLog.debugPrivate("getMediaDataAsync returned nil for asset: \(asset.localIdentifier)")
-                }
-            #endif
+            if fetchResult != nil {
+                AppLog.debugPrivate("getMediaDataAsync succeeded for asset: \(asset.localIdentifier)")
+            } else {
+                AppLog.debugPrivate("getMediaDataAsync returned nil for asset: \(asset.localIdentifier)")
+            }
 
             return fetchResult
         }
@@ -301,9 +297,7 @@ class PhotosLibraryService {
     }
 
     private func fetchPhotoResource(for asset: PHAsset) async -> MediaFetchResult? {
-        #if DEBUG
-            AppLog.debugPrivate("Fetching photo resource for asset: \(asset.localIdentifier)")
-        #endif
+        AppLog.debugPrivate("Fetching photo resource for asset: \(asset.localIdentifier)")
 
         let resources = PHAssetResource.assetResources(for: asset)
         if let resource = resources.first(where: { $0.type == .photo || $0.type == .fullSizePhoto }) ?? resources.first
@@ -330,9 +324,7 @@ class PhotosLibraryService {
             }
         }
 
-        #if DEBUG
-            AppLog.debugPrivate("Falling back to legacy photo fetch for asset: \(asset.localIdentifier)")
-        #endif
+        AppLog.debugPrivate("Falling back to legacy photo fetch for asset: \(asset.localIdentifier)")
         return await legacyPhotoResult(for: asset)
     }
 
@@ -357,21 +349,15 @@ class PhotosLibraryService {
         let options = PHAssetResourceRequestOptions()
         options.isNetworkAccessAllowed = true
 
-        #if DEBUG
-            AppLog.debugPublic("Starting export for resource: \(suggestedName)")
-        #endif
+        AppLog.debugPublic("Starting export for resource: \(suggestedName)")
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             PHAssetResourceManager.default().writeData(for: resource, toFile: tempURL, options: options) { error in
                 if let error = error {
-                    #if DEBUG
-                        AppLog.error("Export failed for \(suggestedName): \(error.localizedDescription)")
-                    #endif
+                    AppLog.error("Export failed for \(suggestedName): \(error.localizedDescription)")
                     continuation.resume(throwing: error)
                 } else {
-                    #if DEBUG
-                        AppLog.debugPublic("Export succeeded for \(suggestedName)")
-                    #endif
+                    AppLog.debugPublic("Export succeeded for \(suggestedName)")
                     continuation.resume(returning: ())
                 }
             }

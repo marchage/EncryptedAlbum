@@ -13,18 +13,24 @@ struct AppLog {
         defaultLogger.info("\(message, privacy: .public)")
     }
 
-    static func debugPublic(_ message: String) {
+    /// Debug-level public message. Message is an @autoclosure so it is only evaluated
+    /// when debug logging is enabled (DEBUG); in Release builds the closure isn't
+    /// evaluated and no work is done.
+    static func debugPublic(_ message: @autoclosure () -> String) {
         #if DEBUG
-        defaultLogger.debug("\(message, privacy: .public)")
+        defaultLogger.debug("\(message(), privacy: .public)")
         #else
-        // Release: no-op so debug logs don't show in Release builds
+        // Release: no-op so debug logs don't show in Release builds. The @autoclosure
+        // ensures the message expression is not evaluated when logging is disabled.
         #endif
     }
 
-    static func debugPrivate(_ message: String) {
+    /// Debug-level private message. Same as `debugPublic` but uses private privacy
+    /// to avoid exposing sensitive data in system logs.
+    static func debugPrivate(_ message: @autoclosure () -> String) {
         #if DEBUG
         // Use private privacy to avoid putting secrets/paths in system logs
-        defaultLogger.debug("\(message, privacy: .private)")
+        defaultLogger.debug("\(message(), privacy: .private)")
         #else
         // Release: no-op
         #endif

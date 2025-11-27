@@ -133,10 +133,8 @@ struct AlbumPhotoView: View {
                     #endif
                 }
             } catch {
-                // Thumbnail decryption failed, keep placeholder
-                #if DEBUG
-                    AppLog.error("Failed to load thumbnail for \(photo.filename): \(error.localizedDescription)")
-                #endif
+                // Thumbnail decryption failed, keep placeholder; always log errors
+                AppLog.error("Failed to load thumbnail for \(photo.filename): \(error.localizedDescription)")
             }
         }
     }

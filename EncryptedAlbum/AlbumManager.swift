@@ -69,9 +69,7 @@ class SecureMemory {
 
         // Lock memory to prevent swapping
         if mlock(ptr, count) != 0 {
-            #if DEBUG
-                AppLog.warning("mlock failed with error: \(errno)")
-            #endif
+            AppLog.warning("mlock failed with error: \(errno)")
         }
 
         return UnsafeMutableRawBufferPointer(start: ptr, count: count)
@@ -439,9 +437,7 @@ class AlbumManager: ObservableObject {
             }
         #endif
 
-        #if DEBUG
-            AppLog.debugPrivate("Loading settings from: \(settingsFileURL.path)")
-        #endif
+        AppLog.debugPrivate("Loading settings from: \(settingsFileURL.path)")
 
         // Load settings asynchronously to ensure state is ready before init completes
         Task {
@@ -930,17 +926,13 @@ class AlbumManager: ObservableObject {
 
             // Skip idle check if timer is suspended (e.g., during imports)
             if self.idleTimerSuspendCount > 0 {
-                #if DEBUG
-                    AppLog.debugPublic("Idle timer check skipped (suspended)")
-                #endif
+                AppLog.debugPublic("Idle timer check skipped (suspended)")
                 return
             }
 
             let elapsed = Date().timeIntervalSince(self.lastActivity)
-            if elapsed > self.idleTimeout {
-                #if DEBUG
-                    AppLog.debugPublic("Auto-locking album after \(Int(elapsed))s of inactivity")
-                #endif
+                if elapsed > self.idleTimeout {
+                AppLog.debugPublic("Auto-locking album after \(Int(elapsed))s of inactivity")
                 self.lock()
             }
         }
@@ -953,35 +945,27 @@ class AlbumManager: ObservableObject {
     @MainActor
     func suspendIdleTimer() {
         idleTimerSuspendCount += 1
-        #if DEBUG
-            if idleTimerSuspendCount == 1 {
-                AppLog.debugPublic("Idle timer SUSPENDED - album will not auto-lock")
-            } else {
-                AppLog.debugPublic("Idle timer suspension depth now \(idleTimerSuspendCount)")
-            }
-        #endif
+        if idleTimerSuspendCount == 1 {
+            AppLog.debugPublic("Idle timer SUSPENDED - album will not auto-lock")
+        } else {
+            AppLog.debugPublic("Idle timer suspension depth now \(idleTimerSuspendCount)")
+        }
     }
 
     /// Resumes the idle timer after long operations complete
     @MainActor
     func resumeIdleTimer() {
         guard idleTimerSuspendCount > 0 else {
-            #if DEBUG
-                AppLog.warning("resumeIdleTimer called with no active suspensions")
-            #endif
+            AppLog.warning("resumeIdleTimer called with no active suspensions")
             return
         }
 
         idleTimerSuspendCount -= 1
-        if idleTimerSuspendCount == 0 {
+            if idleTimerSuspendCount == 0 {
             lastActivity = Date()  // Reset activity timestamp
-            #if DEBUG
-                AppLog.debugPublic("Idle timer RESUMED - album will auto-lock after \(Int(idleTimeout))s of inactivity")
-            #endif
+            AppLog.debugPublic("Idle timer RESUMED - album will auto-lock after \(Int(idleTimeout))s of inactivity")
         } else {
-            #if DEBUG
-                AppLog.debugPublic("Idle timer suspension depth decreased to \(idleTimerSuspendCount)")
-            #endif
+            AppLog.debugPublic("Idle timer suspension depth decreased to \(idleTimerSuspendCount)")
         }
     }
 
@@ -1028,9 +1012,7 @@ class AlbumManager: ObservableObject {
             }
 
             if isDuplicate {
-                #if DEBUG
-                    AppLog.debugPrivate("Media already hidden: \(filename) (assetId: \(assetId))")
-                #endif
+                AppLog.debugPrivate("Media already hidden: \(filename) (assetId: \(assetId))")
                 return
             }
         }
@@ -1108,9 +1090,7 @@ class AlbumManager: ObservableObject {
             if let assetId = assetIdentifier,
                 self.hiddenPhotos.contains(where: { $0.originalAssetIdentifier == assetId })
             {
-                #if DEBUG
-                    AppLog.debugPrivate("Duplicate detected in final check, skipping: \(filename)")
-                #endif
+                AppLog.debugPrivate("Duplicate detected in final check, skipping: \(filename)")
                 return
             }
 
@@ -1203,9 +1183,7 @@ class AlbumManager: ObservableObject {
                         from: url.deletingLastPathComponent(),
                         encryptionKey: encryptionKey, hmacKey: hmacKey)
                 } catch {
-                    #if DEBUG
-                        AppLog.debugPrivate("[AlbumManager] decryptThumbnail: error reading encrypted thumbnail for id=\(photo.id): \(error.localizedDescription)")
-                    #endif
+                    AppLog.debugPrivate("[AlbumManager] decryptThumbnail: error reading encrypted thumbnail for id=\(photo.id): \(error.localizedDescription)")
                 }
             }
         }
@@ -1267,9 +1245,7 @@ class AlbumManager: ObservableObject {
             // Now delete the file
             try FileManager.default.removeItem(at: url)
         } catch {
-            #if DEBUG
-                AppLog.error("Secure deletion failed, using standard deletion: \(error.localizedDescription)")
-            #endif
+            AppLog.error("Secure deletion failed, using standard deletion: \(error.localizedDescription)")
             try? FileManager.default.removeItem(at: url)
         }
     }
@@ -1660,9 +1636,7 @@ class AlbumManager: ObservableObject {
     /// Generates a thumbnail from video data (synchronous, call from background queue).
     private func generateVideoThumbnail(from videoData: Data) async -> Data {
         guard videoData.count > 0 && videoData.count <= CryptoConstants.maxMediaFileSize else {
-            #if DEBUG
-                AppLog.debugPrivate("Video data size invalid: \(videoData.count) bytes")
-            #endif
+            AppLog.debugPrivate("Video data size invalid: \(videoData.count) bytes")
             return Data()
         }
 
@@ -1675,9 +1649,7 @@ class AlbumManager: ObservableObject {
             let asset = AVAsset(url: tempURL)
             return await generateVideoThumbnail(fromAsset: asset)
         } catch {
-            #if DEBUG
-                AppLog.error("Failed to generate video thumbnail: \(error.localizedDescription)")
-            #endif
+            AppLog.error("Failed to generate video thumbnail: \(error.localizedDescription)")
         }
 
         return Data()
@@ -1692,9 +1664,7 @@ class AlbumManager: ObservableObject {
         do {
             let tracks = try await asset.load(.tracks)
             guard tracks.contains(where: { $0.mediaType == .video }) else {
-                #if DEBUG
-                    AppLog.debugPublic("No video tracks found in asset")
-                #endif
+                AppLog.debugPublic("No video tracks found in asset")
                 return Data()
             }
 
@@ -1756,9 +1726,7 @@ class AlbumManager: ObservableObject {
                 return jpegData
             #endif
         } catch {
-            #if DEBUG
-                AppLog.error("Failed to generate video thumbnail: \(error.localizedDescription)")
-            #endif
+            AppLog.error("Failed to generate video thumbnail: \(error.localizedDescription)")
             return Data()
         }
     }
@@ -1876,9 +1844,7 @@ class AlbumManager: ObservableObject {
 
     private func savePhotos() {
         guard let data = try? JSONEncoder().encode(hiddenPhotos) else { return }
-        #if DEBUG
-            AppLog.debugPrivate("savePhotos: writing \(hiddenPhotos.count) items to \(photosMetadataFileURL.path)")
-        #endif
+        AppLog.debugPrivate("savePhotos: writing \(hiddenPhotos.count) items to \(photosMetadataFileURL.path)")
         try? data.write(to: photosMetadataFileURL)
     }
 
@@ -1895,9 +1861,7 @@ class AlbumManager: ObservableObject {
             do {
                 try FileManager.default.createDirectory(at: albumBaseURL, withIntermediateDirectories: true)
             } catch {
-                #if DEBUG
-                    AppLog.error("Failed to create album directory: \(error.localizedDescription)")
-                #endif
+                AppLog.error("Failed to create album directory: \(error.localizedDescription)")
                 return
             }
 
@@ -1934,15 +1898,11 @@ class AlbumManager: ObservableObject {
             do {
                 let data = try JSONEncoder().encode(settings)
                 try data.write(to: settingsFileURL, options: .atomic)
-                #if DEBUG
-                    AppLog.debugPrivate("Successfully saved settings to: \(settingsFileURL.path)")
-                #endif
+                AppLog.debugPrivate("Successfully saved settings to: \(settingsFileURL.path)")
                 // Respect the telemetry flag: enable/disable the TelemetryService on save
                 TelemetryService.shared.setEnabled(telemetryEnabled)
             } catch {
-                #if DEBUG
-                    AppLog.error("Failed to save settings: \(error.localizedDescription)")
-                #endif
+                AppLog.error("Failed to save settings: \(error.localizedDescription)")
             }
         }
     }
@@ -1953,9 +1913,7 @@ class AlbumManager: ObservableObject {
         // Actually, loadSettings accesses @Published properties, so it should run on MainActor eventually?
         // But it reads from disk/keychain.
 
-        #if DEBUG
-            AppLog.debugPrivate("Attempting to load settings from: \(settingsFileURL.path)")
-        #endif
+        AppLog.debugPrivate("Attempting to load settings from: \(settingsFileURL.path)")
 
         // Load credentials from Keychain
         if let credentials = try? await passwordService.retrievePasswordCredentials() {
@@ -1963,30 +1921,22 @@ class AlbumManager: ObservableObject {
                 passwordHash = credentials.hash.map { String(format: "%02x", $0) }.joined()
                 passwordSalt = credentials.salt.base64EncodedString()
             }
-            #if DEBUG
-                AppLog.debugPublic("Loaded credentials from Keychain")
-            #endif
+            AppLog.debugPublic("Loaded credentials from Keychain")
         } else {
-            #if DEBUG
-                AppLog.debugPublic("No credentials found in Keychain")
-            #endif
+            AppLog.debugPublic("No credentials found in Keychain")
         }
 
         guard let data = try? Data(contentsOf: settingsFileURL),
             let settings = try? JSONDecoder().decode([String: String].self, from: data)
         else {
-            #if DEBUG
-                AppLog.debugPublic("No settings file found or failed to decode")
-            #endif
+            AppLog.debugPublic("No settings file found or failed to decode")
             await MainActor.run {
                 isLoading = false
             }
             return
         }
 
-        #if DEBUG
-            AppLog.debugPublic("Loaded settings: [REDACTED]")
-        #endif
+        AppLog.debugPublic("Loaded settings: [REDACTED]")
 
         await MainActor.run {
             if let versionString = settings["securityVersion"], let version = Int(versionString) {
@@ -2157,9 +2107,7 @@ class AlbumManager: ObservableObject {
         do {
             try await securityService.storeBiometricPassword(password)
         } catch {
-            #if DEBUG
-                AppLog.error("Failed to store biometric password: \(error.localizedDescription)")
-            #endif
+            AppLog.error("Failed to store biometric password: \(error.localizedDescription)")
         }
     }
 
@@ -2199,9 +2147,7 @@ class AlbumManager: ObservableObject {
             let (encryptedData, nonce, hmac) = try await cryptoService.encryptDataWithIntegrity(
                 testData, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
             guard !encryptedData.isEmpty else {
-                #if DEBUG
-                    AppLog.error("Crypto validation failed: encryption returned empty data")
-                #endif
+                AppLog.error("Crypto validation failed: encryption returned empty data")
                 return false
             }
 
@@ -2209,37 +2155,27 @@ class AlbumManager: ObservableObject {
             let decrypted = try await cryptoService.decryptDataWithIntegrity(
                 encryptedData, nonce: nonce, hmac: hmac, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
             guard !decrypted.isEmpty else {
-                #if DEBUG
-                    AppLog.error("Crypto validation failed: decryption returned empty data")
-                #endif
+                AppLog.error("Crypto validation failed: decryption returned empty data")
                 return false
             }
 
             // Verify round-trip integrity
             guard decrypted == testData else {
-                #if DEBUG
-                    AppLog.error("Crypto validation failed: decrypted data doesn't match original")
-                #endif
+                AppLog.error("Crypto validation failed: decrypted data doesn't match original")
                 return false
             }
         } catch {
-            #if DEBUG
-                AppLog.error("Crypto validation failed: \(error.localizedDescription)")
-            #endif
+            AppLog.error("Crypto validation failed: \(error.localizedDescription)")
             return false
         }
 
         // Test key derivation consistency
         guard await validateKeyDerivationConsistency() else {
-            #if DEBUG
-                AppLog.error("Crypto validation failed: key derivation consistency check")
-            #endif
+            AppLog.error("Crypto validation failed: key derivation consistency check")
             return false
         }
 
-        #if DEBUG
-            AppLog.debugPublic("Crypto validation successful")
-        #endif
+        AppLog.debugPublic("Crypto validation successful")
         return true
     }
 
@@ -2247,9 +2183,7 @@ class AlbumManager: ObservableObject {
     private func validateKeyDerivationConsistency() async -> Bool {
         // Check that we have cached keys
         guard cachedEncryptionKey != nil && cachedHMACKey != nil else {
-            #if DEBUG
-                AppLog.error("Key validation failed: cached keys not available")
-            #endif
+            AppLog.error("Key validation failed: cached keys not available")
             return false
         }
 
@@ -2261,15 +2195,11 @@ class AlbumManager: ObservableObject {
             let decrypted = try await cryptoService.decryptDataWithIntegrity(
                 encryptedData, nonce: nonce, hmac: hmac, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
             guard decrypted == testData else {
-                #if DEBUG
-                    AppLog.error("Key validation failed: round-trip test failed")
-                #endif
+                AppLog.error("Key validation failed: round-trip test failed")
                 return false
             }
         } catch {
-            #if DEBUG
-                AppLog.error("Key validation failed: crypto operation failed - \(error.localizedDescription)")
-            #endif
+            AppLog.error("Key validation failed: crypto operation failed - \(error.localizedDescription)")
             return false
         }
 

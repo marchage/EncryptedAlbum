@@ -408,27 +408,21 @@ struct SetupPasswordView: View {
             biometricsAvailable = true
             biometricLockout = false
             biometricType = context.biometryType
-            #if DEBUG
-                AppLog.debugPublic("Biometrics available: \(biometricType == .faceID ? "Face ID" : "Touch ID")")
-            #endif
+            AppLog.debugPublic("Biometrics available: \(biometricType == .faceID ? "Face ID" : "Touch ID")")
         } else {
             biometricsAvailable = false
-            if let error = error, error.code == LAError.biometryLockout.rawValue {
+                if let error = error, error.code == LAError.biometryLockout.rawValue {
                 biometricLockout = true
-                #if DEBUG
                     AppLog.debugPublic("Biometrics locked out (Code: -8)")
-                #endif
             } else {
                 biometricLockout = false
             }
 
-            #if DEBUG
-                if let error = error {
-                    AppLog.debugPrivate("Biometrics NOT available. Error: \(error.localizedDescription) (Code: \(error.code))")
-                } else {
-                    AppLog.debugPublic("Biometrics NOT available. Unknown error.")
-                }
-            #endif
+            if let error = error {
+                AppLog.debugPrivate("Biometrics NOT available. Error: \(error.localizedDescription) (Code: \(error.code))")
+            } else {
+                AppLog.debugPublic("Biometrics NOT available. Unknown error.")
+            }
         }
     }
 

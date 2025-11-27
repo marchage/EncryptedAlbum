@@ -526,9 +526,7 @@ class SecurityService {
                 case errSecItemNotFound:
                     continuation.resume(returning: false)
                 default:
-                    #if DEBUG
-                        AppLog.debugPrivate("🔐 DEBUG: biometricPasswordExists query failed with status \(status)")
-                    #endif
+                    AppLog.debugPrivate("🔐 DEBUG: biometricPasswordExists query failed with status \(status)")
                     // Treat unknown errors as "not found" or "false" to be safe,
                     // or we could throw if we wanted to be strict, but Bool return implies simple check.
                     continuation.resume(returning: false)
@@ -621,10 +619,7 @@ class SecurityService {
                         SecurityService.keychainDomainPreference = .legacyLogin
                         return false
                     }
-
-                    #if DEBUG
-                        AppLog.debugPrivate("🔐 DEBUG: Data Protection keychain probe write failed with status \(addStatus)")
-                    #endif
+                    AppLog.debugPrivate("🔐 DEBUG: Data Protection keychain probe write failed with status \(addStatus)")
                     // Do NOT cache legacy preference for transient errors (e.g. lock errors)
                     return false
                 }
@@ -635,9 +630,7 @@ class SecurityService {
                     return false
                 }
 
-                #if DEBUG
-                    AppLog.debugPrivate("🔐 DEBUG: Data Protection keychain probe read failed with status \(status)")
-                #endif
+                AppLog.debugPrivate("🔐 DEBUG: Data Protection keychain probe read failed with status \(status)")
                 // Do NOT cache legacy preference for transient errors
                 return false
             } else {
