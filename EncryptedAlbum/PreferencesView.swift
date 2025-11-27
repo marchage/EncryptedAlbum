@@ -13,88 +13,102 @@ struct PreferencesView: View {
         ZStack {
             PrivacyOverlayBackground(asBackground: true)
             
-            VStack(alignment: .leading, spacing: 16) {
-                Text("General")
-                    .font(.headline)
+            if albumManager.isUnlocked {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("General")
+                        .font(.headline)
 
-                HStack {
-                    Text("Privacy Screen Style")
-                    Spacer()
-                    Picker("", selection: $privacyBackgroundStyle) {
-                        ForEach(PrivacyBackgroundStyle.allCases) { style in
-                            Text(style.displayName).tag(style)
+                    HStack {
+                        Text("Privacy Screen Style")
+                        Spacer()
+                        Picker("", selection: $privacyBackgroundStyle) {
+                            ForEach(PrivacyBackgroundStyle.allCases) { style in
+                                Text(style.displayName).tag(style)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                    }
+
+                    Divider()
+
+                    HStack {
+                        Text("Undo banner timeout")
+                        Spacer()
+                        Text("\(Int(undoTimeoutSeconds))s")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Slider(value: $undoTimeoutSeconds, in: 2...20, step: 1)
+
+                    Divider()
+
+                    Text("Security")
+                        .font(.headline)
+
+                    Toggle("Secure Deletion (Overwrite)", isOn: $albumManager.secureDeletionEnabled)
+                    Text("When enabled, deleted files are overwritten 3 times. This is slower but more secure. Disable for instant deletion.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Divider()
+
+                    Text("Diagnostics")
+                        .font(.headline)
+
+                    Button {
+                        runHealthCheck()
+                    } label: {
+                        if isCheckingHealth {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Text("Run Security Health Check")
                         }
                     }
-                    .pickerStyle(.menu)
-                    .labelsHidden()
-                }
+                    .disabled(isCheckingHealth)
 
-                Divider()
+                    if let report = healthReport {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HealthCheckRow(label: "Random Generation (Entropy)", passed: report.randomGenerationHealthy)
+                            HealthCheckRow(label: "Crypto Operations", passed: report.cryptoOperationsHealthy)
+                            HealthCheckRow(label: "File System Security", passed: report.fileSystemSecure)
+                            HealthCheckRow(label: "Memory Security", passed: report.memorySecurityHealthy)
+                            Divider()
+                            HStack {
+                                Text("Overall Status:")
+                                Spacer()
+                                Text(report.overallHealthy ? "PASSED" : "FAILED")
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(report.overallHealthy ? .green : .red)
+                            }
+                        }
+                        .padding()
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(8)
+                    }
 
-                HStack {
-                    Text("Undo banner timeout")
+                    if let error = healthCheckError {
+                        Text("Check failed: \(error)")
+                            .foregroundStyle(.red)
+                            .font(.caption)
+                    }
+
                     Spacer()
-                    Text("\(Int(undoTimeoutSeconds))s")
+                }
+                .padding(20)
+            } else {
+                VStack(spacing: 20) {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.secondary)
+                    Text("Settings Locked")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Text("Please unlock the album to access settings.")
                         .foregroundStyle(.secondary)
                 }
-
-                Slider(value: $undoTimeoutSeconds, in: 2...20, step: 1)
-
-                Divider()
-
-                Text("Security")
-                    .font(.headline)
-
-                Toggle("Secure Deletion (Overwrite)", isOn: $albumManager.secureDeletionEnabled)
-                Text("When enabled, deleted files are overwritten 3 times. This is slower but more secure. Disable for instant deletion.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Divider()
-
-                Text("Diagnostics")
-                    .font(.headline)
-
-                Button {
-                    runHealthCheck()
-                } label: {
-                    if isCheckingHealth {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Text("Run Security Health Check")
-                    }
-                }
-                .disabled(isCheckingHealth)
-
-                if let report = healthReport {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HealthCheckRow(label: "Random Generation (Entropy)", passed: report.randomGenerationHealthy)
-                        HealthCheckRow(label: "Crypto Operations", passed: report.cryptoOperationsHealthy)
-                        HealthCheckRow(label: "File System Security", passed: report.fileSystemSecure)
-                        HealthCheckRow(label: "Memory Security", passed: report.memorySecurityHealthy)
-                        Divider()
-                        HStack {
-                            Text("Overall Status:")
-                            Spacer()
-                            Text(report.overallHealthy ? "PASSED" : "FAILED")
-                                .fontWeight(.bold)
-                                .foregroundStyle(report.overallHealthy ? .green : .red)
-                        }
-                    }
-                    .padding()
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-                }
-
-                if let error = healthCheckError {
-                    Text("Check failed: \(error)")
-                        .foregroundStyle(.red)
-                        .font(.caption)
-                }
-
-                Spacer()
+                .padding()
             }
-            .padding(20)
         }
         .frame(minWidth: 360, minHeight: 450)
         .onChange(of: albumManager.secureDeletionEnabled) { _ in
