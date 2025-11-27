@@ -123,13 +123,13 @@ struct PreferencesView: View {
                         }
                         Slider(value: $storedAutoLockTimeout, in: 30...3600, step: 30) {
                         }
-                        .onChange(of: storedAutoLockTimeout) { _, _ in
+                        .onChange(of: storedAutoLockTimeout) { _ in
                             albumManager.autoLockTimeoutSeconds = storedAutoLockTimeout
                             albumManager.saveSettings()
                         }
 
                         Toggle("Require Passcode On Launch", isOn: $storedRequirePasscodeOnLaunch)
-                            .onChange(of: storedRequirePasscodeOnLaunch) { _, _ in
+                            .onChange(of: storedRequirePasscodeOnLaunch) { _ in
                                 albumManager.requirePasscodeOnLaunch = storedRequirePasscodeOnLaunch
                                 albumManager.saveSettings()
                             }
@@ -145,7 +145,7 @@ struct PreferencesView: View {
                             .pickerStyle(.menu)
                             .labelsHidden()
                         }
-                        .onChange(of: storedBiometricPolicy) { _, _ in
+                        .onChange(of: storedBiometricPolicy) { _ in
                             albumManager.biometricPolicy = storedBiometricPolicy
                             albumManager.saveSettings()
                         }
@@ -157,7 +157,7 @@ struct PreferencesView: View {
 
                         // Auto-wipe on failed unlock attempts
                         Toggle("Auto-wipe on repeated failed unlocks", isOn: $albumManager.autoWipeOnFailedAttemptsEnabled)
-                            .onChange(of: albumManager.autoWipeOnFailedAttemptsEnabled) { _, _ in
+                            .onChange(of: albumManager.autoWipeOnFailedAttemptsEnabled) { _ in
                                 albumManager.saveSettings()
                             }
 
@@ -168,13 +168,13 @@ struct PreferencesView: View {
                                 Stepper("\(albumManager.autoWipeFailedAttemptsThreshold)", value: $albumManager.autoWipeFailedAttemptsThreshold, in: 1...100)
                                     .labelsHidden()
                             }
-                            .onChange(of: albumManager.autoWipeFailedAttemptsThreshold) { _, _ in
+                            .onChange(of: albumManager.autoWipeFailedAttemptsThreshold) { _ in
                                 albumManager.saveSettings()
                             }
                         }
 
                         Toggle("Enable Recovery Key", isOn: $albumManager.enableRecoveryKey)
-                            .onChange(of: albumManager.enableRecoveryKey) { _, _ in
+                            .onChange(of: albumManager.enableRecoveryKey) { _ in
                                 albumManager.saveSettings()
                             }
 
@@ -190,7 +190,7 @@ struct PreferencesView: View {
                             .font(.headline)
 
                         Toggle("Compact Layout", isOn: $storedCompactLayoutEnabled)
-                            .onChange(of: storedCompactLayoutEnabled) { _, _ in
+                            .onChange(of: storedCompactLayoutEnabled) { _ in
                                 albumManager.compactLayoutEnabled = storedCompactLayoutEnabled
                                 albumManager.saveSettings()
                             }
@@ -207,7 +207,7 @@ struct PreferencesView: View {
                             .pickerStyle(.menu)
                             .labelsHidden()
                         }
-                        .onChange(of: storedAccentColorName) { _, _ in
+                        .onChange(of: storedAccentColorName) { _ in
                             albumManager.accentColorName = storedAccentColorName
                             albumManager.saveSettings()
                         }
@@ -218,13 +218,13 @@ struct PreferencesView: View {
                             .font(.headline)
 
                         Toggle("Save captures directly to album", isOn: $storedCameraSaveToAlbumDirectly)
-                            .onChange(of: storedCameraSaveToAlbumDirectly) { _, _ in
+                            .onChange(of: storedCameraSaveToAlbumDirectly) { _ in
                                 albumManager.cameraSaveToAlbumDirectly = storedCameraSaveToAlbumDirectly
                                 albumManager.saveSettings()
                             }
 
                         Toggle("Capture at max quality", isOn: $storedCameraMaxQuality)
-                            .onChange(of: storedCameraMaxQuality) { _, _ in
+                            .onChange(of: storedCameraMaxQuality) { _ in
                                 albumManager.cameraMaxQuality = storedCameraMaxQuality
                                 albumManager.saveSettings()
                             }
@@ -318,7 +318,7 @@ struct PreferencesView: View {
 
                         // Export & privacy controls
                         Toggle("Require re-auth for exports", isOn: $albumManager.requireReauthForExports)
-                            .onChange(of: albumManager.requireReauthForExports) { _, _ in
+                            .onChange(of: albumManager.requireReauthForExports) { _ in
                                 albumManager.saveSettings()
                             }
 
@@ -333,12 +333,12 @@ struct PreferencesView: View {
                             .pickerStyle(.menu)
                             .labelsHidden()
                         }
-                        .onChange(of: albumManager.backupSchedule) { _, _ in
+                        .onChange(of: albumManager.backupSchedule) { _ in
                             albumManager.saveSettings()
                         }
 
                         Toggle("Encrypted Cloud Sync", isOn: $albumManager.encryptedCloudSyncEnabled)
-                            .onChange(of: albumManager.encryptedCloudSyncEnabled) { _, _ in
+                            .onChange(of: albumManager.encryptedCloudSyncEnabled) { _ in
                                 albumManager.saveSettings()
                             }
 
@@ -353,17 +353,17 @@ struct PreferencesView: View {
                             .pickerStyle(.menu)
                             .labelsHidden()
                         }
-                        .onChange(of: albumManager.thumbnailPrivacy) { _, _ in
+                        .onChange(of: albumManager.thumbnailPrivacy) { _ in
                             albumManager.saveSettings()
                         }
 
                         Toggle("Strip metadata on export", isOn: $albumManager.stripMetadataOnExport)
-                            .onChange(of: albumManager.stripMetadataOnExport) { _, _ in
+                            .onChange(of: albumManager.stripMetadataOnExport) { _ in
                                 albumManager.saveSettings()
                             }
 
                         Toggle("Password-protect exports", isOn: $albumManager.exportPasswordProtect)
-                            .onChange(of: albumManager.exportPasswordProtect) { _, _ in
+                            .onChange(of: albumManager.exportPasswordProtect) { _ in
                                 albumManager.saveSettings()
                             }
 
@@ -373,12 +373,12 @@ struct PreferencesView: View {
                             Stepper("\(albumManager.exportExpiryDays)", value: $albumManager.exportExpiryDays, in: 1...365)
                                 .labelsHidden()
                         }
-                        .onChange(of: albumManager.exportExpiryDays) { _, _ in
+                        .onChange(of: albumManager.exportExpiryDays) { _ in
                             albumManager.saveSettings()
                         }
 
                         Toggle("Enable verbose logging", isOn: $albumManager.enableVerboseLogging)
-                            .onChange(of: albumManager.enableVerboseLogging) { _, _ in
+                            .onChange(of: albumManager.enableVerboseLogging) { _ in
                                 albumManager.saveSettings()
                             }
 
@@ -388,12 +388,12 @@ struct PreferencesView: View {
                             Stepper("\(albumManager.passphraseMinLength)", value: $albumManager.passphraseMinLength, in: 6...64)
                                 .labelsHidden()
                         }
-                        .onChange(of: albumManager.passphraseMinLength) { _, _ in
+                        .onChange(of: albumManager.passphraseMinLength) { _ in
                             albumManager.saveSettings()
                         }
 
                         Toggle("Telemetry (opt-in)", isOn: $albumManager.telemetryEnabled)
-                            .onChange(of: albumManager.telemetryEnabled) { _, _ in
+                            .onChange(of: albumManager.telemetryEnabled) { _ in
                                 albumManager.saveSettings()
                             }
 
@@ -592,13 +592,13 @@ struct PreferencesView: View {
         #if os(macOS)
         .navigationTitle("Settings")
         #endif
-        .onChange(of: albumManager.secureDeletionEnabled) { _, _ in
+        .onChange(of: albumManager.secureDeletionEnabled) { _ in
             albumManager.saveSettings()
         }
-        .onChange(of: albumManager.autoRemoveDuplicatesOnImport) { _, _ in
+        .onChange(of: albumManager.autoRemoveDuplicatesOnImport) { _ in
             albumManager.saveSettings()
         }
-        .onChange(of: albumManager.enableImportNotifications) { _, _ in
+        .onChange(of: albumManager.enableImportNotifications) { _ in
             albumManager.saveSettings()
         }
         .sheet(isPresented: $showDecoyPasswordSheet) {

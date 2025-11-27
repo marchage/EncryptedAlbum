@@ -1,6 +1,7 @@
 import Foundation
 import os
-#if canImport(MetricKit)
+// MetricKit is available on iOS/tvOS but not macOS in the same API surface we expect here.
+#if canImport(MetricKit) && (os(iOS) || os(tvOS))
 import MetricKit
 #endif
 
@@ -33,8 +34,8 @@ final class TelemetryService: NSObject
 
     private func start() {
         logger.log("TelemetryService: starting (opt-in)")
-        #if canImport(MetricKit)
-        if #available(iOS 13.0, macOS 11.0, *) {
+        #if canImport(MetricKit) && (os(iOS) || os(tvOS))
+        if #available(iOS 13.0, tvOS 13.0, *) {
             MXMetricManager.shared.add(self)
         }
         #endif
@@ -42,8 +43,8 @@ final class TelemetryService: NSObject
 
     private func stop() {
         logger.log("TelemetryService: stopping")
-        #if canImport(MetricKit)
-        if #available(iOS 13.0, macOS 11.0, *) {
+        #if canImport(MetricKit) && (os(iOS) || os(tvOS))
+        if #available(iOS 13.0, tvOS 13.0, *) {
             MXMetricManager.shared.remove(self)
         }
         #endif
@@ -61,8 +62,8 @@ final class TelemetryService: NSObject
     }
 }
 
-#if canImport(MetricKit)
-@available(iOS 13.0, macOS 11.0, *)
+#if canImport(MetricKit) && (os(iOS) || os(tvOS))
+@available(iOS 13.0, tvOS 13.0, *)
 extension TelemetryService: MXMetricManagerSubscriber {
     func didReceive(_ payloads: [MXMetricPayload]) {
         // MetricKit delivers aggregated system metrics. We intentionally do not ship
