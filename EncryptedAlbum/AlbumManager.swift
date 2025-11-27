@@ -570,7 +570,7 @@ class AlbumManager: ObservableObject {
                 await MainActor.run {
                     isDecoyMode = true
                     isUnlocked = true
-                    hiddenPhotos = []  // Ensure empty
+                    hiddenPhotos = generateFakePhotos()  // Populate with fake photos instead of empty
                     lastActivity = Date()
                 }
                 startIdleTimer()
@@ -964,6 +964,11 @@ class AlbumManager: ObservableObject {
     ) async throws {
         await MainActor.run {
             lastActivity = Date()
+        }
+
+        // In decoy mode, don't actually add photos to avoid affecting the real album
+        guard !isDecoyMode else {
+            return
         }
 
         guard let encryptionKey = cachedEncryptionKey, let hmacKey = cachedHMACKey else {
@@ -1793,6 +1798,56 @@ class AlbumManager: ObservableObject {
             }
             return data
         #endif
+    }
+
+    /// Generates fake photos for decoy mode to make the album appear populated
+    private func generateFakePhotos() -> [SecurePhoto] {
+        var fakePhotos: [SecurePhoto] = []
+        let fakeFilenames = [
+            "IMG_0001.jpg", "IMG_0002.jpg", "IMG_0003.jpg", "IMG_0004.jpg", "IMG_0005.jpg",
+            "VID_0001.mov", "VID_0002.mov", "IMG_0006.jpg", "IMG_0007.jpg", "IMG_0008.jpg"
+        ]
+        let fakeDates = [
+            Date().addingTimeInterval(-86400 * 7), // 1 week ago
+            Date().addingTimeInterval(-86400 * 5),
+            Date().addingTimeInterval(-86400 * 3),
+            Date().addingTimeInterval(-86400 * 2),
+            Date().addingTimeInterval(-86400 * 1),
+            Date().addingTimeInterval(-3600 * 12), // 12 hours ago
+            Date().addingTimeInterval(-3600 * 6),
+            Date().addingTimeInterval(-3600 * 2),
+            Date().addingTimeInterval(-1800), // 30 min ago
+            Date().addingTimeInterval(-300) // 5 min ago
+        ]
+
+        for (index, filename) in fakeFilenames.enumerated() {
+            let mediaType: MediaType = filename.hasSuffix(".mov") ? .video : .photo
+            let fakeThumbnail = fallbackThumbnail(for: mediaType)
+            let fakeId = UUID()
+            let fakeEncryptedPath = "fake/\(fakeId.uuidString).enc"
+            let fakeThumbnailPath = "fake/\(fakeId.uuidString)_thumb.jpg"
+            let fakeEncryptedThumbnailPath = "fake/\(fakeId.uuidString)_thumb.enc"
+
+            let photo = SecurePhoto(
+                id: fakeId,
+                encryptedDataPath: fakeEncryptedPath,
+                thumbnailPath: fakeThumbnailPath,
+                encryptedThumbnailPath: fakeEncryptedThumbnailPath,
+                filename: filename,
+                dateTaken: fakeDates[index % fakeDates.count],
+                sourceAlbum: "Camera Roll",
+                albumAlbum: nil,
+                fileSize: Int64(1024 * 1024 * (index + 1)), // Fake sizes 1MB, 2MB, etc.
+                originalAssetIdentifier: "fake_\(index)",
+                mediaType: mediaType,
+                duration: mediaType == .video ? TimeInterval(30 + index * 10) : nil,
+                location: nil,
+                isFavorite: index % 3 == 0 // Some marked as favorite
+            )
+            fakePhotos.append(photo)
+        }
+
+        return fakePhotos
     }
 
     private func savePhotos() {
