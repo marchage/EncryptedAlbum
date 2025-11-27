@@ -180,7 +180,7 @@ struct PreferencesView: View {
 
                         Toggle("Secure Deletion (Overwrite)", isOn: $albumManager.secureDeletionEnabled)
                         Text(
-                            "When enabled, deleted files are overwritten 3 times. This is slower but more secure. Note: on modern devices (APFS / SSD) overwrites may not always guarantee physical erasure — see app documentation for details."
+                            "When enabled, deleted files are overwritten 3 times. This is slower but more secure. Note: on modern devices (APFS / SSD) overwrites may not always guarantee physical erasure — see app documentation for details. Secure overwrite is limited to the first \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)) of each file; larger files will be removed but only the first chunk will be overwritten."
                         )
                         .font(.caption)
                         .foregroundStyle(.secondary)

@@ -26,6 +26,8 @@ struct MainAlbumView: View {
     @State private var showingCamera = false
     @State private var showingFilePicker = false
     @State private var showDeleteConfirmation = false
+    @State private var showLargeDeleteConfirmation = false
+    @State private var pendingDeletionContainsLargeFiles = false
     @State private var pendingDeletionPhotos: [SecurePhoto] = []
     @State private var restorationTask: Task<Void, Never>? = nil
     @State private var didForcePrivacyModeThisSession = false
@@ -331,7 +333,29 @@ struct MainAlbumView: View {
     private func requestDeletion(for photos: [SecurePhoto]) {
         guard !photos.isEmpty else { return }
         pendingDeletionPhotos = photos
-        showDeleteConfirmation = true
+
+        // Check the selected photos for large files that exceed secure delete cap.
+        var foundLarge = false
+        for photo in photos {
+            let url = albumManager.resolveURL(for: photo.encryptedDataPath)
+            if FileManager.default.fileExists(atPath: url.path) {
+                if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+                    let size = attrs[.size] as? Int64,
+                    size > CryptoConstants.maxSecureDeleteSize
+                {
+                    foundLarge = true
+                    break
+                }
+            }
+        }
+
+        pendingDeletionContainsLargeFiles = foundLarge
+        if foundLarge {
+            // Use a separate alert for large-file deletions so users are warned about the 100MB cap.
+            showLargeDeleteConfirmation = true
+        } else {
+            showDeleteConfirmation = true
+        }
     }
 
     func importFilesToAlbum() {
@@ -799,6 +823,20 @@ struct MainAlbumView: View {
                 }
             } message: {
                 Text("This action permanently removes the selected content from Encrypted Album.")
+            }
+
+            // Large-delete confirmation: explain the secure-delete cap and require explicit confirmation
+            .alert("Delete large items?", isPresented: $showLargeDeleteConfirmation) {
+                Button("Delete Anyway", role: .destructive) {
+                    // Proceed with deletion even when files are large
+                    deleteSelectedPhotos()
+                }
+                Button("Cancel", role: .cancel) {
+                    pendingDeletionPhotos.removeAll()
+                    pendingDeletionContainsLargeFiles = false
+                }
+            } message: {
+                Text("One or more selected items are larger than \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)). Secure deletion will only overwrite the first \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)) (3 passes). On modern APFS/SSD devices this may not physically erase the file — confirm you want to permanently delete these items.")
             }
             .onChange(of: showDeleteConfirmation) { presented in
                 if presented {
