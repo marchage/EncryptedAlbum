@@ -663,8 +663,6 @@ struct MainAlbumView: View {
 
     var body: some View {
         ZStack {
-            PrivacyOverlayBackground(asBackground: true)
-
             NavigationStack {
                 ScrollView {
                     VStack(spacing: 12) {

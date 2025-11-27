@@ -19,12 +19,9 @@ struct UnlockView: View {
     @State private var biometricsReady = false
 
     var body: some View {
-        ZStack {
-            PrivacyOverlayBackground(asBackground: true)
-            
-            GeometryReader { geometry in
-                ScrollView {
-                    VStack(spacing: 24) {
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 24) {
                     Spacer()
 
                     // App Icon
@@ -174,8 +171,7 @@ struct UnlockView: View {
                 .frame(minWidth: geometry.size.width, minHeight: geometry.size.height)
             }
         }
-    }
-    .background(Color.clear)
+        .background(Color.clear)
         .onAppear {
             biometricsReady = checkBiometricAvailability()
             if scenePhase == .active {
