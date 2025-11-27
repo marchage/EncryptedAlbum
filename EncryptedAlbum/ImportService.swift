@@ -76,7 +76,7 @@ class ImportService {
         let timeoutTask = Task {
             try await Task.sleep(nanoseconds: 300_000_000_000)  // 5 minute overall timeout
             if !Task.isCancelled {
-                print("⚠️ Overall hide operation timed out after 5 minutes")
+                AppLog.warning("Overall hide operation timed out after 5 minutes")
                 await MainActor.run {
                     progress.isImporting = false
                     progress.statusMessage = "Import timed out"
@@ -138,7 +138,7 @@ class ImportService {
         let itemNumber = index + 1
 
         guard let mediaResult = await PhotosLibraryService.shared.getMediaDataAsync(for: asset) else {
-            print("❌ Failed to get media data for asset: \(asset.localIdentifier)")
+            AppLog.debugPrivate("Failed to get media data for asset: \(asset.localIdentifier)")
             await MainActor.run {
                 progress.detailMessage = "Failed to fetch item \(itemNumber)"
             }
@@ -195,7 +195,7 @@ class ImportService {
 
             return (asset, true)
         } catch {
-            print("❌ Failed to add media to album: \(error.localizedDescription)")
+            AppLog.error("Failed to add media to album: \(error.localizedDescription)")
             return (asset, false)
         }
     }

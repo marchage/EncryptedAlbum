@@ -70,7 +70,7 @@ class SecureMemory {
         // Lock memory to prevent swapping
         if mlock(ptr, count) != 0 {
             #if DEBUG
-                print("Warning: mlock failed with error: \(errno)")
+                AppLog.warning("mlock failed with error: \(errno)")
             #endif
         }
 
@@ -430,15 +430,17 @@ class AlbumManager: ObservableObject {
         // albumBaseURL is now computed from storage.baseURL
 
         #if DEBUG
-            // Handle Test Mode Reset
-            print("DEBUG: CommandLine arguments: \(CommandLine.arguments)")
-            if CommandLine.arguments.contains("--reset-state") {
+            // Handle Test Mode Reset — require an explicit ALLOW_DESTRUCTIVE_RESET=1 env var to avoid accidental nukes
+            AppLog.debugPrivate("DEBUG: CommandLine arguments: \(CommandLine.arguments)")
+            let confirmEnv = ProcessInfo.processInfo.environment["ALLOW_DESTRUCTIVE_RESET"]
+            if CommandLine.arguments.contains("--reset-state") && confirmEnv == "1" {
+                AppLog.warning("Destructive reset requested via command-line and confirmed (ALLOW_DESTRUCTIVE_RESET=1). Proceeding to nuke all data.")
                 nukeAllData()
             }
         #endif
 
         #if DEBUG
-            print("Loading settings from: \(settingsFileURL.path)")
+            AppLog.debugPrivate("Loading settings from: \(settingsFileURL.path)")
         #endif
 
         // Load settings asynchronously to ensure state is ready before init completes
@@ -665,7 +667,7 @@ class AlbumManager: ObservableObject {
 
                 // Process any queued imports
                 if !pendingImportURLs.isEmpty {
-                    print("Processing \(pendingImportURLs.count) queued import items...")
+                    AppLog.debugPublic("Processing \(pendingImportURLs.count) queued import items...")
                     let urlsToImport = pendingImportURLs
                     pendingImportURLs.removeAll()
                     // Small delay to ensure UI transition completes
@@ -929,7 +931,7 @@ class AlbumManager: ObservableObject {
             // Skip idle check if timer is suspended (e.g., during imports)
             if self.idleTimerSuspendCount > 0 {
                 #if DEBUG
-                    print("⏸️  Idle timer check skipped (suspended)")
+                    AppLog.debugPublic("Idle timer check skipped (suspended)")
                 #endif
                 return
             }
@@ -937,7 +939,7 @@ class AlbumManager: ObservableObject {
             let elapsed = Date().timeIntervalSince(self.lastActivity)
             if elapsed > self.idleTimeout {
                 #if DEBUG
-                    print("🔐 Auto-locking album after \(Int(elapsed))s of inactivity")
+                    AppLog.debugPublic("Auto-locking album after \(Int(elapsed))s of inactivity")
                 #endif
                 self.lock()
             }
@@ -953,9 +955,9 @@ class AlbumManager: ObservableObject {
         idleTimerSuspendCount += 1
         #if DEBUG
             if idleTimerSuspendCount == 1 {
-                print("🔒 Idle timer SUSPENDED - album will not auto-lock")
+                AppLog.debugPublic("Idle timer SUSPENDED - album will not auto-lock")
             } else {
-                print("🔒 Idle timer suspension depth now \(idleTimerSuspendCount)")
+                AppLog.debugPublic("Idle timer suspension depth now \(idleTimerSuspendCount)")
             }
         #endif
     }
@@ -965,7 +967,7 @@ class AlbumManager: ObservableObject {
     func resumeIdleTimer() {
         guard idleTimerSuspendCount > 0 else {
             #if DEBUG
-                print("⚠️ resumeIdleTimer called with no active suspensions")
+                AppLog.warning("resumeIdleTimer called with no active suspensions")
             #endif
             return
         }
@@ -974,11 +976,11 @@ class AlbumManager: ObservableObject {
         if idleTimerSuspendCount == 0 {
             lastActivity = Date()  // Reset activity timestamp
             #if DEBUG
-                print("🔓 Idle timer RESUMED - album will auto-lock after \(Int(idleTimeout))s of inactivity")
+                AppLog.debugPublic("Idle timer RESUMED - album will auto-lock after \(Int(idleTimeout))s of inactivity")
             #endif
         } else {
             #if DEBUG
-                print("🔐 Idle timer suspension depth decreased to \(idleTimerSuspendCount)")
+                AppLog.debugPublic("Idle timer suspension depth decreased to \(idleTimerSuspendCount)")
             #endif
         }
     }
@@ -1027,7 +1029,7 @@ class AlbumManager: ObservableObject {
 
             if isDuplicate {
                 #if DEBUG
-                    print("Media already hidden: \(filename) (assetId: \(assetId))")
+                    AppLog.debugPrivate("Media already hidden: \(filename) (assetId: \(assetId))")
                 #endif
                 return
             }
@@ -1107,7 +1109,7 @@ class AlbumManager: ObservableObject {
                 self.hiddenPhotos.contains(where: { $0.originalAssetIdentifier == assetId })
             {
                 #if DEBUG
-                    print("Duplicate detected in final check, skipping: \(filename)")
+                    AppLog.debugPrivate("Duplicate detected in final check, skipping: \(filename)")
                 #endif
                 return
             }
@@ -1190,9 +1192,8 @@ class AlbumManager: ObservableObject {
         if let encryptedThumbnailPath = photo.encryptedThumbnailPath {
             let url = resolveURL(for: encryptedThumbnailPath)
             if !FileManager.default.fileExists(atPath: url.path) {
-                print(
-                    "[AlbumManager] decryptThumbnail: encrypted thumbnail missing for id=\(photo.id)."
-                )
+                AppLog.debugPrivate("[AlbumManager] decryptThumbnail: encrypted thumbnail missing for id=\(photo.id).")
+            
             } else {
                 do {
                     // Use FileService to load and decrypt the encrypted thumbnail
@@ -1203,9 +1204,7 @@ class AlbumManager: ObservableObject {
                         encryptionKey: encryptionKey, hmacKey: hmacKey)
                 } catch {
                     #if DEBUG
-                        print(
-                            "[AlbumManager] decryptThumbnail: error reading encrypted thumbnail for id=\(photo.id): \(error)."
-                        )
+                        AppLog.debugPrivate("[AlbumManager] decryptThumbnail: error reading encrypted thumbnail for id=\(photo.id): \(error.localizedDescription)")
                     #endif
                 }
             }
@@ -1269,7 +1268,7 @@ class AlbumManager: ObservableObject {
             try FileManager.default.removeItem(at: url)
         } catch {
             #if DEBUG
-                print("Secure deletion failed, using standard deletion: \(error)")
+                AppLog.error("Secure deletion failed, using standard deletion: \(error.localizedDescription)")
             #endif
             try? FileManager.default.removeItem(at: url)
         }
@@ -1339,12 +1338,12 @@ class AlbumManager: ObservableObject {
                 isFavorite: photo.isFavorite
             ) { success, libraryError in
                 if success {
-                    print("Media restored to library with metadata: \(photo.filename)")
+                    AppLog.debugPrivate("Media restored to library with metadata: \(photo.filename)")
                     self.deletePhoto(photo)
                     continuation.resume(returning: ())
                 } else {
                     let reason = libraryError?.localizedDescription ?? "Photos refused to import this item"
-                    print("Failed to restore media to library: \(photo.filename) – \(reason)")
+                    AppLog.error("Failed to restore media to library: \(photo.filename) – \(reason)")
                     continuation.resume(throwing: AlbumError.fileWriteFailed(path: photo.filename, reason: reason))
                 }
             }
@@ -1394,13 +1393,13 @@ class AlbumManager: ObservableObject {
             albumGroups[targetAlbum]?.append(photo)
         }
 
-        print("🔄 Starting batch restore of \(photos.count) items grouped into \(albumGroups.count) albums")
+        AppLog.debugPublic("Starting batch restore of \(photos.count) items grouped into \(albumGroups.count) albums")
         var wasCancelled = false
 
         do {
             for (targetAlbum, photosInGroup) in albumGroups {
                 try Task.checkCancellation()
-                print("📁 Processing group: \(targetAlbum ?? "Library") with \(photosInGroup.count) items")
+                AppLog.debugPublic("Processing group: \(targetAlbum ?? "Library") with \(photosInGroup.count) items")
                 try await self.processRestoreGroup(photosInGroup, targetAlbum: targetAlbum)
             }
         } catch is CancellationError {
@@ -1419,9 +1418,7 @@ class AlbumManager: ObservableObject {
             let summary = "\(success)/\(total) restored" + (failed > 0 ? " • \(failed) failed" : "")
             self.restorationProgress.statusMessage = restoreCancelled ? "Restore canceled" : "Restore complete"
             self.restorationProgress.detailMessage = summary
-            print(
-                "📊 Restoration complete: \(success)/\(total) successful, \(failed) failed (successful items already removed from album)"
-            )
+            AppLog.debugPublic("Restoration complete: \(success)/\(total) successful, \(failed) failed (successful items already removed from album)")
         }
 
         if restoreCancelled {
@@ -1482,7 +1479,7 @@ class AlbumManager: ObservableObject {
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
-                print("  ❌ Failed to process \(photo.filename): \(error)")
+                AppLog.error("Failed to process \(photo.filename): \(error.localizedDescription)")
                 await MainActor.run {
                     self.restorationProgress.processedItems += 1
                     self.restorationProgress.failedItems += 1
@@ -1559,7 +1556,7 @@ class AlbumManager: ObservableObject {
                 self.hiddenPhotos = uniquePhotos
                 self.savePhotos()
                 self.objectWillChange.send()
-                print("Removed \(duplicatesToDelete.count) duplicate photos")
+                AppLog.debugPublic("Removed \(duplicatesToDelete.count) duplicate photos")
             }
         }
     }
@@ -1664,7 +1661,7 @@ class AlbumManager: ObservableObject {
     private func generateVideoThumbnail(from videoData: Data) async -> Data {
         guard videoData.count > 0 && videoData.count <= CryptoConstants.maxMediaFileSize else {
             #if DEBUG
-                print("Video data size invalid: \(videoData.count) bytes")
+                AppLog.debugPrivate("Video data size invalid: \(videoData.count) bytes")
             #endif
             return Data()
         }
@@ -1679,7 +1676,7 @@ class AlbumManager: ObservableObject {
             return await generateVideoThumbnail(fromAsset: asset)
         } catch {
             #if DEBUG
-                print("Failed to generate video thumbnail: \(error)")
+                AppLog.error("Failed to generate video thumbnail: \(error.localizedDescription)")
             #endif
         }
 
@@ -1696,7 +1693,7 @@ class AlbumManager: ObservableObject {
             let tracks = try await asset.load(.tracks)
             guard tracks.contains(where: { $0.mediaType == .video }) else {
                 #if DEBUG
-                    print("No video tracks found in asset")
+                    AppLog.debugPublic("No video tracks found in asset")
                 #endif
                 return Data()
             }
@@ -1760,7 +1757,7 @@ class AlbumManager: ObservableObject {
             #endif
         } catch {
             #if DEBUG
-                print("Failed to generate video thumbnail: \(error)")
+                AppLog.error("Failed to generate video thumbnail: \(error.localizedDescription)")
             #endif
             return Data()
         }
@@ -1880,7 +1877,7 @@ class AlbumManager: ObservableObject {
     private func savePhotos() {
         guard let data = try? JSONEncoder().encode(hiddenPhotos) else { return }
         #if DEBUG
-            print("savePhotos: writing \(hiddenPhotos.count) items to \(photosMetadataFileURL.path)")
+            AppLog.debugPrivate("savePhotos: writing \(hiddenPhotos.count) items to \(photosMetadataFileURL.path)")
         #endif
         try? data.write(to: photosMetadataFileURL)
     }
@@ -1899,7 +1896,7 @@ class AlbumManager: ObservableObject {
                 try FileManager.default.createDirectory(at: albumBaseURL, withIntermediateDirectories: true)
             } catch {
                 #if DEBUG
-                    print("Failed to create album directory: \(error)")
+                    AppLog.error("Failed to create album directory: \(error.localizedDescription)")
                 #endif
                 return
             }
@@ -1938,13 +1935,13 @@ class AlbumManager: ObservableObject {
                 let data = try JSONEncoder().encode(settings)
                 try data.write(to: settingsFileURL, options: .atomic)
                 #if DEBUG
-                    print("Successfully saved settings to: \(settingsFileURL.path)")
+                    AppLog.debugPrivate("Successfully saved settings to: \(settingsFileURL.path)")
                 #endif
                 // Respect the telemetry flag: enable/disable the TelemetryService on save
                 TelemetryService.shared.setEnabled(telemetryEnabled)
             } catch {
                 #if DEBUG
-                    print("Failed to save settings: \(error)")
+                    AppLog.error("Failed to save settings: \(error.localizedDescription)")
                 #endif
             }
         }
@@ -1957,7 +1954,7 @@ class AlbumManager: ObservableObject {
         // But it reads from disk/keychain.
 
         #if DEBUG
-            print("Attempting to load settings from: \(settingsFileURL.path)")
+            AppLog.debugPrivate("Attempting to load settings from: \(settingsFileURL.path)")
         #endif
 
         // Load credentials from Keychain
@@ -1967,11 +1964,11 @@ class AlbumManager: ObservableObject {
                 passwordSalt = credentials.salt.base64EncodedString()
             }
             #if DEBUG
-                print("Loaded credentials from Keychain")
+                AppLog.debugPublic("Loaded credentials from Keychain")
             #endif
         } else {
             #if DEBUG
-                print("No credentials found in Keychain")
+                AppLog.debugPublic("No credentials found in Keychain")
             #endif
         }
 
@@ -1979,7 +1976,7 @@ class AlbumManager: ObservableObject {
             let settings = try? JSONDecoder().decode([String: String].self, from: data)
         else {
             #if DEBUG
-                print("No settings file found or failed to decode")
+                AppLog.debugPublic("No settings file found or failed to decode")
             #endif
             await MainActor.run {
                 isLoading = false
@@ -1988,7 +1985,7 @@ class AlbumManager: ObservableObject {
         }
 
         #if DEBUG
-            print("Loaded settings: [REDACTED]")
+            AppLog.debugPublic("Loaded settings: [REDACTED]")
         #endif
 
         await MainActor.run {
@@ -2161,7 +2158,7 @@ class AlbumManager: ObservableObject {
             try await securityService.storeBiometricPassword(password)
         } catch {
             #if DEBUG
-                print("Failed to store biometric password: \(error)")
+                AppLog.error("Failed to store biometric password: \(error.localizedDescription)")
             #endif
         }
     }
@@ -2203,7 +2200,7 @@ class AlbumManager: ObservableObject {
                 testData, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
             guard !encryptedData.isEmpty else {
                 #if DEBUG
-                    print("Crypto validation failed: encryption returned empty data")
+                    AppLog.error("Crypto validation failed: encryption returned empty data")
                 #endif
                 return false
             }
@@ -2213,7 +2210,7 @@ class AlbumManager: ObservableObject {
                 encryptedData, nonce: nonce, hmac: hmac, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
             guard !decrypted.isEmpty else {
                 #if DEBUG
-                    print("Crypto validation failed: decryption returned empty data")
+                    AppLog.error("Crypto validation failed: decryption returned empty data")
                 #endif
                 return false
             }
@@ -2221,13 +2218,13 @@ class AlbumManager: ObservableObject {
             // Verify round-trip integrity
             guard decrypted == testData else {
                 #if DEBUG
-                    print("Crypto validation failed: decrypted data doesn't match original")
+                    AppLog.error("Crypto validation failed: decrypted data doesn't match original")
                 #endif
                 return false
             }
         } catch {
             #if DEBUG
-                print("Crypto validation failed: \(error)")
+                AppLog.error("Crypto validation failed: \(error.localizedDescription)")
             #endif
             return false
         }
@@ -2235,13 +2232,13 @@ class AlbumManager: ObservableObject {
         // Test key derivation consistency
         guard await validateKeyDerivationConsistency() else {
             #if DEBUG
-                print("Crypto validation failed: key derivation consistency check")
+                AppLog.error("Crypto validation failed: key derivation consistency check")
             #endif
             return false
         }
 
         #if DEBUG
-            print("Crypto validation successful")
+            AppLog.debugPublic("Crypto validation successful")
         #endif
         return true
     }
@@ -2251,7 +2248,7 @@ class AlbumManager: ObservableObject {
         // Check that we have cached keys
         guard cachedEncryptionKey != nil && cachedHMACKey != nil else {
             #if DEBUG
-                print("Key validation failed: cached keys not available")
+                AppLog.error("Key validation failed: cached keys not available")
             #endif
             return false
         }
@@ -2265,13 +2262,13 @@ class AlbumManager: ObservableObject {
                 encryptedData, nonce: nonce, hmac: hmac, encryptionKey: cachedEncryptionKey!, hmacKey: cachedHMACKey!)
             guard decrypted == testData else {
                 #if DEBUG
-                    print("Key validation failed: round-trip test failed")
+                    AppLog.error("Key validation failed: round-trip test failed")
                 #endif
                 return false
             }
         } catch {
             #if DEBUG
-                print("Key validation failed: crypto operation failed - \(error)")
+                AppLog.error("Key validation failed: crypto operation failed - \(error.localizedDescription)")
             #endif
             return false
         }
@@ -2377,7 +2374,7 @@ extension AlbumManager {
         guard isUnlocked, cachedEncryptionKey != nil, cachedHMACKey != nil else {
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                print("Album locked, queuing \(urls.count) items for import after unlock.")
+                AppLog.debugPublic("Album locked, queuing \(urls.count) items for import after unlock.")
                 self.pendingImportURLs.append(contentsOf: urls)
                 self.hideNotification = HideNotification(
                     message: "Items queued. Unlock to complete import.",
@@ -2629,7 +2626,7 @@ extension AlbumManager {
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("Failed to post notification: \(error)")
+                AppLog.error("Failed to post notification: \(error.localizedDescription)")
             }
         }
     }
@@ -2684,9 +2681,9 @@ extension AlbumManager {
             await withCheckedContinuation { continuation in
                 PhotosLibraryService.shared.batchDeleteAssets(uniqueAssets) { success in
                     if success {
-                        print("Successfully deleted \(uniqueAssets.count) photos from library")
+                        AppLog.debugPublic("Successfully deleted \(uniqueAssets.count) photos from library")
                     } else {
-                        print("Failed to delete some photos from library")
+                        AppLog.error("Failed to delete some photos from library")
                     }
                     continuation.resume()
                 }
@@ -2732,7 +2729,7 @@ extension AlbumManager {
             let contents = try FileManager.default.contentsOfDirectory(at: inboxURL, includingPropertiesForKeys: nil)
             guard !contents.isEmpty else { return }
 
-            print("Found \(contents.count) items in App Group inbox")
+            AppLog.debugPublic("Found \(contents.count) items in App Group inbox")
 
             // Move files to a temporary location to process them
             // This ensures we can clear the inbox immediately so we don't import duplicates later
@@ -2751,14 +2748,14 @@ extension AlbumManager {
             // Start import with the temporary files
             startDirectImport(urls: tempURLs)
 
-        } catch {
-            print("Error reading App Group inbox: \(error)")
+            } catch {
+            AppLog.error("Error reading App Group inbox: \(error.localizedDescription)")
         }
     }
 
     #if DEBUG
         func nukeAllData() {
-            print("Nuking all data...")
+            AppLog.warning("Nuking all data (DEBUG only).")
             try? FileManager.default.removeItem(at: storage.baseURL)
             // Reset defaults
             if let bundleID = Bundle.main.bundleIdentifier {

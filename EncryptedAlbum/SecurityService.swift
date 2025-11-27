@@ -527,7 +527,7 @@ class SecurityService {
                     continuation.resume(returning: false)
                 default:
                     #if DEBUG
-                        print("🔐 DEBUG: biometricPasswordExists query failed with status \(status)")
+                        AppLog.debugPrivate("🔐 DEBUG: biometricPasswordExists query failed with status \(status)")
                     #endif
                     // Treat unknown errors as "not found" or "false" to be safe,
                     // or we could throw if we wanted to be strict, but Bool return implies simple check.
@@ -623,7 +623,7 @@ class SecurityService {
                     }
 
                     #if DEBUG
-                        print("🔐 DEBUG: Data Protection keychain probe write failed with status \(addStatus)")
+                        AppLog.debugPrivate("🔐 DEBUG: Data Protection keychain probe write failed with status \(addStatus)")
                     #endif
                     // Do NOT cache legacy preference for transient errors (e.g. lock errors)
                     return false
@@ -636,7 +636,7 @@ class SecurityService {
                 }
 
                 #if DEBUG
-                    print("🔐 DEBUG: Data Protection keychain probe read failed with status \(status)")
+                    AppLog.debugPrivate("🔐 DEBUG: Data Protection keychain probe read failed with status \(status)")
                 #endif
                 // Do NOT cache legacy preference for transient errors
                 return false

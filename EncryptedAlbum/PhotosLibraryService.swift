@@ -74,7 +74,7 @@ class PhotosLibraryService {
         var albums: [(String, PHAssetCollection)] = []
         var seenIds = Set<String>()  // Avoid duplicates across different fetches
 
-        NSLog("📚 getAllAlbums called with libraryType: \(libraryType)")
+        AppLog.debugPublic("getAllAlbums called with libraryType: \(libraryType)")
 
         // Explicitly fetch Hidden album FIRST (most important) - always from personal library
         if libraryType == .personal || libraryType == .both {
@@ -90,7 +90,7 @@ class PhotosLibraryService {
                     countOptions.includeHiddenAssets = true
                 }
                 let assetCount = PHAsset.fetchAssets(in: collection, options: countOptions).count
-                NSLog("Found Hidden album with \(assetCount) items")
+                AppLog.debugPublic("Found Hidden album with \(assetCount) items")
 
                 var name = collection.localizedTitle ?? "Hidden"
                 if libraryType == .both {
@@ -105,23 +105,21 @@ class PhotosLibraryService {
         userAlbums.enumerateObjects { collection, _, _ in
             let albumName = collection.localizedTitle ?? "Untitled"
             let subtypeRaw = collection.assetCollectionSubtype.rawValue
-            NSLog("  🧭 Album subtype raw=\(subtypeRaw) name='\(albumName)'")
+            AppLog.debugPublic("Album subtype raw=\(subtypeRaw) name='\(albumName)'")
 
             // Determine if this is a "shared" album (either cloud shared album OR from shared library)
             let isCloudSharedAlbum = collection.assetCollectionSubtype == .albumCloudShared
             let isFromSharedLibrary = isCloudSharedAlbum || self.isFromSharedLibrary(collection)
 
-            NSLog(
-                "  📁 Album '\(albumName)': cloudShared=\(isCloudSharedAlbum), assetFromShared=\(self.isFromSharedLibrary(collection)), final isShared=\(isFromSharedLibrary)"
-            )
+            AppLog.debugPrivate("Album '\(albumName)': cloudShared=\(isCloudSharedAlbum), assetFromShared=\(self.isFromSharedLibrary(collection)), final isShared=\(isFromSharedLibrary)")
 
             // Apply library type filter
             if libraryType == .personal && isFromSharedLibrary {
-                NSLog("    ⛔ Skipped (personal filter, album is shared)")
+                AppLog.debugPublic("Skipped (personal filter, album is shared)")
                 return  // Skip shared albums in personal view
             }
             if libraryType == .shared && !isFromSharedLibrary {
-                NSLog("    ⛔ Skipped (shared filter, album is personal)")
+                AppLog.debugPublic("Skipped (shared filter, album is personal)")
                 return  // Skip personal albums in shared view
             }
 
@@ -131,11 +129,11 @@ class PhotosLibraryService {
                 name = (isFromSharedLibrary ? "📤 " : "👤 ") + name
             }
             if !seenIds.contains(collection.localIdentifier) {
-                NSLog("    ✅ Added: \(name)")
+                AppLog.debugPublic("Added: \(name)")
                 albums.append((name, collection))
                 seenIds.insert(collection.localIdentifier)
             } else {
-                NSLog("    🔁 Skipped duplicate id=\(collection.localIdentifier)")
+                AppLog.debugPrivate("Skipped duplicate id=\(collection.localIdentifier)")
             }
         }
 
@@ -147,14 +145,14 @@ class PhotosLibraryService {
             let isShared = true  // By definition
 
             if libraryType == .personal && isShared {
-                NSLog("    ⛔ Skipped cloud shared in personal view: \(albumName)")
+                AppLog.debugPublic("Skipped cloud shared in personal view: \(albumName)")
                 return
             }
             if libraryType == .shared || libraryType == .both {
                 var name = albumName
                 if libraryType == .both { name = "📤 " + name }
                 if !seenIds.contains(collection.localIdentifier) {
-                    NSLog("    ✅ Added cloud shared: \(name)")
+                    AppLog.debugPublic("Added cloud shared: \(name)")
                     albums.append((name, collection))
                     seenIds.insert(collection.localIdentifier)
                 }
@@ -244,9 +242,7 @@ class PhotosLibraryService {
     /// Retrieves media data for a Photos asset asynchronously, preferring file-backed results for streaming encryption.
     func getMediaDataAsync(for asset: PHAsset) async -> MediaFetchResult? {
         #if DEBUG
-            print(
-                "🔍 getMediaDataAsync called for asset: \(asset.localIdentifier), mediaType: \(asset.mediaType.rawValue)"
-            )
+            AppLog.debugPrivate("getMediaDataAsync called for asset: \(asset.localIdentifier), mediaType: \(asset.mediaType.rawValue)")
         #endif
 
         let result = await withTaskGroup(of: MediaFetchResult?.self) { group in
@@ -258,7 +254,7 @@ class PhotosLibraryService {
             // Add timeout task second
             group.addTask {
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
-                print("⏱️ Timeout (30s) fetching media data for asset: \(asset.localIdentifier)")
+                AppLog.debugPrivate("Timeout (30s) fetching media data for asset: \(asset.localIdentifier)")
                 return nil
             }
 
@@ -281,9 +277,9 @@ class PhotosLibraryService {
 
             #if DEBUG
                 if fetchResult != nil {
-                    print("✅ getMediaDataAsync succeeded for asset: \(asset.localIdentifier)")
+                    AppLog.debugPrivate("getMediaDataAsync succeeded for asset: \(asset.localIdentifier)")
                 } else {
-                    print("❌ getMediaDataAsync returned nil for asset: \(asset.localIdentifier)")
+                    AppLog.debugPrivate("getMediaDataAsync returned nil for asset: \(asset.localIdentifier)")
                 }
             #endif
 
@@ -306,7 +302,7 @@ class PhotosLibraryService {
 
     private func fetchPhotoResource(for asset: PHAsset) async -> MediaFetchResult? {
         #if DEBUG
-            print("📸 Fetching photo resource for asset: \(asset.localIdentifier)")
+            AppLog.debugPrivate("Fetching photo resource for asset: \(asset.localIdentifier)")
         #endif
 
         let resources = PHAssetResource.assetResources(for: asset)
@@ -330,12 +326,12 @@ class PhotosLibraryService {
                     shouldDeleteFileWhenFinished: true
                 )
             } catch {
-                print("❌ Failed to export photo resource: \(error.localizedDescription)")
+                AppLog.error("Failed to export photo resource: \(error.localizedDescription)")
             }
         }
 
         #if DEBUG
-            print("⚠️ Falling back to legacy photo fetch for asset: \(asset.localIdentifier)")
+            AppLog.debugPrivate("Falling back to legacy photo fetch for asset: \(asset.localIdentifier)")
         #endif
         return await legacyPhotoResult(for: asset)
     }
@@ -346,7 +342,7 @@ class PhotosLibraryService {
                 return result
             }
         } catch {
-            print("❌ Failed to export video resource: \(error.localizedDescription)")
+            AppLog.error("Failed to export video resource: \(error.localizedDescription)")
         }
 
         return await legacyVideoResult(for: asset)
@@ -362,19 +358,19 @@ class PhotosLibraryService {
         options.isNetworkAccessAllowed = true
 
         #if DEBUG
-            print("📥 Starting export for resource: \(suggestedName)")
+            AppLog.debugPublic("Starting export for resource: \(suggestedName)")
         #endif
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             PHAssetResourceManager.default().writeData(for: resource, toFile: tempURL, options: options) { error in
                 if let error = error {
                     #if DEBUG
-                        print("❌ Export failed for \(suggestedName): \(error.localizedDescription)")
+                        AppLog.error("Export failed for \(suggestedName): \(error.localizedDescription)")
                     #endif
                     continuation.resume(throwing: error)
                 } else {
                     #if DEBUG
-                        print("✅ Export succeeded for \(suggestedName)")
+                        AppLog.debugPublic("Export succeeded for \(suggestedName)")
                     #endif
                     continuation.resume(returning: ())
                 }
@@ -493,17 +489,17 @@ class PhotosLibraryService {
         PHImageManager.default().requestImageDataAndOrientation(for: asset, options: options) { data, _, _, info in
             // Check if we already called completion (PHImageManager may call this multiple times)
             guard !hasCalledCompletion else {
-                print("⚠️ Ignoring duplicate callback for asset \(asset.localIdentifier)")
+                AppLog.debugPrivate("Ignoring duplicate callback for asset \(asset.localIdentifier)")
                 return
             }
 
             // Check for errors or cancellation
             if let error = info?[PHImageErrorKey] as? Error {
-                print("❌ PHImageManager error for asset \(asset.localIdentifier): \(error.localizedDescription)")
+                AppLog.error("PHImageManager error for asset \(asset.localIdentifier): \(error.localizedDescription)")
             }
 
             if let isCancelled = info?[PHImageCancelledKey] as? Bool, isCancelled {
-                print("⚠️ Image request was cancelled for asset \(asset.localIdentifier)")
+                AppLog.debugPrivate("Image request was cancelled for asset \(asset.localIdentifier)")
                 hasCalledCompletion = true
                 DispatchQueue.main.async {
                     completion(nil, "", nil, .photo, nil, nil, nil)
@@ -523,9 +519,9 @@ class PhotosLibraryService {
 
             // Log result
             if let data = data {
-                print("✅ Successfully retrieved image data for \(filename): \(data.count) bytes")
+                AppLog.debugPrivate("Successfully retrieved image data for \(filename): \(data.count) bytes")
             } else {
-                print("❌ Image data is nil for asset \(asset.localIdentifier), filename: \(filename)")
+                AppLog.debugPrivate("Image data is nil for asset \(asset.localIdentifier), filename: \(filename)")
             }
 
             hasCalledCompletion = true
@@ -546,11 +542,11 @@ class PhotosLibraryService {
         PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { avAsset, _, info in
             // Check for errors
             if let error = info?[PHImageErrorKey] as? Error {
-                print("❌ Video request error for asset \(asset.localIdentifier): \(error.localizedDescription)")
+                AppLog.error("Video request error for asset \(asset.localIdentifier): \(error.localizedDescription)")
             }
 
             guard let urlAsset = avAsset as? AVURLAsset else {
-                print("❌ Failed to get AVURLAsset for video \(asset.localIdentifier)")
+                AppLog.error("Failed to get AVURLAsset for video \(asset.localIdentifier)")
                 DispatchQueue.main.async {
                     completion(nil, "", nil, .video, nil, nil, nil)
                 }
@@ -570,13 +566,13 @@ class PhotosLibraryService {
                 }
                 let isFavorite = asset.isFavorite
 
-                print("✅ Successfully retrieved video data for \(filename): \(data.count) bytes")
+                AppLog.debugPrivate("Successfully retrieved video data for \(filename): \(data.count) bytes")
 
                 DispatchQueue.main.async {
                     completion(data, filename, dateTaken, .video, duration, location, isFavorite)
                 }
             } catch {
-                print("❌ Failed to load video data for \(asset.localIdentifier): \(error.localizedDescription)")
+                AppLog.debugPrivate("Failed to load video data for \(asset.localIdentifier): \(error.localizedDescription)")
                 DispatchQueue.main.async {
                     completion(nil, "", nil, .video, nil, nil, nil)
                 }
@@ -590,7 +586,7 @@ class PhotosLibraryService {
             request.isHidden = true
         }) { success, error in
             if let error = error {
-                print("Failed to hide photo in library: \(error.localizedDescription)")
+                AppLog.error("Failed to hide photo in library: \(error.localizedDescription)")
             }
             DispatchQueue.main.async {
                 completion(success)
@@ -607,7 +603,7 @@ class PhotosLibraryService {
             PHAssetChangeRequest.deleteAssets([asset] as NSArray)
         }) { success, error in
             if let error = error {
-                print("Failed to delete photo from library: \(error.localizedDescription)")
+                AppLog.error("Failed to delete photo from library: \(error.localizedDescription)")
             }
             DispatchQueue.main.async {
                 completion(success)
@@ -624,7 +620,7 @@ class PhotosLibraryService {
             PHAssetChangeRequest.deleteAssets(assets as NSArray)
         }) { success, error in
             if let error = error {
-                print("Failed to batch delete photos from library: \(error.localizedDescription)")
+                AppLog.error("Failed to batch delete photos from library: \(error.localizedDescription)")
             }
             DispatchQueue.main.async {
                 completion(success)
@@ -679,7 +675,7 @@ class PhotosLibraryService {
             }
         }) { success, error in
             if let error = error {
-                print("Failed to save photo to library: \(error.localizedDescription)")
+                AppLog.error("Failed to save photo to library: \(error.localizedDescription)")
             }
             DispatchQueue.main.async {
                 completion(success)
@@ -749,14 +745,14 @@ class PhotosLibraryService {
                     try? FileManager.default.removeItem(at: tempURL)
 
                     if let error = error {
-                        print("Failed to save video to library: \(error.localizedDescription)")
+                        AppLog.error("Failed to save video to library: \(error.localizedDescription)")
                     }
                     DispatchQueue.main.async {
                         completion(success)
                     }
                 }
             } catch {
-                print("Failed to write video to temp file: \(error)")
+                AppLog.error("Failed to write video to temp file: \(error.localizedDescription)")
                 DispatchQueue.main.async {
                     completion(false)
                 }
@@ -816,7 +812,7 @@ class PhotosLibraryService {
                 }
             }) { success, error in
                 if let error = error {
-                    print("Failed to save photo to library: \(error.localizedDescription)")
+                    AppLog.error("Failed to save photo to library: \(error.localizedDescription)")
                 }
                 DispatchQueue.main.async {
                     completion(success)
@@ -842,7 +838,7 @@ class PhotosLibraryService {
     ) {
         // Ensure the file exists before attempting to save
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
-            print("Failed to save media file to library: File does not exist at \(fileURL.path)")
+            AppLog.error("Failed to save media file to library: File does not exist at \(fileURL.path)")
             DispatchQueue.main.async {
                 completion(false, PhotosLibraryServiceError.fileNotFound(path: fileURL.path))
             }
@@ -885,7 +881,7 @@ class PhotosLibraryService {
             }
         }) { success, error in
             if let error = error {
-                print("Failed to save media file to library: \(error.localizedDescription)")
+                AppLog.error("Failed to save media file to library: \(error.localizedDescription)")
             }
             DispatchQueue.main.async {
                 completion(success, error)
@@ -908,7 +904,7 @@ class PhotosLibraryService {
                 try item.data.write(to: tempURL)
                 tempVideoFiles.append((url: tempURL, filename: item.filename))
             } catch {
-                print("Failed to write temp video file: \(error)")
+                AppLog.error("Failed to write temp video file: \(error.localizedDescription)")
             }
         }
 
@@ -973,7 +969,7 @@ class PhotosLibraryService {
             }
 
             if let error = error {
-                print("Failed to batch save media to library: \(error.localizedDescription)")
+                AppLog.error("Failed to batch save media to library: \(error.localizedDescription)")
                 DispatchQueue.main.async {
                     completion(0)
                 }

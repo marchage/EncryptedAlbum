@@ -83,9 +83,9 @@ import SwiftUI
                                     location: nil,
                                     isFavorite: nil
                                 )
-                                print("✅ Captured to album: \(filename)")
+                                AppLog.debugPublic("✅ Captured to album: \(filename)")
                             } catch {
-                                print("❌ Failed to save to album: \(error)")
+                                AppLog.error("Failed to save to album: \(error.localizedDescription)")
                             }
                         }
                     }
@@ -298,7 +298,7 @@ import SwiftUI
         // MARK: - Notification Handlers
         @objc private func deviceDisconnected(notification: Notification) {
             guard let device = notification.object as? AVCaptureDevice else { return }
-            print("Camera device disconnected: \(device.localizedName)")
+            AppLog.debugPublic("Camera device disconnected: \(device.localizedName)")
             handleCameraError("Camera device disconnected. Please reconnect your camera.")
         }
 
@@ -475,7 +475,7 @@ import SwiftUI
                         isFavorite: nil
                     )
                 } catch {
-                    print("Failed to save capture: \(error)")
+                    AppLog.error("Failed to save capture: \(error.localizedDescription)")
                 }
             }
         }
@@ -493,7 +493,7 @@ import SwiftUI
             }
 
             if let error = error {
-                print("Video recording error: \(error)")
+                AppLog.error("Video recording error: \(error.localizedDescription)")
                 return
             }
 
@@ -526,7 +526,7 @@ import SwiftUI
                     // Clean up temp file
                     try? FileManager.default.removeItem(at: outputFileURL)
                 } catch {
-                    print("Failed to save video: \(error)")
+                    AppLog.error("Failed to save video: \(error.localizedDescription)")
                 }
             }
         }

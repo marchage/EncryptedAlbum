@@ -1,0 +1,29 @@
+name: Combined checks - prints + swiftlint
+
+on:
+  pull_request:
+    branches: [ main, master, '**' ]
+  push:
+    branches: [ main, master, '**' ]
+
+jobs:
+  checks:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run print + debug check
+        run: bash ./scripts/check-no-prints.sh
+
+      - name: Fail on unconditional nukeAllData in release
+        run: bash ./scripts/check-no-nuke-in-release.sh
+
+      - name: Install SwiftLint
+        run: |
+          set -e
+          if ! command -v swiftlint >/dev/null 2>&1; then
+            brew install swiftlint
+          fi
+
+      - name: Run SwiftLint
+        run: swiftlint --config .swiftlint.yml

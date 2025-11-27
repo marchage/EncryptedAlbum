@@ -64,9 +64,9 @@ struct UnlockView: View {
         let appIcon = UIImage(named: "AppIconMarketingRuntime") ?? UIImage(named: "AppIcon") ?? UIImage(named: "app-icon~ios-marketing")
         #if DEBUG
         if appIcon == nil {
-            print("UnlockView: could not load app icon using names: \(attemptNames)")
+            AppLog.debugPublic("UnlockView: could not load app icon using names: \(attemptNames)")
         } else {
-            print("UnlockView: loaded app icon using a fallback name")
+            AppLog.debugPublic("UnlockView: loaded app icon using a fallback name")
         }
         #endif
         if let appIcon = appIcon {

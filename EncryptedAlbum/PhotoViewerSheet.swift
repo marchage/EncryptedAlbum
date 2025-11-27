@@ -149,7 +149,7 @@ struct PhotoViewerSheet: View {
             } catch is CancellationError {
                 // Cancellation is expected when the viewer is dismissed mid-decrypt
             } catch {
-                print("Failed to decrypt photo: \(error)")
+                AppLog.error("Failed to decrypt photo: \(error.localizedDescription)")
             }
             await MainActor.run {
                 decryptTask = nil
@@ -169,7 +169,7 @@ struct PhotoViewerSheet: View {
             } catch is CancellationError {
                 // Expected when the viewer is dismissed; partial temp files are cleaned up downstream
             } catch {
-                print("Failed to decrypt video: \(error)")
+                AppLog.error("Failed to decrypt video: \(error.localizedDescription)")
             }
             await MainActor.run {
                 decryptTask = nil

@@ -85,7 +85,7 @@ struct EncryptedAlbumApp: App {
             UNUserNotificationCenter.current().delegate = self
             UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
                 if let error = error {
-                    print("Error requesting notification authorization: \(error)")
+                    AppLog.error("Error requesting notification authorization: \(error.localizedDescription)")
                 }
             }
         }
@@ -153,7 +153,7 @@ struct EncryptedAlbumApp: App {
                     )
                     manager.directImportProgress.itemsProcessed += 1
                 } catch {
-                    print("Failed to import \(url.lastPathComponent): \(error)")
+                    AppLog.error("Failed to import \(url.lastPathComponent): \(error.localizedDescription)")
                 }
             }
 
@@ -189,7 +189,7 @@ struct EncryptedAlbumApp: App {
                     )
                     manager.directImportProgress.itemsProcessed += 1
                 } catch {
-                    print("Failed to import image: \(error)")
+                    AppLog.error("Failed to import image: \(error.localizedDescription)")
                 }
             }
 

@@ -180,7 +180,7 @@ struct PreferencesView: View {
 
                         Toggle("Secure Deletion (Overwrite)", isOn: $albumManager.secureDeletionEnabled)
                         Text(
-                            "When enabled, deleted files are overwritten 3 times. This is slower but more secure. Disable for instant deletion."
+                            "When enabled, deleted files are overwritten 3 times. This is slower but more secure. Note: on modern devices (APFS / SSD) overwrites may not always guarantee physical erasure — see app documentation for details."
                         )
                         .font(.caption)
                         .foregroundStyle(.secondary)

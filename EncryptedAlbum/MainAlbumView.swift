@@ -240,9 +240,9 @@ struct MainAlbumView: View {
         do {
             try await albumManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: true)
         } catch is CancellationError {
-            print("Restore canceled before completion")
+            AppLog.debugPublic("Restore canceled before completion")
         } catch {
-            print("Failed to restore photos: \(error)")
+            AppLog.error("Failed to restore photos: \(error.localizedDescription)")
         }
     }
 
@@ -271,9 +271,9 @@ struct MainAlbumView: View {
                     do {
                         try await albumManager.batchRestorePhotos(photosToRestore, toNewAlbum: albumName)
                     } catch is CancellationError {
-                        print("Restore canceled before completion")
+                        AppLog.debugPublic("Restore canceled before completion")
                     } catch {
-                        print("Failed to restore photos: \(error)")
+                        AppLog.error("Failed to restore photos: \(error.localizedDescription)")
                     }
                 }
             }
@@ -288,9 +288,9 @@ struct MainAlbumView: View {
         do {
             try await albumManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: false)
         } catch is CancellationError {
-            print("Restore canceled before completion")
+            AppLog.debugPublic("Restore canceled before completion")
         } catch {
-            print("Failed to restore photos: \(error)")
+            AppLog.error("Failed to restore photos: \(error.localizedDescription)")
         }
     }
 
@@ -303,9 +303,9 @@ struct MainAlbumView: View {
         do {
             try await albumManager.batchRestorePhotos(photos, restoreToSourceAlbum: toSourceAlbums)
         } catch is CancellationError {
-            print("Restore canceled before completion")
+            AppLog.debugPublic("Restore canceled before completion")
         } catch {
-            print("Failed to restore photos: \(error)")
+            AppLog.error("Failed to restore photos: \(error.localizedDescription)")
         }
     }
 
@@ -392,7 +392,7 @@ struct MainAlbumView: View {
                 alert.addButton(withTitle: "OK")
                 alert.runModal()
             #else
-                print("Restore already in progress; ignoring additional request.")
+                AppLog.debugPublic("Restore already in progress; ignoring additional request.")
             #endif
             return false
         }
@@ -1398,7 +1398,7 @@ extension MainAlbumView {
                         handled = true
                     }
                 } catch {
-                    print("Failed to load dropped URL: \(error)")
+                    AppLog.error("Failed to load dropped URL: \(error.localizedDescription)")
                 }
             }
 
@@ -1415,7 +1415,7 @@ extension MainAlbumView {
                             try await albumManager.hidePhoto(imageData: jpegData, filename: filename)
                         }
                     } catch {
-                        print("Failed to load dropped image: \(error)")
+                        AppLog.error("Failed to load dropped image: \(error.localizedDescription)")
                     }
                 }
             #endif

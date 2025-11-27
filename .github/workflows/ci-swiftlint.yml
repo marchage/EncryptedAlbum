@@ -1,0 +1,25 @@
+name: SwiftLint (print detection)
+
+on:
+  pull_request:
+    branches: [ main, master, '**' ]
+  push:
+    branches: [ main, master, '**' ]
+
+jobs:
+  lint:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Homebrew and SwiftLint
+        run: |
+          set -e
+          # Install swiftlint via brew (preinstalled on many macOS runners, but ensure latest)
+          if ! command -v swiftlint >/dev/null 2>&1; then
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
+            brew install swiftlint
+          fi
+
+      - name: Run SwiftLint
+        run: swiftlint --config .swiftlint.yml

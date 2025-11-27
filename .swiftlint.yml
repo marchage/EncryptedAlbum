@@ -1,0 +1,27 @@
+# SwiftLint configuration — include a custom rule to prevent accidental use of print()/debugPrint()/NSLog/printf
+disabled_rules: # allow some rules for now
+  - trailing_whitespace
+
+included:
+  - EncryptedAlbum
+  - ShareExtension
+
+excluded:
+  - EncryptedAlbumTests
+  - EncryptedAlbumiOSUITests
+  - EncryptedAlbumMacUITests
+  - EncryptedAlbumUITests
+  - Pods
+
+custom_rules:
+  no_raw_prints:
+    name: "No raw prints"
+    regex: '(^|[^A-Za-z0-9_])(print|debugPrint|NSLog|printf)\s*\('
+    message: "Raw prints (print, debugPrint, NSLog, printf) are disallowed in app source — use AppLog or gate to DEBUG."
+    severity: error
+    included:
+      - EncryptedAlbum
+      - ShareExtension
+    excluded:
+      - EncryptedAlbum/Logging.swift
+      - EncryptedAlbum/EncryptedAlbumApp.swift # app lifecycle may log using AppLog only

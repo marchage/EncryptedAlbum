@@ -6,9 +6,12 @@
 //
 
 import UIKit
+import os
 import Social
 import MobileCoreServices
 import UniformTypeIdentifiers
+
+private let shareLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "EncryptedAlbum.ShareExtension", category: "share")
 
 class ShareViewController: SLComposeServiceViewController {
 
@@ -84,7 +87,7 @@ class ShareViewController: SLComposeServiceViewController {
 
     private func saveFileToSharedContainer(from url: URL, type: UTType) {
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
-            print("Error: App Group not configured correctly.")
+            shareLogger.error("App Group not configured correctly.")
             return
         }
         
@@ -99,7 +102,7 @@ class ShareViewController: SLComposeServiceViewController {
             }
             try FileManager.default.copyItem(at: url, to: destinationURL)
         } catch {
-            print("Error saving file to shared container: \(error)")
+            shareLogger.error("Error saving file to shared container: \(error.localizedDescription)")
         }
     }
     

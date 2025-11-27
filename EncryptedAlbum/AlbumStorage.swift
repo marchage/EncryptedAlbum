@@ -53,7 +53,7 @@ final class AlbumStorage {
             try fileManager.createDirectory(at: url, withIntermediateDirectories: true)
         } catch {
             #if DEBUG
-                print("AlbumStorage: Failed to ensure directory exists at \(url.path): \(error)")
+                AppLog.error("AlbumStorage: Failed to ensure directory exists at \(url.path): \(error.localizedDescription)")
             #endif
         }
     }
