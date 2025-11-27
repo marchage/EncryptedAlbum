@@ -113,7 +113,8 @@ struct PhotoViewerSheet: View {
                 }
             }
         }
-        .onAppear {
+    }
+    .onAppear {
             albumManager.suspendIdleTimer()
         }
         .onDisappear {

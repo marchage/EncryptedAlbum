@@ -328,6 +328,7 @@ struct SetupPasswordView: View {
             Color.clear.frame(height: 36)
         }
     }
+}
 
     private var manualPasswordView: some View {
         VStack(spacing: 16) {
