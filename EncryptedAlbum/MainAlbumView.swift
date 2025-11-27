@@ -663,7 +663,7 @@ struct MainAlbumView: View {
 
     var body: some View {
         ZStack {
-            PrivacyOverlayBackground()
+            PrivacyOverlayBackground(asBackground: true)
 
             NavigationStack {
                 ScrollView {
@@ -956,6 +956,7 @@ struct MainAlbumView: View {
                 #endif
                 .scrollDismissesKeyboard(.interactively)
             }
+            .background(Color.clear)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onAppear {
                 if !didForcePrivacyModeThisSession {

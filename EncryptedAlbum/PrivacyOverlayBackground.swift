@@ -1,9 +1,15 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#elseif os(iOS)
+import UIKit
+#endif
 
 enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
     case rainbow
     case dark
     case mesh
+    case classic
     
     var id: String { self.rawValue }
     
@@ -12,6 +18,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
         case .rainbow: return "Rainbow"
         case .dark: return "Dark"
         case .mesh: return "Mesh"
+        case .classic: return "Classic"
         }
     }
 }
@@ -19,6 +26,10 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
 /// Shared background used by every privacy cover in the app.
 struct PrivacyOverlayBackground: View {
     @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .rainbow
+    
+    /// If true, this view is being used as the main app background (behind content).
+    /// If false, it is being used as a privacy overlay (obscuring content).
+    var asBackground: Bool = false
 
     var body: some View {
         Group {
@@ -75,6 +86,16 @@ struct PrivacyOverlayBackground: View {
                     )
                 }
                 .blur(radius: 60)
+            case .classic:
+                if asBackground {
+                    Color.clear // Allow system window background to show
+                } else {
+                    #if os(macOS)
+                    Color(nsColor: .windowBackgroundColor)
+                    #else
+                    Color(uiColor: .systemBackground)
+                    #endif
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
