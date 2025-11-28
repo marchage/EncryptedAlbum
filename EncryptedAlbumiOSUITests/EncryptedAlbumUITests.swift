@@ -154,4 +154,33 @@ final class EncryptedAlbumUITests: XCTestCase {
         let cameraButton = toolbarButton(app: app, identifier: "camera.fill", fallbackIdentifiers: ["camera.fill"])
         XCTAssertTrue(cameraButton.waitForExistence(timeout: 5.0), "Camera capture button should appear")
     }
+
+    func testUnlockButtonsAreInsetFromEdges() throws {
+        let app = XCUIApplication()
+        setupPasswordAndUnlock(app: app)
+
+        // Lock the album to return to the unlock screen
+        let menuButton = toolbarButton(app: app, identifier: "More", fallbackIdentifiers: ["More", "Lock Album", "ellipsis"])
+        XCTAssertTrue(menuButton.waitForExistence(timeout: 5.0), "Menu button should exist")
+        menuButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let lockButton = app.buttons["Lock Album"]
+        XCTAssertTrue(lockButton.waitForExistence(timeout: 2.0), "Lock button should appear in menu")
+        lockButton.tap()
+
+        // Now the unlock screen should be visible
+        let unlockButton = app.buttons["unlock.unlockButton"]
+        XCTAssertTrue(unlockButton.waitForExistence(timeout: 2.0), "Unlock button should be present on lock screen")
+
+        // The unlock button should not be flush to the screen edges
+        let screenWidth = app.frame.width
+        XCTAssertTrue(unlockButton.frame.minX >= 12, "Unlock button should be inset from left edge")
+        XCTAssertTrue(unlockButton.frame.maxX <= screenWidth - 12, "Unlock button should be inset from right edge")
+
+        // If biometric button is present, it should also be inset
+        let bioButton = app.buttons["unlock.biometricButton"]
+        if bioButton.exists {
+            XCTAssertTrue(bioButton.frame.minX >= 12, "Biometric button should be inset from left edge")
+            XCTAssertTrue(bioButton.frame.maxX <= screenWidth - 12, "Biometric button should be inset from right edge")
+        }
+    }
 }

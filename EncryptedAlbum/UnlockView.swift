@@ -141,7 +141,7 @@ struct UnlockView: View {
                                             Image(systemName: biometricType == .faceID ? "faceid" : "touchid")
                                             Text(biometricType == .faceID ? "Use Face ID" : "Use Touch ID")
                                         }
-                                        .frame(width: compact ? 120 : 145)
+                                        .frame(width: compact ? 110 : 130)
                                     }
                                     .buttonStyle(.bordered)
                                     .controlSize(compact ? .regular : .large)
@@ -152,8 +152,8 @@ struct UnlockView: View {
                                         await unlock()
                                     }
                                 } label: {
-                                    Text("Unlock")
-                                        .frame(width: biometricType != .none ? (compact ? 140 : 145) : (compact ? 160 : 200))
+                                        Text("Unlock")
+                                        .frame(width: biometricType != .none ? (compact ? 130 : 140) : (compact ? 150 : 180))
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .controlSize(compact ? .regular : .large)
