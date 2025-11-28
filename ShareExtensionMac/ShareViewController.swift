@@ -7,10 +7,12 @@
 //  group's "ImportInbox" directory so your main app can pick them up.
 
 import Cocoa
+import UniformTypeIdentifiers
+import os
 
 private let shareLog = Logger(subsystem: Bundle.main.bundleIdentifier ?? "EncryptedAlbum.ShareExtensionMac", category: "share")
 
-final class ShareViewController: NSViewController {
+final class ShareViewController: NSViewController, NSExtensionRequestHandling {
     // Match the app group used by the main app. Make sure this exact string
     // is enabled in your AppID + provisioning profile on developer.apple.com
     // before signing this extension.
@@ -20,6 +22,20 @@ final class ShareViewController: NSViewController {
         super.viewDidLoad()
         // Basic UI placeholder for the extension; extensions usually show minimal UI
         // because a user action triggers them and they often run headless.
+    }
+
+    // Entry point for the extension when the host calls into it. We capture the context
+    // and kick off the share processing automatically on the main queue. This keeps the
+    // controller minimal and works for both headless and UI-driven shares.
+    func beginRequest(with context: NSExtensionContext) {
+        // Attach the provided context — NSViewController/extension host will use this.
+        // We accept the context and begin processing items immediately. The host may
+        // provide UI if desired.
+        self.extensionContext = context
+
+        DispatchQueue.main.async { [weak self] in
+            self?.performShare()
+        }
     }
 
     /// Called by the system when the user chooses the extension's action.
@@ -46,21 +62,22 @@ final class ShareViewController: NSViewController {
             guard let attachments = item.attachments else { continue }
             for provider in attachments {
                 dispatchGroup.enter()
-                // Attempt file URLs first, then try raw data types
-                if provider.hasItemConformingToTypeIdentifier("public.file-url") {
-                    provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { item, error in
+                // Attempt file URL / file promise types first, then try raw data types.
+                if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                    provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, error in
                         defer { dispatchGroup.leave() }
                         if let url = item as? URL {
                             self.saveFileToSharedContainer(from: url)
                         }
                     }
-                } else if provider.hasItemConformingToTypeIdentifier("public.image") {
+                } else if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
                     provider.loadItem(forTypeIdentifier: "public.image", options: nil) { item, error in
                         defer { dispatchGroup.leave() }
                         if let url = item as? URL {
                             self.saveFileToSharedContainer(from: url)
-                        } else if let data = item as? Data {
-                            self.saveDataToSharedContainer(data, suggestedFilename: nil)
+                            } else if let data = item as? Data {
+                                // Try to provide a recommended filename where possible
+                                self.saveDataToSharedContainer(data, suggestedFilename: nil)
                         }
                     }
                 } else {
@@ -85,7 +102,16 @@ final class ShareViewController: NSViewController {
         let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: inboxURL, withIntermediateDirectories: true)
-            let destination = inboxURL.appendingPathComponent(url.lastPathComponent)
+            // Use a collision-tolerant filename generator: prefer the original filename
+            // but fall back to a timestamp + UUID if not present.
+            let originalName = url.lastPathComponent
+            var destination = inboxURL.appendingPathComponent(originalName)
+            if FileManager.default.fileExists(atPath: destination.path) {
+                let ext = (originalName as NSString).pathExtension
+                let base = (originalName as NSString).deletingPathExtension
+                let generated = "\(base)_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString).\(ext)"
+                destination = inboxURL.appendingPathComponent(generated)
+            }
             if FileManager.default.fileExists(atPath: destination.path) {
                 try FileManager.default.removeItem(at: destination)
             }
@@ -104,7 +130,9 @@ final class ShareViewController: NSViewController {
         let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
         try? FileManager.default.createDirectory(at: inboxURL, withIntermediateDirectories: true)
 
-        let filename = suggestedFilename ?? "SharedItem_\(Date().timeIntervalSince1970)"
+            let filenameBase = suggestedFilename ?? "SharedItem_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString)"
+            let safeFilename = filenameBase.replacingOccurrences(of: "/", with: "-")
+            let filename = safeFilename
         let destination = inboxURL.appendingPathComponent(filename)
         do {
             try data.write(to: destination)
