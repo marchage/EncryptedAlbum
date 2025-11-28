@@ -361,6 +361,7 @@ class AlbumManager: ObservableObject {
     @Published var importProgress = ImportProgress()
     @MainActor let directImportProgress: DirectImportProgress
     @MainActor let exportProgress = ExportProgress()
+    @MainActor let viewerProgress = ViewerProgress()
     private var directImportTask: Task<Void, Never>?
     var exportTask: Task<Void, Never>?
 
@@ -2512,6 +2513,40 @@ class AlbumManager: ObservableObject {
         await MainActor.run {
             hiddenPhotos = normalizedPhotos
         }
+    }
+}
+
+/// Lightweight progress tracker used by the viewer UI to expose short-lived
+/// decrypting state so the toolbar/title bar can show a compact activity chip
+/// while the photo/video is being decrypted for viewing.
+@MainActor
+class ViewerProgress: ObservableObject {
+    @Published var isDecrypting: Bool = false
+    @Published var statusMessage: String = ""
+    @Published var bytesProcessed: Int64 = 0
+    @Published var bytesTotal: Int64 = 0
+
+    var percentComplete: Double {
+        guard bytesTotal > 0 else { return 0 }
+        return Double(bytesProcessed) / Double(bytesTotal)
+    }
+
+    func start(_ message: String, totalBytes: Int64 = 0) {
+        isDecrypting = true
+        statusMessage = message
+        bytesProcessed = 0
+        bytesTotal = totalBytes
+    }
+
+    func update(bytesProcessed: Int64) {
+        self.bytesProcessed = max(0, bytesProcessed)
+    }
+
+    func finish() {
+        isDecrypting = false
+        statusMessage = ""
+        bytesProcessed = 0
+        bytesTotal = 0
     }
 }
 

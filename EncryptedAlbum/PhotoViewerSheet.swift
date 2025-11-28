@@ -86,7 +86,7 @@ struct PhotoViewerSheet: View {
                                 }
                             #endif
                         } else {
-                            decryptingPlaceholder
+                            decryptingView
                         }
                     } else {
                         if let image = fullImage {
@@ -108,9 +108,34 @@ struct PhotoViewerSheet: View {
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else {
-                            decryptingPlaceholder
+                            decryptingView
                         }
-                    }
+    
+                        @ViewBuilder
+                        private var decryptingView: some View {
+                            VStack(spacing: 10) {
+                                if albumManager.viewerProgress.bytesTotal > 0 {
+                                    ProgressView(value: albumManager.viewerProgress.percentComplete)
+                                        .scaleEffect(1.2)
+                                    Text(albumManager.viewerProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.viewerProgress.statusMessage)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+
+                                    // Show byte counts and percent
+                                    Text("
+                                        \(ByteCountFormatter.string(fromByteCount: albumManager.viewerProgress.bytesProcessed, countStyle: .file)) of \(ByteCountFormatter.string(fromByteCount: albumManager.viewerProgress.bytesTotal, countStyle: .file))")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    ProgressView()
+                                        .scaleEffect(1.2)
+                                    Text(albumManager.viewerProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.viewerProgress.statusMessage)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
                 }
                 #if os(macOS)
                     .frame(minWidth: 800, minHeight: 600)
@@ -146,6 +171,9 @@ struct PhotoViewerSheet: View {
         cancelDecryptTask()
         decryptTask = Task {
             do {
+                await MainActor.run {
+                    albumManager.viewerProgress.start("Decrypting \(photo.filename)…")
+                }
                 let decryptedData = try await albumManager.decryptPhoto(photo)
                 try Task.checkCancellation()
 
@@ -173,6 +201,7 @@ struct PhotoViewerSheet: View {
             }
             await MainActor.run {
                 decryptTask = nil
+                albumManager.viewerProgress.finish()
             }
         }
     }
@@ -181,7 +210,18 @@ struct PhotoViewerSheet: View {
         cancelDecryptTask()
         decryptTask = Task {
             do {
-                let tempURL = try await albumManager.decryptPhotoToTemporaryURL(photo)
+                // Start viewer-level progress. If we have a known file size, expose it
+                await MainActor.run {
+                    let total = photo.fileSize
+                    albumManager.viewerProgress.start("Decrypting \(photo.filename)…", totalBytes: total)
+                }
+
+                let tempURL = try await albumManager.decryptPhotoToTemporaryURL(photo) { bytes in
+                    // Update viewer progress with bytes processed
+                    Task { @MainActor in
+                        albumManager.viewerProgress.update(bytesProcessed: bytes)
+                    }
+                }
                 try Task.checkCancellation()
                 await MainActor.run {
                     self.videoURL = tempURL
@@ -191,9 +231,10 @@ struct PhotoViewerSheet: View {
             } catch {
                 AppLog.error("Failed to decrypt video: \(error.localizedDescription)")
             }
-            await MainActor.run {
-                decryptTask = nil
-            }
+                await MainActor.run {
+                    decryptTask = nil
+                    albumManager.viewerProgress.finish()
+                }
         }
     }
 
@@ -222,13 +263,4 @@ struct PhotoViewerSheet: View {
     }
 }
 
-private var decryptingPlaceholder: some View {
-    VStack(spacing: 10) {
-        ProgressView()
-            .scaleEffect(1.2)
-        Text("Decrypting...")
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-}
+// decryptingPlaceholder removed — replaced by PhotoViewerSheet.decryptingView

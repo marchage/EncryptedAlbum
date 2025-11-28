@@ -889,8 +889,8 @@ struct MainAlbumView: View {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     // Progress chip (import / decrypt / restore) — shown when any long operation is active
                     toolbarProgressChip(
-                        isActive: directImportProgress.isImporting || albumManager.exportProgress.isExporting || albumManager.restorationProgress.isRestoring,
-                        message: directImportProgress.isImporting ? (directImportProgress.statusMessage.isEmpty ? "Importing…" : directImportProgress.statusMessage) : (albumManager.exportProgress.isExporting ? (albumManager.exportProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.exportProgress.statusMessage) : (albumManager.restorationProgress.isRestoring ? (albumManager.restorationProgress.statusMessage.isEmpty ? "Restoring…" : albumManager.restorationProgress.statusMessage) : ""))
+                        isActive: albumManager.viewerProgress.isDecrypting || directImportProgress.isImporting || albumManager.exportProgress.isExporting || albumManager.restorationProgress.isRestoring,
+                        message: albumManager.viewerProgress.isDecrypting ? (albumManager.viewerProgress.statusMessage.isEmpty ? (albumManager.viewerProgress.bytesTotal > 0 ? String(format: "Decrypting… %d%%", Int(albumManager.viewerProgress.percentComplete * 100)) : "Decrypting…") : (albumManager.viewerProgress.bytesTotal > 0 ? String(format: "%@ — %d%%", albumManager.viewerProgress.statusMessage, Int(albumManager.viewerProgress.percentComplete * 100)) : albumManager.viewerProgress.statusMessage)) : (directImportProgress.isImporting ? (directImportProgress.statusMessage.isEmpty ? "Importing…" : directImportProgress.statusMessage) : (albumManager.exportProgress.isExporting ? (albumManager.exportProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.exportProgress.statusMessage) : (albumManager.restorationProgress.isRestoring ? (albumManager.restorationProgress.statusMessage.isEmpty ? "Restoring…" : albumManager.restorationProgress.statusMessage) : "")))
                     )
                     toolbarActions
                 }
@@ -912,8 +912,8 @@ struct MainAlbumView: View {
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
                     toolbarProgressChip(
-                        isActive: directImportProgress.isImporting || albumManager.exportProgress.isExporting || albumManager.restorationProgress.isRestoring,
-                        message: directImportProgress.isImporting ? (directImportProgress.statusMessage.isEmpty ? "Importing…" : directImportProgress.statusMessage) : (albumManager.exportProgress.isExporting ? (albumManager.exportProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.exportProgress.statusMessage) : (albumManager.restorationProgress.isRestoring ? (albumManager.restorationProgress.statusMessage.isEmpty ? "Restoring…" : albumManager.restorationProgress.statusMessage) : ""))
+                        isActive: albumManager.viewerProgress.isDecrypting || directImportProgress.isImporting || albumManager.exportProgress.isExporting || albumManager.restorationProgress.isRestoring,
+                        message: albumManager.viewerProgress.isDecrypting ? (albumManager.viewerProgress.statusMessage.isEmpty ? (albumManager.viewerProgress.bytesTotal > 0 ? String(format: "Decrypting… %d%%", Int(albumManager.viewerProgress.percentComplete * 100)) : "Decrypting…") : (albumManager.viewerProgress.bytesTotal > 0 ? String(format: "%@ — %d%%", albumManager.viewerProgress.statusMessage, Int(albumManager.viewerProgress.percentComplete * 100)) : albumManager.viewerProgress.statusMessage)) : (directImportProgress.isImporting ? (directImportProgress.statusMessage.isEmpty ? "Importing…" : directImportProgress.statusMessage) : (albumManager.exportProgress.isExporting ? (albumManager.exportProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.exportProgress.statusMessage) : (albumManager.restorationProgress.isRestoring ? (albumManager.restorationProgress.statusMessage.isEmpty ? "Restoring…" : albumManager.restorationProgress.statusMessage) : "")))
                     )
                     toolbarActions
                 }

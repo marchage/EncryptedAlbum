@@ -243,6 +243,33 @@ final class AlbumManagerTests: XCTestCase {
         }
     }
 
+    func testViewerProgressStartAndFinish() async {
+        // Ensure viewer progress toggles start/finish as expected
+        sut.viewerProgress.start("Decrypting example.jpg…")
+        XCTAssertTrue(sut.viewerProgress.isDecrypting)
+        XCTAssertEqual(sut.viewerProgress.statusMessage, "Decrypting example.jpg…")
+
+        sut.viewerProgress.finish()
+        XCTAssertFalse(sut.viewerProgress.isDecrypting)
+        XCTAssertEqual(sut.viewerProgress.statusMessage, "")
+    }
+
+    func testViewerProgressUpdatesBytes() async {
+        sut.viewerProgress.start("Decrypting big.mp4…", totalBytes: 2000)
+        XCTAssertTrue(sut.viewerProgress.isDecrypting)
+
+        sut.viewerProgress.update(bytesProcessed: 500)
+        XCTAssertEqual(sut.viewerProgress.bytesProcessed, 500)
+        XCTAssertEqual(Int(sut.viewerProgress.percentComplete * 100), 25)
+
+        sut.viewerProgress.update(bytesProcessed: 2000)
+        XCTAssertEqual(sut.viewerProgress.bytesProcessed, 2000)
+        XCTAssertEqual(Int(sut.viewerProgress.percentComplete * 100), 100)
+
+        sut.viewerProgress.finish()
+        XCTAssertFalse(sut.viewerProgress.isDecrypting)
+    }
+
     func testLockdownPersistedInSettings() async throws {
         let password = "PersistLockdown123!"
         try await sut.setupPassword(password)
