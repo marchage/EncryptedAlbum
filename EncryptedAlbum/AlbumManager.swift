@@ -2658,35 +2658,52 @@ extension AlbumManager {
         let inboxURL = containerURL.appendingPathComponent(FileConstants.appGroupInboxName)
         guard FileManager.default.fileExists(atPath: inboxURL.path) else { return }
 
-        do {
-            let contents = try FileManager.default.contentsOfDirectory(at: inboxURL, includingPropertiesForKeys: nil)
-            guard !contents.isEmpty else { return }
+        // Performing directory/listing/move operations on the main thread can trigger
+        // Xcode's Main Thread Checker because they may be blocking I/O. Run the heavy
+        // work on a detached background Task and only call back to the album manager
+        // for UI-related updates.
+        Task.detached(priority: .background) { [weak self] in
+            guard let self else { return }
+            do {
+                let contents = try FileManager.default.contentsOfDirectory(at: inboxURL, includingPropertiesForKeys: nil)
+                guard !contents.isEmpty else { return }
 
-            AppLog.debugPublic("Found \(contents.count) items in App Group inbox")
+                AppLog.debugPublic("Found \(contents.count) items in App Group inbox")
 
-            // Move files to a temporary location to process them
-            // This ensures we can clear the inbox immediately so we don't import duplicates later
-            let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-                "InboxImport-\(UUID().uuidString)")
-            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+                // Move files to a temporary location to process them. Doing this on a
+                // background task prevents blocking the UI during potentially large I/O.
+                let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+                    "InboxImport-\(UUID().uuidString)")
+                try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-            var tempURLs: [URL] = []
+                var tempURLs: [URL] = []
 
-            for url in contents {
-                let destURL = tempDir.appendingPathComponent(url.lastPathComponent)
-                try FileManager.default.moveItem(at: url, to: destURL)
-                tempURLs.append(destURL)
-            }
+                for url in contents {
+                    let destURL = tempDir.appendingPathComponent(url.lastPathComponent)
+                    try FileManager.default.moveItem(at: url, to: destURL)
+                    tempURLs.append(destURL)
+                }
 
-            // Start import with the temporary files
-            startDirectImport(urls: tempURLs)
-
+                // Kick off the import. startDirectImport itself schedules its heavy
+                // work off the actor/Main thread as needed, so calling it from the
+                // background task here is safe.
+                self.startDirectImport(urls: tempURLs)
             } catch {
-            AppLog.error("Error reading App Group inbox: \(error.localizedDescription)")
+                AppLog.error("Error reading App Group inbox: \(error.localizedDescription)")
+            }
         }
     }
 
     #if DEBUG
+        /// Development-only helper that wipes the app storage, user defaults and some
+        /// keychain entries. This is only compiled into DEBUG builds and should NOT
+        /// be present in production releases.
+        ///
+        /// Usage (from the Xcode debug console while running a DEBUG build):
+        ///   expr -l Swift -- AlbumManager.shared.nukeAllData()
+        /// or use the Swift REPL / `po` variant if you prefer.
+        ///
+        /// WARNING: This is destructive and irreversible. Only use in development.
         func nukeAllData() {
             AppLog.warning("Nuking all data (DEBUG only).")
             try? FileManager.default.removeItem(at: storage.baseURL)
