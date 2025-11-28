@@ -322,7 +322,7 @@ struct PreferencesView: View {
 
                         Divider()
 
-                        Toggle("Lockdown Mode (restrict imports/exports & cloud)", isOn: $storedLockdownMode)
+                        Toggle("Lockdown Mode (restrict imports/exports & iCloud)", isOn: $storedLockdownMode)
                             .accessibilityIdentifier("lockdownToggle")
                             .onChange(of: storedLockdownMode) { isOn in
                                 if isOn {
@@ -347,10 +347,10 @@ struct PreferencesView: View {
                                     storedLockdownMode = false
                                 }
                             } message: {
-                                Text("Lockdown Mode will disable cloud sync, imports and exports. Use this when you need to minimize external connectivity and data movement.")
+                                Text("Lockdown Mode will disable iCloud sync, imports and exports. Use this when you need to minimize external connectivity and data movement.")
                             }
 
-                        Text("While Lockdown Mode is enabled the app will refuse imports, exports, and cloud verification. Share extensions will be blocked from depositing files into the album's inbox.")
+                        Text("While Lockdown Mode is enabled the app will refuse imports, exports, and iCloud verification. Share extensions will be blocked from depositing files into the album's inbox.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
@@ -380,7 +380,7 @@ struct PreferencesView: View {
                             albumManager.saveSettings()
                         }
 
-                        Toggle("Encrypted Cloud Sync", isOn: $albumManager.encryptedCloudSyncEnabled)
+                        Toggle("Encrypted iCloud Sync", isOn: $albumManager.encryptedCloudSyncEnabled)
                             .disabled(albumManager.lockdownModeEnabled)
                             .onChange(of: albumManager.encryptedCloudSyncEnabled) { _ in
                                 albumManager.saveSettings()
@@ -389,7 +389,7 @@ struct PreferencesView: View {
                         // Cloud sync controls — last sync, manual sync, encryption status
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Text("Cloud Sync")
+                                Text("iCloud Sync")
                                 Spacer()
                                 Text(albumManager.cloudSyncStatus.rawValue.capitalized)
                                     .font(.caption)
@@ -438,6 +438,13 @@ struct PreferencesView: View {
                                 Text(albumManager.cloudVerificationStatus.rawValue.capitalized)
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
+                            }
+
+                            if let cloudMessage = albumManager.cloudSyncErrorMessage {
+                                Text(cloudMessage)
+                                    .font(.caption2)
+                                    .foregroundStyle(.orange)
+                                    .multilineTextAlignment(.leading)
                             }
 
                             // Show whether encryption is performed client-side for items pushed to cloud

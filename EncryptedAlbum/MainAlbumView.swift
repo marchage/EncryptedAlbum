@@ -599,13 +599,13 @@ struct MainAlbumView: View {
             .scaleEffect(animateLockdownPulse ? 1.06 : 1.0)
             .buttonStyle(PlainButtonStyle())
             .accessibilityLabel("Lockdown Mode enabled — tap to open Preferences")
-            .accessibilityHint("Imports, exports and cloud sync are disabled while Lockdown is active")
+            .accessibilityHint("Imports, exports and iCloud sync are disabled while Lockdown is active")
             #if os(macOS)
             .help("Lockdown Mode active — imports, exports and cloud operations are disabled. Click to open Preferences.")
             #endif
             // transient tooltip overlay (for iOS & macOS) shown once when Lockdown first enabled
             if showLockdownTooltip {
-                Text("Lockdown Mode active — imports, exports and cloud sync are disabled.")
+                Text("Lockdown Mode active — imports, exports and iCloud sync are disabled.")
                     .font(.caption2)
                     .padding(8)
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))

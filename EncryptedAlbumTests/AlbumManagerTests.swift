@@ -190,6 +190,29 @@ final class AlbumManagerTests: XCTestCase {
         #endif
     }
 
+    func testManualCloudSyncNotAvailableOnMacShowsMessage() async throws {
+        #if !canImport(UIKit)
+        sut.encryptedCloudSyncEnabled = true
+        let success = await sut.performManualCloudSync()
+        XCTAssertFalse(success)
+        XCTAssertEqual(sut.cloudSyncStatus, .notAvailable)
+        XCTAssertNotNil(sut.cloudSyncErrorMessage)
+        #else
+        try XCTSkipIf(true, "This test only runs on non-iOS platforms")
+        #endif
+    }
+
+    func testQuickEncryptedCloudVerificationNotAvailableOnMacShowsMessage() async throws {
+        #if !canImport(UIKit)
+        let result = await sut.performQuickEncryptedCloudVerification()
+        XCTAssertFalse(result)
+        XCTAssertEqual(sut.cloudVerificationStatus, .notAvailable)
+        XCTAssertNotNil(sut.cloudSyncErrorMessage)
+        #else
+        try XCTSkipIf(true, "This test only runs on non-iOS platforms")
+        #endif
+    }
+
     func testLockdownBlocksManualCloudSync() async throws {
         #if canImport(UIKit)
         // Enable lockdown and attempt a manual cloud sync

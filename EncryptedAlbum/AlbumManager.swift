@@ -407,6 +407,7 @@ class AlbumManager: ObservableObject {
     }
 
     @Published var cloudSyncStatus: CloudSyncStatus = .idle
+    @Published var cloudSyncErrorMessage: String? = nil
 
     @Published var lastCloudVerification: Date? = nil
     enum CloudVerificationStatus: String {
@@ -2977,12 +2978,14 @@ extension AlbumManager {
             let iCloudAvailable = FileManager.default.ubiquityIdentityToken != nil
             if !iCloudAvailable {
                 cloudSyncStatus = .notAvailable
+                cloudSyncErrorMessage = "iCloud appears to be unavailable. Please sign in to iCloud and enable iCloud Drive."
                 return false
             }
 
             // If the feature is disabled we report the check but do not proceed to a real upload
             if !encryptedCloudSyncEnabled {
                 cloudSyncStatus = .failed
+                cloudSyncErrorMessage = "Encrypted iCloud Sync is turned off in Preferences."
                 lastCloudSync = Date()
                 return false
             }
@@ -2992,15 +2995,18 @@ extension AlbumManager {
                 try await Task.sleep(nanoseconds: 200_000_000) // 200ms simulate work
                 // In a real implementation we would push an encrypted test item here.
                 cloudSyncStatus = .idle
+                cloudSyncErrorMessage = nil
                 lastCloudSync = Date()
                 return true
             } catch {
                 cloudSyncStatus = .failed
+                cloudSyncErrorMessage = "iCloud sync check failed: \(error.localizedDescription)"
                 lastCloudSync = Date()
                 return false
             }
             #else
                 cloudSyncStatus = .notAvailable
+                cloudSyncErrorMessage = "Encrypted iCloud sync is not available on this platform."
                 return false
             #endif
             // guard statement in case other platforms need to use same return path
@@ -3023,13 +3029,15 @@ extension AlbumManager {
             // Must have iCloud available
             guard FileManager.default.ubiquityIdentityToken != nil else {
                 cloudVerificationStatus = .notAvailable
+                cloudSyncErrorMessage = "iCloud appears to be unavailable. Please sign in to iCloud and enable iCloud Drive."
                 lastCloudVerification = Date()
                 return false
             }
 
-            // Must have cloud sync enabled to proceed
+            // Must have iCloud sync enabled to proceed
             guard encryptedCloudSyncEnabled else {
                 cloudVerificationStatus = .failed
+                cloudSyncErrorMessage = "Encrypted iCloud Sync is turned off in Preferences."
                 lastCloudVerification = Date()
                 return false
             }
@@ -3046,6 +3054,7 @@ extension AlbumManager {
             // Use the app's default ubiquity container (nil) — this requires proper entitlements.
             guard let containerURL = FileManager.default.url(forUbiquityContainerIdentifier: nil) else {
                 cloudVerificationStatus = .notAvailable
+                cloudSyncErrorMessage = "iCloud ubiquity container not available — check your app's iCloud entitlements and container configuration."
                 lastCloudVerification = Date()
                 return false
             }
@@ -3057,6 +3066,7 @@ extension AlbumManager {
             } catch {
                 AppLog.error("Failed to create iCloud verification directory: \(error.localizedDescription)")
                 cloudVerificationStatus = .failed
+                cloudSyncErrorMessage = "Failed to prepare iCloud verification directory: \(error.localizedDescription)"
                 lastCloudVerification = Date()
                 return false
             }
@@ -3108,13 +3118,15 @@ extension AlbumManager {
                     return false
                 }
             } catch {
-                AppLog.error("Cloud verification failed: \(error.localizedDescription)")
+                AppLog.error("iCloud verification failed: \(error.localizedDescription)")
                 cloudVerificationStatus = .failed
+                cloudSyncErrorMessage = "iCloud verification failed: \(error.localizedDescription)"
                 lastCloudVerification = Date()
                 return false
             }
             #else
             cloudVerificationStatus = .notAvailable
+            cloudSyncErrorMessage = "Encrypted iCloud sync is not available on this platform."
             lastCloudVerification = Date()
             return false
             #endif
