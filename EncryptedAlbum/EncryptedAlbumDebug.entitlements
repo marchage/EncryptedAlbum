@@ -6,7 +6,7 @@
 	<true/>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>groups.biz.front-end.EncryptedAlbum.ShareExtension</string>
+		<string>groups.biz.front-end.EncryptedAlbum</string>
 	</array>
 	<key>com.apple.security.network.client</key>
 	<true/>

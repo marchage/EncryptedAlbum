@@ -14,6 +14,11 @@
 			<key>orderHint</key>
 			<integer>4</integer>
 		</dict>
+		<key>ShareExtensionMac.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>5</integer>
+		</dict>
 		<key>iOS Debug.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
@@ -37,6 +42,11 @@
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
 	<dict>
+		<key>98185B812ED9BB0D00A963D2</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
 		<key>981926512EC854B600C67291</key>
 		<dict>
 			<key>primary</key>

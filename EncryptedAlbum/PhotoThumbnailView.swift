@@ -10,13 +10,12 @@ struct PhotoThumbnailView: View {
     @State private var failedToLoad: Bool = false
 
     var body: some View {
-        GeometryReader { geo in
-            // Reserve some vertical space for filename / album meta so each grid cell is a
-            // consistent height. This prevents rows from being mis-aligned when some items
-            // have extra two-line album labels while others do not.
-            let labelAreaHeight: CGFloat = 36
+        // Use aspectRatio(1) for the image area so the grid's column width drives
+        // the square image size. This avoids GeometryReader collapsing to zero height
+        // and keeps a stable layout across different cells.
+        let labelAreaHeight: CGFloat = 36
 
-            VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 4) {
             ZStack(alignment: .topTrailing) {
                 Group {
                     if privacyModeEnabled {
@@ -89,8 +88,9 @@ struct PhotoThumbnailView: View {
                         .padding(6)
                 }
             }
-            .frame(width: geo.size.width, height: geo.size.width)
+            .aspectRatio(1, contentMode: .fit)
 
+            // Keep label area fixed height so rows align even when filenames wrap.
             VStack(alignment: .leading, spacing: 2) {
                 Text(photo.filename)
                     .font(.caption)
@@ -108,12 +108,9 @@ struct PhotoThumbnailView: View {
             .padding(.horizontal, 0)
             .padding(.bottom, 0)
             .fixedSize(horizontal: false, vertical: true)
-            // Force the total cell to be square image + fixed label area so the grid rows align.
-            .frame(height: geo.size.width + labelAreaHeight)
         }
 
-            // note: moved label layout into the geometry-based layout above
-        }
+        // note: moved label layout into the geometry-based layout above
         .onAppear {
             if !privacyModeEnabled {
                 loadThumbnail()

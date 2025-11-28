@@ -639,9 +639,12 @@ struct MainAlbumView: View {
             .accessibilityIdentifier("sleepPreventionChip")
             .padding(.vertical, 3)
             .padding(.horizontal, 6)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color(UIColor.systemBackground).opacity(0.0001)))
+            #if os(iOS)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color(uiColor: .systemBackground).opacity(0.0001)))
             .accessibilityLabel("Preventing system sleep")
-            #if os(macOS)
+            #else
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: NSColor.windowBackgroundColor).opacity(0.0001)))
+            .accessibilityLabel("Preventing system sleep")
             .help("Device will remain awake")
             #endif
         }

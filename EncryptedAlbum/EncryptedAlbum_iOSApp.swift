@@ -1,6 +1,9 @@
 import SwiftUI
+#if os(iOS)
 import UIKit
+#endif
 
+#if os(iOS)
 @main
 struct EncryptedAlbumApp_iOS: App {
     @StateObject private var albumManager = AlbumManager.shared
@@ -69,7 +72,9 @@ struct EncryptedAlbumApp_iOS: App {
         }
     }
 }
+#endif
 
+#if os(iOS)
 /// Controls screenshot/recording blocks using UIWindow.secure.
 @MainActor
 final class ScreenshotBlocker: ObservableObject {
@@ -138,6 +143,7 @@ final class ScreenshotBlocker: ObservableObject {
             return UIScreen.screens.contains { $0.isCaptured }
         }
     }
+
 }
 
 struct ScreenshotBlockerOverlay: View {
@@ -168,5 +174,7 @@ struct ScreenshotBlockerOverlay: View {
         .animation(.easeInOut(duration: 0.25), value: screenshotBlocker.overlayVisible)
     }
 }
+
+#endif
 
 // SecureWrapper moved to SecureWrapper.swift

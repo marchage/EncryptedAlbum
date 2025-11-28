@@ -1,83 +1,69 @@
-//  ShareViewController.swift
-//  ShareExtensionMac (scaffold)
 //
-//  Minimal macOS Share Extension view controller intended as a starting point.
-//  Add this code to an Xcode macOS Share target and enable App Groups for the
-//  extension's App ID. The controller will copy incoming items into the app
-//  group's "ImportInbox" directory so your main app can pick them up.
+//  ShareViewController.swift
+//  ShareExtensionMac
+//
+//  Created by Marc Hage on 28/11/2025.
+//
 
 import Cocoa
-import UniformTypeIdentifiers
-import os
 
-private let shareLog = Logger(subsystem: Bundle.main.bundleIdentifier ?? "EncryptedAlbum.ShareExtensionMac", category: "share")
+final class ShareViewController: NSViewController {
 
-final class ShareViewController: NSViewController, NSExtensionRequestHandling {
-    // Match the app group used by the main app. Make sure this exact string
-    // is enabled in your AppID + provisioning profile on developer.apple.com
-    // before signing this extension.
+    // Replace this with your App Group ID (kept in sync with the iOS extension)
     private let appGroupIdentifier = "group.biz.front-end.EncryptedAlbum"
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        // Basic UI placeholder for the extension; extensions usually show minimal UI
-        // because a user action triggers them and they often run headless.
+    override var nibName: NSNib.Name? {
+        return NSNib.Name("ShareViewController")
     }
 
-    // Entry point for the extension when the host calls into it. We capture the context
-    // and kick off the share processing automatically on the main queue. This keeps the
-    // controller minimal and works for both headless and UI-driven shares.
-    func beginRequest(with context: NSExtensionContext) {
-        // Attach the provided context — NSViewController/extension host will use this.
-        // We accept the context and begin processing items immediately. The host may
-        // provide UI if desired.
-        self.extensionContext = context
-
-        DispatchQueue.main.async { [weak self] in
-            self?.performShare()
+    override func loadView() {
+        super.loadView()
+    
+        // Insert code here to customize the view
+        let item = self.extensionContext!.inputItems[0] as! NSExtensionItem
+        if let attachments = item.attachments {
+            NSLog("Attachments = %@", attachments as NSArray)
+        } else {
+            NSLog("No Attachments")
         }
     }
 
-    /// Called by the system when the user chooses the extension's action.
-    /// We accept the incoming items and copy them into the shared container's
-    /// ImportInbox directory so the main app can process them on next launch.
-    func performShare() {
-        // Block shares when lockdown sentinel is present in the shared suite
-        if let suite = UserDefaults(suiteName: appGroupIdentifier), suite.bool(forKey: "lockdownModeEnabled") {
-            let alert = NSAlert()
-            alert.messageText = "Import blocked — Lockdown Mode"
-            alert.informativeText = "Encrypted Album is currently in Lockdown Mode and is not accepting incoming shares. Disable Lockdown Mode in the app to allow imports."
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "OK")
-            alert.runModal()
-            self.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
-            return
-        }
+    @IBAction func send(_ sender: AnyObject?) {
         guard let context = self.extensionContext else { return }
 
         let inputItems = context.inputItems as? [NSExtensionItem] ?? []
         let dispatchGroup = DispatchGroup()
+        var savedCount = 0
 
         for item in inputItems {
             guard let attachments = item.attachments else { continue }
             for provider in attachments {
                 dispatchGroup.enter()
-                // Attempt file URL / file promise types first, then try raw data types.
-                if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
-                    provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, error in
+
+                if provider.hasItemConformingToTypeIdentifier("public.file-url") {
+                    provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { item, error in
                         defer { dispatchGroup.leave() }
                         if let url = item as? URL {
-                            self.saveFileToSharedContainer(from: url)
+                            if self.saveFileToSharedContainer(from: url) {
+                                savedCount += 1
+                            }
                         }
                     }
-                } else if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                } else if provider.hasItemConformingToTypeIdentifier("public.image") {
                     provider.loadItem(forTypeIdentifier: "public.image", options: nil) { item, error in
                         defer { dispatchGroup.leave() }
                         if let url = item as? URL {
-                            self.saveFileToSharedContainer(from: url)
-                            } else if let data = item as? Data {
-                                // Try to provide a recommended filename where possible
-                                self.saveDataToSharedContainer(data, suggestedFilename: nil)
+                            if self.saveFileToSharedContainer(from: url) {
+                                savedCount += 1
+                            }
+                        } else if let data = item as? Data {
+                            if self.saveDataToSharedContainer(data, suggestedFilename: nil) {
+                                savedCount += 1
+                            }
+                        } else if let image = item as? NSImage, let tiff = image.tiffRepresentation {
+                            if self.saveDataToSharedContainer(tiff, suggestedFilename: nil) {
+                                savedCount += 1
+                            }
                         }
                     }
                 } else {
@@ -88,27 +74,46 @@ final class ShareViewController: NSViewController, NSExtensionRequestHandling {
         }
 
         dispatchGroup.notify(queue: .main) {
-            // Inform the host app / system we're done
-            context.completeRequest(returningItems: [], completionHandler: nil)
+            // Show a simple confirmation to the user so they know the import succeeded.
+            let alert = NSAlert()
+            if savedCount > 0 {
+                alert.messageText = "Imported \(savedCount) item\(savedCount == 1 ? "" : "s")"
+                alert.informativeText = "Encrypted Album saved shared items to the shared ImportInbox. Open the app to import them."
+                alert.addButton(withTitle: "OK")
+            } else {
+                alert.messageText = "Nothing imported"
+                alert.informativeText = "No supported files were available to import."
+                alert.addButton(withTitle: "OK")
+            }
+
+            // Show the alert and finish after the user dismisses it so the extension provides feedback
+            alert.alertStyle = .informational
+            alert.beginSheetModal(for: self.view.window ?? NSApp.mainWindow ?? NSWindow()) { _ in
+                context.completeRequest(returningItems: [], completionHandler: nil)
+            }
         }
     }
 
-    private func saveFileToSharedContainer(from url: URL) {
+    @IBAction func cancel(_ sender: AnyObject?) {
+        let cancelError = NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError, userInfo: nil)
+        self.extensionContext!.cancelRequest(withError: cancelError)
+    }
+
+    // MARK: - Helpers
+
+    private func saveFileToSharedContainer(from url: URL) -> Bool {
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
-            shareLog.error("App group container not found — ensure the extension has the App Group entitlement enabled.")
-            return
+            NSLog("ShareExtensionMac: App group container not found for id: %@", appGroupIdentifier)
+            return false
         }
 
         let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: inboxURL, withIntermediateDirectories: true)
-            // Use a collision-tolerant filename generator: prefer the original filename
-            // but fall back to a timestamp + UUID if not present.
-            let originalName = url.lastPathComponent
-            var destination = inboxURL.appendingPathComponent(originalName)
+            var destination = inboxURL.appendingPathComponent(url.lastPathComponent)
             if FileManager.default.fileExists(atPath: destination.path) {
-                let ext = (originalName as NSString).pathExtension
-                let base = (originalName as NSString).deletingPathExtension
+                let ext = (url.lastPathComponent as NSString).pathExtension
+                let base = (url.lastPathComponent as NSString).deletingPathExtension
                 let generated = "\(base)_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString).\(ext)"
                 destination = inboxURL.appendingPathComponent(generated)
             }
@@ -116,29 +121,34 @@ final class ShareViewController: NSViewController, NSExtensionRequestHandling {
                 try FileManager.default.removeItem(at: destination)
             }
             try FileManager.default.copyItem(at: url, to: destination)
-            shareLog.debug("Saved file to shared container: %{public}@", destination.path)
+            NSLog("ShareExtensionMac: copied file to %@", destination.path)
+            return true
         } catch {
-            shareLog.error("Failed to copy shared file: %{public}@", error.localizedDescription)
+            NSLog("ShareExtensionMac: failed to copy file: %@", error.localizedDescription)
+            return false
         }
     }
 
-    private func saveDataToSharedContainer(_ data: Data, suggestedFilename: String?) {
+    private func saveDataToSharedContainer(_ data: Data, suggestedFilename: String?) -> Bool {
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
-            return
+            NSLog("ShareExtensionMac: App group container not found for id: %@", appGroupIdentifier)
+            return false
         }
 
         let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
         try? FileManager.default.createDirectory(at: inboxURL, withIntermediateDirectories: true)
 
-            let filenameBase = suggestedFilename ?? "SharedItem_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString)"
-            let safeFilename = filenameBase.replacingOccurrences(of: "/", with: "-")
-            let filename = safeFilename
-        let destination = inboxURL.appendingPathComponent(filename)
+        let base = suggestedFilename ?? "SharedItem_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString)"
+        let safe = base.replacingOccurrences(of: "/", with: "-")
+        let destination = inboxURL.appendingPathComponent(safe)
         do {
-            try data.write(to: destination)
-            shareLog.debug("Wrote data share to %{public}@", destination.path)
+            try data.write(to: destination, options: [.atomic])
+            NSLog("ShareExtensionMac: wrote data to %@", destination.path)
+            return true
         } catch {
-            shareLog.error("Failed to write data share: %{public}@", error.localizedDescription)
+            NSLog("ShareExtensionMac: failed to write data: %@", error.localizedDescription)
+            return false
         }
     }
+
 }

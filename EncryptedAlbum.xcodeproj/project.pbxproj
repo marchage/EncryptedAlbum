@@ -12,6 +12,10 @@
 		432DD49F40365EA5EAEBFD23 /* AlbumDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C904A396A6B1968CDD78D9 /* AlbumDetailView.swift */; };
 		4F5E1087AAB34BAD93E89C2A /* AlbumState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC21B534704407E965288CF /* AlbumState.swift */; };
 		72601657C5564D06A303EECF /* CryptoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E6FD95D924253BFFFAD57 /* CryptoService.swift */; };
+		98185B852ED9BB0D00A963D2 /* icon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 98185B842ED9BB0D00A963D2 /* icon.icns */; };
+		98185B872ED9BB0D00A963D2 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98185B862ED9BB0D00A963D2 /* ShareViewController.swift */; };
+		98185B8A2ED9BB0D00A963D2 /* ShareViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 98185B882ED9BB0D00A963D2 /* ShareViewController.xib */; };
+		98185B8F2ED9BB0D00A963D2 /* ShareExtensionMac.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 98185B822ED9BB0D00A963D2 /* ShareExtensionMac.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		981926552EC854B600C67291 /* EncryptedAlbum_iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981926542EC854B600C67291 /* EncryptedAlbum_iOSApp.swift */; };
 		981BB77E2ED5C1AA00584B7B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 981BB77D2ED5C1AA00584B7B /* Assets.xcassets */; };
 		981BB77F2ED5C1AA00584B7B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 981BB77D2ED5C1AA00584B7B /* Assets.xcassets */; };
@@ -103,6 +107,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		98185B8D2ED9BB0D00A963D2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9849B4492EB9893C00B17DAC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 98185B812ED9BB0D00A963D2;
+			remoteInfo = ShareExtensionMac;
+		};
 		981D44D82ED79E5100287DFC /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 9849B4492EB9893C00B17DAC /* Project object */;
@@ -141,6 +152,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		98185B902ED9BB0D00A963D2 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				98185B8F2ED9BB0D00A963D2 /* ShareExtensionMac.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		981D44DB2ED79E5100287DFC /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -160,6 +182,12 @@
 		4A6E6FD95D924253BFFFAD57 /* CryptoService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoService.swift; sourceTree = "<group>"; };
 		8CC21B534704407E965288CF /* AlbumState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumState.swift; sourceTree = "<group>"; };
 		98185B072ED978FC00A963D2 /* EncryptedAlbumDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EncryptedAlbumDebug.entitlements; sourceTree = "<group>"; };
+		98185B822ED9BB0D00A963D2 /* ShareExtensionMac.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtensionMac.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		98185B842ED9BB0D00A963D2 /* icon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = icon.icns; sourceTree = "<group>"; };
+		98185B862ED9BB0D00A963D2 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		98185B892ED9BB0D00A963D2 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/ShareViewController.xib; sourceTree = "<group>"; };
+		98185B8B2ED9BB0D00A963D2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		98185B8C2ED9BB0D00A963D2 /* ShareExtensionMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ShareExtensionMac.entitlements; sourceTree = "<group>"; };
 		981926522EC854B600C67291 /* EncryptedAlbum iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "EncryptedAlbum iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		981926542EC854B600C67291 /* EncryptedAlbum_iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedAlbum_iOSApp.swift; sourceTree = "<group>"; };
 		981926602EC8552000C67291 /* Info_iOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info_iOS.plist; sourceTree = "<group>"; };
@@ -221,6 +249,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		98185B7F2ED9BB0D00A963D2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9819264F2EC854B600C67291 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -273,6 +308,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		98185B832ED9BB0D00A963D2 /* ShareExtensionMac */ = {
+			isa = PBXGroup;
+			children = (
+				98185B842ED9BB0D00A963D2 /* icon.icns */,
+				98185B862ED9BB0D00A963D2 /* ShareViewController.swift */,
+				98185B882ED9BB0D00A963D2 /* ShareViewController.xib */,
+				98185B8B2ED9BB0D00A963D2 /* Info.plist */,
+				98185B8C2ED9BB0D00A963D2 /* ShareExtensionMac.entitlements */,
+			);
+			path = ShareExtensionMac;
+			sourceTree = "<group>";
+		};
 		981D44D12ED79E5100287DFC /* ShareExtension */ = {
 			isa = PBXGroup;
 			children = (
@@ -292,6 +339,7 @@
 				986328EA2ECE8CEF00EAE9A9 /* EncryptedAlbumiOSUITests */,
 				B4FA2CB63F8D4E0FB4F74101 /* EncryptedAlbumMacUITests */,
 				981D44D12ED79E5100287DFC /* ShareExtension */,
+				98185B832ED9BB0D00A963D2 /* ShareExtensionMac */,
 				9849B4522EB9893D00B17DAC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -306,6 +354,7 @@
 				B7C1A2E23E8C4F6A00D10010 /* EncryptedAlbumMacTests.xctest */,
 				B4FA2CB53F8D4E0FB4F74101 /* EncryptedAlbumMacUITests.xctest */,
 				981D44D02ED79E5100287DFC /* ShareExtension.appex */,
+				98185B822ED9BB0D00A963D2 /* ShareExtensionMac.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -393,6 +442,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		98185B812ED9BB0D00A963D2 /* ShareExtensionMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 98185B932ED9BB0D00A963D2 /* Build configuration list for PBXNativeTarget "ShareExtensionMac" */;
+			buildPhases = (
+				98185B7E2ED9BB0D00A963D2 /* Sources */,
+				98185B7F2ED9BB0D00A963D2 /* Frameworks */,
+				98185B802ED9BB0D00A963D2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShareExtensionMac;
+			productName = ShareExtensionMac;
+			productReference = 98185B822ED9BB0D00A963D2 /* ShareExtensionMac.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		981926512EC854B600C67291 /* EncryptedAlbum iOS */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9819265F2EC854B800C67291 /* Build configuration list for PBXNativeTarget "EncryptedAlbum iOS" */;
@@ -436,10 +502,12 @@
 				9849B44D2EB9893D00B17DAC /* Sources */,
 				9849B44E2EB9893D00B17DAC /* Frameworks */,
 				9849B44F2EB9893D00B17DAC /* Resources */,
+				98185B902ED9BB0D00A963D2 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				98185B8E2ED9BB0D00A963D2 /* PBXTargetDependency */,
 			);
 			name = EncryptedAlbum;
 			productName = EncryptedAlbum;
@@ -528,6 +596,9 @@
 				LastSwiftUpdateCheck = 1520;
 				LastUpgradeCheck = 1520;
 				TargetAttributes = {
+					98185B812ED9BB0D00A963D2 = {
+						CreatedOnToolsVersion = 15.2;
+					};
 					981926512EC854B600C67291 = {
 						CreatedOnToolsVersion = 15.2;
 					};
@@ -575,11 +646,21 @@
 				B4FA2CBA3F8D4E0FB4F74101 /* EncryptedAlbumMacUITests */,
 				B7C1A2DB3E8C4F6A00D10010 /* EncryptedAlbumMacTests */,
 				981D44CF2ED79E5100287DFC /* ShareExtension */,
+				98185B812ED9BB0D00A963D2 /* ShareExtensionMac */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		98185B802ED9BB0D00A963D2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				98185B8A2ED9BB0D00A963D2 /* ShareViewController.xib in Resources */,
+				98185B852ED9BB0D00A963D2 /* icon.icns in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		981926502EC854B600C67291 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -635,6 +716,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		98185B7E2ED9BB0D00A963D2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				98185B872ED9BB0D00A963D2 /* ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9819264E2EC854B600C67291 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -776,6 +865,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		98185B8E2ED9BB0D00A963D2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 98185B812ED9BB0D00A963D2 /* ShareExtensionMac */;
+			targetProxy = 98185B8D2ED9BB0D00A963D2 /* PBXContainerItemProxy */;
+		};
 		981D44D92ED79E5100287DFC /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 981D44CF2ED79E5100287DFC /* ShareExtension */;
@@ -804,6 +898,14 @@
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
+		98185B882ED9BB0D00A963D2 /* ShareViewController.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				98185B892ED9BB0D00A963D2 /* Base */,
+			);
+			name = ShareViewController.xib;
+			sourceTree = "<group>";
+		};
 		981D44D42ED79E5100287DFC /* MainInterface.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
@@ -815,6 +917,70 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		98185B912ED9BB0D00A963D2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ShareExtensionMac/ShareExtensionMac.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = TDWHVYP98Z;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShareExtensionMac/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ShareExtensionMac;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum.ShareExtensionMac";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "Main app & extension for main app";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		98185B922ED9BB0D00A963D2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ShareExtensionMac/ShareExtensionMac.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = TDWHVYP98Z;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShareExtensionMac/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ShareExtensionMac;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum.ShareExtensionMac";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "Main app & extension for main app";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 		9819265D2EC854B800C67291 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1067,16 +1233,16 @@
 		9849B4612EB9893F00B17DAC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = EncryptedAlbum/EncryptedAlbumDebug.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1100,17 +1266,16 @@
 		9849B4622EB9893F00B17DAC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = EncryptedAlbum/EncryptedAlbum.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=macosx*]" = TDWHVYP98Z;
+				DEVELOPMENT_TEAM = TDWHVYP98Z;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1126,7 +1291,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "Provisioning profile EncryptedAlbum";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -1275,6 +1439,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		98185B932ED9BB0D00A963D2 /* Build configuration list for PBXNativeTarget "ShareExtensionMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				98185B912ED9BB0D00A963D2 /* Debug */,
+				98185B922ED9BB0D00A963D2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		9819265F2EC854B800C67291 /* Build configuration list for PBXNativeTarget "EncryptedAlbum iOS" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

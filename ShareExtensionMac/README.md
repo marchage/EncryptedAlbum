@@ -38,6 +38,17 @@ If you'd like, I can:
  - Wire up unit/integration tests (requires target creation in Xcode to run in CI),
  - Or create a small shell script that validates the existence of the `ImportInbox` in your app group's container for debugging.
 
+Quick verification helper
+ - A tiny helper script is included: `verify_import_container.sh`.
+ - Run it locally to create a test file in your App Group's `ImportInbox` and confirm the folder exists:
+
+```bash
+chmod +x ShareExtensionMac/verify_import_container.sh
+ShareExtensionMac/verify_import_container.sh
+```
+
+This writes a small file into ~/Library/Group Containers/<YOUR_APP_GROUP>/ImportInbox so the main app can discover it for import testing.
+
 Happy to continue — tell me whether you want me to add entitlements with a specific App Group ID, a small storyboard UI, or tests next.
 ShareExtensionMac (scaffold)
 ============================

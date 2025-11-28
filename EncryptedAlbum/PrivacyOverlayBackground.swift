@@ -136,7 +136,11 @@ struct PrivacyOverlayBackground: View {
                         WindowBackgroundView()
                     }
                 #else
-                    Color(uiColor: .systemBackground)
+                    #if os(iOS)
+                        Color(uiColor: .systemBackground)
+                    #else
+                        Color(nsColor: NSColor.windowBackgroundColor)
+                    #endif
                 #endif
             case .glass:
                 ZStack {

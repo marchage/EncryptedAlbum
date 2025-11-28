@@ -2,19 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!--
-        Edit the APP_GROUP_ID value below and add this entitlements file to your
-        Share Extension target in Xcode. Also make sure the same group is enabled
-        for your main app target in the Apple Developer portal / provisioning.
-    -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    <key>com.apple.security.files.user-selected.read-only</key>
+    <true/>
     <key>com.apple.security.application-groups</key>
     <array>
-        <string>$(APP_GROUP_ID)</string>
+        <string>group.biz.front-end.EncryptedAlbum</string>
     </array>
-
-    <!-- Example of additional macOS extension capabilities (usually not needed):
-    <key>com.apple.security.files.user-selected.read-write</key>
-    <true/>
-    -->
 </dict>
 </plist>
