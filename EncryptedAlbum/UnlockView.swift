@@ -128,8 +128,12 @@ struct UnlockView: View {
                             }
 
                             HStack(spacing: 12) {
-                                if biometricType != .none {
-                                    Button {
+                                    // Choose sensible button sizing for compact layout vs roomy layout.
+                                    // On compact layout we reduce controlSize and slightly reduce button widths.
+                                    let compact = albumManager.compactLayoutEnabled
+
+                                    if biometricType != .none {
+                                        Button {
                                         cancelAutoBiometricScheduling()
                                         authenticateWithBiometrics()
                                     } label: {
@@ -137,10 +141,10 @@ struct UnlockView: View {
                                             Image(systemName: biometricType == .faceID ? "faceid" : "touchid")
                                             Text(biometricType == .faceID ? "Use Face ID" : "Use Touch ID")
                                         }
-                                        .frame(width: 145)
+                                        .frame(width: compact ? 120 : 145)
                                     }
                                     .buttonStyle(.bordered)
-                                    .controlSize(.large)
+                                    .controlSize(compact ? .regular : .large)
                                 }
 
                                 Button {
@@ -149,10 +153,10 @@ struct UnlockView: View {
                                     }
                                 } label: {
                                     Text("Unlock")
-                                        .frame(width: biometricType != .none ? 145 : 200)
+                                        .frame(width: biometricType != .none ? (compact ? 140 : 145) : (compact ? 160 : 200))
                                 }
                                 .buttonStyle(.borderedProminent)
-                                .controlSize(.large)
+                                .controlSize(compact ? .regular : .large)
                                 .disabled(password.isEmpty)
                             }
                             // Ensure there is at least a small inset so buttons aren't flush at the edges
