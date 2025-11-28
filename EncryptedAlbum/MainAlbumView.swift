@@ -551,32 +551,62 @@ struct MainAlbumView: View {
     private var toolbarActions: some View {
         // Visual indicator for Lockdown Mode — shown prominently to remind the user
         if albumManager.lockdownModeEnabled {
-            HStack(spacing: 6) {
-                Image(systemName: "shield.slash.fill")
-                    .foregroundStyle(.white, .red)
-                    .accessibilityLabel("Lockdown Mode enabled")
-                Text("Lockdown")
-                    .font(.caption2)
-                    .foregroundStyle(.red)
+            // Present a tappable / clickable chip with clearer, high-contrast styling
+            Button(action: {
+                // Open preferences so users can see why Lockdown is active and change it
+                showingPreferences = true
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "shield.fill")
+                        .foregroundColor(.white)
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(6)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.red))
+
+                    Text("LOCKDOWN")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                }
+                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color.red.opacity(0.6), lineWidth: 0.5)
+                )
             }
+            .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel("Lockdown Mode enabled — tap to open Preferences")
+            .accessibilityHint("Imports, exports and cloud sync are disabled while Lockdown is active")
             #if os(macOS)
-            .help("Lockdown Mode active — imports, exports and cloud operations are disabled")
+            .help("Lockdown Mode active — imports, exports and cloud operations are disabled. Click to open Preferences.")
             #endif
         }
         // Indicator for when the app is preventing system sleep (e.g., during imports or
         // when user opts to keep screen awake while unlocked). Visible only on platforms
         // where system sleep is controllable (iOS).
         if albumManager.isSystemSleepPrevented {
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Image(systemName: "bolt.fill")
-                    .foregroundStyle(.yellow)
-                    .accessibilityLabel("Preventing system sleep")
+                    .foregroundColor(.yellow)
+                    .font(.system(size: 12, weight: .semibold))
+                    .padding(5)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.yellow.opacity(0.15)))
+
                 if let label = albumManager.sleepPreventionReasonLabel {
                     Text(label)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                } else {
+                    Text("Awake")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
             }
+            .padding(.vertical, 3)
+            .padding(.horizontal, 6)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color(UIColor.systemBackground).opacity(0.0001)))
+            .accessibilityLabel("Preventing system sleep")
             #if os(macOS)
             .help("Device will remain awake")
             #endif
