@@ -301,6 +301,25 @@ struct SecurePhoto: Identifiable, Codable {
 
 // MARK: - Album Manager
 
+// Track suspension reasons used by AlbumManager and other UI code to explain why
+// system sleep / auto-lock is being prevented. Placing this at module scope lets
+// views (e.g. PhotoViewerSheet) refer to the cases without accessing a nested type.
+public enum SleepPreventionReason: String, Hashable {
+    case importing
+    case viewing
+    case prompt
+    case other
+
+    var displayName: String {
+        switch self {
+        case .importing: return "Importing"
+        case .viewing: return "Viewing"
+        case .prompt: return "Prompt"
+        case .other: return "Active task"
+        }
+    }
+}
+
 class AlbumManager: ObservableObject {
     @MainActor static let shared = AlbumManager()
 
@@ -433,23 +452,10 @@ class AlbumManager: ObservableObject {
     private func normalizedStoredPath(_ storedPath: String) -> String { storage.normalizedStoredPath(storedPath) }
     private var idleTimer: Timer?
     private var idleTimerSuspendCount: Int = 0
-    // Track suspension reasons so UI can surface why system sleep is prevented
-    private enum SleepPreventionReason: String, Hashable {
-        case importing
-        case viewing
-        case prompt
-        case other
 
-        var displayName: String {
-            switch self {
-            case .importing: return "Importing"
-            case .viewing: return "Viewing"
-            case .prompt: return "Prompt"
-            case .other: return "Active task"
-            }
-        }
-    }
-
+// Track suspension reasons used by AlbumManager and other UI code to explain why
+// system sleep / auto-lock is being prevented. This enum is intentionally at
+// module scope so views (e.g. PhotoViewerSheet) can refer to the cases.
     private var sleepPreventionCounts: [SleepPreventionReason: Int] = [:]
 
     // Serial queue for thread-safe operations
@@ -2885,6 +2891,8 @@ extension AlbumManager {
                 AppLog.error("Error reading App Group inbox: \(error.localizedDescription)")
             }
         }
+        }
+        // End checkAppGroupInbox background work
 
         /// Performs a minimal manual 'cloud sync' check.
         /// This is a non-destructive verification that an iCloud account is available

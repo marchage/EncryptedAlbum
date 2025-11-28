@@ -258,4 +258,46 @@ final class AlbumManagerTests: XCTestCase {
 
         XCTAssertTrue(reloaded.lockdownModeEnabled)
     }
+
+    func testDecoyUnlockDoesNotWipeRealAlbum() async throws {
+        // 1. Setup a real album with a hidden photo
+        let realPassword = "RealSecret123!"
+        try await sut.setupPassword(realPassword)
+        try await sut.unlock(password: realPassword)
+
+        let realPhotoData = "REAL_PHOTO_CONTENT".data(using: .utf8)!
+        try await sut.hidePhoto(imageData: realPhotoData, filename: "real.jpg", mediaType: .photo)
+
+        XCTAssertEqual(sut.hiddenPhotos.count, 1, "There should be one real hidden photo")
+
+        let realPhoto = sut.hiddenPhotos.first!
+        let realFileURL = sut.urlForStoredPath(realPhoto.encryptedDataPath)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: realFileURL.path), "Real encrypted file should exist on disk")
+
+        // 2. Enable decoy password and unlock using the decoy; ensure real data is untouched
+        sut.setDecoyPassword("DecoyTest123!")
+        sut.lock()
+
+        // Unlock using decoy password - this should set isDecoyMode and not touch stored files
+        try await sut.unlock(password: "DecoyTest123!")
+        XCTAssertTrue(sut.isDecoyMode, "Manager should be in decoy mode after decoy unlock")
+
+        // Hidden photos in decoy mode must be the fake collection; the real file must still exist on disk
+        XCTAssertTrue(FileManager.default.fileExists(atPath: realFileURL.path), "Real encrypted file must remain on disk when in decoy mode")
+
+        // 3. Lock and unlock with the real password, then verify we can still decrypt the original photo
+        sut.lock()
+        try await sut.unlock(password: realPassword)
+
+        XCTAssertFalse(sut.isDecoyMode, "After real unlock decoy mode should be disabled")
+
+        // Re-find the real photo (hiddenPhotos may have been reloaded)
+        guard let restored = sut.hiddenPhotos.first(where: { $0.filename == realPhoto.filename }) else {
+            XCTFail("Real photo metadata should still be present after returning from decoy mode")
+            return
+        }
+
+        let decrypted = try await sut.decryptPhoto(restored)
+        XCTAssertEqual(decrypted, realPhotoData, "Decrypted contents must match the original data")
+    }
 }
