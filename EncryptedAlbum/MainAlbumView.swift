@@ -146,7 +146,19 @@ struct MainAlbumView: View {
 
     // Small helper to apply the 'Winamp' theme when selected. This is intentionally
     // lightweight: it just picks a high-contrast accent color and a retro background.
-    private func applyWinampThemeIfNeeded() -> some ViewModifier {
+    // The function previously returned `some ViewModifier` but used different concrete
+    // modifier types in the branches which caused a compile-time mismatch. Create a
+    // small type-erasing modifier and return that consistently.
+    private struct AnyModifier: ViewModifier {
+        private let _body: (Content) -> AnyView
+        init<M: ViewModifier>(_ m: M) {
+            self._body = { content in AnyView(content.modifier(m)) }
+        }
+
+        func body(content: Content) -> some View { _body(content) }
+    }
+
+    private func applyWinampThemeIfNeeded() -> AnyModifier {
         struct WinampModifier: ViewModifier {
             func body(content: Content) -> some View {
                 content
@@ -155,9 +167,9 @@ struct MainAlbumView: View {
         }
 
         if albumManager.appTheme == "winamp" {
-            return WinampModifier()
+            return AnyModifier(WinampModifier())
         }
-        return IdentityModifier()
+        return AnyModifier(IdentityModifier())
     }
 
     private struct IdentityModifier: ViewModifier {

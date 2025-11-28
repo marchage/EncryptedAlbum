@@ -628,7 +628,7 @@ class AlbumManager: ObservableObject {
             if lockdownModeEnabled {
                 cloudSyncStatus = .failed
                 lastCloudSync = Date()
-                return false
+                return
             }
             // On iOS, verify biometric storage by attempting to retrieve it
             // This triggers Face ID prompt immediately to confirm biometric works
@@ -749,7 +749,7 @@ class AlbumManager: ObservableObject {
             startIdleTimer()
             #if os(iOS)
                 // After a successful unlock, recompute system idle state using consolidated logic.
-                updateSystemIdleState()
+                await updateSystemIdleState()
             #endif
 
             // Update legacy properties for backward compatibility
@@ -974,10 +974,11 @@ class AlbumManager: ObservableObject {
             if lockdownModeEnabled {
                 cloudVerificationStatus = .failed
                 lastCloudVerification = Date()
-                return false
+                return
             }
             // Recompute system idle state when locking — prefer centralized logic.
-            updateSystemIdleState()
+            // performLock may be called from non-main contexts; ensure the MainActor runs the update.
+            Task { @MainActor in self.updateSystemIdleState() }
         #endif
     }
 
@@ -2484,21 +2485,13 @@ extension AlbumManager {
     func startDirectImport(urls: [URL]) {
         guard !urls.isEmpty else { return }
 
-        // Prevent imports during lockdown
+        // Prevent imports during lockdown (UI updates dispatched to main actor)
         if lockdownModeEnabled {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.hideNotification = HideNotification(message: "Import blocked while Lockdown Mode is enabled.", type: .failure, photos: nil)
-            }
-            return
-        }
-
-        // Block imports during lockdown
-        if lockdownModeEnabled {
-            await MainActor.run {
-                hideNotification = HideNotification(message: "Import blocked while Lockdown Mode is enabled.", type: .failure, photos: nil)
-                importProgress.isImporting = false
-                importProgress.statusMessage = "Import blocked"
+                self.importProgress.isImporting = false
+                self.importProgress.statusMessage = "Import blocked"
             }
             return
         }
