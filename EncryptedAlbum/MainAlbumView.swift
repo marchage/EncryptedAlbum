@@ -60,6 +60,8 @@ struct MainAlbumView: View {
     @State private var isSearchActive = false
     @State private var isAppActive = true
     @State private var showingPreferences = false
+    @State private var showLockdownTooltip: Bool = false
+    @State private var animateLockdownPulse: Bool = false
     #if os(iOS)
         @Environment(\.verticalSizeClass) private var verticalSizeClass
     #else
@@ -575,12 +577,43 @@ struct MainAlbumView: View {
                         .strokeBorder(Color.red.opacity(0.6), lineWidth: 0.5)
                 )
             }
+            .accessibilityIdentifier("lockdownChipButton")
+            .onChange(of: albumManager.lockdownModeEnabled) { newValue in
+                // When lockdown is enabled for the first time, show a short popover/tooltip
+                if newValue {
+                    let seen = UserDefaults.standard.bool(forKey: "lockdownTooltipShown")
+                    if !seen {
+                        UserDefaults.standard.set(true, forKey: "lockdownTooltipShown")
+                        // animate pulse and show tooltip briefly
+                        animateLockdownPulse = true
+                        showLockdownTooltip = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            animateLockdownPulse = false
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                            showLockdownTooltip = false
+                        }
+                    }
+                }
+            }
+            .scaleEffect(animateLockdownPulse ? 1.06 : 1.0)
             .buttonStyle(PlainButtonStyle())
             .accessibilityLabel("Lockdown Mode enabled — tap to open Preferences")
             .accessibilityHint("Imports, exports and cloud sync are disabled while Lockdown is active")
             #if os(macOS)
             .help("Lockdown Mode active — imports, exports and cloud operations are disabled. Click to open Preferences.")
             #endif
+            // transient tooltip overlay (for iOS & macOS) shown once when Lockdown first enabled
+            if showLockdownTooltip {
+                Text("Lockdown Mode active — imports, exports and cloud sync are disabled.")
+                    .font(.caption2)
+                    .padding(8)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.3)))
+                    .offset(y: 40)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(1)
+            }
         }
         // Indicator for when the app is preventing system sleep (e.g., during imports or
         // when user opts to keep screen awake while unlocked). Visible only on platforms
@@ -603,6 +636,7 @@ struct MainAlbumView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .accessibilityIdentifier("sleepPreventionChip")
             .padding(.vertical, 3)
             .padding(.horizontal, 6)
             .background(RoundedRectangle(cornerRadius: 8).fill(Color(UIColor.systemBackground).opacity(0.0001)))
@@ -653,7 +687,7 @@ struct MainAlbumView: View {
             Divider()
 
             Button {
-                albumManager.lock()
+                albumManager.lock(userInitiated: true)
             } label: {
                 Label("Lock Album", systemImage: "lock.fill")
             }
@@ -802,8 +836,9 @@ struct MainAlbumView: View {
                     ]
                     SecItemDelete(query as CFDictionary)
 
-                    // Lock the album which will trigger setup
-                    albumManager.lock()
+                    // Lock the album which will trigger setup. Treat as user-initiated to
+                    // avoid auto-biometric prompting on the unlock screen immediately.
+                    albumManager.lock(userInitiated: true)
                 }
             #endif
         }

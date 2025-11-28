@@ -119,8 +119,6 @@ enum AlbumError: LocalizedError {
             return "Operation was cancelled"
         case .operationDeniedByLockdown:
             return "Operation not allowed while Lockdown Mode is enabled"
-        case .operationDeniedByLockdown:
-            return "Operation not allowed while Lockdown Mode is enabled"
         case .unknownError(let reason):
             return "An unknown error occurred: \(reason)"
         }

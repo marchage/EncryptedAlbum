@@ -8,7 +8,9 @@ final class EncryptedAlbumUITests: XCTestCase {
 
         let app = XCUIApplication()
         // This argument tells the app to wipe data on launch
-        app.launchArguments = ["--reset-state"]
+        app.launchArguments = ["--reset-state", "--ui-tests"]
+        // Tests frequently need a deterministic password. Provide it via launchEnvironment
+        app.launchEnvironment["UI_TEST_PASSWORD"] = "TestPass123!"
         print("Launching app with arguments: \(app.launchArguments)")
         app.launch()
     }
@@ -68,8 +70,8 @@ final class EncryptedAlbumUITests: XCTestCase {
         let unlockField = app.secureTextFields["Password"]
         XCTAssertTrue(unlockField.waitForExistence(timeout: 2.0))
 
-        unlockField.tap()
-        unlockField.typeText("WrongPass")
+        XCTAssertTrue(focus(element: unlockField, app: app), "Unable to focus unlock text field for wrong-password test")
+        app.typeText("WrongPass")
 
         // Dismiss keyboard to ensure Unlock button is visible
         // The title is "Encrypted Album" or "Enter your password to unlock" based on the error log
@@ -183,9 +185,51 @@ final class EncryptedAlbumUITests: XCTestCase {
         XCTAssertTrue(closeButton.waitForExistence(timeout: 2.0))
         closeButton.tap()
 
-        // Verify the toolbar indicates lockdown is active
-        let lockdownLabel = app.staticTexts["Lockdown"]
-        XCTAssertTrue(lockdownLabel.waitForExistence(timeout: 3.0), "Toolbar should show Lockdown indicator after enabling in Preferences")
+        // Verify the toolbar indicates lockdown is active (chip now has accessibilityIdentifier "lockdownChipButton")
+        let lockdownChip = app.buttons["lockdownChipButton"]
+        XCTAssertTrue(lockdownChip.waitForExistence(timeout: 3.0), "Toolbar should show Lockdown chip after enabling in Preferences")
+
+        // Confirm the chip exposes a helpful accessibility label
+        XCTAssertTrue(lockdownChip.label.contains("Lockdown"), "Lockdown chip should provide an accessibility label describing its purpose")
+    }
+
+    func testLockdownChipOpensPreferences() throws {
+        let app = XCUIApplication()
+        setupPasswordAndUnlock(app: app)
+
+        // Ensure Lockdown is enabled via Preferences so the chip exists
+        let menuButton = toolbarButton(app: app, identifier: "More", fallbackIdentifiers: ["More", "Lock Album", "ellipsis"])
+        XCTAssertTrue(menuButton.waitForExistence(timeout: 5.0))
+        menuButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+
+        let settingsButton = app.buttons["Settings"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 2.0))
+        settingsButton.tap()
+
+        let lockdownSwitch = app.switches["lockdownToggle"]
+        XCTAssertTrue(lockdownSwitch.waitForExistence(timeout: 5.0))
+
+        // Enable Lockdown (confirm dialog)
+        lockdownSwitch.tap()
+        let enableButton = app.buttons["Enable"]
+        XCTAssertTrue(enableButton.waitForExistence(timeout: 2.0))
+        enableButton.tap()
+
+        // Close preferences
+        let closeButton = app.buttons["Close"]
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 2.0))
+        closeButton.tap()
+
+        // Tap the Lockdown chip and assert that Preferences open
+        let lockdownChip = app.buttons["lockdownChipButton"]
+        XCTAssertTrue(lockdownChip.waitForExistence(timeout: 3.0))
+        lockdownChip.tap()
+
+        // Preferences should be visible now
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 3.0), "Tapping the Lockdown chip should open Preferences")
+
+        // Verify the toggle is present in Preferences (and is enabled)
+        XCTAssertTrue(lockdownSwitch.waitForExistence(timeout: 2.0))
     }
 
     func testUnlockButtonsAreInsetFromEdges() throws {

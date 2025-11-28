@@ -424,7 +424,7 @@ struct PreferencesView: View {
                             HStack {
                                 Button(action: {
                                     Task {
-                                        let success = await albumManager.performQuickEncryptedCloudVerification()
+                                        let _ = await albumManager.performQuickEncryptedCloudVerification()
                                         // no-op; AlbumManager updates state for UI
                                     }
                                 }) {

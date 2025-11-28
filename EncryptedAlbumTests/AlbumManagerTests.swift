@@ -300,4 +300,31 @@ final class AlbumManagerTests: XCTestCase {
         let decrypted = try await sut.decryptPhoto(restored)
         XCTAssertEqual(decrypted, realPhotoData, "Decrypted contents must match the original data")
     }
+
+    func testUserInitiatedLockSetsSuppressFlag() async throws {
+        let password = "ManualLock123!"
+        try await sut.setupPassword(password)
+        try await sut.unlock(password: password)
+
+        // Make sure we're unlocked to begin
+        XCTAssertTrue(sut.isUnlocked)
+
+        sut.lock(userInitiated: true)
+
+        // The flag should be set synchronously for the UI to respect it
+        XCTAssertTrue(sut.suppressAutoBiometricAfterManualLock, "User-initiated lock should set suppression flag immediately")
+    }
+
+    func testClearSuppressAutoBiometricClearsFlag() async throws {
+        let password = "ManualLockClear123!"
+        try await sut.setupPassword(password)
+        try await sut.unlock(password: password)
+
+        sut.lock(userInitiated: true)
+        XCTAssertTrue(sut.suppressAutoBiometricAfterManualLock)
+
+        sut.clearSuppressAutoBiometric()
+        // clearSuppressAutoBiometric uses main queue; tests are @MainActor so the change is immediate
+        XCTAssertFalse(sut.suppressAutoBiometricAfterManualLock)
+    }
 }

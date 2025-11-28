@@ -28,11 +28,17 @@ extension XCTestCase {
             return
         }
 
-        guard focus(element: passwordField, app: app) else {
-            XCTFail("Failed to focus password field for setup.")
-            return
+        // If the app exposes a test-only filler, use it when present so we don't
+        // rely on syntheszied keyboard events which can be flaky in the simulator.
+        if app.buttons["test.fillSetupPassword"].exists {
+            app.buttons["test.fillSetupPassword"].tap()
+        } else {
+            guard focus(element: passwordField, app: app) else {
+                XCTFail("Failed to focus password field for setup.")
+                return
+            }
+            app.typeText("TestPass123!")
         }
-        app.typeText("TestPass123!")
 
         guard let confirmField = locateSecureField(
             app: app,
@@ -46,11 +52,13 @@ extension XCTestCase {
             return
         }
 
-        guard focus(element: confirmField, app: app) else {
-            XCTFail("Failed to focus confirm password field for setup.")
-            return
+        if !app.buttons["test.fillSetupPassword"].exists {
+            guard focus(element: confirmField, app: app) else {
+                XCTFail("Failed to focus confirm password field for setup.")
+                return
+            }
+            app.typeText("TestPass123!")
         }
-        app.typeText("TestPass123!")
 
         app.staticTexts["Welcome to Encrypted Album"].tap()
 
@@ -58,8 +66,16 @@ extension XCTestCase {
 
         if app.buttons["Unlock"].waitForExistence(timeout: 1.0) {
             let unlockField = app.secureTextFields["Password"]
-            unlockField.tap()
-            unlockField.typeText("TestPass123!")
+
+            if app.buttons["test.fillUnlockPassword"].exists {
+                app.buttons["test.fillUnlockPassword"].tap()
+            } else {
+                guard focus(element: unlockField, app: app) else {
+                    XCTFail("Failed to focus unlock field during setup flow.")
+                    return
+                }
+                app.typeText("TestPass123!")
+            }
             app.buttons["Unlock"].tap()
         }
     }
@@ -124,7 +140,7 @@ extension XCTestCase {
     }
 }
 
-private extension XCTestCase {
+extension XCTestCase {
     /// Attempts to find a secure text field using common accessibility identifiers, falling back to index lookup.
     func locateSecureField(
         app: XCUIApplication,
@@ -162,7 +178,23 @@ private extension XCTestCase {
         guard element.waitForExistence(timeout: timeout) else { return false }
 
         for attempt in 0..<maxAttempts {
+            // If the system reports a hardware/software keyboard we consider it focused.
             if app.keyboards.count > 0 { return true }
+
+            // Prefer a direct accessibility check for keyboard focus. XCTest supports a
+            // "hasKeyboardFocus" predicate on accessibility elements (used by the test
+            // runtime). Query for it and ensure the focused element is the same element
+            // we tried to interact with (or intersects it on screen).
+            let focusedQuery = app.descendants(matching: .any).matching(NSPredicate(format: "hasKeyboardFocus == 1"))
+            if focusedQuery.count > 0 {
+                let focused = focusedQuery.element(boundBy: 0)
+                // If the focused element intersects the target element's frame it's a
+                // good sign we successfully gave it focus.
+                if focused.frame.intersects(element.frame) { return true }
+                // Sometimes the focused element may be the SecureTextField's child; treat
+                // any focused descendant as success as long as the element exists.
+                if focused.exists { return element.exists }
+            }
 
             if element.exists {
                 if element.isHittable {

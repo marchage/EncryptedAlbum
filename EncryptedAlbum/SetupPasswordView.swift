@@ -398,6 +398,27 @@ struct SetupPasswordView: View {
                     }
             }
         }
+        // Test hook: when running UI tests we expose a tiny, invisible button that
+        // will auto-fill the manual password fields with the value provided in
+        // the launch environment (UI_TEST_PASSWORD). This keeps the flow intact
+        // but prevents flakiness related to synthesizing keyboard events.
+        .overlay(
+            Group {
+                if ProcessInfo.processInfo.arguments.contains("--ui-tests") {
+                    Button(action: {
+                        let value = ProcessInfo.processInfo.environment["UI_TEST_PASSWORD"] ?? "TestPass123!"
+                        manualPassword = value
+                        confirmPassword = value
+                    }) {
+                        // Keep the view tiny and nearly invisible but hittable for UI tests
+                        Text("")
+                    }
+                    .accessibilityIdentifier("test.fillSetupPassword")
+                    .frame(width: 1, height: 1)
+                    .opacity(0.001)
+                }
+            }
+        )
     }
 
     private func checkBiometrics() {

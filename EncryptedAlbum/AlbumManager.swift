@@ -387,6 +387,9 @@ class AlbumManager: ObservableObject {
     @Published var authenticationPromptActive: Bool = false
     @Published var isLoading: Bool = true
     @Published var isDecoyMode: Bool = false
+    /// When true, do not auto-trigger biometric prompts for the next unlock screen—used to avoid
+    /// immediately prompting biometrics right after the user manually locked the album.
+    @Published var suppressAutoBiometricAfterManualLock: Bool = false
     // New settings implemented: security, backups, privacy and telemetry toggles
     @Published var autoWipeOnFailedAttemptsEnabled: Bool = false
     @Published var autoWipeFailedAttemptsThreshold: Int = 10
@@ -502,6 +505,14 @@ class AlbumManager: ObservableObject {
         #endif
 
         AppLog.debugPrivate("Loading settings from: \(settingsFileURL.path)")
+
+        // Register sensible defaults for runtime-only UI preferences so tests and fresh
+        // installs have predictable behaviour. These mirror the defaults exposed in
+        // PreferencesView.
+        UserDefaults.standard.register(defaults: [
+            "keepScreenAwakeWhileUnlocked": false,
+            "keepScreenAwakeDuringSuspensions": true,
+        ])
 
         // Load settings asynchronously to ensure state is ready before init completes
         Task {
@@ -952,7 +963,25 @@ class AlbumManager: ObservableObject {
     }
 
     /// Locks the album by clearing cached keys and resetting state
-    func lock() {
+    /// Locks the album. If `userInitiated` is true, we set a suppression flag that prevents
+    /// the unlock UI from auto-triggering biometrics (Face ID/Touch ID) until the user performs
+    /// an explicit unlock action. Automatic/idle locks do not set this flag.
+    func lock(userInitiated: Bool = false) {
+        // Set suppression flag synchronously on main thread so UI sees it immediately.
+        if userInitiated {
+            // Ensure the suppression flag is set synchronously so the unlock screen
+            // will immediately see it and avoid auto-triggering biometrics. Previously
+            // this used async which could let the UnlockView schedule biometrics before
+            // the flag was set.
+            if Thread.isMainThread {
+                self.suppressAutoBiometricAfterManualLock = true
+            } else {
+                DispatchQueue.main.sync {
+                    self.suppressAutoBiometricAfterManualLock = true
+                }
+            }
+        }
+
         if Thread.isMainThread {
             performLock()
         } else {
@@ -980,6 +1009,14 @@ class AlbumManager: ObservableObject {
             // performLock may be called from non-main contexts; ensure the MainActor runs the update.
             Task { @MainActor in self.updateSystemIdleState() }
         #endif
+    }
+
+    /// After user performs a deliberate unlock action (biometric or password attempt), clear
+    /// the suppression so subsequent unlock screens may auto-attempt biometrics again.
+    func clearSuppressAutoBiometric() {
+        DispatchQueue.main.async {
+            self.suppressAutoBiometricAfterManualLock = false
+        }
     }
 
     /// Clears transient UI state and temporary files when the app is heading into the background.
@@ -2894,6 +2931,13 @@ extension AlbumManager {
         func performManualCloudSync() async -> Bool {
             #if os(iOS)
             cloudSyncStatus = .syncing
+            // Respect Lockdown Mode first — deny network/cloud operations while lockdown is active
+            if lockdownModeEnabled {
+                cloudSyncStatus = .failed
+                lastCloudSync = Date()
+                return false
+            }
+
             // Quick availability check
             let iCloudAvailable = FileManager.default.ubiquityIdentityToken != nil
             if !iCloudAvailable {
@@ -2932,6 +2976,13 @@ extension AlbumManager {
         /// temporary file after verification. Returns true on success.
         func performQuickEncryptedCloudVerification() async -> Bool {
             #if os(iOS)
+            // Respect Lockdown Mode first — deny verification while lockdown is active
+            if lockdownModeEnabled {
+                cloudVerificationStatus = .failed
+                lastCloudVerification = Date()
+                return false
+            }
+
             cloudVerificationStatus = .failed
 
             // Must have iCloud available

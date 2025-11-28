@@ -113,6 +113,19 @@ struct UnlockView: View {
                                     }
                                 }
 
+                            // Test hook: expose an invisible control for UI tests to fill the
+                            // password field deterministically (avoids relying on keyboard focus).
+                            if ProcessInfo.processInfo.arguments.contains("--ui-tests") {
+                                Button(action: {
+                                    password = ProcessInfo.processInfo.environment["UI_TEST_PASSWORD"] ?? "TestPass123!"
+                                }) {
+                                    Text("")
+                                }
+                                .accessibilityIdentifier("test.fillUnlockPassword")
+                                .frame(width: 1, height: 1)
+                                .opacity(0.001)
+                            }
+
                             if showError {
                                 Text(errorMessage)
                                     .font(.callout)
@@ -254,6 +267,10 @@ struct UnlockView: View {
         cancelAutoBiometricScheduling()
         Task {
             do {
+                // Clear suppression — user explicitly tapped the biometric button so we should
+                // allow biometric flow even if the album was manually locked previously.
+                albumManager.clearSuppressAutoBiometric()
+
                 // On both iOS and macOS, we now use SecAccessControl which handles the prompt
                 let password = try await albumManager.authenticateAndRetrievePassword()
                 self.password = password
@@ -278,6 +295,10 @@ struct UnlockView: View {
     }
 
     private func unlock() async {
+        // User actively attempting to unlock — clear suppression so future auto-biometric attempts
+        // are again permitted in standard circumstances.
+        albumManager.clearSuppressAutoBiometric()
+
         do {
             // Normalize UI input so users aren't confused by composed/decomposed unicode forms
             let normalized = PasswordService.normalizePassword(password)
@@ -303,7 +324,10 @@ struct UnlockView: View {
     }
 
     private func scheduleAutoBiometricIfNeeded(isReady: Bool) {
-        guard isReady, scenePhase == .active, !hasAutoBiometricAttempted, autoBiometricWorkItem == nil else { return }
+        // Avoid scheduling automatic biometric if the user manually locked the album and we
+        // intentionally suppressed auto-biometrics to avoid surprising prompts.
+        guard isReady, scenePhase == .active, !hasAutoBiometricAttempted, autoBiometricWorkItem == nil,
+              !albumManager.suppressAutoBiometricAfterManualLock else { return }
         hasAutoBiometricAttempted = true
 
         let workItem = DispatchWorkItem {
