@@ -133,4 +133,21 @@ final class AlbumManagerTests: XCTestCase {
         let decrypted = try await sut.decryptPhoto(photo)
         XCTAssertEqual(decrypted, photoData)
     }
+
+    func testSuspendResumeIdleTimerUpdatesSystemIdleStateOnIOS() async throws {
+        #if canImport(UIKit)
+        // Ensure starting state is predictable
+        UIApplication.shared.isIdleTimerDisabled = false
+
+        // Suspend should disable system idle timer for the duration of suspension
+        sut.suspendIdleTimer()
+        XCTAssertTrue(UIApplication.shared.isIdleTimerDisabled, "System idle timer should be disabled while suspended")
+
+        // Resume should restore system idle timer state (defaults in tests to not keeping awake while unlocked)
+        sut.resumeIdleTimer()
+        XCTAssertFalse(UIApplication.shared.isIdleTimerDisabled, "System idle timer should be re-enabled after resume when user preference is not set")
+        #else
+        try XCTSkipIf(true, "UIKit not available on this platform — skipping idle timer behaviour test")
+        #endif
+    }
 }

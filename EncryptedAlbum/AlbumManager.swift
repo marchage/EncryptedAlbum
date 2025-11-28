@@ -950,6 +950,12 @@ class AlbumManager: ObservableObject {
         idleTimerSuspendCount += 1
         if idleTimerSuspendCount == 1 {
             AppLog.debugPublic("Idle timer SUSPENDED - album will not auto-lock")
+            #if os(iOS)
+                // Also prevent the device from sleeping during active suspensions (imports, viewer, etc.). This is
+                // independent of the user preference for keeping screen awake while unlocked — suspensions represent
+                // explicit long-running work where preventing sleep is desirable.
+                UIApplication.shared.isIdleTimerDisabled = true
+            #endif
         } else {
             AppLog.debugPublic("Idle timer suspension depth now \(idleTimerSuspendCount)")
         }
@@ -967,6 +973,12 @@ class AlbumManager: ObservableObject {
             if idleTimerSuspendCount == 0 {
             lastActivity = Date()  // Reset activity timestamp
             AppLog.debugPublic("Idle timer RESUMED - album will auto-lock after \(Int(idleTimeout))s of inactivity")
+                #if os(iOS)
+                    // Only re-enable system sleep if the user hasn't requested keeping the screen awake while unlocked.
+                    // Check stored preference in UserDefaults (AppStorage uses the same key).
+                    let keepAwake = UserDefaults.standard.bool(forKey: "keepScreenAwakeWhileUnlocked")
+                    UIApplication.shared.isIdleTimerDisabled = self.isUnlocked && keepAwake
+                #endif
         } else {
             AppLog.debugPublic("Idle timer suspension depth decreased to \(idleTimerSuspendCount)")
         }

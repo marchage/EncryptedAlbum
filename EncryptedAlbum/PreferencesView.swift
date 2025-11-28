@@ -35,6 +35,7 @@ struct PreferencesView: View {
     @AppStorage("cameraSaveToAlbumDirectly") private var storedCameraSaveToAlbumDirectly: Bool = false
     @AppStorage("cameraMaxQuality") private var storedCameraMaxQuality: Bool = true
     @AppStorage("cameraAutoRemoveFromPhotos") private var storedCameraAutoRemoveFromPhotos: Bool = false
+    @AppStorage("keepScreenAwakeWhileUnlocked") private var storedKeepScreenAwakeWhileUnlocked: Bool = false
 
     @State private var showBackupSheet = false
     @State private var backupPassword = ""
@@ -398,6 +399,16 @@ struct PreferencesView: View {
                             }
 
                         Toggle("Auto-remove duplicates on import", isOn: $albumManager.autoRemoveDuplicatesOnImport)
+
+                            Divider()
+
+                            // Screen sleep behaviour
+                            Toggle("Keep screen awake while unlocked", isOn: $storedKeepScreenAwakeWhileUnlocked)
+                                .onChange(of: storedKeepScreenAwakeWhileUnlocked) { newValue in
+                                    // Save to user defaults (AppStorage already persists), nothing else needed here.
+                                    // AlbumManager will read the setting when suspensions end to decide behavior.
+                                    albumManager.saveSettings()
+                                }
                         Text("Automatically skip importing photos that are already in the album.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
