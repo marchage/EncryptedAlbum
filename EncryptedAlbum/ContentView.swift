@@ -29,7 +29,7 @@ struct ContentView: View {
 
     private var colorScheme: ColorScheme? {
         switch style {
-        case .light, .bh90210:
+        case .light, .retroTV:
             return .light
         case .dark, .rainbow, .mesh, .nightTown, .nineties, .webOne:
             return .dark

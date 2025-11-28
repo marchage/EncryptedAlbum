@@ -17,7 +17,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
     case nightTown
     case nineties
     case webOne
-    case bh90210
+    case retroTV
 
     var id: String { self.rawValue }
 
@@ -33,7 +33,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
         case .nightTown: return "Night Town"
         case .nineties: return "90s Party"
         case .webOne: return "Web 1.0"
-        case .bh90210: return "BH 90210"
+        case .retroTV: return "Retro TV"
         }
     }
 }
@@ -180,8 +180,8 @@ struct PrivacyOverlayBackground: View {
                 NinetiesPartyView()
             case .webOne:
                 WebOneView()
-            case .bh90210:
-                BH90210View()
+            case .retroTV:
+                RetroTVView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -372,7 +372,7 @@ extension View {
     }
 }
 
-private struct BH90210View: View {
+private struct RetroTVView: View {
     var body: some View {
         ZStack {
             // Grid Background
@@ -688,7 +688,7 @@ struct PrivacyCardBackground: ViewModifier {
                         }
                     case .dark, .nightTown, .nineties, .webOne:
                         Color.black.opacity(0.6)
-                    case .light, .bh90210:
+                    case .light, .retroTV:
                         Color.white.opacity(0.8)
                     case .classic:
                         #if os(macOS)
