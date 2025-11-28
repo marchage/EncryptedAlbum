@@ -47,6 +47,8 @@ enum AlbumError: LocalizedError {
 
     // MARK: - General Errors
     case operationCancelled
+    // Lockdown mode prevents many potentially risky operations.
+    case operationDeniedByLockdown
     case unknownError(reason: String)
 
     var errorDescription: String? {
@@ -115,6 +117,8 @@ enum AlbumError: LocalizedError {
             return "Rate limit exceeded. Please try again in \(Int(retryAfter)) seconds"
         case .operationCancelled:
             return "Operation was cancelled"
+        case .operationDeniedByLockdown:
+            return "Operation not allowed while Lockdown Mode is enabled"
         case .unknownError(let reason):
             return "An unknown error occurred: \(reason)"
         }

@@ -155,6 +155,39 @@ final class EncryptedAlbumUITests: XCTestCase {
         XCTAssertTrue(cameraButton.waitForExistence(timeout: 5.0), "Camera capture button should appear")
     }
 
+    func testPreferencesEnableLockdownShowsToolbarIndicator() throws {
+        let app = XCUIApplication()
+        setupPasswordAndUnlock(app: app)
+
+        // Open menu and tap Settings
+        let menuButton = toolbarButton(app: app, identifier: "More", fallbackIdentifiers: ["More", "Lock Album", "ellipsis"])
+        XCTAssertTrue(menuButton.waitForExistence(timeout: 5.0))
+        menuButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+
+        let settingsButton = app.buttons["Settings"]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 2.0))
+        settingsButton.tap()
+
+        // Ensure the Toggle is present and enable it (confirmation dialog)
+        let lockdownSwitch = app.switches["lockdownToggle"]
+        XCTAssertTrue(lockdownSwitch.waitForExistence(timeout: 5.0))
+
+        // Tap the switch and confirm enabling via alert
+        lockdownSwitch.tap()
+        let enableButton = app.buttons["Enable"]
+        XCTAssertTrue(enableButton.waitForExistence(timeout: 2.0))
+        enableButton.tap()
+
+        // Close preferences
+        let closeButton = app.buttons["Close"]
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 2.0))
+        closeButton.tap()
+
+        // Verify the toolbar indicates lockdown is active
+        let lockdownLabel = app.staticTexts["Lockdown"]
+        XCTAssertTrue(lockdownLabel.waitForExistence(timeout: 3.0), "Toolbar should show Lockdown indicator after enabling in Preferences")
+    }
+
     func testUnlockButtonsAreInsetFromEdges() throws {
         let app = XCUIApplication()
         setupPasswordAndUnlock(app: app)

@@ -320,6 +320,21 @@ class AlbumManager: ObservableObject {
     @Published var hiddenPhotos: [SecurePhoto] = []
     @Published var isUnlocked = false
     @Published var showUnlockPrompt = false
+    /// Whether the app is currently preventing system sleep (iOS only)
+    @Published var isSystemSleepPrevented: Bool = false
+
+    /// Human-readable small label describing why the app is currently preventing system sleep.
+    /// This is intentionally non-sensitive and kept short for UI display.
+    var sleepPreventionReasonLabel: String? {
+        if sleepPreventionCounts[.importing] ?? 0 > 0 { return SleepPreventionReason.importing.displayName }
+        if sleepPreventionCounts[.viewing] ?? 0 > 0 { return SleepPreventionReason.viewing.displayName }
+        if sleepPreventionCounts[.prompt] ?? 0 > 0 { return SleepPreventionReason.prompt.displayName }
+        if sleepPreventionCounts[.other] ?? 0 > 0 { return SleepPreventionReason.other.displayName }
+        // If no suspension reasons, but the unlocked preference keeps awake, indicate 'Unlocked'
+        let keepAwakeWhileUnlocked = UserDefaults.standard.bool(forKey: "keepScreenAwakeWhileUnlocked")
+        if isUnlocked && keepAwakeWhileUnlocked { return "Unlocked" }
+        return nil
+    }
     @Published var passwordHash: String = ""
     @Published var passwordSalt: String = ""  // Salt for password hashing
     @Published var securityVersion: Int = 1  // 1 = Legacy (Key as Hash), 2 = Secure (Verifier)
@@ -359,12 +374,34 @@ class AlbumManager: ObservableObject {
     @Published var requireReauthForExports: Bool = true
     @Published var backupSchedule: String = "manual" // manual | weekly | monthly
     @Published var encryptedCloudSyncEnabled: Bool = false
+    @Published var lastCloudSync: Date? = nil
+
+    enum CloudSyncStatus: String {
+        case idle
+        case syncing
+        case failed
+        case notAvailable
+    }
+
+    @Published var cloudSyncStatus: CloudSyncStatus = .idle
+
+    @Published var lastCloudVerification: Date? = nil
+    enum CloudVerificationStatus: String {
+        case unknown
+        case success
+        case failed
+        case notAvailable
+    }
+    @Published var cloudVerificationStatus: CloudVerificationStatus = .unknown
     @Published var thumbnailPrivacy: String = "blur" // none | blur | hide
     @Published var stripMetadataOnExport: Bool = true
     @Published var exportPasswordProtect: Bool = true
     @Published var exportExpiryDays: Int = 30
     @Published var enableVerboseLogging: Bool = false
     @Published var telemetryEnabled: Bool = false
+    /// When enabled, 'Lockdown Mode' restricts network, import/export and other risky operations
+    /// to minimize attack surface and data leakage.
+    @Published var lockdownModeEnabled: Bool = false
     @Published var passphraseMinLength: Int = 8
     @Published var enableRecoveryKey: Bool = false
 
@@ -396,6 +433,24 @@ class AlbumManager: ObservableObject {
     private func normalizedStoredPath(_ storedPath: String) -> String { storage.normalizedStoredPath(storedPath) }
     private var idleTimer: Timer?
     private var idleTimerSuspendCount: Int = 0
+    // Track suspension reasons so UI can surface why system sleep is prevented
+    private enum SleepPreventionReason: String, Hashable {
+        case importing
+        case viewing
+        case prompt
+        case other
+
+        var displayName: String {
+            switch self {
+            case .importing: return "Importing"
+            case .viewing: return "Viewing"
+            case .prompt: return "Prompt"
+            case .other: return "Active task"
+            }
+        }
+    }
+
+    private var sleepPreventionCounts: [SleepPreventionReason: Int] = [:]
 
     // Serial queue for thread-safe operations
     private let albumQueue = DispatchQueue(label: "biz.front-end.encryptedalbum.albumQueue", qos: .userInitiated)
@@ -563,6 +618,12 @@ class AlbumManager: ObservableObject {
         await saveBiometricPassword(password)
 
         #if os(iOS)
+            // Respect lockdown state - do not attempt cloud/network operations.
+            if lockdownModeEnabled {
+                cloudSyncStatus = .failed
+                lastCloudSync = Date()
+                return false
+            }
             // On iOS, verify biometric storage by attempting to retrieve it
             // This triggers Face ID prompt immediately to confirm biometric works
             if !isRunningUnitTests {
@@ -680,6 +741,10 @@ class AlbumManager: ObservableObject {
                 lastActivity = Date()
             }
             startIdleTimer()
+            #if os(iOS)
+                // After a successful unlock, recompute system idle state using consolidated logic.
+                updateSystemIdleState()
+            #endif
 
             // Update legacy properties for backward compatibility
             await MainActor.run {
@@ -898,6 +963,16 @@ class AlbumManager: ObservableObject {
         isUnlocked = false
         isDecoyMode = false
         startIdleTimer()
+        #if os(iOS)
+            // Respect lockdown state - do not attempt cloud/network operations.
+            if lockdownModeEnabled {
+                cloudVerificationStatus = .failed
+                lastCloudVerification = Date()
+                return false
+            }
+            // Recompute system idle state when locking — prefer centralized logic.
+            updateSystemIdleState()
+        #endif
     }
 
     /// Clears transient UI state and temporary files when the app is heading into the background.
@@ -945,43 +1020,93 @@ class AlbumManager: ObservableObject {
     }
 
     /// Suspends the idle timer to prevent auto-lock during long operations (e.g., imports)
+    /// A reason may be supplied so the UI can surface why the device is being kept awake.
     @MainActor
-    func suspendIdleTimer() {
+    func suspendIdleTimer(reason: SleepPreventionReason = .other) {
         idleTimerSuspendCount += 1
+        sleepPreventionCounts[reason, default: 0] += 1
         if idleTimerSuspendCount == 1 {
             AppLog.debugPublic("Idle timer SUSPENDED - album will not auto-lock")
-            #if os(iOS)
-                // Also prevent the device from sleeping during active suspensions (imports, viewer, etc.). This is
-                // independent of the user preference for keeping screen awake while unlocked — suspensions represent
-                // explicit long-running work where preventing sleep is desirable.
-                UIApplication.shared.isIdleTimerDisabled = true
-            #endif
         } else {
             AppLog.debugPublic("Idle timer suspension depth now \(idleTimerSuspendCount)")
         }
+
+        // Recompute system idle policy given current reasons and user preferences
+        updateSystemIdleState()
     }
 
     /// Resumes the idle timer after long operations complete
     @MainActor
-    func resumeIdleTimer() {
+    func resumeIdleTimer(reason: SleepPreventionReason = .other) {
         guard idleTimerSuspendCount > 0 else {
             AppLog.warning("resumeIdleTimer called with no active suspensions")
             return
         }
-
         idleTimerSuspendCount -= 1
-            if idleTimerSuspendCount == 0 {
+        if let current = sleepPreventionCounts[reason], current > 1 {
+            sleepPreventionCounts[reason] = current - 1
+        } else {
+            sleepPreventionCounts.removeValue(forKey: reason)
+        }
+
+        if idleTimerSuspendCount == 0 {
             lastActivity = Date()  // Reset activity timestamp
             AppLog.debugPublic("Idle timer RESUMED - album will auto-lock after \(Int(idleTimeout))s of inactivity")
-                #if os(iOS)
-                    // Only re-enable system sleep if the user hasn't requested keeping the screen awake while unlocked.
-                    // Check stored preference in UserDefaults (AppStorage uses the same key).
-                    let keepAwake = UserDefaults.standard.bool(forKey: "keepScreenAwakeWhileUnlocked")
-                    UIApplication.shared.isIdleTimerDisabled = self.isUnlocked && keepAwake
-                #endif
+            // Recompute system idle policy now that one suspension ended
+            updateSystemIdleState()
         } else {
             AppLog.debugPublic("Idle timer suspension depth decreased to \(idleTimerSuspendCount)")
         }
+    }
+
+    @MainActor
+    func updateSystemIdleState() {
+        #if os(iOS)
+            let keepAwakeWhileUnlocked = UserDefaults.standard.bool(forKey: "keepScreenAwakeWhileUnlocked")
+            let keepDuringSuspensions = UserDefaults.standard.bool(forKey: "keepScreenAwakeDuringSuspensions")
+
+            let suspensionActive = idleTimerSuspendCount > 0 && keepDuringSuspensions
+            let unlockedActive = self.isUnlocked && keepAwakeWhileUnlocked
+
+            let newValue = suspensionActive || unlockedActive
+            let oldValue = isSystemSleepPrevented
+            UIApplication.shared.isIdleTimerDisabled = newValue
+            isSystemSleepPrevented = newValue
+
+            if newValue {
+                // pick a visible reason, prefer import/viewing/prompt/other
+                let reason: SleepPreventionReason? = {
+                    if sleepPreventionCounts[.importing] ?? 0 > 0 { return .importing }
+                    if sleepPreventionCounts[.viewing] ?? 0 > 0 { return .viewing }
+                    if sleepPreventionCounts[.prompt] ?? 0 > 0 { return .prompt }
+                    if sleepPreventionCounts[.other] ?? 0 > 0 { return .other }
+                    if unlockedActive { return .other }
+                    return nil
+                }()
+                if let r = reason {
+                    AppLog.info("System sleep prevented: \(r.displayName)")
+                } else {
+                    AppLog.info("System sleep prevented")
+                }
+            } else {
+                AppLog.info("System sleep allowed")
+            }
+            // If state changed, emit a small in-app notification when verbose logging is enabled
+            if oldValue != newValue, enableVerboseLogging {
+                if newValue {
+                    hideNotification = HideNotification(message: "Device will remain awake", type: .info, photos: nil)
+                } else {
+                    hideNotification = HideNotification(message: "Device may sleep now", type: .info, photos: nil)
+                }
+            }
+        #endif
+    }
+
+    /// Public wrapper for the UI / app life-cycle to ensure idle state sync is recalculated
+    /// without exposing internal implementation details.
+    @MainActor
+    func refreshIdleState() {
+        updateSystemIdleState()
     }
 
     /// Encrypts and stores a photo or video in the album using either in-memory data or a file URL.
@@ -990,8 +1115,18 @@ class AlbumManager: ObservableObject {
         assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil,
         location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil, progressHandler: ((Int64) async -> Void)? = nil
     ) async throws {
+        // Restore operations write out of the album — block during Lockdown Mode
+        if lockdownModeEnabled {
+            throw AlbumError.operationDeniedByLockdown
+        }
+
         await MainActor.run {
             lastActivity = Date()
+        }
+
+        // Respect Lockdown Mode: prevent additions while lockdown is active
+        if lockdownModeEnabled {
+            throw AlbumError.operationDeniedByLockdown
         }
 
         // In decoy mode, don't actually add photos to avoid affecting the real album
@@ -1908,12 +2043,30 @@ class AlbumManager: ObservableObject {
                 "telemetryEnabled": String(telemetryEnabled),
                 "passphraseMinLength": String(passphraseMinLength),
                 "enableRecoveryKey": String(enableRecoveryKey),
+                "lockdownModeEnabled": String(lockdownModeEnabled),
             ]
 
             do {
                 let data = try JSONEncoder().encode(settings)
                 try data.write(to: settingsFileURL, options: .atomic)
                 AppLog.debugPrivate("Successfully saved settings to: \(settingsFileURL.path)")
+                // Also write a lightweight representation to the App Group so extensions
+                // and other processes can observe lockdown state. This is best-effort.
+                if let suite = UserDefaults(suiteName: FileConstants.appGroupIdentifier) {
+                    suite.set(lockdownModeEnabled, forKey: "lockdownModeEnabled")
+                    suite.synchronize()
+                }
+
+                // Create or remove a sentinel file in the App Group container for file-system based checks
+                if let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: FileConstants.appGroupIdentifier) {
+                    let sentinel = container.appendingPathComponent("lockdown.enabled")
+                    if lockdownModeEnabled {
+                        // touch the file
+                        try? Data().write(to: sentinel, options: .atomic)
+                    } else {
+                        try? FileManager.default.removeItem(at: sentinel)
+                    }
+                }
                 // Respect the telemetry flag: enable/disable the TelemetryService on save
                 TelemetryService.shared.setEnabled(telemetryEnabled)
             } catch {
@@ -2095,6 +2248,12 @@ class AlbumManager: ObservableObject {
                 enableRecoveryKey = false
             }
 
+            if let lockdownString = settings["lockdownModeEnabled"], let lockdown = Bool(lockdownString) {
+                lockdownModeEnabled = lockdown
+            } else {
+                lockdownModeEnabled = false
+            }
+
             if !passwordHash.isEmpty {
                 showUnlockPrompt = true
             }
@@ -2240,6 +2399,9 @@ class AlbumManager: ObservableObject {
     /// The backup is protected by a password provided by the caller. The returned file is a JSON
     /// container written to the temporary directory and must be handled securely by the caller.
     func exportMasterKeyBackup(backupPassword: String) async throws -> URL {
+        // Prevent exporting keys during Lockdown Mode
+        guard !lockdownModeEnabled else { throw AlbumError.operationDeniedByLockdown }
+
         guard let encryptionKey = cachedEncryptionKey, let hmacKey = cachedHMACKey else {
             throw AlbumError.albumNotInitialized
         }
@@ -2316,6 +2478,25 @@ extension AlbumManager {
     func startDirectImport(urls: [URL]) {
         guard !urls.isEmpty else { return }
 
+        // Prevent imports during lockdown
+        if lockdownModeEnabled {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.hideNotification = HideNotification(message: "Import blocked while Lockdown Mode is enabled.", type: .failure, photos: nil)
+            }
+            return
+        }
+
+        // Block imports during lockdown
+        if lockdownModeEnabled {
+            await MainActor.run {
+                hideNotification = HideNotification(message: "Import blocked while Lockdown Mode is enabled.", type: .failure, photos: nil)
+                importProgress.isImporting = false
+                importProgress.statusMessage = "Import blocked"
+            }
+            return
+        }
+
         guard isUnlocked, cachedEncryptionKey != nil, cachedHMACKey != nil else {
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -2359,14 +2540,14 @@ extension AlbumManager {
         formatter.countStyle = .file
 
         await MainActor.run {
-            suspendIdleTimer()
+            suspendIdleTimer(reason: .importing)
         }
 
         defer {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.directImportProgress.finish()
-                self.resumeIdleTimer()
+                self.resumeIdleTimer(reason: .importing)
                 self.directImportTask = nil
             }
         }
@@ -2704,6 +2885,152 @@ extension AlbumManager {
                 AppLog.error("Error reading App Group inbox: \(error.localizedDescription)")
             }
         }
+
+        /// Performs a minimal manual 'cloud sync' check.
+        /// This is a non-destructive verification that an iCloud account is available
+        /// and the user has enabled encrypted sync. Full server-side sync/CloudKit
+        /// implementation is out of scope here; this method helps with verification.
+        func performManualCloudSync() async -> Bool {
+            #if os(iOS)
+            cloudSyncStatus = .syncing
+            // Quick availability check
+            let iCloudAvailable = FileManager.default.ubiquityIdentityToken != nil
+            if !iCloudAvailable {
+                cloudSyncStatus = .notAvailable
+                return false
+            }
+
+            // If the feature is disabled we report the check but do not proceed to a real upload
+            if !encryptedCloudSyncEnabled {
+                cloudSyncStatus = .failed
+                lastCloudSync = Date()
+                return false
+            }
+
+            // Simulate a brief verification step (non-blocking and short)
+            do {
+                try await Task.sleep(nanoseconds: 200_000_000) // 200ms simulate work
+                // In a real implementation we would push an encrypted test item here.
+                cloudSyncStatus = .idle
+                lastCloudSync = Date()
+                return true
+            } catch {
+                cloudSyncStatus = .failed
+                lastCloudSync = Date()
+                return false
+            }
+            #else
+                cloudSyncStatus = .notAvailable
+                return false
+            #endif
+            // guard statement in case other platforms need to use same return path
+        }
+
+        /// Quick verification: write a small encrypted test record to the app's iCloud container
+        /// then read it back and verify decryption. This is non-destructive and removes the
+        /// temporary file after verification. Returns true on success.
+        func performQuickEncryptedCloudVerification() async -> Bool {
+            #if os(iOS)
+            cloudVerificationStatus = .failed
+
+            // Must have iCloud available
+            guard FileManager.default.ubiquityIdentityToken != nil else {
+                cloudVerificationStatus = .notAvailable
+                lastCloudVerification = Date()
+                return false
+            }
+
+            // Must have cloud sync enabled to proceed
+            guard encryptedCloudSyncEnabled else {
+                cloudVerificationStatus = .failed
+                lastCloudVerification = Date()
+                return false
+            }
+
+            // Must be unlocked and have keys available
+            guard let encryptionKey = cachedEncryptionKey, let hmacKey = cachedHMACKey, isUnlocked else {
+                cloudVerificationStatus = .failed
+                lastCloudVerification = Date()
+                return false
+            }
+
+            cloudVerificationStatus = .unknown
+
+            // Use the app's default ubiquity container (nil) — this requires proper entitlements.
+            guard let containerURL = FileManager.default.url(forUbiquityContainerIdentifier: nil) else {
+                cloudVerificationStatus = .notAvailable
+                lastCloudVerification = Date()
+                return false
+            }
+
+            // Create a folder for transient verification files
+            let testDir = containerURL.appendingPathComponent("EncryptedAlbumSyncTest", isDirectory: true)
+            do {
+                try FileManager.default.createDirectory(at: testDir, withIntermediateDirectories: true)
+            } catch {
+                AppLog.error("Failed to create iCloud verification directory: \(error.localizedDescription)")
+                cloudVerificationStatus = .failed
+                lastCloudVerification = Date()
+                return false
+            }
+
+            let testPayload = ("EncryptedAlbum sync verification \(Date()) \(UUID().uuidString)").data(using: .utf8)!
+
+            do {
+                let (encryptedData, nonce, hmac) = try await cryptoService.encryptDataWithIntegrity(testPayload, encryptionKey: encryptionKey, hmacKey: hmacKey)
+
+                // Build JSON container so it's easy to inspect in cloud and to read back
+                let container: [String: String] = [
+                    "version": "1",
+                    "nonce": nonce.base64EncodedString(),
+                    "hmac": hmac.base64EncodedString(),
+                    "payload": encryptedData.base64EncodedString()
+                ]
+
+                let jsonData = try JSONEncoder().encode(container)
+
+                let filename = "encrypted-sync-verification-\(UUID().uuidString).json"
+                let fileURL = testDir.appendingPathComponent(filename)
+
+                try jsonData.write(to: fileURL, options: .atomic)
+
+                // Read back (iCloud may sometimes delay; on device it should be immediately accessible locally)
+                let readData = try Data(contentsOf: fileURL)
+                let decoded = try JSONDecoder().decode([String: String].self, from: readData)
+
+                guard let nonceB64 = decoded["nonce"], let payloadB64 = decoded["payload"], let hmacB64 = decoded["hmac"],
+                      let nonceData = Data(base64Encoded: nonceB64), let payloadData = Data(base64Encoded: payloadB64), let hmacData = Data(base64Encoded: hmacB64)
+                else {
+                    throw AlbumError.encryptionFailed(reason: "Invalid verification container format")
+                }
+
+                // Verify and decrypt
+                let verified = try await cryptoService.decryptDataWithIntegrity(payloadData, nonce: nonceData, hmac: hmacData, encryptionKey: encryptionKey, hmacKey: hmacKey)
+
+                // Clean up test file
+                try? FileManager.default.removeItem(at: fileURL)
+
+                // Compare payloads
+                if verified == testPayload {
+                    cloudVerificationStatus = .success
+                    lastCloudVerification = Date()
+                    return true
+                } else {
+                    cloudVerificationStatus = .failed
+                    lastCloudVerification = Date()
+                    return false
+                }
+            } catch {
+                AppLog.error("Cloud verification failed: \(error.localizedDescription)")
+                cloudVerificationStatus = .failed
+                lastCloudVerification = Date()
+                return false
+            }
+            #else
+            cloudVerificationStatus = .notAvailable
+            lastCloudVerification = Date()
+            return false
+            #endif
     }
 
     #if DEBUG

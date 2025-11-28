@@ -26,6 +26,17 @@ final class ShareViewController: NSViewController {
     /// We accept the incoming items and copy them into the shared container's
     /// ImportInbox directory so the main app can process them on next launch.
     func performShare() {
+        // Block shares when lockdown sentinel is present in the shared suite
+        if let suite = UserDefaults(suiteName: appGroupIdentifier), suite.bool(forKey: "lockdownModeEnabled") {
+            let alert = NSAlert()
+            alert.messageText = "Import blocked — Lockdown Mode"
+            alert.informativeText = "Encrypted Album is currently in Lockdown Mode and is not accepting incoming shares. Disable Lockdown Mode in the app to allow imports."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            self.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+            return
+        }
         guard let context = self.extensionContext else { return }
 
         let inputItems = context.inputItems as? [NSExtensionItem] ?? []

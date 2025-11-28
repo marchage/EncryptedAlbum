@@ -144,6 +144,26 @@ struct MainAlbumView: View {
         #endif
     }
 
+    // Small helper to apply the 'Winamp' theme when selected. This is intentionally
+    // lightweight: it just picks a high-contrast accent color and a retro background.
+    private func applyWinampThemeIfNeeded() -> some ViewModifier {
+        struct WinampModifier: ViewModifier {
+            func body(content: Content) -> some View {
+                content
+                    .accentColor(Color(red: 0.85, green: 0.9, blue: 0.15))
+            }
+        }
+
+        if albumManager.appTheme == "winamp" {
+            return WinampModifier()
+        }
+        return IdentityModifier()
+    }
+
+    private struct IdentityModifier: ViewModifier {
+        func body(content: Content) -> some View { content }
+    }
+
     func toggleSelection(_ id: UUID) {
         if selectedPhotos.contains(id) {
             selectedPhotos.remove(id)
@@ -517,6 +537,38 @@ struct MainAlbumView: View {
 
     @ViewBuilder
     private var toolbarActions: some View {
+        // Visual indicator for Lockdown Mode — shown prominently to remind the user
+        if albumManager.lockdownModeEnabled {
+            HStack(spacing: 6) {
+                Image(systemName: "shield.slash.fill")
+                    .foregroundStyle(.white, .red)
+                    .accessibilityLabel("Lockdown Mode enabled")
+                Text("Lockdown")
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+            }
+            #if os(macOS)
+            .help("Lockdown Mode active — imports, exports and cloud operations are disabled")
+            #endif
+        }
+        // Indicator for when the app is preventing system sleep (e.g., during imports or
+        // when user opts to keep screen awake while unlocked). Visible only on platforms
+        // where system sleep is controllable (iOS).
+        if albumManager.isSystemSleepPrevented {
+            HStack(spacing: 6) {
+                Image(systemName: "bolt.fill")
+                    .foregroundStyle(.yellow)
+                    .accessibilityLabel("Preventing system sleep")
+                if let label = albumManager.sleepPreventionReasonLabel {
+                    Text(label)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            #if os(macOS)
+            .help("Device will remain awake")
+            #endif
+        }
         Button {
             #if os(iOS)
                 startPhotoLibraryFlow()
@@ -764,6 +816,9 @@ struct MainAlbumView: View {
         .background(Color.clear)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
+        // Apply Winamp theme modifier if selected — small accent tweak
+        .modifier(applyWinampThemeIfNeeded())
+
         let viewWithInitialModifiers = baseView
             .onAppear {
                 if !didForcePrivacyModeThisSession {
@@ -872,9 +927,9 @@ struct MainAlbumView: View {
             }
             .onChange(of: showDeleteConfirmation) { presented in
                 if presented {
-                    albumManager.suspendIdleTimer()
+                    albumManager.suspendIdleTimer(reason: .prompt)
                 } else {
-                    albumManager.resumeIdleTimer()
+                    albumManager.resumeIdleTimer(reason: .prompt)
                 }
             }
             .onChange(of: showingFilePicker) { newValue in

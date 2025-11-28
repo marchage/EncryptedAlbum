@@ -42,6 +42,17 @@ class ShareViewController: SLComposeServiceViewController {
     }
 
     override func didSelectPost() {
+        // Check app group's lockdown flag and refuse if Lockdown Mode is enabled
+        if let suite = UserDefaults(suiteName: appGroupIdentifier), suite.bool(forKey: "lockdownModeEnabled") {
+            let alert = UIAlertController(title: "Import blocked", message: "Encrypted Album is in Lockdown Mode. Imports are disabled.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .cancel) { _ in
+                self.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+            })
+            DispatchQueue.main.async {
+                self.present(alert, animated: true, completion: nil)
+            }
+            return
+        }
         guard let items = extensionContext?.inputItems as? [NSExtensionItem] else {
             self.extensionContext!.completeRequest(returningItems: [], completionHandler: nil)
             return

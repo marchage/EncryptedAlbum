@@ -17,7 +17,7 @@ struct EncryptedAlbumApp_iOS: App {
 
     var body: some Scene {
         WindowGroup {
-            SecureWrapper {
+                SecureWrapper {
                 ZStack {
                     ContentView()
                         .environmentObject(albumManager)
@@ -47,6 +47,12 @@ struct EncryptedAlbumApp_iOS: App {
                     ScreenshotBlockerOverlay()
                         .environmentObject(screenshotBlocker)
                 }
+                // Ensure AlbumManager is authoritative about idle state when app appears
+                .onAppear {
+                    Task { @MainActor in
+                        albumManager.updateSystemIdleState()
+                    }
+                }
                 .onAppear {
                     screenshotBlocker.enableBlocking()
                 }
@@ -58,18 +64,7 @@ struct EncryptedAlbumApp_iOS: App {
                         albumManager.checkAppGroupInbox()
                     }
                 }
-                // Keep the device awake while unlocked if user has opted in
-                .onChange(of: albumManager.isUnlocked) { unlocked in
-                    #if os(iOS)
-                    UIApplication.shared.isIdleTimerDisabled = unlocked && keepScreenAwakeWhileUnlocked
-                    #endif
-                }
-                .onChange(of: keepScreenAwakeWhileUnlocked) { newValue in
-                    #if os(iOS)
-                    // Update immediately if app is already unlocked
-                    UIApplication.shared.isIdleTimerDisabled = albumManager.isUnlocked && newValue
-                    #endif
-                }
+                // System idle timer is managed centrally by AlbumManager (preferences + suspensions)
             }
         }
     }

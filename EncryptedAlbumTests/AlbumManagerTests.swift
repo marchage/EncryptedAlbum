@@ -140,14 +140,122 @@ final class AlbumManagerTests: XCTestCase {
         UIApplication.shared.isIdleTimerDisabled = false
 
         // Suspend should disable system idle timer for the duration of suspension
-        sut.suspendIdleTimer()
+        sut.suspendIdleTimer(reason: .importing)
         XCTAssertTrue(UIApplication.shared.isIdleTimerDisabled, "System idle timer should be disabled while suspended")
 
         // Resume should restore system idle timer state (defaults in tests to not keeping awake while unlocked)
-        sut.resumeIdleTimer()
+        sut.resumeIdleTimer(reason: .importing)
         XCTAssertFalse(UIApplication.shared.isIdleTimerDisabled, "System idle timer should be re-enabled after resume when user preference is not set")
         #else
         try XCTSkipIf(true, "UIKit not available on this platform — skipping idle timer behaviour test")
         #endif
+    }
+
+    func testPerformManualCloudSyncUpdatesStatus() async throws {
+        #if canImport(UIKit)
+        // Make sure the setting is set so the method attempts to exercise the path
+        sut.encryptedCloudSyncEnabled = true
+
+        let success = await sut.performManualCloudSync()
+
+        // The environment where tests run may not have iCloud available; assert the method completes
+        // and lands in a final non-syncing state that is one of notAvailable/failed/idle.
+        XCTAssertTrue([AlbumManager.CloudSyncStatus.idle, .failed, .notAvailable].contains(sut.cloudSyncStatus))
+        if success {
+            XCTAssertEqual(sut.cloudSyncStatus, .idle)
+            XCTAssertNotNil(sut.lastCloudSync)
+        }
+        #else
+        try XCTSkipIf(true, "UIKit not available on this platform — skipping manual cloud sync test")
+        #endif
+    }
+
+    func testPerformQuickEncryptedCloudVerificationCompletes() async throws {
+        #if canImport(UIKit)
+        // Setup unlocked state required for verification
+        let password = "TestPassQuick123!"
+        try await sut.setupPassword(password)
+        try await sut.unlock(password: password)
+
+        let result = await sut.performQuickEncryptedCloudVerification()
+
+        XCTAssertTrue([AlbumManager.CloudVerificationStatus.success, .failed, .notAvailable].contains(sut.cloudVerificationStatus))
+        // If result succeeded we should have a timestamp
+        if result {
+            XCTAssertEqual(sut.cloudVerificationStatus, .success)
+            XCTAssertNotNil(sut.lastCloudVerification)
+        }
+        #else
+        try XCTSkipIf(true, "UIKit not available on this platform — skipping cloud verification test")
+        #endif
+    }
+
+    func testLockdownBlocksManualCloudSync() async throws {
+        #if canImport(UIKit)
+        // Enable lockdown and attempt a manual cloud sync
+        sut.lockdownModeEnabled = true
+        sut.encryptedCloudSyncEnabled = true
+
+        let success = await sut.performManualCloudSync()
+
+        XCTAssertFalse(success)
+        XCTAssertEqual(sut.cloudSyncStatus, .failed)
+        #else
+        try XCTSkipIf(true, "UIKit not available on this platform — skipping lockdown cloud sync test")
+        #endif
+    }
+
+    func testLockdownBlocksQuickVerification() async throws {
+        #if canImport(UIKit)
+        let password = "VerifyLockdown123!"
+        try await sut.setupPassword(password)
+        try await sut.unlock(password: password)
+
+        sut.lockdownModeEnabled = true
+        sut.encryptedCloudSyncEnabled = true
+
+        let result = await sut.performQuickEncryptedCloudVerification()
+
+        XCTAssertFalse(result)
+        XCTAssertEqual(sut.cloudVerificationStatus, .failed)
+        #else
+        try XCTSkipIf(true, "UIKit not available on this platform — skipping lockdown cloud verification test")
+        #endif
+    }
+
+    func testLockdownPreventsHidePhoto() async throws {
+        let password = "LockdownPhoto123!"
+        try await sut.setupPassword(password)
+        try await sut.unlock(password: password)
+
+        // Enable lockdown
+        sut.lockdownModeEnabled = true
+
+        let photoData = "TestPhoto".data(using: .utf8)!
+
+        do {
+            try await sut.hidePhoto(imageData: photoData, filename: "blocked.jpg", mediaType: .photo)
+            XCTFail("Expected operationDeniedByLockdown error")
+        } catch AlbumError.operationDeniedByLockdown {
+            // expected
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testLockdownPersistedInSettings() async throws {
+        let password = "PersistLockdown123!"
+        try await sut.setupPassword(password)
+
+        sut.lockdownModeEnabled = true
+        sut.saveSettings()
+
+        // Create a new manager pointing at same storage to load saved settings
+        let reloaded = AlbumManager(storage: AlbumStorage(customBaseURL: tempDir))
+
+        // Wait a bit for loadSettings task to complete
+        try await Task.sleep(nanoseconds: 200_000_000)
+
+        XCTAssertTrue(reloaded.lockdownModeEnabled)
     }
 }

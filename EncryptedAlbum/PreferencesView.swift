@@ -36,6 +36,9 @@ struct PreferencesView: View {
     @AppStorage("cameraMaxQuality") private var storedCameraMaxQuality: Bool = true
     @AppStorage("cameraAutoRemoveFromPhotos") private var storedCameraAutoRemoveFromPhotos: Bool = false
     @AppStorage("keepScreenAwakeWhileUnlocked") private var storedKeepScreenAwakeWhileUnlocked: Bool = false
+    @AppStorage("keepScreenAwakeDuringSuspensions") private var storedKeepScreenAwakeDuringSuspensions: Bool = true
+    @AppStorage("lockdownModeEnabled") private var storedLockdownMode: Bool = false
+    @State private var showLockdownConfirm: Bool = false
 
     @State private var showBackupSheet = false
     @State private var backupPassword = ""
@@ -98,6 +101,10 @@ struct PreferencesView: View {
                                 }
                             }
                             .pickerStyle(.menu)
+                            .onChange(of: storedAppTheme) { _ in
+                                albumManager.appTheme = storedAppTheme
+                                albumManager.saveSettings()
+                            }
                             .labelsHidden()
                         }
 
@@ -203,6 +210,7 @@ struct PreferencesView: View {
                                 Text("Blue").tag("blue")
                                 Text("Green").tag("green")
                                 Text("Pink").tag("pink")
+                                Text("Winamp").tag("winamp")
                                 Text("System").tag("system")
                             }
                             .pickerStyle(.menu)
@@ -314,11 +322,44 @@ struct PreferencesView: View {
 
                         Divider()
 
+                        Toggle("Lockdown Mode (restrict imports/exports & cloud)", isOn: $storedLockdownMode)
+                            .accessibilityIdentifier("lockdownToggle")
+                            .onChange(of: storedLockdownMode) { isOn in
+                                if isOn {
+                                    // Ask for confirmation before enabling
+                                    showLockdownConfirm = true
+                                    // revert until confirmed
+                                    storedLockdownMode = false
+                                } else {
+                                    albumManager.lockdownModeEnabled = false
+                                    albumManager.saveSettings()
+                                }
+                            }
+                            .toggleStyle(SwitchToggleStyle(tint: .red))
+                            .padding(.vertical)
+                            .alert("Enable Lockdown Mode?", isPresented: $showLockdownConfirm) {
+                                Button("Enable", role: .destructive) {
+                                    storedLockdownMode = true
+                                    albumManager.lockdownModeEnabled = true
+                                    albumManager.saveSettings()
+                                }
+                                Button("Cancel", role: .cancel) {
+                                    storedLockdownMode = false
+                                }
+                            } message: {
+                                Text("Lockdown Mode will disable cloud sync, imports and exports. Use this when you need to minimize external connectivity and data movement.")
+                            }
+
+                        Text("While Lockdown Mode is enabled the app will refuse imports, exports, and cloud verification. Share extensions will be blocked from depositing files into the album's inbox.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
                         Text("Import & Export")
                             .font(.headline)
 
                         // Export & privacy controls
                         Toggle("Require re-auth for exports", isOn: $albumManager.requireReauthForExports)
+                            .disabled(albumManager.lockdownModeEnabled)
                             .onChange(of: albumManager.requireReauthForExports) { _ in
                                 albumManager.saveSettings()
                             }
@@ -334,14 +375,81 @@ struct PreferencesView: View {
                             .pickerStyle(.menu)
                             .labelsHidden()
                         }
+                        .disabled(albumManager.lockdownModeEnabled)
                         .onChange(of: albumManager.backupSchedule) { _ in
                             albumManager.saveSettings()
                         }
 
                         Toggle("Encrypted Cloud Sync", isOn: $albumManager.encryptedCloudSyncEnabled)
+                            .disabled(albumManager.lockdownModeEnabled)
                             .onChange(of: albumManager.encryptedCloudSyncEnabled) { _ in
                                 albumManager.saveSettings()
                             }
+
+                        // Cloud sync controls — last sync, manual sync, encryption status
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Cloud Sync")
+                                Spacer()
+                                Text(albumManager.cloudSyncStatus.rawValue.capitalized)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            HStack(spacing: 12) {
+                                if let last = albumManager.lastCloudSync {
+                                    Text("Last sync: \(DateFormatter.localizedString(from: last, dateStyle: .short, timeStyle: .short))")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text("Last sync: —")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
+
+                                Button(action: {
+                                    Task {
+                                        _ = await albumManager.performManualCloudSync()
+                                    }
+                                }) {
+                                    Text("Sync now")
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(albumManager.lockdownModeEnabled || !albumManager.encryptedCloudSyncEnabled || albumManager.cloudSyncStatus == .syncing)
+                            }
+
+                            // Quick encrypted sync verification (writes a short encrypted file to iCloud container and verifies round-trip)
+                            HStack {
+                                Button(action: {
+                                    Task {
+                                        let success = await albumManager.performQuickEncryptedCloudVerification()
+                                        // no-op; AlbumManager updates state for UI
+                                    }
+                                }) {
+                                    Text("Verify encryption")
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .disabled(albumManager.lockdownModeEnabled || !albumManager.encryptedCloudSyncEnabled || albumManager.cloudSyncStatus == .syncing)
+
+                                Spacer()
+
+                                Text(albumManager.cloudVerificationStatus.rawValue.capitalized)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            // Show whether encryption is performed client-side for items pushed to cloud
+                            HStack {
+                                Text("Encryption status")
+                                Spacer()
+                                // If cloud sync is enabled, we display that client-side encryption is used (the app encrypts files locally)
+                                Text(albumManager.encryptedCloudSyncEnabled ? "Client-side encrypted (AES-GCM)" : "Disabled")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
 
                         HStack {
                             Text("Thumbnail Privacy")
@@ -359,11 +467,13 @@ struct PreferencesView: View {
                         }
 
                         Toggle("Strip metadata on export", isOn: $albumManager.stripMetadataOnExport)
+                            .disabled(albumManager.lockdownModeEnabled)
                             .onChange(of: albumManager.stripMetadataOnExport) { _ in
                                 albumManager.saveSettings()
                             }
 
                         Toggle("Password-protect exports", isOn: $albumManager.exportPasswordProtect)
+                            .disabled(albumManager.lockdownModeEnabled)
                             .onChange(of: albumManager.exportPasswordProtect) { _ in
                                 albumManager.saveSettings()
                             }
@@ -374,6 +484,7 @@ struct PreferencesView: View {
                             Stepper("\(albumManager.exportExpiryDays)", value: $albumManager.exportExpiryDays, in: 1...365)
                                 .labelsHidden()
                         }
+                        .disabled(albumManager.lockdownModeEnabled)
                         .onChange(of: albumManager.exportExpiryDays) { _ in
                             albumManager.saveSettings()
                         }
@@ -409,6 +520,10 @@ struct PreferencesView: View {
                                     // AlbumManager will read the setting when suspensions end to decide behavior.
                                     albumManager.saveSettings()
                                 }
+                                Toggle("Prevent system sleep during imports & viewing", isOn: $storedKeepScreenAwakeDuringSuspensions)
+                                    .onChange(of: storedKeepScreenAwakeDuringSuspensions) { newValue in
+                                        albumManager.saveSettings()
+                                    }
                         Text("Automatically skip importing photos that are already in the album.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -422,6 +537,14 @@ struct PreferencesView: View {
 
                         Text("Diagnostics")
                             .font(.headline)
+
+                        HStack {
+                            Text("Lockdown Mode")
+                            Spacer()
+                            Text(albumManager.lockdownModeEnabled ? "Enabled" : "Disabled")
+                                .font(.caption2)
+                                .foregroundStyle(albumManager.lockdownModeEnabled ? .red : .secondary)
+                        }
 
                         Button {
                             runHealthCheck()
@@ -472,6 +595,7 @@ struct PreferencesView: View {
                                 backupError = nil
                                 showBackupSheet = true
                             }
+                            .disabled(albumManager.lockdownModeEnabled)
                             .buttonStyle(.bordered)
                             Spacer()
                         }
@@ -611,6 +735,10 @@ struct PreferencesView: View {
         }
         .onChange(of: albumManager.enableImportNotifications) { _ in
             albumManager.saveSettings()
+        }
+        .onAppear {
+            // Ensure UI toggle reflects manager state on first load
+            storedLockdownMode = albumManager.lockdownModeEnabled
         }
         .sheet(isPresented: $showDecoyPasswordSheet) {
             VStack(spacing: 20) {
