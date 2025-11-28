@@ -7,6 +7,7 @@ import SwiftUI
 #endif
 
 enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
+    case followSystem
     case rainbow
     case dark
     case mesh
@@ -22,6 +23,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
+        case .followSystem: return "Follow System"
         case .rainbow: return "Rainbow"
         case .dark: return "Dark"
         case .mesh: return "Mesh"
@@ -39,6 +41,7 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
 /// Shared background used by every privacy cover in the app.
 struct PrivacyOverlayBackground: View {
     @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .classic
+    @Environment(\.colorScheme) private var colorScheme
 
     /// If true, this view is being used as the main app background (behind content).
     /// If false, it is being used as a privacy overlay (obscuring content).
@@ -46,7 +49,25 @@ struct PrivacyOverlayBackground: View {
 
     var body: some View {
         Group {
-            switch style {
+            // Resolve follow-system to a concrete style based on the current color scheme
+            let effectiveStyle: PrivacyBackgroundStyle = style == .followSystem
+                ? (colorScheme == .dark ? .dark : .light)
+                : style
+
+            switch effectiveStyle {
+            case .followSystem:
+                // Defensive: if followSystem somehow reaches this switch, render according to the
+                // current color scheme so behavior matches the resolved style above.
+                if colorScheme == .dark {
+                    LinearGradient(
+                        colors: [Color(white: 0.12), Color.black],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                } else {
+                    Color(white: 0.95)
+                }
+
             case .rainbow:
                 if asBackground {
                     LinearGradient(

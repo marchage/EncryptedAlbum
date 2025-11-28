@@ -750,6 +750,8 @@ struct PreferencesView: View {
 
     private var colorScheme: ColorScheme? {
         switch privacyBackgroundStyle {
+        case .followSystem:
+            return nil
         case .light, .bh90210:
             return .light
         case .dark, .rainbow, .mesh, .nightTown, .nineties, .webOne:

@@ -33,6 +33,8 @@ struct ContentView: View {
             return .light
         case .dark, .rainbow, .mesh, .nightTown, .nineties, .webOne:
             return .dark
+        case .followSystem:
+            return nil
         case .classic, .glass:
             return nil  // Follow system
         }
