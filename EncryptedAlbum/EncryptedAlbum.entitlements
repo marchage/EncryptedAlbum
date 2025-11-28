@@ -5,11 +5,9 @@
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
 	<key>com.apple.security.application-groups</key>
-	<array/>
-		<key>com.apple.security.application-groups</key>
-		<array>
-			<string>group.biz.front-end.EncryptedAlbum</string>
-		</array>
+	<array>
+		<string>group.biz.front-end.EncryptedAlbum</string>
+	</array>
 	<key>com.apple.security.network.client</key>
 	<true/>
 	<key>com.apple.security.personal-information.photos-library</key>
