@@ -715,6 +715,29 @@ struct MainAlbumView: View {
         .accessibilityLabel("More Options")
     }
 
+    /// Compact cross-platform toolbar chip used to show short progress messages and a tiny
+    /// activity indicator. Uses semantic colors and a translucent background so it remains
+    /// readable on different title bar / toolbar backgrounds.
+    @ViewBuilder
+    private func toolbarProgressChip(isActive: Bool, message: String) -> some View {
+        if isActive {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle())
+                    .controlSize(.small)
+                    .frame(width: 16, height: 16)
+                Text(message)
+                    .font(.caption2)
+                    .foregroundStyle(.primary)
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .background(.ultraThinMaterial)
+            .cornerRadius(10)
+            .shadow(radius: 2)
+        }
+    }
+
     @ViewBuilder
     private var selectionToolbarControls: some View {
         Button {
@@ -864,6 +887,11 @@ struct MainAlbumView: View {
                     selectionToolbarControls
                 }
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    // Progress chip (import / decrypt / restore) — shown when any long operation is active
+                    toolbarProgressChip(
+                        isActive: directImportProgress.isImporting || albumManager.exportProgress.isExporting || albumManager.restorationProgress.isRestoring,
+                        message: directImportProgress.isImporting ? (directImportProgress.statusMessage.isEmpty ? "Importing…" : directImportProgress.statusMessage) : (albumManager.exportProgress.isExporting ? (albumManager.exportProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.exportProgress.statusMessage) : (albumManager.restorationProgress.isRestoring ? (albumManager.restorationProgress.statusMessage.isEmpty ? "Restoring…" : albumManager.restorationProgress.statusMessage) : ""))
+                    )
                     toolbarActions
                 }
             }
@@ -883,6 +911,10 @@ struct MainAlbumView: View {
                     selectionToolbarControls
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
+                    toolbarProgressChip(
+                        isActive: directImportProgress.isImporting || albumManager.exportProgress.isExporting || albumManager.restorationProgress.isRestoring,
+                        message: directImportProgress.isImporting ? (directImportProgress.statusMessage.isEmpty ? "Importing…" : directImportProgress.statusMessage) : (albumManager.exportProgress.isExporting ? (albumManager.exportProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.exportProgress.statusMessage) : (albumManager.restorationProgress.isRestoring ? (albumManager.restorationProgress.statusMessage.isEmpty ? "Restoring…" : albumManager.restorationProgress.statusMessage) : ""))
+                    )
                     toolbarActions
                 }
             }
