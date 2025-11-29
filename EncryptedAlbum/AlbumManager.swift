@@ -8,6 +8,7 @@ import Photos
 import SwiftUI
 
 import UserNotifications
+import CloudKit
 
 // MARK: - Data Extensions
 
@@ -2960,10 +2961,10 @@ extension AlbumManager {
         }
         // End checkAppGroupInbox background work
 
-        /// Performs a minimal manual 'cloud sync' check.
-        /// This is a non-destructive verification that an iCloud account is available
-        /// and the user has enabled encrypted sync. Full server-side sync/CloudKit
-        /// implementation is out of scope here; this method helps with verification.
+        /// Performs a minimal manual iCloud/CloudKit check.
+        /// Verifies that the user's iCloud account is available and that CloudKit
+        /// can be accessed for the app's private container. This is a lightweight
+        /// verification and not a full sync implementation.
         func performManualCloudSync() async -> Bool {
             #if os(iOS)
             cloudSyncStatus = .syncing
@@ -2974,11 +2975,18 @@ extension AlbumManager {
                 return false
             }
 
-            // Quick availability check
-            let iCloudAvailable = FileManager.default.ubiquityIdentityToken != nil
-            if !iCloudAvailable {
+            // Check CloudKit account status for the configured container
+            let ckContainer = CKContainer(identifier: FileConstants.iCloudContainerIdentifier)
+            do {
+                let status = try await ckContainer.accountStatus()
+                guard status == .available else {
+                    cloudSyncStatus = .notAvailable
+                    cloudSyncErrorMessage = "iCloud account not available: \(status) — ensure user is signed into iCloud and CloudKit is permitted."
+                    return false
+                }
+            } catch {
                 cloudSyncStatus = .notAvailable
-                cloudSyncErrorMessage = "iCloud appears to be unavailable. Please sign in to iCloud and enable iCloud Drive."
+                cloudSyncErrorMessage = "iCloud / CloudKit check failed: \(error.localizedDescription)"
                 return false
             }
 
@@ -2990,20 +2998,12 @@ extension AlbumManager {
                 return false
             }
 
-            // Simulate a brief verification step (non-blocking and short)
-            do {
-                try await Task.sleep(nanoseconds: 200_000_000) // 200ms simulate work
-                // In a real implementation we would push an encrypted test item here.
-                cloudSyncStatus = .idle
-                cloudSyncErrorMessage = nil
-                lastCloudSync = Date()
-                return true
-            } catch {
-                cloudSyncStatus = .failed
-                cloudSyncErrorMessage = "iCloud sync check failed: \(error.localizedDescription)"
-                lastCloudSync = Date()
-                return false
-            }
+            // We're not performing a full sync here; the account check above is
+            // a reasonable quick verification that CloudKit usage is possible.
+            cloudSyncStatus = .idle
+            cloudSyncErrorMessage = nil
+            lastCloudSync = Date()
+            return true
             #else
                 cloudSyncStatus = .notAvailable
                 cloudSyncErrorMessage = "Encrypted iCloud sync is not available on this platform."
@@ -3026,10 +3026,19 @@ extension AlbumManager {
 
             cloudVerificationStatus = .failed
 
-            // Must have iCloud available
-            guard FileManager.default.ubiquityIdentityToken != nil else {
+            // Must have CloudKit available (user signed in)
+            let ckContainer = CKContainer(identifier: FileConstants.iCloudContainerIdentifier)
+            do {
+                let status = try await ckContainer.accountStatus()
+                if status != .available {
+                    cloudVerificationStatus = .notAvailable
+                    cloudSyncErrorMessage = "iCloud account not available: \(status) — ensure user is signed into iCloud and CloudKit is permitted."
+                    lastCloudVerification = Date()
+                    return false
+                }
+            } catch {
                 cloudVerificationStatus = .notAvailable
-                cloudSyncErrorMessage = "iCloud appears to be unavailable. Please sign in to iCloud and enable iCloud Drive."
+                cloudSyncErrorMessage = "iCloud / CloudKit check failed: \(error.localizedDescription)"
                 lastCloudVerification = Date()
                 return false
             }
@@ -3051,25 +3060,8 @@ extension AlbumManager {
 
             cloudVerificationStatus = .unknown
 
-            // Use the app's default ubiquity container (nil) — this requires proper entitlements.
-            guard let containerURL = FileManager.default.url(forUbiquityContainerIdentifier: nil) else {
-                cloudVerificationStatus = .notAvailable
-                cloudSyncErrorMessage = "iCloud ubiquity container not available — check your app's iCloud entitlements and container configuration."
-                lastCloudVerification = Date()
-                return false
-            }
-
-            // Create a folder for transient verification files
-            let testDir = containerURL.appendingPathComponent("EncryptedAlbumSyncTest", isDirectory: true)
-            do {
-                try FileManager.default.createDirectory(at: testDir, withIntermediateDirectories: true)
-            } catch {
-                AppLog.error("Failed to create iCloud verification directory: \(error.localizedDescription)")
-                cloudVerificationStatus = .failed
-                cloudSyncErrorMessage = "Failed to prepare iCloud verification directory: \(error.localizedDescription)"
-                lastCloudVerification = Date()
-                return false
-            }
+            // Use CloudKit private database for ephemeral verification files
+            let privateDB = ckContainer.privateCloudDatabase
 
             let testPayload = ("EncryptedAlbum sync verification \(Date()) \(UUID().uuidString)").data(using: .utf8)!
 
@@ -3086,14 +3078,18 @@ extension AlbumManager {
 
                 let jsonData = try JSONEncoder().encode(container)
 
-                let filename = "encrypted-sync-verification-\(UUID().uuidString).json"
-                let fileURL = testDir.appendingPathComponent(filename)
+                // Create a CloudKit record with a data field for verification.
+                let record = CKRecord(recordType: "EncryptedAlbumVerification")
+                record["payload"] = jsonData as NSData
 
-                try jsonData.write(to: fileURL, options: .atomic)
-
-                // Read back (iCloud may sometimes delay; on device it should be immediately accessible locally)
-                let readData = try Data(contentsOf: fileURL)
-                let decoded = try JSONDecoder().decode([String: String].self, from: readData)
+                // Save the record into the private database
+                let saved = try await privateDB.save(record)
+                // Immediately read it back
+                let fetched = try await privateDB.record(for: saved.recordID)
+                guard let fetchedData = fetched["payload"] as? Data else {
+                    throw AlbumError.encryptionFailed(reason: "Verification record missing payload")
+                }
+                let decoded = try JSONDecoder().decode([String: String].self, from: fetchedData)
 
                 guard let nonceB64 = decoded["nonce"], let payloadB64 = decoded["payload"], let hmacB64 = decoded["hmac"],
                       let nonceData = Data(base64Encoded: nonceB64), let payloadData = Data(base64Encoded: payloadB64), let hmacData = Data(base64Encoded: hmacB64)
@@ -3104,8 +3100,8 @@ extension AlbumManager {
                 // Verify and decrypt
                 let verified = try await cryptoService.decryptDataWithIntegrity(payloadData, nonce: nonceData, hmac: hmacData, encryptionKey: encryptionKey, hmacKey: hmacKey)
 
-                // Clean up test file
-                try? FileManager.default.removeItem(at: fileURL)
+                // Clean up created record
+                try? await privateDB.deleteRecord(withID: saved.recordID)
 
                 // Compare payloads
                 if verified == testPayload {

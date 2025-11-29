@@ -5,6 +5,7 @@
     <key>com.apple.security.application-groups</key>
     <array>
         <string>group.biz.front-end.EncryptedAlbum</string>
+        <string>group.biz.front-end.EncryptedAlbum.shared</string>
     </array>
 </dict>
 </plist>

@@ -10,7 +10,7 @@ import Cocoa
 final class ShareViewController: NSViewController {
 
     // Replace this with your App Group ID (kept in sync with the iOS extension)
-    private let appGroupIdentifier = "group.biz.front-end.EncryptedAlbum"
+    private let appGroupIdentifier = "group.biz.front-end.EncryptedAlbum.shared"
 
     override var nibName: NSNib.Name? {
         return NSNib.Name("ShareViewController")

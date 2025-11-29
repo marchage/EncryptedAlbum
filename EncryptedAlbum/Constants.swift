@@ -60,7 +60,10 @@ enum FileConstants {
     static let decryptedTempPrefix = "sv-decrypted"
 
     // TODO: Replace with your actual App Group ID
-    static let appGroupIdentifier = "group.biz.front-end.EncryptedAlbum"
+    // Use the new shared app group for extension -> app communication
+    static let appGroupIdentifier = "group.biz.front-end.EncryptedAlbum.shared"
+    /// CloudKit container identifier used for encrypted sync
+    static let iCloudContainerIdentifier = "iCloud.biz.front-end.EncryptedAlbum"
     static let appGroupInboxName = "ImportInbox"
 }
 

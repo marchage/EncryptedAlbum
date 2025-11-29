@@ -1,20 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-	<key>NSCameraUsageDescription</key>
-	<string>Encrypted Album needs camera access to capture photos and videos directly to your encrypted album.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Encrypted Album needs access to import and encrypt your photos and videos.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Encrypted Album needs permission to remove photos and videos from your library after encrypting them.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Encrypted Album needs microphone access to record audio when capturing album videos.</string>
-	<key>NSFaceIDUsageDescription</key>
-	<string>Encrypted Album uses Face ID to securely unlock your album without entering a password.</string>
-	<key>CFBundleName</key>
-	<string>Encrypted Album</string>
-	<key>CFBundleDisplayName</key>
-	<string>Encrypted Album</string>
-</dict>
+<dict/>
 </plist>

@@ -7,7 +7,7 @@ set -euo pipefail
 #   2) It creates (if needed) the ImportInbox folder and writes a small test file so the main app
 #      can pick it up like a real share.
 
-APP_GROUP_ID="group.biz.front-end.EncryptedAlbum"
+APP_GROUP_ID="group.biz.front-end.EncryptedAlbum.shared"
 CONTAINER="$HOME/Library/Group Containers/$APP_GROUP_ID/ImportInbox"
 
 mkdir -p "$CONTAINER"

@@ -15,10 +15,9 @@ private let shareLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Enc
 
 class ShareViewController: SLComposeServiceViewController {
 
-    // TODO: REPLACE THIS WITH YOUR ACTUAL APP GROUP IDENTIFIER
-    // You must create an App Group in Xcode (Signing & Capabilities) for both targets
-    // Format is usually: "group.biz.front-end.EncryptedAlbum"
-    let appGroupIdentifier = "group.biz.front-end.EncryptedAlbum"
+    // App Group used for handoff from share extension -> main app
+    // Using the shared app group created for this product
+    let appGroupIdentifier = "group.biz.front-end.EncryptedAlbum.shared"
 
     override func viewDidLoad() {
         super.viewDidLoad()

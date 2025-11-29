@@ -7,6 +7,15 @@
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.biz.front-end.EncryptedAlbum</string>
+		<string>group.biz.front-end.EncryptedAlbum.shared</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+	</array>
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.biz.front-end.EncryptedAlbum</string>
 	</array>
 	<key>com.apple.security.device.audio-input</key>
 	<true/>
