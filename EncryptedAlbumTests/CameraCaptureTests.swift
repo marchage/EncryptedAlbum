@@ -100,4 +100,32 @@ final class CameraCaptureTests: XCTestCase {
         XCTAssertEqual(mediaType, .photo)
         XCTAssertNil(duration)
     }
+
+    func testHandleCapturedMedia_queuesWhenAlbumLocked_then_processedAfterUnlock() async throws {
+        // No password has been setup yet so the album is not initialized and
+        // cameraSaveToAlbumDirectly should queue captures taken while locked.
+        sut.cameraSaveToAlbumDirectly = true
+
+        let data = "queuedimage".data(using: .utf8)!
+
+        // Should return normally and not throw - it will queue for later
+        try await sut.handleCapturedMedia(mediaSource: .data(data), filename: "queued.jpg", dateTaken: Date(), mediaType: .photo)
+
+        // Nothing saved yet
+        XCTAssertEqual(sut.hiddenPhotos.count, 0)
+
+        // Now create and unlock album - queued capture should be processed
+        let password = "ProcessQueue123!"
+        try await sut.setupPassword(password)
+        try await sut.unlock(password: password)
+
+        // Wait briefly for queued processing to complete (unlock processes queue async)
+        let timeout: TimeInterval = 3
+        let start = Date()
+        while sut.hiddenPhotos.count == 0 && Date().timeIntervalSince(start) < timeout {
+            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+        }
+
+        XCTAssertEqual(sut.hiddenPhotos.count, 1, "Expected queued captured media to be processed after album unlock")
+    }
 }

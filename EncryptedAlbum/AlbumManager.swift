@@ -463,6 +463,49 @@ class AlbumManager: ObservableObject {
 
     // Queue for imports that arrive while the album is locked
     private var pendingImportURLs: [URL] = []
+    // Queue for captures taken while the album is locked
+    private struct PendingCapture: Codable {
+        let url: URL
+        let filename: String
+        let dateTaken: Date?
+        let sourceAlbum: String?
+        let mediaType: MediaType
+        let duration: TimeInterval?
+        // location & isFavorite are intentionally omitted from persistence for now
+    }
+
+    private var pendingCapturedMedia: [PendingCapture] = []
+
+    private var pendingCapturedFileURL: URL {
+        return storage.baseURL.appendingPathComponent("pending_captures.json")
+    }
+
+    private func loadPendingCapturedMedia() {
+        albumQueue.async { [weak self] in
+            guard let self = self else { return }
+            guard let data = try? Data(contentsOf: self.pendingCapturedFileURL) else { return }
+            do {
+                let list = try JSONDecoder().decode([PendingCapture].self, from: data)
+                self.pendingCapturedMedia = list
+                AppLog.debugPrivate("Loaded \(list.count) pending captured media items from disk")
+            } catch {
+                AppLog.debugPrivate("Failed to decode pending captures: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func savePendingCapturedMedia() {
+        albumQueue.async { [weak self] in
+            guard let self = self else { return }
+            do {
+                let data = try JSONEncoder().encode(self.pendingCapturedMedia)
+                try data.write(to: self.pendingCapturedFileURL, options: .atomic)
+                AppLog.debugPrivate("Saved \(self.pendingCapturedMedia.count) pending captured media items to disk")
+            } catch {
+                AppLog.error("Failed to save pending captured media: \(error.localizedDescription)")
+            }
+        }
+    }
 
     var isBusy: Bool {
         return importProgress.isImporting || restorationProgress.isRestoring
@@ -529,6 +572,9 @@ class AlbumManager: ObservableObject {
         self.storage = storage ?? AlbumStorage()
 
         self.importProgress = progress
+    // Load any previously queued captured media that survived a restart
+    loadPendingCapturedMedia()
+
 
         fileService.cleanupTemporaryArtifacts()
         // albumBaseURL is now computed from storage.baseURL
@@ -789,6 +835,42 @@ class AlbumManager: ObservableObject {
                     // Small delay to ensure UI transition completes
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                         self?.startDirectImport(urls: urlsToImport)
+                    }
+                }
+
+                if !pendingCapturedMedia.isEmpty {
+                    AppLog.debugPublic("Processing \(pendingCapturedMedia.count) queued captured media items...")
+                    let capturesToProcess = pendingCapturedMedia
+                    pendingCapturedMedia.removeAll()
+                    // Persist the cleared pending captures so a restart doesn't re-process stale entries
+                    self.savePendingCapturedMedia()
+
+                    // Slight delay to ensure the unlock transition has completed in the UI
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                        guard let strong = self else { return }
+                        Task {
+                            for cap in capturesToProcess {
+                                do {
+                                    try await strong.hidePhoto(
+                                        mediaSource: .fileURL(cap.url),
+                                        filename: cap.filename,
+                                        dateTaken: cap.dateTaken,
+                                        sourceAlbum: cap.sourceAlbum,
+                                        assetIdentifier: nil,
+                                        mediaType: cap.mediaType,
+                                        duration: cap.duration,
+                                        location: nil,
+                                        isFavorite: nil,
+                                        progressHandler: nil
+                                    )
+                                } catch {
+                                    AppLog.error("Failed to hide queued captured media \(cap.filename): \(error.localizedDescription)")
+                                }
+
+                                // Attempt to remove the temp file regardless
+                                try? FileManager.default.removeItem(at: cap.url)
+                            }
+                        }
                     }
                 }
             }
@@ -1358,19 +1440,58 @@ class AlbumManager: ObservableObject {
     ) async throws {
         // If user wants captures saved into the encrypted album, forward to hidePhoto
         if cameraSaveToAlbumDirectly {
-            try await hidePhoto(
-                mediaSource: mediaSource,
-                filename: filename,
-                dateTaken: dateTaken,
-                sourceAlbum: sourceAlbum,
-                assetIdentifier: assetIdentifier,
-                mediaType: mediaType,
-                duration: duration,
-                location: location,
-                isFavorite: isFavorite,
-                progressHandler: nil
-            )
-            return
+            do {
+                try await hidePhoto(
+                    mediaSource: mediaSource,
+                    filename: filename,
+                    dateTaken: dateTaken,
+                    sourceAlbum: sourceAlbum,
+                    assetIdentifier: assetIdentifier,
+                    mediaType: mediaType,
+                    duration: duration,
+                    location: location,
+                    isFavorite: isFavorite,
+                    progressHandler: nil
+                )
+                return
+            } catch AlbumError.albumNotInitialized {
+                // Album is locked / keys not derived; queue this capture so it will be
+                // processed automatically when the user unlocks the album.
+                AppLog.info("Album locked - queuing captured media for later processing: \(filename)")
+
+                // Materialize to a temp file so we can process after unlock. Use explicit
+                // file extension derived from filename if present.
+                let ext = (filename as NSString).pathExtension.isEmpty ? "jpg" : (filename as NSString).pathExtension
+                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
+
+                switch mediaSource {
+                case .data(let data):
+                    do {
+                        try data.write(to: tempURL)
+                        // Persist pending capture on albumQueue to avoid race conditions
+                        albumQueue.async { [weak self] in
+                            guard let self = self else { return }
+                            self.pendingCapturedMedia.append(PendingCapture(url: tempURL, filename: filename, dateTaken: dateTaken, sourceAlbum: sourceAlbum, mediaType: mediaType, duration: duration))
+                            self.savePendingCapturedMedia()
+                        }
+                    } catch {
+                        AppLog.error("Failed to write queued capture to temp file: \(error.localizedDescription)")
+                    }
+                case .fileURL(let url):
+                    do {
+                        try FileManager.default.copyItem(at: url, to: tempURL)
+                        albumQueue.async { [weak self] in
+                            guard let self = self else { return }
+                            self.pendingCapturedMedia.append(PendingCapture(url: tempURL, filename: filename, dateTaken: dateTaken, sourceAlbum: sourceAlbum, mediaType: mediaType, duration: duration))
+                            self.savePendingCapturedMedia()
+                        }
+                    } catch {
+                        AppLog.error("Failed to copy queued capture to temp file: \(error.localizedDescription)")
+                    }
+                }
+
+                return
+            }
         }
 
         // Otherwise save to Photos library. For data sources we materialize to a temp file.

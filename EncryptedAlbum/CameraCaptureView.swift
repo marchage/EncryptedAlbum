@@ -50,6 +50,7 @@ import SwiftUI
 
                 Task.detached(priority: .userInitiated) {
                     do {
+                            AppLog.debugPrivate("CameraCoordinator: Received media info keys: \(info.keys)")
                         let (mediaSource, filename, mediaType, duration) = try await Self.makeMediaFromPickerInfo(info)
 
                         if let mediaSource = mediaSource {
@@ -68,8 +69,11 @@ import SwiftUI
                                     isFavorite: nil
                                 )
                                 AppLog.debugPublic("Handled captured media: \(filename)")
+                                    AppLog.debugPrivate("CameraCoordinator: Determined mediaSource=\(mediaSource) filename=\(filename) mediaType=\(mediaType) duration=\(String(describing: duration))")
                             } catch {
-                                AppLog.error("Failed to handle captured media: \(error.localizedDescription)")
+                                    AppLog.error("Failed to handle captured media: \(error.localizedDescription)")
+                                    // Record more context for debugging on-device
+                                    AppLog.debugPrivate("CameraCoordinator: Error handling captured media for filename=\(filename) mediaType=\(mediaType) duration=\(String(describing: duration))")
                             }
                         }
                     } catch {
