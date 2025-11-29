@@ -265,14 +265,15 @@ struct UnlockView: View {
 
     private func authenticateWithBiometrics() {
         cancelAutoBiometricScheduling()
+        let manager: AlbumManager = albumManager
         Task {
             do {
                 // Clear suppression — user explicitly tapped the biometric button so we should
                 // allow biometric flow even if the album was manually locked previously.
-                albumManager.clearSuppressAutoBiometric()
+                manager.clearSuppressAutoBiometric()
 
                 // On both iOS and macOS, we now use SecAccessControl which handles the prompt
-                let password = try await albumManager.authenticateAndRetrievePassword()
+                let password = try await manager.authenticateAndRetrievePasswordPublic()
                 self.password = password
                 await unlock()
             } catch let error as AlbumError {
@@ -297,14 +298,15 @@ struct UnlockView: View {
     private func unlock() async {
         // User actively attempting to unlock — clear suppression so future auto-biometric attempts
         // are again permitted in standard circumstances.
-        albumManager.clearSuppressAutoBiometric()
+        let manager: AlbumManager = albumManager
+        manager.clearSuppressAutoBiometric()
 
         do {
             // Normalize UI input so users aren't confused by composed/decomposed unicode forms
             let normalized = PasswordService.normalizePassword(password)
             // Update the field so the user sees the normalized value as confirmation
             password = normalized
-            try await albumManager.unlock(password: normalized)
+            try await manager.unlock(password: normalized)
             showError = false
             errorMessage = "Incorrect password"
             #if os(macOS)

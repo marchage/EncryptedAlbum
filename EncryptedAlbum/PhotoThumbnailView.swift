@@ -135,8 +135,10 @@ struct PhotoThumbnailView: View {
 
     private func loadThumbnail() {
         loadTask = Task {
+
             do {
-                let data = try await albumManager.decryptThumbnail(for: photo)
+                // Use a stable public wrapper to avoid intermittent visibility problems
+                let data = try await AlbumManager.shared.loadThumbnailData(for: photo)
 
                 if data.isEmpty {
                     AppLog.debugPrivate(

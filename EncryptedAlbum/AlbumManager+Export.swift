@@ -20,6 +20,46 @@ extension AlbumManager {
         }
     }
 
+    /// Public helper to load a thumbnail's decrypted data. Some compilation units
+    /// have shown inconsistent visibility for the internal thumbnail helpers
+    /// (incremental compile/cache issues). Providing this public wrapper gives
+    /// a stable API surface to call from UI code when needed.
+    public func loadThumbnailData(for photo: SecurePhoto) async throws -> Data {
+        return try await decryptThumbnail(for: photo)
+    }
+
+    /// Public wrapper for the internal batch restore routine.
+    /// Some compilation units have shown inconsistent visibility for internal
+    /// helpers, so offer a stable public API surface for UI code to call.
+    public func restorePhotos(_ photos: [SecurePhoto], restoreToSourceAlbum: Bool = false, toNewAlbum: String? = nil) async throws {
+        try await batchRestorePhotos(photos, restoreToSourceAlbum: restoreToSourceAlbum, toNewAlbum: toNewAlbum)
+    }
+
+    /// Public wrapper for authenticate-and-retrieve-password biometric helper
+    public func authenticateAndRetrievePasswordPublic() async throws -> String {
+        return try await authenticateAndRetrievePassword()
+    }
+
+    /// Public wrapper for deleting a photo
+    public func deletePhotoPublic(_ photo: SecurePhoto) {
+        deletePhoto(photo)
+    }
+
+    /// Public wrapper for removing duplicates
+    public func removeDuplicatesPublic() {
+        removeDuplicates()
+    }
+
+    /// Public wrapper for the imageData-based hidePhoto helper
+    public func hidePhotoData(_ imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil) async throws {
+        try await self.hidePhoto(mediaSource: .data(imageData), filename: filename, dateTaken: dateTaken, sourceAlbum: sourceAlbum, assetIdentifier: assetIdentifier, mediaType: mediaType, duration: duration, location: location, isFavorite: isFavorite)
+    }
+
+    /// Public wrapper for the mediaSource-based hidePhoto helper (file URL or data)
+    public func hidePhotoSource(mediaSource: MediaSource, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil) async throws {
+        try await self.hidePhoto(mediaSource: mediaSource, filename: filename, dateTaken: dateTaken, sourceAlbum: sourceAlbum, assetIdentifier: assetIdentifier, mediaType: mediaType, duration: duration, location: location, isFavorite: isFavorite)
+    }
+
     func cancelExport() {
         Task { @MainActor in
             guard exportProgress.isExporting, !exportProgress.cancelRequested else { return }

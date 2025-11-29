@@ -79,8 +79,7 @@ import SwiftUI
                                     mediaType: .video,
                                     duration: duration,
                                     location: nil,
-                                    isFavorite: nil,
-                                    forceSaveToAlbum: true
+                                    isFavorite: nil
                                 )
                                 AppLog.debugPublic("Handled captured media: \(filename)")
                                 AppLog.debugPrivate("CameraCoordinator: Determined mediaSource=\(mediaSource) filename=\(filename) mediaType=video duration=\(String(describing: duration))")
@@ -116,8 +115,7 @@ import SwiftUI
                                     mediaType: mediaType,
                                     duration: duration,
                                     location: nil,
-                                    isFavorite: nil,
-                                    forceSaveToAlbum: true
+                                    isFavorite: nil
                                 )
                                 AppLog.debugPublic("Handled captured media: \(filename)")
                                     AppLog.debugPrivate("CameraCoordinator: Determined mediaSource=\(mediaSource) filename=\(filename) mediaType=\(mediaType) duration=\(String(describing: duration))")
@@ -654,7 +652,7 @@ import SwiftUI
                                 return
                             }
                             AppLog.debugPrivate("CameraModel: saving captured photo via albumManager")
-                            try await albumManager.handleCapturedMedia(
+                                try await albumManager.handleCapturedMedia(
                                 mediaSource: .data(data),
                                 filename: filename,
                                 dateTaken: Date(),
@@ -663,8 +661,7 @@ import SwiftUI
                                 mediaType: .photo,
                                 duration: nil,
                                 location: nil,
-                                isFavorite: nil,
-                                forceSaveToAlbum: true
+                                    isFavorite: nil
                             )
                         } catch {
                             AppLog.error("Failed to handle captured photo: \(error.localizedDescription)")
@@ -724,7 +721,7 @@ import SwiftUI
                     }
 
                     do {
-                        try await albumManager.handleCapturedMedia(
+                                try await albumManager.handleCapturedMedia(
                             mediaSource: .fileURL(outputFileURL),
                             filename: filename,
                             dateTaken: Date(),
@@ -733,8 +730,7 @@ import SwiftUI
                             mediaType: .video,
                             duration: duration,
                             location: nil,
-                            isFavorite: nil,
-                            forceSaveToAlbum: true
+                                    isFavorite: nil
                         )
                     } catch {
                         AppLog.error("Failed to handle captured video: \(error.localizedDescription)")

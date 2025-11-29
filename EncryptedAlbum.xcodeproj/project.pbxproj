@@ -81,9 +81,17 @@
 		98C835FD2EC9E6CD000997CF /* MainAlbumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE5566FF77AA88BB99CC /* MainAlbumView.swift */; };
 		98C835FE2EC9E6CD000997CF /* AlbumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F96EA3625074B045C751E84 /* AlbumManager.swift */; };
 		98C835FF2EC9E6CD000997CF /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345677 /* PreferencesView.swift */; };
+		98D6909E2EDB369800200BB7 /* OnChangeCompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D6909B2EDB369700200BB7 /* OnChangeCompat.swift */; };
+		98D6909F2EDB369800200BB7 /* OnChangeCompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D6909B2EDB369700200BB7 /* OnChangeCompat.swift */; };
+		98D690A02EDB369800200BB7 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D6909C2EDB369700200BB7 /* SharedModels.swift */; };
+		98D690A12EDB369800200BB7 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D6909C2EDB369700200BB7 /* SharedModels.swift */; };
+		98D690A22EDB369800200BB7 /* SharePreviewHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D6909D2EDB369700200BB7 /* SharePreviewHelper.swift */; };
+		98D690A32EDB369800200BB7 /* SharePreviewHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D6909D2EDB369700200BB7 /* SharePreviewHelper.swift */; };
+		98EAD99F2EDB4D64009FCA49 /* NotificationBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9900AABBCCDDEEFF00112233 /* NotificationBannerView.swift */; };
 		98FAA8182EDAB9F400A5C3DD /* ImportSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98FAA8172EDAB9F300A5C3DD /* ImportSaver.swift */; };
 		98FAA8192EDAB9F400A5C3DD /* ImportSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98FAA8172EDAB9F300A5C3DD /* ImportSaver.swift */; };
 		98FAA81B2EDABA1500A5C3DD /* ImportSaverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98FAA81A2EDABA1500A5C3DD /* ImportSaverTests.swift */; };
+		9900AABBCCDDEEFF00112234 /* NotificationBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9900AABBCCDDEEFF00112233 /* NotificationBannerView.swift */; };
 		9FA39564407F407B82E34796 /* PasswordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28CF564BDC0E4C9F891A9910 /* PasswordService.swift */; };
 		A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345677 /* PreferencesView.swift */; };
 		A7F6845B3F0A4BA800D12345 /* DirectImportProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F684593F0A4BA800D12345 /* DirectImportProgressTests.swift */; };
@@ -103,9 +111,8 @@
 		B7C1A2D43E8C4F6A00D10017 /* DirectImportProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F684593F0A4BA800D12345 /* DirectImportProgressTests.swift */; };
 		CC33DD4455EE66FF77AA88BB /* MainAlbumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE5566FF77AA88BB99CC /* MainAlbumView.swift */; };
 		DD69BC27985C4D09BA6690A2 /* FileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ECB74A746149529B6DE078 /* FileService.swift */; };
-		9900AABBCCDDEEFF00112234 /* NotificationBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9900AABBCCDDEEFF00112233 /* NotificationBannerView.swift */; };
 		DDEEFF8899AABBCCDDEEFF00 /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDEEFF001122334455667788 /* Logging.swift */; };
-		E48BBB324071974C8BE48D0D /* AlbumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F96EA3625074B045C751E84 /* AlbumManager.swift */; };
+
 		F2A3B4C56D7E8F9012345678 /* TelemetryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E2D3C4B5A6978877665544 /* TelemetryService.swift */; };
 		F9B0EAD109417F32CF3B7D50 /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C068CD08B70A6DBEA00400 /* UnlockView.swift */; };
 /* End PBXBuildFile section */
@@ -194,7 +201,6 @@
 		981926522EC854B600C67291 /* EncryptedAlbum iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "EncryptedAlbum iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		981926542EC854B600C67291 /* EncryptedAlbum_iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedAlbum_iOSApp.swift; sourceTree = "<group>"; };
 		981926602EC8552000C67291 /* Info_iOS.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info_iOS.plist; sourceTree = "<group>"; };
-		9900AABBCCDDEEFF00112233 /* NotificationBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationBannerView.swift; sourceTree = "<group>"; };
 		981BB77D2ED5C1AA00584B7B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		981D44D02ED79E5100287DFC /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		981D44D22ED79E5100287DFC /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
@@ -231,9 +237,13 @@
 		989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InactiveAppOverlay.swift; sourceTree = "<group>"; };
 		989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UltraPrivacyCoordinator.swift; sourceTree = "<group>"; };
 		989B68D62ED8C1DB00FA9A5B /* ShareHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ShareHelper.swift; sourceTree = "<group>"; };
+		98D6909B2EDB369700200BB7 /* OnChangeCompat.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OnChangeCompat.swift; sourceTree = "<group>"; };
+		98D6909C2EDB369700200BB7 /* SharedModels.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
+		98D6909D2EDB369700200BB7 /* SharePreviewHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SharePreviewHelper.swift; sourceTree = "<group>"; };
 		98FAA8162EDAAF7A00A5C3DD /* EncryptedAlbumDebug.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = EncryptedAlbumDebug.entitlements; sourceTree = "<group>"; };
 		98FAA8172EDAB9F300A5C3DD /* ImportSaver.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImportSaver.swift; sourceTree = "<group>"; };
 		98FAA81A2EDABA1500A5C3DD /* ImportSaverTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImportSaverTests.swift; sourceTree = "<group>"; };
+		9900AABBCCDDEEFF00112233 /* NotificationBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationBannerView.swift; sourceTree = "<group>"; };
 		9F96EA3625074B045C751E84 /* AlbumManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6789012345677 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		A61A2BD7A0514BCA85111D3F /* AlbumError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumError.swift; sourceTree = "<group>"; };
@@ -369,11 +379,8 @@
 		9849B4532EB9893D00B17DAC /* EncryptedAlbum */ = {
 			isa = PBXGroup;
 			children = (
-				98FAA8172EDAB9F300A5C3DD /* ImportSaver.swift */,
-				98FAA8162EDAAF7A00A5C3DD /* EncryptedAlbumDebug.entitlements */,
-				989B68D62ED8C1DB00FA9A5B /* ShareHelper.swift */,
-				A61A2BD7A0514BCA85111D3F /* AlbumError.swift */,
 				C5C904A396A6B1968CDD78D9 /* AlbumDetailView.swift */,
+				A61A2BD7A0514BCA85111D3F /* AlbumError.swift */,
 				9F96EA3625074B045C751E84 /* AlbumManager.swift */,
 				98797BCE2ED7CB64008E03C4 /* AlbumManager+Export.swift */,
 				8CC21B534704407E965288CF /* AlbumState.swift */,
@@ -388,19 +395,21 @@
 				981926542EC854B600C67291 /* EncryptedAlbum_iOSApp.swift */,
 				9849B45D2EB9893F00B17DAC /* EncryptedAlbum.entitlements */,
 				9849B4542EB9893D00B17DAC /* EncryptedAlbumApp.swift */,
+				98FAA8162EDAAF7A00A5C3DD /* EncryptedAlbumDebug.entitlements */,
 				98797BD12ED7E27B008E03C4 /* FakeCrashView.swift */,
 				F2ECB74A746149529B6DE078 /* FileService.swift */,
-				9900AABBCCDDEEFF00112233 /* NotificationBannerView.swift */,
 				98797BC02ED7C9C5008E03C4 /* ImageHelpers.swift */,
+				98FAA8172EDAB9F300A5C3DD /* ImportSaver.swift */,
 				984EC6722ED5DDB300038F9F /* ImportService.swift */,
 				989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */,
 				981926602EC8552000C67291 /* Info_iOS.plist */,
 				CF9ADA530C59D1A9B3039479 /* Info.plist */,
+				DDEEFF001122334455667788 /* Logging.swift */,
 				DD44EE5566FF77AA88BB99CC /* MainAlbumView.swift */,
+				9900AABBCCDDEEFF00112233 /* NotificationBannerView.swift */,
+				98D6909B2EDB369700200BB7 /* OnChangeCompat.swift */,
 				984EC6712ED5DDB200038F9F /* PasswordChangeJournal.swift */,
 				28CF564BDC0E4C9F891A9910 /* PasswordService.swift */,
-				F1E2D3C4B5A6978877665544 /* TelemetryService.swift */,
-				DDEEFF001122334455667788 /* Logging.swift */,
 				A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */,
 				98797BC22ED7C9C6008E03C4 /* PhotoThumbnailView.swift */,
 				98797BC32ED7C9C6008E03C4 /* PhotoViewerSheet.swift */,
@@ -409,6 +418,10 @@
 				98797BBC2ED7C6BF008E03C4 /* ProgressOverlayView.swift */,
 				EC32058021C54480B2F0BD89 /* SecurityService.swift */,
 				BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */,
+				98D6909C2EDB369700200BB7 /* SharedModels.swift */,
+				989B68D62ED8C1DB00FA9A5B /* ShareHelper.swift */,
+				98D6909D2EDB369700200BB7 /* SharePreviewHelper.swift */,
+				F1E2D3C4B5A6978877665544 /* TelemetryService.swift */,
 				989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */,
 				D4C068CD08B70A6DBEA00400 /* UnlockView.swift */,
 				98797BBF2ED7C9C5008E03C4 /* ZoomableImageView.swift */,
@@ -744,6 +757,7 @@
 				984EC6782ED5DDB300038F9F /* ImportService.swift in Sources */,
 				986328C92ECE882D00EAE9A9 /* ContentView.swift in Sources */,
 				981926552EC854B600C67291 /* EncryptedAlbum_iOSApp.swift in Sources */,
+				98D6909F2EDB369800200BB7 /* OnChangeCompat.swift in Sources */,
 				98C835F92EC9E6CD000997CF /* PhotosLibraryService.swift in Sources */,
 				98797BD02ED7CB64008E03C4 /* AlbumManager+Export.swift in Sources */,
 				98C835FA2EC9E6CD000997CF /* AlbumDetailView.swift in Sources */,
@@ -755,8 +769,10 @@
 				98C835FE2EC9E6CD000997CF /* AlbumManager.swift in Sources */,
 				98C6A2E62ED905F500290D1E /* TelemetryService.swift in Sources */,
 				98C6A2E72ED905F500290D1E /* Logging.swift in Sources */,
+				98D690A32EDB369800200BB7 /* SharePreviewHelper.swift in Sources */,
 				9823D7782ECD7BF400FFB750 /* CameraCaptureView.swift in Sources */,
 				98797BD32ED7E27B008E03C4 /* FakeCrashView.swift in Sources */,
+				98D690A12EDB369800200BB7 /* SharedModels.swift in Sources */,
 				98797BCD2ED7C9C6008E03C4 /* PhotoViewerSheet.swift in Sources */,
 				98797BC52ED7C9C6008E03C4 /* ZoomableImageView.swift in Sources */,
 				98C835FF2EC9E6CD000997CF /* PreferencesView.swift in Sources */,
@@ -773,7 +789,7 @@
 				986328D02ECE882D00EAE9A9 /* AlbumState.swift in Sources */,
 				98797BC92ED7C9C6008E03C4 /* CustomVideoPlayer.swift in Sources */,
 				989B68D82ED8C1DB00FA9A5B /* ShareHelper.swift in Sources */,
-				9900AABBCCDDEEFF00112234 /* NotificationBannerView.swift in Sources */,
+				98EAD99F2EDB4D64009FCA49 /* NotificationBannerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -795,6 +811,7 @@
 				984EC6772ED5DDB300038F9F /* ImportService.swift in Sources */,
 				988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */,
 				9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */,
+				98D6909E2EDB369800200BB7 /* OnChangeCompat.swift in Sources */,
 				1CA80AC13D192EBBFCD3B516 /* PhotosLibraryService.swift in Sources */,
 				98797BCF2ED7CB64008E03C4 /* AlbumManager+Export.swift in Sources */,
 				432DD49F40365EA5EAEBFD23 /* AlbumDetailView.swift in Sources */,
@@ -803,11 +820,13 @@
 				AA11BB2233CC44DD55EE66FF /* SetupPasswordView.swift in Sources */,
 				CC33DD4455EE66FF77AA88BB /* MainAlbumView.swift in Sources */,
 				98900B502ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */,
-				E48BBB324071974C8BE48D0D /* AlbumManager.swift in Sources */,
+
 				F2A3B4C56D7E8F9012345678 /* TelemetryService.swift in Sources */,
 				DDEEFF8899AABBCCDDEEFF00 /* Logging.swift in Sources */,
+				98D690A22EDB369800200BB7 /* SharePreviewHelper.swift in Sources */,
 				9849B4552EB9893D00B17DAC /* EncryptedAlbumApp.swift in Sources */,
 				98797BD22ED7E27B008E03C4 /* FakeCrashView.swift in Sources */,
+				98D690A02EDB369800200BB7 /* SharedModels.swift in Sources */,
 				98797BCC2ED7C9C6008E03C4 /* PhotoViewerSheet.swift in Sources */,
 				98797BC42ED7C9C6008E03C4 /* ZoomableImageView.swift in Sources */,
 				A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */,
@@ -818,6 +837,7 @@
 				9FA39564407F407B82E34796 /* PasswordService.swift in Sources */,
 				98797BC62ED7C9C6008E03C4 /* ImageHelpers.swift in Sources */,
 				98FAA8182EDAB9F400A5C3DD /* ImportSaver.swift in Sources */,
+				98C835FE2EC9E6CD000997CF /* AlbumManager.swift in Sources */,
 				AB219FCE33BC4485A762BDA6 /* SecurityService.swift in Sources */,
 				B60166E7D2AD4B09B005BB47 /* AlbumError.swift in Sources */,
 				98797BBD2ED7C6BF008E03C4 /* ProgressOverlayView.swift in Sources */,

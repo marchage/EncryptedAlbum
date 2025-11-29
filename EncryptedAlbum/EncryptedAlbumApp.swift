@@ -149,7 +149,7 @@ struct EncryptedAlbumApp: App {
                 }
 
                 do {
-                    try await manager.hidePhoto(
+                    try await manager.hidePhotoSource(
                         mediaSource: .fileURL(url),
                         filename: url.lastPathComponent,
                         mediaType: mediaType
@@ -185,7 +185,7 @@ struct EncryptedAlbumApp: App {
                 let filename = "Imported Image \(Date().timeIntervalSince1970) \(index).jpg"
 
                 do {
-                    try await manager.hidePhoto(
+                    try await manager.hidePhotoSource(
                         mediaSource: .data(jpegData),
                         filename: filename,
                         mediaType: .photo

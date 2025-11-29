@@ -208,12 +208,13 @@ struct PhotoViewerSheet: View {
 
     func loadFullImage() {
             cancelDecryptTask()
+            let manager: AlbumManager = albumManager
             decryptTask = Task {
                 do {
                     await MainActor.run {
-                        albumManager.viewerProgress.start("Decrypting \(photo.filename)…")
+                        manager.viewerProgress.start("Decrypting \(photo.filename)…")
                     }
-                    let decryptedData = try await albumManager.decryptPhoto(photo)
+                    let decryptedData = try await manager.decryptPhoto(photo)
                     try Task.checkCancellation()
                     
 #if os(macOS)
@@ -242,27 +243,28 @@ struct PhotoViewerSheet: View {
                         showDecryptErrorAlert = true
                     }
                 }
-                await MainActor.run {
-                    decryptTask = nil
-                    albumManager.viewerProgress.finish()
-                }
+                    await MainActor.run {
+                        decryptTask = nil
+                        manager.viewerProgress.finish()
+                    }
             }
         }
         
         func loadVideo() {
             cancelDecryptTask()
+            let manager: AlbumManager = albumManager
             decryptTask = Task {
                 do {
                     // Start viewer-level progress. If we have a known file size, expose it
                     await MainActor.run {
                         let total = photo.fileSize
-                        albumManager.viewerProgress.start("Decrypting \(photo.filename)…", totalBytes: total)
+                        manager.viewerProgress.start("Decrypting \(photo.filename)…", totalBytes: total)
                     }
                     
-                    let tempURL = try await albumManager.decryptPhotoToTemporaryURL(photo) { bytes in
+                    let tempURL = try await manager.decryptPhotoToTemporaryURL(photo) { bytes in
                         // Update viewer progress with bytes processed
                         Task { @MainActor in
-                            albumManager.viewerProgress.update(bytesProcessed: bytes)
+                            manager.viewerProgress.update(bytesProcessed: bytes)
                         }
                     }
                     try Task.checkCancellation()
@@ -278,10 +280,10 @@ struct PhotoViewerSheet: View {
                         showDecryptErrorAlert = true
                     }
                 }
-                await MainActor.run {
-                    decryptTask = nil
-                    albumManager.viewerProgress.finish()
-                }
+                    await MainActor.run {
+                        decryptTask = nil
+                        manager.viewerProgress.finish()
+                    }
             }
         }
         

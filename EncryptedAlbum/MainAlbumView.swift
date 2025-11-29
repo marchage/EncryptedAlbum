@@ -297,7 +297,7 @@ struct MainAlbumView: View {
         }
         selectedPhotos.removeAll()
         do {
-            try await albumManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: true)
+            try await albumManager.restorePhotos(photosToRestore, restoreToSourceAlbum: true)
         } catch is CancellationError {
             AppLog.debugPublic("Restore canceled before completion")
         } catch {
@@ -333,7 +333,7 @@ struct MainAlbumView: View {
                 if !albumName.isEmpty {
                     selectedPhotos.removeAll()
                     do {
-                        try await albumManager.batchRestorePhotos(photosToRestore, toNewAlbum: albumName)
+                        try await albumManager.restorePhotos(photosToRestore, toNewAlbum: albumName)
                     } catch is CancellationError {
                         AppLog.debugPublic("Restore canceled before completion")
                     } catch {
@@ -350,7 +350,7 @@ struct MainAlbumView: View {
         }
         selectedPhotos.removeAll()
         do {
-            try await albumManager.batchRestorePhotos(photosToRestore, restoreToSourceAlbum: false)
+            try await albumManager.restorePhotos(photosToRestore, restoreToSourceAlbum: false)
         } catch is CancellationError {
             AppLog.debugPublic("Restore canceled before completion")
         } catch {
@@ -365,7 +365,7 @@ struct MainAlbumView: View {
     private func restorePhotos(_ photos: [SecurePhoto], toSourceAlbums: Bool) async {
         guard !photos.isEmpty else { return }
         do {
-            try await albumManager.batchRestorePhotos(photos, restoreToSourceAlbum: toSourceAlbums)
+            try await albumManager.restorePhotos(photos, restoreToSourceAlbum: toSourceAlbums)
         } catch is CancellationError {
             AppLog.debugPublic("Restore canceled before completion")
         } catch {
@@ -383,8 +383,9 @@ struct MainAlbumView: View {
 
         guard !photosToDelete.isEmpty else { return }
 
+        let manager: AlbumManager = albumManager
         for photo in photosToDelete {
-            albumManager.deletePhoto(photo)
+            manager.deletePhotoPublic(photo)
         }
 
         let deletedIds = Set(photosToDelete.map { $0.id })
@@ -687,7 +688,8 @@ struct MainAlbumView: View {
 
         Menu {
             Button {
-                albumManager.removeDuplicates()
+                let manager: AlbumManager = albumManager
+                manager.removeDuplicatesPublic()
             } label: {
                 Label("Remove Duplicates", systemImage: "trash.slash")
             }
@@ -695,7 +697,8 @@ struct MainAlbumView: View {
             Divider()
 
             Button {
-                albumManager.lock(userInitiated: true)
+                let manager: AlbumManager = albumManager
+                manager.lock(userInitiated: true)
             } label: {
                 Label("Lock Album", systemImage: "lock.fill")
             }
@@ -1613,7 +1616,8 @@ extension MainAlbumView {
                             let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.9])
                         {
                             let filename = "Dropped Image \(Date().timeIntervalSince1970).jpg"
-                            try await albumManager.hidePhoto(imageData: jpegData, filename: filename)
+                            let manager: AlbumManager = albumManager
+                            try await manager.hidePhotoData(jpegData, filename: filename)
                         }
                     } catch {
                         AppLog.error("Failed to load dropped image: \(error.localizedDescription)")

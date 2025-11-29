@@ -6,8 +6,12 @@ struct NotificationBannerView: View {
     // Interestingly this view intentionally mirrors the UI in `MainAlbumView` so we keep behaviour consistent.
 
     var body: some View {
-        Group {
-            if let note = albumManager.hideNotification {
+        notificationContent
+    }
+
+    @ViewBuilder
+    private var notificationContent: some View {
+        if let note = albumManager.hideNotification {
                 HStack(spacing: 12) {
                     Image(systemName: iconName(for: note.type))
                         .foregroundStyle(.white)
@@ -22,19 +26,23 @@ struct NotificationBannerView: View {
 
                     if let validPhotos = note.photos?.filter({ p in
                         albumManager.hiddenPhotos.contains(where: { $0.id == p.id })
-                    }), !validPhotos.isEmpty {
+                    }) {
+                        if !validPhotos.isEmpty {
                         Button("Undo") {
+                            // Capture the wrapped value into a local constant to avoid property-wrapper capture issues
+                            let manager: AlbumManager = albumManager
                             Task { @MainActor in
                                 do {
-                                    try await albumManager.batchRestorePhotos(validPhotos, restoreToSourceAlbum: true)
+                                    try await manager.restorePhotos(validPhotos, restoreToSourceAlbum: true)
                                 } catch {
                                     AppLog.error("Undo restore failed: \(error.localizedDescription)")
                                 }
-                                withAnimation { albumManager.hideNotification = nil }
+                                withAnimation { manager.hideNotification = nil }
                             }
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
+                        }
                     }
 
                     Button("Open Photos App") {
@@ -64,7 +72,6 @@ struct NotificationBannerView: View {
                 .accessibilityElement(children: .combine)
             }
         }
-    }
 
     private func iconColor(for type: HideNotificationType) -> Color {
         switch type {
@@ -88,14 +95,5 @@ struct NotificationBannerView: View {
         case .failure: return Color.red.opacity(0.14)
         case .info: return Color.gray.opacity(0.12)
         }
-    }
-}
-
-// A tiny helper so the view can trigger the same restore code path — this keeps the undo behaviour compact.
-fileprivate extension MainAlbumView {
-    static func startRestorationTaskStatic(_ body: @escaping () -> Void) -> Bool {
-        // For tests / quick reuse: always dispatch the body asynchronously and return true
-        DispatchQueue.global(qos: .userInitiated).async { body() }
-        return true
     }
 }
