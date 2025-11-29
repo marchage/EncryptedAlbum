@@ -9,7 +9,7 @@ import Photos
 
 final class PhotosLibraryServiceTests: XCTestCase {
     
-    var sut: PhotosLibraryService!
+    var sut: PhotosLibraryServiceProtocol!
     
     override func setUp() {
         super.setUp()
@@ -24,7 +24,8 @@ final class PhotosLibraryServiceTests: XCTestCase {
     func testService_IsSingleton() {
         let instance1 = PhotosLibraryService.shared
         let instance2 = PhotosLibraryService.shared
-        XCTAssertTrue(instance1 === instance2)
+        // shared is protocol-typed — compare object identity
+        XCTAssertTrue((instance1 as AnyObject) === (instance2 as AnyObject))
     }
     
     func testRequestAccess_ShouldReturnBool() {

@@ -72,66 +72,35 @@ import SwiftUI
                     if let mediaSource = mediaSource {
                         Task {
                             do {
-                                // Respect preference: save directly to album or to Photos library
-                                if self.parent.albumManager.cameraSaveToAlbumDirectly {
-                                    try await self.parent.albumManager.hidePhoto(
-                                        mediaSource: mediaSource,
-                                        filename: filename,
-                                        dateTaken: Date(),
-                                        sourceAlbum: "Captured to Album",
-                                        assetIdentifier: nil,
-                                        mediaType: mediaType,
-                                        duration: duration,
-                                        location: nil,
-                                        isFavorite: nil
-                                    )
-                                    AppLog.debugPublic("✅ Captured to album: \(filename)")
-                                } else {
-                                    // Save into system Photos library instead
-                                    switch mediaSource {
-                                    case .fileURL(let url):
-                                        PhotosLibraryService.shared.saveMediaFileToLibrary(
-                                            url, filename: filename, mediaType: mediaType, toAlbum: nil, creationDate: Date(), location: nil, isFavorite: nil
-                                        ) { success, error in
-                                            if success {
-                                                AppLog.debugPublic("Saved capture to Photos: \(filename)")
-                                            } else {
-                                                AppLog.error("Failed saving capture to Photos: \(error?.localizedDescription ?? "unknown")")
-                                            }
-                                        }
-                                    case .data(let data):
-                                        // materialize data to temporary file then save
-                                        let ext = (filename as NSString).pathExtension.isEmpty ? "jpg" : (filename as NSString).pathExtension
-                                        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
-                                        do {
-                                            try data.write(to: tempURL)
-                                            PhotosLibraryService.shared.saveMediaFileToLibrary(
-                                                tempURL, filename: filename, mediaType: mediaType, toAlbum: nil, creationDate: Date(), location: nil, isFavorite: nil
-                                            ) { success, error in
-                                                if !success {
-                                                    AppLog.error("Failed saving capture to Photos: \(error?.localizedDescription ?? "unknown")")
-                                                }
-                                                // Cleanup temp file
-                                                try? FileManager.default.removeItem(at: tempURL)
-                                            }
-                                        } catch {
-                                            AppLog.error("Failed to write temp capture file: \(error.localizedDescription)")
-                                        }
-                                    }
-                                }
+                                // Forward capture handling to AlbumManager helper which centralises
+                                // the save-to-album vs save-to-photos behaviour and is testable.
+                                try await self.parent.albumManager.handleCapturedMedia(
+                                    mediaSource: mediaSource,
+                                    filename: filename,
+                                    dateTaken: Date(),
+                                    sourceAlbum: "Captured to Album",
+                                    assetIdentifier: nil,
+                                    mediaType: mediaType,
+                                    duration: duration,
+                                    location: nil,
+                                    isFavorite: nil
+                                )
+                                AppLog.debugPublic("Handled captured media: \(filename)")
                             } catch {
-                                AppLog.error("Failed to save capture: \(error.localizedDescription)")
+                                AppLog.error("Failed to handle captured media: \(error.localizedDescription)")
                             }
                         }
                     }
                 }
-            }
+
+                }
 
             func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
                 parent.dismiss()
             }
         }
     }
+
 #endif
 
 #if os(macOS)
@@ -496,41 +465,27 @@ import SwiftUI
 
             let filename = "Capture_\(Date().timeIntervalSince1970).jpg"
 
-            Task {
-                do {
-                    if let albumManager, albumManager.cameraSaveToAlbumDirectly {
-                        try await albumManager.hidePhoto(
-                            mediaSource: .data(data),
-                            filename: filename,
-                            dateTaken: Date(),
-                            sourceAlbum: "Captured to Album",
-                            assetIdentifier: nil,
-                            mediaType: .photo,
-                            duration: nil,
-                            location: nil,
-                            isFavorite: nil
-                        )
-                    } else {
-                        // Write temporary photo file and save to Photos library
-                        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("jpg")
+                    Task {
                         do {
-                            try data.write(to: tempURL)
-                            PhotosLibraryService.shared.saveMediaFileToLibrary(
-                                tempURL, filename: filename, mediaType: .photo, toAlbum: nil, creationDate: Date(), location: nil, isFavorite: nil
-                            ) { success, error in
-                                if !success {
-                                    AppLog.error("Failed saving capture to Photos: \(error?.localizedDescription ?? "unknown")")
-                                }
-                                try? FileManager.default.removeItem(at: tempURL)
+                            guard let albumManager = albumManager else {
+                                AppLog.error("No albumManager available to handle captured photo")
+                                return
                             }
+                            try await albumManager.handleCapturedMedia(
+                                mediaSource: .data(data),
+                                filename: filename,
+                                dateTaken: Date(),
+                                sourceAlbum: "Captured to Album",
+                                assetIdentifier: nil,
+                                mediaType: .photo,
+                                duration: nil,
+                                location: nil,
+                                isFavorite: nil
+                            )
                         } catch {
-                            AppLog.error("Failed to write temporary photo for saving to Photos: \(error.localizedDescription)")
+                            AppLog.error("Failed to handle captured photo: \(error.localizedDescription)")
                         }
                     }
-                } catch {
-                    AppLog.error("Failed to save capture: \(error.localizedDescription)")
-                }
-            }
         }
     }
 
@@ -552,8 +507,12 @@ import SwiftUI
 
             let filename = "Video_\(Date().timeIntervalSince1970).mov"
 
-            Task {
+                    Task {
                 do {
+                    guard let albumManager = albumManager else {
+                        AppLog.error("No albumManager available to handle captured video")
+                        return
+                    }
                     let asset = AVAsset(url: outputFileURL)
                     var duration: TimeInterval?
                     if #available(macOS 13.0, *) {
@@ -564,8 +523,8 @@ import SwiftUI
                         duration = asset.duration.seconds
                     }
 
-                    if let albumManager, albumManager.cameraSaveToAlbumDirectly {
-                        try await albumManager.hidePhoto(
+                    do {
+                        try await albumManager.handleCapturedMedia(
                             mediaSource: .fileURL(outputFileURL),
                             filename: filename,
                             dateTaken: Date(),
@@ -576,21 +535,11 @@ import SwiftUI
                             location: nil,
                             isFavorite: nil
                         )
-
-                        // Clean up temp file
-                        try? FileManager.default.removeItem(at: outputFileURL)
-                    } else {
-                        // Save video file to Photos library
-                        PhotosLibraryService.shared.saveMediaFileToLibrary(
-                            outputFileURL, filename: filename, mediaType: .video, toAlbum: nil, creationDate: Date(), location: nil, isFavorite: nil
-                        ) { success, error in
-                            if !success {
-                                AppLog.error("Failed saving video to Photos: \(error?.localizedDescription ?? "unknown")")
-                            }
-                            // Remove temp file regardless
-                            try? FileManager.default.removeItem(at: outputFileURL)
-                        }
+                    } catch {
+                        AppLog.error("Failed to handle captured video: \(error.localizedDescription)")
                     }
+                    // Always attempt to remove the temporary file
+                    try? FileManager.default.removeItem(at: outputFileURL)
                 } catch {
                     AppLog.error("Failed to save video: \(error.localizedDescription)")
                 }

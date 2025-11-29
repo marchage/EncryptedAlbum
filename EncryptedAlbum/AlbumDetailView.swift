@@ -278,9 +278,9 @@ struct PhotosLibraryPicker: View {
                                 }
                                 .pickerStyle(.segmented)
                                 .frame(maxWidth: .infinity)
-                                .onChange(of: selectedLibrary) { _ in
-                                    loadPhotos()
-                                }
+                                  .onChange(of: selectedLibrary) { _, _ in
+                                      loadPhotos()
+                                  }
 
                                 // Manual fallback toggle only relevant when user selects Shared
                                 if selectedLibrary == .shared {
@@ -289,9 +289,9 @@ struct PhotosLibraryPicker: View {
                                         .help(
                                             "If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared."
                                         )
-                                        .onChange(of: forceSharedLibrary) { _ in
-                                            loadPhotos()
-                                        }
+                                          .onChange(of: forceSharedLibrary) { _, _ in
+                                              loadPhotos()
+                                          }
                                 }
                             }
                         }
@@ -312,18 +312,18 @@ struct PhotosLibraryPicker: View {
                             }
                             .pickerStyle(.segmented)
                             .frame(width: 280)
-                            .onChange(of: selectedLibrary) { _ in
-                                loadPhotos()
-                            }
+                              .onChange(of: selectedLibrary) { _, _ in
+                                  loadPhotos()
+                              }
                             // Manual fallback toggle only relevant when user selects Shared
                             Toggle("Force Shared", isOn: $forceSharedLibrary)
                                 .toggleStyle(.switch)
                                 .help(
                                     "If your Shared Library photos are not detected (PhotoKit sourceType always = personal), enable this to treat all albums as shared."
                                 )
-                                .onChange(of: forceSharedLibrary) { _ in
-                                    if selectedLibrary == .shared { loadPhotos() }
-                                }
+                                  .onChange(of: forceSharedLibrary) { _, _ in
+                                      if selectedLibrary == .shared { loadPhotos() }
+                                  }
                                 .padding(.leading, 8)
                                 .frame(maxWidth: 130)
 
@@ -559,13 +559,13 @@ struct PhotosLibraryPicker: View {
                 isAppActive = NSApplication.shared.isActive
             }
         #else
-            .onChange(of: scenePhase) { newPhase in
-                if newPhase == .active {
-                    isAppActive = true
-                } else if newPhase == .background || newPhase == .inactive {
-                    isAppActive = false
-                }
-            }
+              .onChange(of: scenePhase) { _, newPhase in
+                  if newPhase == .active {
+                      isAppActive = true
+                  } else if newPhase == .background || newPhase == .inactive {
+                      isAppActive = false
+                  }
+              }
         #endif
     }
 
@@ -846,15 +846,25 @@ struct PhotosLibraryPicker: View {
                     )
 
                 if selectedAssets.count > 0 {
-                    Text(selectionBadgeText)
-                        .font(.caption.bold())
-                        .foregroundColor(.black)
+                        Text(selectionBadgeText)
+                            .font(.caption.bold())
+                            // Use adaptive color for the badge label so it remains readable
+                            // across light and dark privacy backgrounds (e.g. Rainbow).
+                            .foregroundStyle(.primary)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(
-                            Capsule()
-                                .fill(Color.white)
-                                .shadow(color: .black.opacity(0.15), radius: 1, x: 0, y: 1)
+                            Group {
+#if os(iOS)
+                                Capsule()
+                                    .fill(Color(uiColor: .systemBackground))
+                                    .shadow(color: .black.opacity(0.15), radius: 1, x: 0, y: 1)
+#else
+                                Capsule()
+                                    .fill(Color(nsColor: NSColor.windowBackgroundColor))
+                                    .shadow(color: .black.opacity(0.15), radius: 1, x: 0, y: 1)
+#endif
+                            }
                         )
                         .offset(x: 8, y: -8)
                 }

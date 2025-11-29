@@ -318,6 +318,11 @@ struct MainAlbumView: View {
 
             let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
             textField.placeholderString = "Album Name"
+            // Use adaptive text color / appearance so the accessory field remains readable
+            // on dark privacy backgrounds (e.g. Rainbow). Also disable the default background
+            // to avoid an opaque white field on dark themes.
+            textField.textColor = NSColor.labelColor
+            textField.backgroundColor = .clear
             alert.accessoryView = textField
 
             alert.addButton(withTitle: "Create")
@@ -1396,6 +1401,10 @@ struct MainAlbumView: View {
         }
     }
 }
+
+// The real shared `NotificationBannerView` lives in
+// `NotificationBannerView.swift`. Remove the fallback duplicate here to avoid
+// redeclaration when the shared view is included in the build.
 #if os(iOS)
     extension MainAlbumView {
         private func startCameraCaptureFlow() {

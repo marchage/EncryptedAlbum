@@ -509,10 +509,15 @@ class AlbumManager: ObservableObject {
     }
 
     @MainActor
-    init(storage: AlbumStorage? = nil) {
+    init(storage: AlbumStorage? = nil, importService: ImportService? = nil) {
         let progress = ImportProgress()
         self.directImportProgress = DirectImportProgress()
-        importService = ImportService(progress: progress)
+        // Allow tests to inject a mock ImportService when needed.
+        if let importService = importService {
+            self.importService = importService
+        } else {
+            self.importService = ImportService(progress: progress)
+        }
 
         // Initialize services
         cryptoService = CryptoService()
@@ -1048,8 +1053,13 @@ class AlbumManager: ObservableObject {
     /// After user performs a deliberate unlock action (biometric or password attempt), clear
     /// the suppression so subsequent unlock screens may auto-attempt biometrics again.
     func clearSuppressAutoBiometric() {
-        DispatchQueue.main.async {
+        // Mirror the synchronous behaviour used in `lock(userInitiated:)` so callers
+        // that expect an immediate change (for example tests running on the main actor)
+        // observe the flag change synchronously.
+        if Thread.isMainThread {
             self.suppressAutoBiometricAfterManualLock = false
+        } else {
+            DispatchQueue.main.sync { self.suppressAutoBiometricAfterManualLock = false }
         }
     }
 
@@ -1325,6 +1335,76 @@ class AlbumManager: ObservableObject {
             self.hiddenPhotos.append(photo)
             self.albumQueue.async {
                 self.savePhotos()
+            }
+        }
+    }
+
+    /// High-level helper for camera capture handling. Centralises the logic that used to
+    /// live in camera UI components so that the behaviour can be tested and mocked.
+    /// If `cameraSaveToAlbumDirectly` is enabled, this will encrypt into the album.
+    /// Otherwise it will attempt to save the captured media into the system Photos library
+    /// using the `PhotosLibraryService.shared` instance (which is protocol-typed for mocking).
+    @MainActor
+    func handleCapturedMedia(
+        mediaSource: MediaSource,
+        filename: String,
+        dateTaken: Date? = nil,
+        sourceAlbum: String? = "Captured to Album",
+        assetIdentifier: String? = nil,
+        mediaType: MediaType = .photo,
+        duration: TimeInterval? = nil,
+        location: SecurePhoto.Location? = nil,
+        isFavorite: Bool? = nil
+    ) async throws {
+        // If user wants captures saved into the encrypted album, forward to hidePhoto
+        if cameraSaveToAlbumDirectly {
+            try await hidePhoto(
+                mediaSource: mediaSource,
+                filename: filename,
+                dateTaken: dateTaken,
+                sourceAlbum: sourceAlbum,
+                assetIdentifier: assetIdentifier,
+                mediaType: mediaType,
+                duration: duration,
+                location: location,
+                isFavorite: isFavorite,
+                progressHandler: nil
+            )
+            return
+        }
+
+        // Otherwise save to Photos library. For data sources we materialize to a temp file.
+        switch mediaSource {
+        case .fileURL(let url):
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                PhotosLibraryService.shared.saveMediaFileToLibrary(url, filename: filename, mediaType: mediaType, toAlbum: nil, creationDate: dateTaken, location: location, isFavorite: isFavorite) { success, error in
+                    if success {
+                        continuation.resume(returning: ())
+                    } else {
+                        continuation.resume(throwing: AlbumError.unknownError(reason: error?.localizedDescription ?? "Failed to save to Photos"))
+                    }
+                }
+            }
+
+        case .data(let data):
+            let ext = (filename as NSString).pathExtension.isEmpty ? "jpg" : (filename as NSString).pathExtension
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
+            do {
+                try data.write(to: tempURL)
+                defer { try? FileManager.default.removeItem(at: tempURL) }
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    PhotosLibraryService.shared.saveMediaFileToLibrary(tempURL, filename: filename, mediaType: mediaType, toAlbum: nil, creationDate: dateTaken, location: location, isFavorite: isFavorite) { success, error in
+                        if success {
+                            continuation.resume(returning: ())
+                        } else {
+                            continuation.resume(throwing: AlbumError.unknownError(reason: error?.localizedDescription ?? "Failed to save to Photos"))
+                        }
+                    }
+                }
+            } catch {
+                // Ensure cleanup on write error as well
+                try? FileManager.default.removeItem(at: tempURL)
+                throw AlbumError.fileWriteFailed(path: tempURL.path, reason: error.localizedDescription)
             }
         }
     }
@@ -2908,15 +2988,19 @@ extension AlbumManager {
             // Deduplicate assets
             let uniqueAssets = Array(Set(successfulAssets))
 
-            await withCheckedContinuation { continuation in
-                PhotosLibraryService.shared.batchDeleteAssets(uniqueAssets) { success in
-                    if success {
-                        AppLog.debugPublic("Successfully deleted \(uniqueAssets.count) photos from library")
-                    } else {
-                        AppLog.error("Failed to delete some photos from library")
+            if cameraAutoRemoveFromPhotos {
+                await withCheckedContinuation { continuation in
+                    PhotosLibraryService.shared.batchDeleteAssets(uniqueAssets) { success in
+                        if success {
+                            AppLog.debugPublic("Successfully deleted \(uniqueAssets.count) photos from library")
+                        } else {
+                            AppLog.error("Failed to delete some photos from library")
+                        }
+                        continuation.resume()
                     }
-                    continuation.resume()
                 }
+            } else {
+                AppLog.debugPublic("Skipping library cleanup: auto-remove-from-Photos is disabled")
             }
 
             // Notify UI

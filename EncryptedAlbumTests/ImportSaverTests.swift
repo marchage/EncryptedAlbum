@@ -72,13 +72,20 @@ final class ImportSaverTests: XCTestCase {
         }
         try bytes.write(to: src)
 
+        var sawProgress = false
         let expectProgress = expectation(description: "progress called")
         let expectCompletion = expectation(description: "completed")
 
         ImportSaver.copyFileWithProgress(toContainerURL: container, from: src, chunkSize: 16 * 1024, progress: { written, total in
             // progress should be increasing up to total
             XCTAssertTrue(written <= total)
-            expectProgress.fulfill()
+            // Only mark the expectation once even though progress may be reported
+            // multiple times (per-chunk). This prevents XCTest errors from multiple
+            // fulfill() calls.
+            if !sawProgress {
+                sawProgress = true
+                expectProgress.fulfill()
+            }
         }, completion: { success in
             XCTAssertTrue(success)
             expectCompletion.fulfill()
@@ -98,12 +105,16 @@ final class ImportSaverTests: XCTestCase {
             arc4random_buf(ptr.baseAddress, size)
         }
 
+        var sawProgress = false
         let expectProgress = expectation(description: "progress called")
         let expectCompletion = expectation(description: "completed")
 
         ImportSaver.writeDataWithProgress(toContainerURL: container, data, chunkSize: 16 * 1024, progress: { written, total in
             XCTAssertTrue(written <= total)
-            expectProgress.fulfill()
+            if !sawProgress {
+                sawProgress = true
+                expectProgress.fulfill()
+            }
         }, completion: { success in
             XCTAssertTrue(success)
             expectCompletion.fulfill()
