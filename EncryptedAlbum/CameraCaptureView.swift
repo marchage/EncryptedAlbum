@@ -609,42 +609,9 @@ import SwiftUI
                 return
             }
 
-            // If the picker handed us an image file URL (e.g. a camera-captured file),
-            // we should also copy it to an app-owned temp file before dismissal.
-            if let imageURL = info[.imageURL] as? URL {
-                let ext = imageURL.pathExtension.isEmpty ? "jpg" : imageURL.pathExtension
-                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
-                do {
-                    try FileManager.default.copyItem(at: imageURL, to: tempURL)
-                    parent.dismiss()
-                    Task.detached(priority: .userInitiated) {
-                        do {
-                            let mediaSource: MediaSource = .fileURL(tempURL)
-                            let filename = "Capture_\(Date().timeIntervalSince1970).\(ext)"
-                            try await self.albumManagerRef.handleCapturedMedia(
-                                mediaSource: mediaSource,
-                                filename: filename,
-                                dateTaken: Date(),
-                                sourceAlbum: "Captured to Album",
-                                assetIdentifier: nil,
-                                mediaType: .photo,
-                                duration: nil,
-                                location: nil,
-                                isFavorite: nil
-                            )
-                            AppLog.debugPublic("Handled captured media: \(filename)")
-                            AppLog.debugPrivate("CameraCoordinator: Determined mediaSource=\(mediaSource) filename=\(filename) mediaType=photo")
-                        } catch {
-                            AppLog.error("Failed to handle captured media: \(error.localizedDescription)")
-                            AppLog.debugPrivate("CameraCoordinator: Error handling captured image file at temp URL: \(tempURL.path)")
-                        }
-                    }
-                } catch {
-                    AppLog.error("Failed to copy captured image to temp file: \(error.localizedDescription)")
-                    parent.dismiss()
-                }
-                return
-            }
+            // macOS recording path: we always receive an outputFileURL
+            // (no UIImagePicker-style `info` dictionary), so skip any
+            // imageURL handling here and process the recorded file below.
 
             let filename = "Video_\(Date().timeIntervalSince1970).mov"
 
