@@ -21,7 +21,7 @@ class ShareViewController: SLComposeServiceViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.title = "Import to Vault"
+        self.title = "Import to Encrypted Album"
         self.navigationController?.navigationBar.topItem?.rightBarButtonItem?.title = "Save"
         self.placeholder = "Tap Save to import photos/videos"
     }
@@ -58,6 +58,8 @@ class ShareViewController: SLComposeServiceViewController {
         }
 
         let dispatchGroup = DispatchGroup()
+        let countSyncQueue = DispatchQueue(label: "share.saveCount")
+        var savedCount = 0
         
         for item in items {
             guard let attachments = item.attachments else { continue }
@@ -70,9 +72,13 @@ class ShareViewController: SLComposeServiceViewController {
                     provider.loadItem(forTypeIdentifier: UTType.image.identifier, options: nil) { [weak self] (item, error) in
                         defer { dispatchGroup.leave() }
                         if let url = item as? URL {
-                            self?.saveFileToSharedContainer(from: url, type: .image)
+                            if let success = self?.saveFileToSharedContainer(from: url, type: .image), success {
+                                countSyncQueue.async { savedCount += 1 }
+                            }
                         } else if let image = item as? UIImage, let data = image.jpegData(compressionQuality: 0.9) {
-                            self?.saveDataToSharedContainer(data, type: .image)
+                            if let success = self?.saveDataToSharedContainer(data, type: .image), success {
+                                countSyncQueue.async { savedCount += 1 }
+                            }
                         }
                     }
                 }
@@ -81,7 +87,9 @@ class ShareViewController: SLComposeServiceViewController {
                     provider.loadItem(forTypeIdentifier: UTType.movie.identifier, options: nil) { [weak self] (item, error) in
                         defer { dispatchGroup.leave() }
                         if let url = item as? URL {
-                            self?.saveFileToSharedContainer(from: url, type: .movie)
+                            if let success = self?.saveFileToSharedContainer(from: url, type: .movie), success {
+                                countSyncQueue.async { savedCount += 1 }
+                            }
                         }
                     }
                 } else {
@@ -91,14 +99,32 @@ class ShareViewController: SLComposeServiceViewController {
         }
 
         dispatchGroup.notify(queue: .main) {
-            self.extensionContext!.completeRequest(returningItems: [], completionHandler: nil)
+            // show a clear confirmation UI so iOS and macOS behave consistently
+            countSyncQueue.sync { /* ensure savedCount seen on main thread */ }
+            let alertTitle: String
+            let alertMessage: String
+            if savedCount > 0 {
+                alertTitle = "Imported \(savedCount) item\(savedCount == 1 ? "" : "s")"
+                alertMessage = "Encrypted Album saved shared items to the ImportInbox. Open the app to finish importing."
+            } else {
+                alertTitle = "Nothing imported"
+                alertMessage = "No supported files were available to import."
+            }
+
+            let alert = UIAlertController(title: alertTitle, message: alertMessage, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+                self.extensionContext!.completeRequest(returningItems: [], completionHandler: nil)
+            })
+            DispatchQueue.main.async {
+                self.present(alert, animated: true, completion: nil)
+            }
         }
     }
 
-    private func saveFileToSharedContainer(from url: URL, type: UTType) {
+    private func saveFileToSharedContainer(from url: URL, type: UTType) -> Bool {
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
             shareLogger.error("App Group not configured correctly.")
-            return
+            return false
         }
         
         let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
@@ -111,14 +137,17 @@ class ShareViewController: SLComposeServiceViewController {
                 try FileManager.default.removeItem(at: destinationURL)
             }
             try FileManager.default.copyItem(at: url, to: destinationURL)
+            return true
         } catch {
             shareLogger.error("Error saving file to shared container: \(error.localizedDescription)")
+            return false
         }
+        return false
     }
     
-    private func saveDataToSharedContainer(_ data: Data, type: UTType) {
+    private func saveDataToSharedContainer(_ data: Data, type: UTType) -> Bool {
         guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
-            return
+            return false
         }
         
         let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
@@ -127,7 +156,13 @@ class ShareViewController: SLComposeServiceViewController {
         let filename = "SharedImage_\(Date().timeIntervalSince1970).jpg"
         let destinationURL = inboxURL.appendingPathComponent(filename)
         
-        try? data.write(to: destinationURL)
+        do {
+            try data.write(to: destinationURL)
+            return true
+        } catch {
+            shareLogger.error("Error saving data to shared container: \(error.localizedDescription)")
+            return false
+        }
     }
 
     override func configurationItems() -> [Any]! {

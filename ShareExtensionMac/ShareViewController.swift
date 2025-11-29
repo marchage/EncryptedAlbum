@@ -20,6 +20,21 @@ final class ShareViewController: NSViewController {
         super.loadView()
     
         // Insert code here to customize the view
+        // Add a short hint so the macOS share UI isn't an empty sheet and matches iOS wording
+        let v = self.view
+            let hintField = NSTextField(labelWithString: "Import to Encrypted Album — Save shared photos & videos to the app's ImportInbox")
+            hintField.translatesAutoresizingMaskIntoConstraints = false
+            hintField.lineBreakMode = .byWordWrapping
+            hintField.alignment = .center
+            hintField.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+            hintField.textColor = NSColor.secondaryLabelColor
+            v.addSubview(hintField)
+            NSLayoutConstraint.activate([
+                hintField.topAnchor.constraint(equalTo: v.topAnchor, constant: 16),
+                hintField.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 16),
+                hintField.trailingAnchor.constraint(equalTo: v.trailingAnchor, constant: -16)
+            ])
+        
         let item = self.extensionContext!.inputItems[0] as! NSExtensionItem
         if let attachments = item.attachments {
             NSLog("Attachments = %@", attachments as NSArray)
@@ -30,6 +45,19 @@ final class ShareViewController: NSViewController {
 
     @IBAction func send(_ sender: AnyObject?) {
         guard let context = self.extensionContext else { return }
+
+        // Respect Lockdown Mode configured in shared suite (same behavior as iOS extension)
+        if let suite = UserDefaults(suiteName: appGroupIdentifier), suite.bool(forKey: "lockdownModeEnabled") {
+            let alert = NSAlert()
+            alert.messageText = "Import blocked"
+            alert.informativeText = "Encrypted Album is in Lockdown Mode. Imports are disabled."
+            alert.addButton(withTitle: "OK")
+            alert.alertStyle = .warning
+            alert.beginSheetModal(for: self.view.window ?? NSApp.mainWindow ?? NSWindow()) { _ in
+                context.completeRequest(returningItems: [], completionHandler: nil)
+            }
+            return
+        }
 
         let inputItems = context.inputItems as? [NSExtensionItem] ?? []
         let dispatchGroup = DispatchGroup()
@@ -78,7 +106,7 @@ final class ShareViewController: NSViewController {
             let alert = NSAlert()
             if savedCount > 0 {
                 alert.messageText = "Imported \(savedCount) item\(savedCount == 1 ? "" : "s")"
-                alert.informativeText = "Encrypted Album saved shared items to the shared ImportInbox. Open the app to import them."
+                alert.informativeText = "Encrypted Album saved shared items to the ImportInbox. Open the app to finish importing."
                 alert.addButton(withTitle: "OK")
             } else {
                 alert.messageText = "Nothing imported"
