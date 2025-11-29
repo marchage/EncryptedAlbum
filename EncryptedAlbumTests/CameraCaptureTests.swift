@@ -56,4 +56,48 @@ final class CameraCaptureTests: XCTestCase {
         XCTAssertTrue(record.filename.contains("capture2"))
         XCTAssertEqual(record.mediaType, .photo)
     }
+
+    func testMakeMediaFromPickerInfo_withImageURL() async throws {
+        let tmp = tempDir.appendingPathComponent("test.jpg")
+        try "dummy".data(using: .utf8)!.write(to: tmp)
+
+        let info: [UIImagePickerController.InfoKey: Any] = [.imageURL: tmp]
+
+        let (mediaSource, filename, mediaType, duration) = try await CameraCaptureView.Coordinator.makeMediaFromPickerInfo(info)
+
+        switch mediaSource {
+        case .fileURL(let url):
+            XCTAssertEqual(url, tmp)
+        default:
+            XCTFail("Expected fileURL media source")
+        }
+
+        XCTAssertTrue(filename.contains("Capture_") || filename.contains("Video_"))
+        XCTAssertEqual(mediaType, .photo)
+        XCTAssertNil(duration)
+    }
+
+    func testMakeMediaFromPickerInfo_withOriginalImage() async throws {
+        // Create a tiny UIImage
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 4, height: 4))
+        let image = renderer.image { ctx in
+            UIColor.blue.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
+        }
+
+        let info: [UIImagePickerController.InfoKey: Any] = [.originalImage: image]
+
+        let (mediaSource, filename, mediaType, duration) = try await CameraCaptureView.Coordinator.makeMediaFromPickerInfo(info)
+
+        switch mediaSource {
+        case .data(let data):
+            XCTAssertGreaterThan(data.count, 0)
+        default:
+            XCTFail("Expected data media source")
+        }
+
+        XCTAssertTrue(filename.contains("Capture_"))
+        XCTAssertEqual(mediaType, .photo)
+        XCTAssertNil(duration)
+    }
 }

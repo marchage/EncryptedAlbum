@@ -3,6 +3,7 @@ import SwiftUI
 
 #if os(iOS)
     import UIKit
+    import Photos
 
     struct CameraCaptureView: UIViewControllerRepresentable {
         @Environment(\.dismiss) var dismiss
@@ -47,47 +48,11 @@ import SwiftUI
             ) {
                 parent.dismiss()
 
-                DispatchQueue.global(qos: .userInitiated).async {
-                    var mediaSource: MediaSource?
-                    var filename = "Capture_\(Date().timeIntervalSince1970).jpg"
-                    var mediaType: MediaType = .photo
-                    var duration: TimeInterval?
+                Task.detached(priority: .userInitiated) {
+                    do {
+                        let (mediaSource, filename, mediaType, duration) = try await Self.makeMediaFromPickerInfo(info)
 
-                    if let image = info[.originalImage] as? UIImage {
-                        // Prefer JPEG but fall back to PNG if JPEG conversion fails
-                        var imageData: Data? = image.jpegData(compressionQuality: 0.9)
-                        if imageData == nil {
-                            AppLog.debugPrivate("JPEG conversion failed for captured image; falling back to PNG")
-                            imageData = image.pngData()
-                        }
-                        if let imageData = imageData {
-                            mediaSource = .data(imageData)
-                            filename = "Capture_\(Date().timeIntervalSince1970).jpg"
-                            mediaType = .photo
-                        } else {
-                            AppLog.error("Captured image had no usable data")
-                        }
-                    } else if let videoURL = info[.mediaURL] as? URL {
-                        mediaSource = .fileURL(videoURL)
-                        filename = "Video_\(Date().timeIntervalSince1970).mov"
-                        mediaType = .video
-
-                        let asset = AVAsset(url: videoURL)
-                        if #available(iOS 16.0, macOS 13.0, *) {
-                            // Use an async Task to load the duration on newer platforms.
-                            Task {
-                                if let loadedDuration = try? await asset.load(.duration) {
-                                    duration = loadedDuration.seconds
-                                }
-                            }
-                        } else {
-                            duration = asset.duration.seconds
-                        }
-                    } else {
-                        AppLog.error("Captured media had no usable data")
-                    }
-                    if let mediaSource = mediaSource {
-                        Task {
+                        if let mediaSource = mediaSource {
                             do {
                                 // Forward capture handling to AlbumManager helper which centralises
                                 // the save-to-album vs save-to-photos behaviour and is testable.
@@ -107,12 +72,82 @@ import SwiftUI
                                 AppLog.error("Failed to handle captured media: \(error.localizedDescription)")
                             }
                         }
+                    } catch {
+                        AppLog.error("Failed to extract captured media: \(error.localizedDescription)")
                     }
                 }
             }
 
             func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
                 parent.dismiss()
+            }
+
+            /// Extract a usable MediaSource / meta info from the UIImagePicker info dictionary.
+            /// Returns a tuple containing mediaSource, filename, type and optional duration.
+            static func makeMediaFromPickerInfo(_ info: [UIImagePickerController.InfoKey: Any]) async throws -> (MediaSource?, String, MediaType, TimeInterval?) {
+                var mediaSource: MediaSource?
+                var filename = "Capture_\(Date().timeIntervalSince1970).jpg"
+                var mediaType: MediaType = .photo
+                var duration: TimeInterval?
+
+                if let image = info[.originalImage] as? UIImage {
+                    var imageData: Data? = image.jpegData(compressionQuality: 0.9)
+                    if imageData == nil {
+                        AppLog.debugPrivate("JPEG conversion failed for captured image; falling back to PNG")
+                        imageData = image.pngData()
+                    }
+                    if let imageData = imageData {
+                        mediaSource = .data(imageData)
+                        filename = "Capture_\(Date().timeIntervalSince1970).jpg"
+                        mediaType = .photo
+                    } else {
+                        AppLog.error("Captured image had no usable data")
+                    }
+
+                } else if let videoURL = info[.mediaURL] as? URL {
+                    mediaSource = .fileURL(videoURL)
+                    filename = "Video_\(Date().timeIntervalSince1970).mov"
+                    mediaType = .video
+
+                    let asset = AVAsset(url: videoURL)
+                    if #available(iOS 16.0, macOS 13.0, *) {
+                        if let loadedDuration = try? await asset.load(.duration) {
+                            duration = loadedDuration.seconds
+                        }
+                    } else {
+                        duration = asset.duration.seconds
+                    }
+
+                } else if let imageURL = info[.imageURL] as? URL {
+                    mediaSource = .fileURL(imageURL)
+                    filename = "Capture_\(Date().timeIntervalSince1970).jpg"
+                    mediaType = .photo
+
+                } else if let phAsset = info[.phAsset] as? PHAsset {
+                    let dataFromAsset: Data? = await withCheckedContinuation { (cont: CheckedContinuation<Data?, Never>) in
+                        let options = PHImageRequestOptions()
+                        options.isSynchronous = false
+                        options.deliveryMode = .highQualityFormat
+                        options.isNetworkAccessAllowed = true
+
+                        PHImageManager.default().requestImageDataAndOrientation(for: phAsset, options: options) { data, _, _, _ in
+                            cont.resume(returning: data)
+                        }
+                    }
+
+                    if let assetData = dataFromAsset {
+                        mediaSource = .data(assetData)
+                        filename = "Capture_\(Date().timeIntervalSince1970).jpg"
+                        mediaType = .photo
+                    } else {
+                        AppLog.error("PHAsset returned no image data")
+                    }
+
+                } else {
+                    AppLog.error("Captured media had no usable data")
+                }
+
+                return (mediaSource, filename, mediaType, duration)
             }
         }
     }
@@ -575,13 +610,14 @@ import SwiftUI
             // Keep the preview layer fully sized to the view bounds.
             // Setting bounds and position avoids partial clipping when window changes size
             // (fixes issue where only the top half was visible when rotated/resized).
-            if let layer = self.layer {
+            // Ensure the preview sublayer (if present) always matches view bounds.
+            if let previewLayer = self.layer?.sublayers?.first as? AVCaptureVideoPreviewLayer {
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
-                layer.bounds = self.bounds
-                layer.position = CGPoint(x: self.bounds.midX, y: self.bounds.midY)
-                layer.contentsScale = NSScreen.main?.backingScaleFactor ?? 1.0
-                layer.needsDisplayOnBoundsChange = true
+                previewLayer.frame = self.bounds
+                previewLayer.position = CGPoint(x: self.bounds.midX, y: self.bounds.midY)
+                previewLayer.contentsScale = NSScreen.main?.backingScaleFactor ?? 1.0
+                previewLayer.needsDisplayOnBoundsChange = true
                 CATransaction.commit()
             }
         }
@@ -592,29 +628,36 @@ import SwiftUI
 
         func makeNSView(context: Context) -> NSView {
             let view = PreviewView()
+            view.wantsLayer = true
+
+            // Create a preview layer and add it as a sublayer so we can safely
+            // keep the view's own layer for other system-managed content.
             let previewLayer = AVCaptureVideoPreviewLayer(session: session)
             previewLayer.videoGravity = .resizeAspectFill
-            // Allow the preview layer to resize with the view
+            previewLayer.frame = view.bounds
             previewLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
-            view.layer = previewLayer
-            view.wantsLayer = true
+
+            view.layer?.addSublayer(previewLayer)
             return view
         }
 
         func updateNSView(_ nsView: NSView, context: Context) {
-            // Ensure the preview layer matches the view's bounds during layout updates
-            if let layer = nsView.layer as? AVCaptureVideoPreviewLayer {
+            // Ensure the preview sublayer (if present) matches the view's bounds during layout updates
+            if let previewLayer = nsView.layer?.sublayers?.first as? AVCaptureVideoPreviewLayer {
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
-                layer.bounds = nsView.bounds
-                layer.position = CGPoint(x: nsView.bounds.midX, y: nsView.bounds.midY)
-                layer.needsDisplayOnBoundsChange = true
+                previewLayer.frame = nsView.bounds
+                previewLayer.position = CGPoint(x: nsView.bounds.midX, y: nsView.bounds.midY)
+                previewLayer.needsDisplayOnBoundsChange = true
                 CATransaction.commit()
             }
         }
 
         static func dismantleNSView(_ nsView: NSView, coordinator: ()) {
-            nsView.layer = nil
+            // Remove the preview sublayer if we added it.
+            if let previewLayer = nsView.layer?.sublayers?.first(where: { $0 is AVCaptureVideoPreviewLayer }) {
+                previewLayer.removeFromSuperlayer()
+            }
         }
     }
 #endif
