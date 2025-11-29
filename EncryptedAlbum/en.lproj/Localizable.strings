@@ -1,0 +1,9 @@
+/* English translations for EncryptedAlbum */
+"Share.Placeholder" = "Tap Save to import photos/videos";
+"Share.ImportedTitle" = "Imported %d item(s)";
+"Share.ImportedMessage" = "Encrypted Album saved shared items to the ImportInbox. Open the app to finish importing.";
+"Share.NothingImportedTitle" = "Nothing imported";
+"Share.NothingImportedMessage" = "No supported files were available to import.";
+"Share.Preview.ImageLabel" = "Image";
+"Share.Preview.MovieLabel" = "Video";
+"Share.Preview.ItemLabel" = "Item";

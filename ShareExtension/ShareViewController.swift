@@ -23,7 +23,9 @@ class ShareViewController: SLComposeServiceViewController {
         super.viewDidLoad()
         self.title = "Import to Encrypted Album"
         self.navigationController?.navigationBar.topItem?.rightBarButtonItem?.title = "Save"
-        self.placeholder = "Tap Save to import photos/videos"
+        self.placeholder = NSLocalizedString("Share.Placeholder", value: "Tap Save to import photos/videos", comment: "Placeholder text in share extension compose")
+
+        setupPreviewUI()
     }
 
     override func isContentValid() -> Bool {
@@ -60,36 +62,81 @@ class ShareViewController: SLComposeServiceViewController {
         let dispatchGroup = DispatchGroup()
         let countSyncQueue = DispatchQueue(label: "share.saveCount")
         var savedCount = 0
-        
+        // Count how many attachments we'll process (used for progress)
+        var totalCount = 0
         for item in items {
             guard let attachments = item.attachments else { continue }
-            
-            for provider in attachments {
+            // Build a flat list of providers so we can map preview items -> progress views
+            var flatProviders: [NSItemProvider] = []
+            for item in items {
+                guard let attachments = item.attachments else { continue }
+                for provider in attachments { flatProviders.append(provider) }
+            }
+
+            for (idx, provider) in flatProviders.enumerated() {
                 dispatchGroup.enter()
-                
-                // Handle Images
-                if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
-                    provider.loadItem(forTypeIdentifier: UTType.image.identifier, options: nil) { [weak self] (item, error) in
-                        defer { dispatchGroup.leave() }
-                        if let url = item as? URL {
-                            if let success = self?.saveFileToSharedContainer(from: url, type: .image), success {
-                                countSyncQueue.async { savedCount += 1 }
-                            }
-                        } else if let image = item as? UIImage, let data = image.jpegData(compressionQuality: 0.9) {
-                            if let success = self?.saveDataToSharedContainer(data, type: .image), success {
-                                countSyncQueue.async { savedCount += 1 }
-                            }
-                        }
+
+                // Helper to update per-item progress UI if present
+                func updateItemProgress(_ written: Int64, _ total: Int64) {
+                    DispatchQueue.main.async {
+                    if idx < self.previewProgressViews.count {
+                        let p = self.previewProgressViews[idx]
+                        p.isHidden = false
+                        let f = total > 0 ? Float(written) / Float(total) : 0
+                        p.setProgress(f, animated: true)
+                    }
                     }
                 }
-                // Handle Videos
-                else if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
-                    provider.loadItem(forTypeIdentifier: UTType.movie.identifier, options: nil) { [weak self] (item, error) in
-                        defer { dispatchGroup.leave() }
+
+                // Handle Images / file URLs / movies
+                if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                    provider.loadItem(forTypeIdentifier: UTType.image.identifier, options: nil) { [weak self] (item, error) in
+                        guard let self = self else { dispatchGroup.leave(); return }
                         if let url = item as? URL {
-                            if let success = self?.saveFileToSharedContainer(from: url, type: .movie), success {
-                                countSyncQueue.async { savedCount += 1 }
-                            }
+                            // copy file with progress
+                            guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: self.appGroupIdentifier) else { dispatchGroup.leave(); return }
+                            self.copyFileToSharedContainerWithProgress(to: containerURL, from: url, progress: { written, total in
+                                updateItemProgress(written, total)
+                            }, completion: { success in
+                                if success { countSyncQueue.async { savedCount += 1; DispatchQueue.main.async { self.updateProgress(saved: savedCount, total: totalCount) } } }
+                                dispatchGroup.leave()
+                            })
+                        } else if let image = item as? UIImage, let data = image.jpegData(compressionQuality: 0.9) {
+                            guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: self.appGroupIdentifier) else { dispatchGroup.leave(); return }
+                            self.writeDataToSharedContainerWithProgress(to: containerURL, data, chunkSize: 64 * 1024, progress: { written, total in
+                                updateItemProgress(written, total)
+                            }, completion: { success in
+                                if success { countSyncQueue.async { savedCount += 1; DispatchQueue.main.async { self.updateProgress(saved: savedCount, total: totalCount) } } }
+                                dispatchGroup.leave()
+                            })
+                        } else {
+                            // unsupported inside image type
+                            dispatchGroup.leave()
+                        }
+                    }
+                } else if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) || provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                    // Try to load as a file URL for videos and file urls
+                    let typeId = provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) ? UTType.movie.identifier : UTType.fileURL.identifier
+                    provider.loadItem(forTypeIdentifier: typeId, options: nil) { [weak self] (item, error) in
+                        guard let self = self else { dispatchGroup.leave(); return }
+                        if let url = item as? URL {
+                            guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: self.appGroupIdentifier) else { dispatchGroup.leave(); return }
+                            self.copyFileToSharedContainerWithProgress(to: containerURL, from: url, progress: { written, total in
+                                updateItemProgress(written, total)
+                            }, completion: { success in
+                                if success { countSyncQueue.async { savedCount += 1; DispatchQueue.main.async { self.updateProgress(saved: savedCount, total: totalCount) } } }
+                                dispatchGroup.leave()
+                            })
+                        } else if let data = item as? Data {
+                            guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: self.appGroupIdentifier) else { dispatchGroup.leave(); return }
+                            self.writeDataToSharedContainerWithProgress(to: containerURL, data, chunkSize: 64 * 1024, progress: { written, total in
+                                updateItemProgress(written, total)
+                            }, completion: { success in
+                                if success { countSyncQueue.async { savedCount += 1; DispatchQueue.main.async { self.updateProgress(saved: savedCount, total: totalCount) } } }
+                                dispatchGroup.leave()
+                            })
+                        } else {
+                            dispatchGroup.leave()
                         }
                     }
                 } else {
@@ -104,11 +151,11 @@ class ShareViewController: SLComposeServiceViewController {
             let alertTitle: String
             let alertMessage: String
             if savedCount > 0 {
-                alertTitle = "Imported \(savedCount) item\(savedCount == 1 ? "" : "s")"
-                alertMessage = "Encrypted Album saved shared items to the ImportInbox. Open the app to finish importing."
+                alertTitle = String(format: NSLocalizedString("Share.ImportedTitle", value: "Imported %d item(s)", comment: "Imported title with count"), savedCount)
+                alertMessage = NSLocalizedString("Share.ImportedMessage", value: "Encrypted Album saved shared items to the ImportInbox. Open the app to finish importing.", comment: "Imported informative message")
             } else {
-                alertTitle = "Nothing imported"
-                alertMessage = "No supported files were available to import."
+                alertTitle = NSLocalizedString("Share.NothingImportedTitle", value: "Nothing imported", comment: "Nothing imported title")
+                alertMessage = NSLocalizedString("Share.NothingImportedMessage", value: "No supported files were available to import.", comment: "Nothing imported message")
             }
 
             let alert = UIAlertController(title: alertTitle, message: alertMessage, preferredStyle: .alert)
@@ -163,6 +210,206 @@ class ShareViewController: SLComposeServiceViewController {
             shareLogger.error("Error saving data to shared container: \(error.localizedDescription)")
             return false
         }
+    }
+
+    // Async copy with progress for extension (per-item)
+    private func copyFileToSharedContainerWithProgress(to containerURL: URL, from url: URL, chunkSize: Int = 64 * 1024, progress: ((Int64, Int64) -> Void)?, completion: @escaping (Bool) -> Void) {
+        DispatchQueue.global(qos: .utility).async {
+            let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
+            do {
+                try FileManager.default.createDirectory(at: inboxURL, withIntermediateDirectories: true)
+                var destination = inboxURL.appendingPathComponent(url.lastPathComponent)
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    let ext = (url.lastPathComponent as NSString).pathExtension
+                    let base = (url.lastPathComponent as NSString).deletingPathExtension
+                    let generated = "\(base)_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString).\(ext)"
+                    destination = inboxURL.appendingPathComponent(generated)
+                }
+                if FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.removeItem(at: destination) }
+
+                let attr = try FileManager.default.attributesOfItem(atPath: url.path)
+                let totalSize = (attr[FileAttributeKey.size] as? NSNumber)?.int64Value ?? 0
+
+                guard let input = InputStream(url: url) else { DispatchQueue.main.async { completion(false) }; return }
+                guard FileManager.default.createFile(atPath: destination.path, contents: nil) else { DispatchQueue.main.async { completion(false) }; return }
+                guard let outHandle = try? FileHandle(forWritingTo: destination) else { DispatchQueue.main.async { completion(false) }; return }
+
+                input.open()
+                defer { input.close(); try? outHandle.close() }
+
+                var buffer = [UInt8](repeating: 0, count: chunkSize)
+                var totalWritten: Int64 = 0
+                while input.hasBytesAvailable {
+                    let read = input.read(&buffer, maxLength: buffer.count)
+                    if read <= 0 { break }
+                    let data = Data(bytes: buffer, count: read)
+                    outHandle.write(data)
+                    totalWritten += Int64(read)
+                    DispatchQueue.main.async { progress?(totalWritten, totalSize) }
+                }
+                DispatchQueue.main.async { completion(true) }
+            } catch {
+                DispatchQueue.main.async { completion(false) }
+            }
+        }
+    }
+
+    private func writeDataToSharedContainerWithProgress(to containerURL: URL, _ data: Data, chunkSize: Int = 64 * 1024, progress: ((Int64, Int64) -> Void)?, completion: @escaping (Bool) -> Void) {
+        DispatchQueue.global(qos: .utility).async {
+            let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
+            do {
+                try FileManager.default.createDirectory(at: inboxURL, withIntermediateDirectories: true)
+                let base = "SharedItem_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString)"
+                let destination = inboxURL.appendingPathComponent(base)
+                guard FileManager.default.createFile(atPath: destination.path, contents: nil) else { DispatchQueue.main.async { completion(false) }; return }
+                guard let outHandle = try? FileHandle(forWritingTo: destination) else { DispatchQueue.main.async { completion(false) }; return }
+                defer { try? outHandle.close() }
+                let totalSize = Int64(data.count)
+                var offset = 0
+                while offset < data.count {
+                    let len = min(chunkSize, data.count - offset)
+                    let chunk = data.subdata(in: offset..<offset+len)
+                    outHandle.write(chunk)
+                    offset += len
+                    DispatchQueue.main.async { progress?(Int64(offset), totalSize) }
+                }
+                DispatchQueue.main.async { completion(true) }
+            } catch {
+                DispatchQueue.main.async { completion(false) }
+            }
+        }
+    }
+
+    // MARK: - Preview UI + Progress helpers
+
+    private var previewContainerView: UIView?
+    private var previewStack: UIStackView?
+    private var progressView: UIProgressView?
+    private var previewProviders: [NSItemProvider] = []
+    private var previewProgressViews: [UIProgressView] = []
+    private var previewImageViews: [UIImageView] = []
+
+    private func setupPreviewUI() {
+        // simple horizontal stack showing filename/placeholder for each attachment
+        guard let root = self.view else { return }
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        root.addSubview(container)
+
+        // place at top of safe area (above the existing compose text)
+        NSLayoutConstraint.activate([
+            container.leadingAnchor.constraint(equalTo: root.safeAreaLayoutGuide.leadingAnchor, constant: 10),
+            container.trailingAnchor.constraint(equalTo: root.safeAreaLayoutGuide.trailingAnchor, constant: -10),
+            container.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor, constant: 8)
+        ])
+
+        let stack = UIStackView()
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.axis = .horizontal
+        stack.spacing = 8
+        stack.alignment = .center
+        container.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: container.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+
+        self.previewContainerView = container
+        self.previewStack = stack
+
+        // populate previews from inputItems (make a small thumbnail + label for each attachment)
+        if let items = extensionContext?.inputItems as? [NSExtensionItem] {
+            for item in items {
+                guard let attachments = item.attachments else { continue }
+                for provider in attachments {
+                    // provider container
+                    let v = UIStackView()
+                    v.axis = .vertical
+                    v.alignment = .center
+                    v.spacing = 4
+                    v.translatesAutoresizingMaskIntoConstraints = false
+
+                    // thumbnail
+                    let img = UIImageView(image: UIImage(systemName: "photo"))
+                    img.contentMode = .scaleAspectFill
+                    img.clipsToBounds = true
+                    img.layer.cornerRadius = 6
+                    img.translatesAutoresizingMaskIntoConstraints = false
+                    img.widthAnchor.constraint(equalToConstant: 48).isActive = true
+                    img.heightAnchor.constraint(equalToConstant: 48).isActive = true
+
+                    // label
+                    let label = UILabel()
+                    label.font = UIFont.preferredFont(forTextStyle: .footnote)
+                    label.textColor = .secondaryLabel
+                    if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                        label.text = NSLocalizedString("Share.Preview.ImageLabel", value: "Image", comment: "preview label for images")
+                    } else if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
+                        label.text = NSLocalizedString("Share.Preview.MovieLabel", value: "Video", comment: "preview label for video")
+                    } else {
+                        label.text = NSLocalizedString("Share.Preview.ItemLabel", value: "Item", comment: "preview generic item")
+                    }
+
+                    // per-item progress
+                    let p = UIProgressView(progressViewStyle: .bar)
+                    p.isHidden = true
+                    p.setProgress(0, animated: false)
+                    p.translatesAutoresizingMaskIntoConstraints = false
+                    p.widthAnchor.constraint(equalToConstant: 48).isActive = true
+
+                    v.addArrangedSubview(img)
+                    v.addArrangedSubview(label)
+                    v.addArrangedSubview(p)
+                    stack.addArrangedSubview(v)
+
+                    self.previewProviders.append(provider)
+                    self.previewImageViews.append(img)
+                    self.previewProgressViews.append(p)
+
+                    // attempt loading an image thumbnail if possible
+                    if provider.canLoadObject(ofClass: UIImage.self) {
+                        provider.loadObject(ofClass: UIImage.self) { object, err in
+                            DispatchQueue.main.async {
+                                if let image = object as? UIImage {
+                                    img.image = image
+                                }
+                            }
+                        }
+                    } else if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                        // try to load file URL and generate a thumbnail if it's an image
+                        provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, err in
+                            if let url = item as? URL, let data = try? Data(contentsOf: url), let image = UIImage(data: data) {
+                                DispatchQueue.main.async { img.image = image }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func showProgress(total: Int) {
+        guard let root = self.view else { return }
+        if progressView == nil {
+            let p = UIProgressView(progressViewStyle: .default)
+            p.translatesAutoresizingMaskIntoConstraints = false
+            root.addSubview(p)
+            NSLayoutConstraint.activate([
+                p.leadingAnchor.constraint(equalTo: root.safeAreaLayoutGuide.leadingAnchor, constant: 10),
+                p.trailingAnchor.constraint(equalTo: root.safeAreaLayoutGuide.trailingAnchor, constant: -10),
+                p.topAnchor.constraint(equalTo: previewContainerView?.bottomAnchor ?? root.safeAreaLayoutGuide.topAnchor, constant: 8)
+            ])
+            self.progressView = p
+        }
+        progressView?.progress = 0
+    }
+
+    private func updateProgress(saved: Int, total: Int) {
+        guard total > 0 else { return }
+        let f = Float(saved) / Float(total)
+        progressView?.setProgress(f, animated: true)
     }
 
     override func configurationItems() -> [Any]! {

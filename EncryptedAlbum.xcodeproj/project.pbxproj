@@ -81,6 +81,9 @@
 		98C835FD2EC9E6CD000997CF /* MainAlbumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE5566FF77AA88BB99CC /* MainAlbumView.swift */; };
 		98C835FE2EC9E6CD000997CF /* AlbumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F96EA3625074B045C751E84 /* AlbumManager.swift */; };
 		98C835FF2EC9E6CD000997CF /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345677 /* PreferencesView.swift */; };
+		98FAA8182EDAB9F400A5C3DD /* ImportSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98FAA8172EDAB9F300A5C3DD /* ImportSaver.swift */; };
+		98FAA8192EDAB9F400A5C3DD /* ImportSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98FAA8172EDAB9F300A5C3DD /* ImportSaver.swift */; };
+		98FAA81B2EDABA1500A5C3DD /* ImportSaverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98FAA81A2EDABA1500A5C3DD /* ImportSaverTests.swift */; };
 		9FA39564407F407B82E34796 /* PasswordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28CF564BDC0E4C9F891A9910 /* PasswordService.swift */; };
 		A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345677 /* PreferencesView.swift */; };
 		A7F6845B3F0A4BA800D12345 /* DirectImportProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F684593F0A4BA800D12345 /* DirectImportProgressTests.swift */; };
@@ -227,6 +230,8 @@
 		989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UltraPrivacyCoordinator.swift; sourceTree = "<group>"; };
 		989B68D62ED8C1DB00FA9A5B /* ShareHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ShareHelper.swift; sourceTree = "<group>"; };
 		98FAA8162EDAAF7A00A5C3DD /* EncryptedAlbumDebug.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = EncryptedAlbumDebug.entitlements; sourceTree = "<group>"; };
+		98FAA8172EDAB9F300A5C3DD /* ImportSaver.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImportSaver.swift; sourceTree = "<group>"; };
+		98FAA81A2EDABA1500A5C3DD /* ImportSaverTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImportSaverTests.swift; sourceTree = "<group>"; };
 		9F96EA3625074B045C751E84 /* AlbumManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6789012345677 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		A61A2BD7A0514BCA85111D3F /* AlbumError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumError.swift; sourceTree = "<group>"; };
@@ -362,6 +367,7 @@
 		9849B4532EB9893D00B17DAC /* EncryptedAlbum */ = {
 			isa = PBXGroup;
 			children = (
+				98FAA8172EDAB9F300A5C3DD /* ImportSaver.swift */,
 				98FAA8162EDAAF7A00A5C3DD /* EncryptedAlbumDebug.entitlements */,
 				989B68D62ED8C1DB00FA9A5B /* ShareHelper.swift */,
 				A61A2BD7A0514BCA85111D3F /* AlbumError.swift */,
@@ -410,6 +416,7 @@
 		986328D72ECE88F600EAE9A9 /* EncryptedAlbumTests */ = {
 			isa = PBXGroup;
 			children = (
+				98FAA81A2EDABA1500A5C3DD /* ImportSaverTests.swift */,
 				982404532ECF12930078B446 /* PasswordServiceTests.swift */,
 				985C161B2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift */,
 				986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */,
@@ -756,6 +763,7 @@
 				986328CC2ECE882D00EAE9A9 /* FileService.swift in Sources */,
 				986328CD2ECE882D00EAE9A9 /* PasswordService.swift in Sources */,
 				98797BC72ED7C9C6008E03C4 /* ImageHelpers.swift in Sources */,
+				98FAA8192EDAB9F400A5C3DD /* ImportSaver.swift in Sources */,
 				986328CE2ECE882D00EAE9A9 /* SecurityService.swift in Sources */,
 				986328CF2ECE882D00EAE9A9 /* AlbumError.swift in Sources */,
 				98797BBE2ED7C6BF008E03C4 /* ProgressOverlayView.swift in Sources */,
@@ -805,6 +813,7 @@
 				DD69BC27985C4D09BA6690A2 /* FileService.swift in Sources */,
 				9FA39564407F407B82E34796 /* PasswordService.swift in Sources */,
 				98797BC62ED7C9C6008E03C4 /* ImageHelpers.swift in Sources */,
+				98FAA8182EDAB9F400A5C3DD /* ImportSaver.swift in Sources */,
 				AB219FCE33BC4485A762BDA6 /* SecurityService.swift in Sources */,
 				B60166E7D2AD4B09B005BB47 /* AlbumError.swift in Sources */,
 				98797BBD2ED7C6BF008E03C4 /* ProgressOverlayView.swift in Sources */,
@@ -823,6 +832,7 @@
 				986328E42ECE894300EAE9A9 /* CryptoServiceTests.swift in Sources */,
 				985C161E2ECF1DA200EC1701 /* SecurityServiceTests.swift in Sources */,
 				986328E32ECE894300EAE9A9 /* FileServiceTests.swift in Sources */,
+				98FAA81B2EDABA1500A5C3DD /* ImportSaverTests.swift in Sources */,
 				986328E22ECE894300EAE9A9 /* AlbumManagerTests.swift in Sources */,
 				982404542ECF12930078B446 /* PasswordServiceTests.swift in Sources */,
 				986328D92ECE88F600EAE9A9 /* EncryptedAlbumTests.swift in Sources */,
