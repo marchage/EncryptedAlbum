@@ -27,7 +27,6 @@ final class SettingsAndBackupTests: XCTestCase {
         albumManager.appTheme = "nineties"
         albumManager.compactLayoutEnabled = true
         albumManager.accentColorName = "green"
-        albumManager.cameraSaveToAlbumDirectly = true
         albumManager.cameraMaxQuality = false
         albumManager.cameraAutoRemoveFromPhotos = false
 
@@ -43,7 +42,6 @@ final class SettingsAndBackupTests: XCTestCase {
         albumManager.appTheme = "default"
         albumManager.compactLayoutEnabled = false
         albumManager.accentColorName = "blue"
-        albumManager.cameraSaveToAlbumDirectly = false
         albumManager.cameraMaxQuality = true
         albumManager.cameraAutoRemoveFromPhotos = true
 
@@ -59,7 +57,7 @@ final class SettingsAndBackupTests: XCTestCase {
         XCTAssertEqual(albumManager.appTheme, "nineties")
         XCTAssertEqual(albumManager.compactLayoutEnabled, true)
         XCTAssertEqual(albumManager.accentColorName, "green")
-        XCTAssertEqual(albumManager.cameraSaveToAlbumDirectly, true)
+        // cameraSaveToAlbumDirectly was removed — captures always go into the app album
         XCTAssertEqual(albumManager.cameraMaxQuality, false)
         XCTAssertEqual(albumManager.cameraAutoRemoveFromPhotos, false)
     }

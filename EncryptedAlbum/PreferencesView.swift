@@ -32,7 +32,6 @@ struct PreferencesView: View {
     @AppStorage("appTheme") private var storedAppTheme: String = "default"
     @AppStorage("compactLayoutEnabled") private var storedCompactLayoutEnabled: Bool = false
     @AppStorage("accentColorName") private var storedAccentColorName: String = "blue"
-    @AppStorage("cameraSaveToAlbumDirectly") private var storedCameraSaveToAlbumDirectly: Bool = false
     @AppStorage("cameraMaxQuality") private var storedCameraMaxQuality: Bool = true
     @AppStorage("cameraAutoRemoveFromPhotos") private var storedCameraAutoRemoveFromPhotos: Bool = false
     @AppStorage("keepScreenAwakeWhileUnlocked") private var storedKeepScreenAwakeWhileUnlocked: Bool = false
@@ -235,14 +234,6 @@ struct PreferencesView: View {
                         Text("Camera")
                             .font(.headline)
 
-                        Toggle("Save captures directly to album", isOn: $storedCameraSaveToAlbumDirectly)
-                            .onChange(of: storedCameraSaveToAlbumDirectly) { _ in
-                                albumManager.cameraSaveToAlbumDirectly = storedCameraSaveToAlbumDirectly
-                                albumManager.saveSettings()
-                            }
-                        Text("When enabled, photos/videos taken in the in-app camera are saved into the Encrypted Album instead of (or in addition to) the system Photos library. Note: this may affect how other apps access your captures.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
 
                         Toggle("Capture at max quality", isOn: $storedCameraMaxQuality)
                             .onChange(of: storedCameraMaxQuality) { _ in

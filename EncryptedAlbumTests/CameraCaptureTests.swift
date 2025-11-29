@@ -31,7 +31,7 @@ final class CameraCaptureTests: XCTestCase {
         try await sut.setupPassword(password)
         try await sut.unlock(password: password)
 
-        sut.cameraSaveToAlbumDirectly = true
+        // behavior: app captures are always saved into the encrypted album
 
         let data = "fakeimage".data(using: .utf8)!
         XCTAssertEqual(sut.hiddenPhotos.count, 0)
@@ -41,21 +41,8 @@ final class CameraCaptureTests: XCTestCase {
         XCTAssertEqual(sut.hiddenPhotos.count, 1, "Expected captured media to be saved into the album when preference enabled.")
     }
 
-    func testHandleCapturedMedia_savesToPhotosWhenPreferenceDisabled() async throws {
-        // Replace photos service with mock and ensure we observe call
-        let mockPhotos = MockPhotosLibraryService()
-        PhotosLibraryService.shared = mockPhotos
-
-        sut.cameraSaveToAlbumDirectly = false
-
-        let data = "fakeimage".data(using: .utf8)!
-        try await sut.handleCapturedMedia(mediaSource: .data(data), filename: "capture2.jpg", dateTaken: Date(), mediaType: .photo)
-
-        XCTAssertEqual(mockPhotos.savedFiles.count, 1, "Expected saveMediaFileToLibrary to be called when captures are saved to Photos")
-        let record = mockPhotos.savedFiles.first!
-        XCTAssertTrue(record.filename.contains("capture2"))
-        XCTAssertEqual(record.mediaType, .photo)
-    }
+    // The app no longer saves captures to the system Photos library automatically.
+    // Any in-app capture flows save into the encrypted album or queue when locked.
 
     func testMakeMediaFromPickerInfo_withImageURL() async throws {
         let tmp = tempDir.appendingPathComponent("test.jpg")
@@ -104,7 +91,7 @@ final class CameraCaptureTests: XCTestCase {
     func testHandleCapturedMedia_queuesWhenAlbumLocked_then_processedAfterUnlock() async throws {
         // No password has been setup yet so the album is not initialized and
         // cameraSaveToAlbumDirectly should queue captures taken while locked.
-        sut.cameraSaveToAlbumDirectly = true
+        // app captures are always queued when the album is not initialized
 
         let data = "queuedimage".data(using: .utf8)!
 

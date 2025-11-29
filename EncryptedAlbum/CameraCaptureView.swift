@@ -79,7 +79,8 @@ import SwiftUI
                                     mediaType: .video,
                                     duration: duration,
                                     location: nil,
-                                    isFavorite: nil
+                                    isFavorite: nil,
+                                    forceSaveToAlbum: true
                                 )
                                 AppLog.debugPublic("Handled captured media: \(filename)")
                                 AppLog.debugPrivate("CameraCoordinator: Determined mediaSource=\(mediaSource) filename=\(filename) mediaType=video duration=\(String(describing: duration))")
@@ -115,7 +116,8 @@ import SwiftUI
                                     mediaType: mediaType,
                                     duration: duration,
                                     location: nil,
-                                    isFavorite: nil
+                                    isFavorite: nil,
+                                    forceSaveToAlbum: true
                                 )
                                 AppLog.debugPublic("Handled captured media: \(filename)")
                                     AppLog.debugPrivate("CameraCoordinator: Determined mediaSource=\(mediaSource) filename=\(filename) mediaType=\(mediaType) duration=\(String(describing: duration))")
@@ -401,6 +403,33 @@ import SwiftUI
             default:
                 self.isAuthorized = false
             }
+            // Check audio (microphone) permissions separately so we can
+            // request permission and include audio input in the session when
+            // possible. Add defensive logging to help diagnose macOS 'Cannot Record' issues.
+            switch AVCaptureDevice.authorizationStatus(for: .audio) {
+            case .authorized:
+                AppLog.debugPrivate("CameraModel: microphone access authorized")
+            case .notDetermined:
+                AppLog.debugPrivate("CameraModel: microphone access notDetermined; requesting access")
+                AVCaptureDevice.requestAccess(for: .audio) { granted in
+                    DispatchQueue.main.async {
+                        AppLog.debugPrivate("CameraModel: microphone access request finished granted=\(granted)")
+                        // If we already had camera authorization and we just obtained audio
+                        // permission, try to reconfigure the session to add audio input.
+                        if granted {
+                            self.sessionQueue.async { [weak self] in
+                                guard let self = self else { return }
+                                if let s = self.session, s.inputs.isEmpty == false {
+                                    // re-run setupSession to add audio input if possible
+                                    self.setupSession()
+                                }
+                            }
+                        }
+                    }
+                }
+            default:
+                AppLog.debugPrivate("CameraModel: microphone access denied or restricted")
+            }
         }
 
         // MARK: - Notification Handlers
@@ -451,6 +480,28 @@ import SwiftUI
                     session.addOutput(self.photoOutput)
                 } else {
                     self.handleCameraError("Cannot add photo output to the capture session.")
+                }
+
+                // Attempt to include audio input into the session when microphone
+                // access is authorized. This avoids failing later when recording
+                // expects audio input.
+                if AVCaptureDevice.authorizationStatus(for: .audio) == .authorized {
+                    if let audioDevice = AVCaptureDevice.default(for: .audio) {
+                        if let audioInput = try? AVCaptureDeviceInput(device: audioDevice) {
+                            if session.canAddInput(audioInput) {
+                                session.addInput(audioInput)
+                                AppLog.debugPrivate("CameraModel: added audio input \(audioDevice.localizedName) to session")
+                            } else {
+                                AppLog.debugPrivate("CameraModel: cannot add audio input to session")
+                            }
+                        } else {
+                            AppLog.debugPrivate("CameraModel: failed to create audio input for device \(audioDevice.localizedName)")
+                        }
+                    } else {
+                        AppLog.debugPrivate("CameraModel: no default audio device available to add")
+                    }
+                } else {
+                    AppLog.debugPrivate("CameraModel: microphone access not authorized - skipping audio input")
                 }
 
                 if session.canAddOutput(self.movieOutput) {
@@ -521,7 +572,30 @@ import SwiftUI
         func startRecording() {
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(
                 "video_\(Date().timeIntervalSince1970).mov")
+            AppLog.debugPrivate("CameraModel: starting recording to temp URL: \(tempURL.path)")
             movieOutput.startRecording(to: tempURL, recordingDelegate: self)
+
+            // Quick confirmation check; this may not change until delegate callbacks, but useful for diagnostics
+            // surface this boolean as public debug so it's visible in Console
+            AppLog.debugPublic("CameraModel: movieOutput.isRecording after start call = \(movieOutput.isRecording)")
+
+            // Diagnostics: log audio permission and inputs so we can better interpret
+            // 'Cannot Record' failures that appear to come from lower level audio stack.
+            let audioAuth = AVCaptureDevice.authorizationStatus(for: .audio)
+            // Surface authorization status as public debug so it's visible in Console
+            // during diagnostics; it does not contain sensitive user data.
+            AppLog.debugPublic("CameraModel: microphone authorization status = \(audioAuth.rawValue)")
+            if let session = session {
+                let inputNames = session.inputs.compactMap { (inp) -> String? in
+                    if let deviceInput = inp as? AVCaptureDeviceInput {
+                        return deviceInput.device.localizedName
+                    }
+                    return String(describing: type(of: inp))
+                }
+                // Device names are not secrets and are helpful for debug; publish
+                // them so Console shows which inputs were attached.
+                AppLog.debugPublic("CameraModel: session inputs = \(inputNames)")
+            }
 
             recordingStartTime = Date()
             recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
@@ -539,6 +613,7 @@ import SwiftUI
         func stopRecording(albumManager: AlbumManager, completion: @escaping () -> Void) {
             self.videoCompletion = completion
             self.albumManager = albumManager
+            AppLog.debugPrivate("CameraModel: requesting stopRecording (isRecording=\(movieOutput.isRecording))")
             movieOutput.stopRecording()
 
             recordingTimer?.invalidate()
@@ -565,7 +640,10 @@ import SwiftUI
                 }
             }
 
-            guard let data = photo.fileDataRepresentation() else { return }
+            guard let data = photo.fileDataRepresentation() else {
+                AppLog.error("CameraModel: photoOutput did not produce file data")
+                return
+            }
 
             let filename = "Capture_\(Date().timeIntervalSince1970).jpg"
 
@@ -575,6 +653,7 @@ import SwiftUI
                                 AppLog.error("No albumManager available to handle captured photo")
                                 return
                             }
+                            AppLog.debugPrivate("CameraModel: saving captured photo via albumManager")
                             try await albumManager.handleCapturedMedia(
                                 mediaSource: .data(data),
                                 filename: filename,
@@ -584,7 +663,8 @@ import SwiftUI
                                 mediaType: .photo,
                                 duration: nil,
                                 location: nil,
-                                isFavorite: nil
+                                isFavorite: nil,
+                                forceSaveToAlbum: true
                             )
                         } catch {
                             AppLog.error("Failed to handle captured photo: \(error.localizedDescription)")
@@ -605,7 +685,19 @@ import SwiftUI
             }
 
             if let error = error {
-                AppLog.error("Video recording error: \(error.localizedDescription)")
+                let nsErr = error as NSError
+                AppLog.error("Video recording error: \(nsErr.domain) code=\(nsErr.code) desc=\(nsErr.localizedDescription) userInfo=\(nsErr.userInfo)")
+
+                if FileManager.default.fileExists(atPath: outputFileURL.path) {
+                    if let attr = try? FileManager.default.attributesOfItem(atPath: outputFileURL.path), let size = attr[.size] {
+                        AppLog.debugPrivate("CameraModel: recorded file present despite error — size=\(size) path=\(outputFileURL.path)")
+                    } else {
+                        AppLog.debugPrivate("CameraModel: recorded file present despite error — path=\(outputFileURL.path)")
+                    }
+                } else {
+                    AppLog.debugPrivate("CameraModel: no recorded file exists at path \(outputFileURL.path)")
+                }
+
                 return
             }
 
@@ -616,11 +708,11 @@ import SwiftUI
             let filename = "Video_\(Date().timeIntervalSince1970).mov"
 
                     Task {
-                do {
                     guard let albumManager = albumManager else {
                         AppLog.error("No albumManager available to handle captured video")
                         return
                     }
+                    AppLog.debugPrivate("CameraModel: saving recorded video via albumManager")
                     let asset = AVAsset(url: outputFileURL)
                     var duration: TimeInterval?
                     if #available(macOS 13.0, *) {
@@ -641,23 +733,48 @@ import SwiftUI
                             mediaType: .video,
                             duration: duration,
                             location: nil,
-                            isFavorite: nil
+                            isFavorite: nil,
+                            forceSaveToAlbum: true
                         )
                     } catch {
                         AppLog.error("Failed to handle captured video: \(error.localizedDescription)")
                     }
                     // Always attempt to remove the temporary file
-                    try? FileManager.default.removeItem(at: outputFileURL)
-                } catch {
-                    AppLog.error("Failed to save video: \(error.localizedDescription)")
-                }
+                    do {
+                        try FileManager.default.removeItem(at: outputFileURL)
+                        AppLog.debugPrivate("CameraModel: removed temporary recorded file at \(outputFileURL.path)")
+                    } catch {
+                        AppLog.debugPrivate("CameraModel: failed to remove temp recorded file: \(error.localizedDescription)")
+                    }
+                    // No outer error handler needed; inner do/catch blocks handle failures.
             }
         }
 
         func fileOutput(
             _ output: AVCaptureFileOutput, didStartRecordingTo fileURL: URL, from connections: [AVCaptureConnection]
         ) {
-            // Started recording
+            // Keep the recorded file path private (it may include user-specific
+            // paths) but publish a public message so we can see recording start
+            // events in Console without special filtering.
+            AppLog.debugPublic("CameraModel: didStartRecording")
+
+            // Log whether the file is actually being written yet and attempt to
+            // detect early failures due to file permissions or audio device issues.
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                if let attr = try? FileManager.default.attributesOfItem(atPath: fileURL.path), let size = attr[.size] {
+                    AppLog.debugPrivate("CameraModel: recording file exists at start — size=\(size) path=\(fileURL.path)")
+                } else {
+                    AppLog.debugPrivate("CameraModel: recording file exists at start — path=\(fileURL.path)")
+                }
+            } else {
+                AppLog.debugPrivate("CameraModel: recording file did not exist immediately at start (this can be normal) — path=\(fileURL.path)")
+            }
+
+            // Log connection ports available (helpful to see audio/video presence)
+            let portNames = connections.flatMap { conn -> [String] in
+                conn.inputPorts.map { "\($0.mediaType.rawValue)" }
+            }
+            AppLog.debugPrivate("CameraModel: connection ports = \(portNames)")
         }
     }
 
