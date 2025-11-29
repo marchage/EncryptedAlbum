@@ -226,6 +226,7 @@
 		989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InactiveAppOverlay.swift; sourceTree = "<group>"; };
 		989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UltraPrivacyCoordinator.swift; sourceTree = "<group>"; };
 		989B68D62ED8C1DB00FA9A5B /* ShareHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ShareHelper.swift; sourceTree = "<group>"; };
+		98FAA8162EDAAF7A00A5C3DD /* EncryptedAlbumDebug.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = EncryptedAlbumDebug.entitlements; sourceTree = "<group>"; };
 		9F96EA3625074B045C751E84 /* AlbumManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6789012345677 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		A61A2BD7A0514BCA85111D3F /* AlbumError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumError.swift; sourceTree = "<group>"; };
@@ -361,6 +362,7 @@
 		9849B4532EB9893D00B17DAC /* EncryptedAlbum */ = {
 			isa = PBXGroup;
 			children = (
+				98FAA8162EDAAF7A00A5C3DD /* EncryptedAlbumDebug.entitlements */,
 				989B68D62ED8C1DB00FA9A5B /* ShareHelper.swift */,
 				A61A2BD7A0514BCA85111D3F /* AlbumError.swift */,
 				C5C904A396A6B1968CDD78D9 /* AlbumDetailView.swift */,
@@ -940,7 +942,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum.ShareExtensionMac";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "Main app & extension for main app";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "EncyptedAlbumShareExtensionMac@dev";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -952,10 +954,12 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ShareExtensionMac/ShareExtensionMac.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = TDWHVYP98Z;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ShareExtensionMac/Info.plist;
@@ -970,6 +974,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum.ShareExtensionMac";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "EncyptedAlbumShareExtensionMac@dev";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -1250,10 +1255,12 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = EncryptedAlbum/EncryptedAlbumDebug.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = TDWHVYP98Z;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1269,6 +1276,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = ASDF;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -1283,10 +1291,12 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = EncryptedAlbum/EncryptedAlbum.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = TDWHVYP98Z;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = TDWHVYP98Z;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1302,6 +1312,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = ASDF;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};

@@ -2,10 +2,10 @@ import AVKit
 import SwiftUI
 
 #if os(macOS)
-    import AppKit
+import AppKit
 #endif
 #if os(iOS)
-    import UIKit
+import UIKit
 #endif
 
 struct PhotoViewerSheet: View {
@@ -20,12 +20,20 @@ struct PhotoViewerSheet: View {
     @State private var showDecryptErrorAlert = false
     @State private var decryptErrorMessage: String? = nil
     @State private var isMaximized: Bool = false
-
+    
     var body: some View {
-        SecureWrapper {
+#if os(macOS)
+        viewerContent.frame(minWidth: 800, minHeight: 600)
+#else
+        viewerContent
+#endif
+    }
+    
+    private var viewerContent: some View {
+        return SecureWrapper {
             ZStack {
                 PrivacyOverlayBackground(asBackground: true)
-
+                
                 VStack(spacing: 0) {
                     // Header
                     HStack {
@@ -44,13 +52,13 @@ struct PhotoViewerSheet: View {
                                         .foregroundStyle(.secondary)
                                 }
                             }
-                            #if os(iOS)
-                                .padding(.top, -6)
-                            #endif
+#if os(iOS)
+                            .padding(.top, -6)
+#endif
                         }
-
+                        
                         Spacer()
-
+                        
                         Button {
                             cancelDecryptTask()
                             dismiss()
@@ -62,16 +70,16 @@ struct PhotoViewerSheet: View {
                     }
                     .padding()
                     .background(.ultraThinMaterial)
-
+                    
                     // Media content
                     if photo.mediaType == .video {
                         if let url = videoURL {
                             ZStack(alignment: .topTrailing) {
                                 CustomVideoPlayer(url: url)
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-
+                                
                                 // Maximize button for iOS to present a full-screen player
-                                #if os(iOS)
+#if os(iOS)
                                 Button(action: { isMaximized = true }) {
                                     Image(systemName: "arrow.up.left.and.arrow.down.right")
                                         .padding(10)
@@ -79,26 +87,26 @@ struct PhotoViewerSheet: View {
                                         .clipShape(Circle())
                                 }
                                 .padding(12)
-                                #endif
+#endif
                             }
-                            #if os(iOS)
-                                .fullScreenCover(isPresented: $isMaximized) {
-                                    CustomVideoPlayer(url: url)
-                                        .edgesIgnoringSafeArea(.all)
-                                }
-                            #endif
+#if os(iOS)
+                            .fullScreenCover(isPresented: $isMaximized) {
+                                CustomVideoPlayer(url: url)
+                                    .edgesIgnoringSafeArea(.all)
+                            }
+#endif
                         } else {
                             decryptingView
                         }
                     } else {
                         if let image = fullImage {
-                            #if os(macOS)
-                                ZoomableImageView(image: image)
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            #else
-                                ZoomableImageView(image: image)
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            #endif
+#if os(macOS)
+                            ZoomableImageView(image: image)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+#else
+                            ZoomableImageView(image: image)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+#endif
                         } else if failedToLoad {
                             VStack(spacing: 10) {
                                 Image(systemName: "exclamationmark.triangle.fill")
@@ -111,107 +119,102 @@ struct PhotoViewerSheet: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else {
                             decryptingView
-                        }
-                        
-                }
-                #if os(macOS)
-                    .frame(minWidth: 800, minHeight: 600)
-                #endif
-                .onAppear {
-                    if photo.mediaType == .video {
-                        loadVideo()
-                    } else {
-                        loadFullImage()
+                          }
                     }
                 }
-                .onDisappear {
-                    cancelDecryptTask()
-                    cleanupVideo()
-                }
-                .onChange(of: scenePhase) { newPhase in
-                    guard newPhase == .active else {
-                        dismissViewer()
-                        return
-                    }
-                }
+                
             }
-        }
-        .onAppear {
-            albumManager.suspendIdleTimer(reason: .viewing)
-        }
-        .onDisappear {
-            albumManager.resumeIdleTimer(reason: .viewing)
-        }
-        .alert("Failed to decrypt media", isPresented: $showDecryptErrorAlert, actions: {
-            Button("Retry") {
-                // Retry current operation
-                decryptErrorMessage = nil
-                showDecryptErrorAlert = false
+            .onAppear {
+                // start viewer behavior and suspend idle timer
+                albumManager.suspendIdleTimer(reason: .viewing)
                 if photo.mediaType == .video {
                     loadVideo()
                 } else {
                     loadFullImage()
                 }
             }
-            Button("Dismiss", role: .cancel) {
-                decryptErrorMessage = nil
-                showDecryptErrorAlert = false
+            .onDisappear {
+                // ensure in-flight decrypts are cancelled and timer resumed when leaving
                 cancelDecryptTask()
+                cleanupVideo()
+                albumManager.resumeIdleTimer(reason: .viewing)
             }
-            Button("Copy details") {
-                if let message = decryptErrorMessage {
-                    #if os(iOS)
-                    UIPasteboard.general.string = message
-                    #else
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(message, forType: .string)
-                    #endif
+            .onChange(of: scenePhase) { newPhase in
+                guard newPhase == .active else {
+                    dismissViewer()
+                    return
                 }
             }
-        }, message: {
-            if let msg = decryptErrorMessage {
-                Text(msg)
-            } else {
-                Text("An unknown error occurred while decrypting the media.")
-            }
-        })
-    }
-
-    @ViewBuilder
-    private var decryptingView: some View {
-        VStack(spacing: 10) {
-            if albumManager.viewerProgress.bytesTotal > 0 {
-                ProgressView(value: albumManager.viewerProgress.percentComplete)
-                    .scaleEffect(1.2)
-                Text(albumManager.viewerProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.viewerProgress.statusMessage)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                Text("\(ByteCountFormatter.string(fromByteCount: albumManager.viewerProgress.bytesProcessed, countStyle: .file)) of \(ByteCountFormatter.string(fromByteCount: albumManager.viewerProgress.bytesTotal, countStyle: .file))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                ProgressView()
-                    .scaleEffect(1.2)
-                Text(albumManager.viewerProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.viewerProgress.statusMessage)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+            .alert("Failed to decrypt media", isPresented: $showDecryptErrorAlert, actions: {
+                Button("Retry") {
+                    // Retry current operation
+                    decryptErrorMessage = nil
+                    showDecryptErrorAlert = false
+                    if photo.mediaType == .video {
+                        loadVideo()
+                    } else {
+                        loadFullImage()
+                    }
+                }
+                Button("Dismiss", role: .cancel) {
+                    decryptErrorMessage = nil
+                    showDecryptErrorAlert = false
+                    cancelDecryptTask()
+                }
+                Button("Copy details") {
+                    if let message = decryptErrorMessage {
+#if os(iOS)
+                        UIPasteboard.general.string = message
+#else
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(message, forType: .string)
+#endif
+                    }
+                }
+            }, message: {
+                if let msg = decryptErrorMessage {
+                    Text(msg)
+                } else {
+                    Text("An unknown error occurred while decrypting the media.")
+                }
+            })
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func loadFullImage() {
-        cancelDecryptTask()
-        decryptTask = Task {
-            do {
-                await MainActor.run {
-                    albumManager.viewerProgress.start("Decrypting \(photo.filename)…")
+        
+        @ViewBuilder
+        var decryptingView: some View {
+            VStack(spacing: 10) {
+                if albumManager.viewerProgress.bytesTotal > 0 {
+                    ProgressView(value: albumManager.viewerProgress.percentComplete)
+                        .scaleEffect(1.2)
+                    Text(albumManager.viewerProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.viewerProgress.statusMessage)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    Text("\(ByteCountFormatter.string(fromByteCount: albumManager.viewerProgress.bytesProcessed, countStyle: .file)) of \(ByteCountFormatter.string(fromByteCount: albumManager.viewerProgress.bytesTotal, countStyle: .file))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                    Text(albumManager.viewerProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.viewerProgress.statusMessage)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                let decryptedData = try await albumManager.decryptPhoto(photo)
-                try Task.checkCancellation()
-
-                #if os(macOS)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        
+        func loadFullImage() {
+            cancelDecryptTask()
+            decryptTask = Task {
+                do {
+                    await MainActor.run {
+                        albumManager.viewerProgress.start("Decrypting \(photo.filename)…")
+                    }
+                    let decryptedData = try await albumManager.decryptPhoto(photo)
+                    try Task.checkCancellation()
+                    
+#if os(macOS)
                     if let image = NSImage(data: decryptedData) {
                         await MainActor.run {
                             fullImage = image
@@ -219,7 +222,7 @@ struct PhotoViewerSheet: View {
                     } else {
                         await MainActor.run { failedToLoad = true }
                     }
-                #else
+#else
                     if let image = UIImage(data: decryptedData) {
                         await MainActor.run {
                             fullImage = image
@@ -227,82 +230,83 @@ struct PhotoViewerSheet: View {
                     } else {
                         await MainActor.run { failedToLoad = true }
                     }
-                #endif
-            } catch is CancellationError {
-                // Cancellation is expected when the viewer is dismissed mid-decrypt
-            } catch {
-                AppLog.error("Failed to decrypt photo: \(error.localizedDescription)")
-                await MainActor.run {
-                    decryptErrorMessage = error.localizedDescription
-                    showDecryptErrorAlert = true
-                }
-            }
-            await MainActor.run {
-                decryptTask = nil
-                albumManager.viewerProgress.finish()
-            }
-        }
-    }
-
-    private func loadVideo() {
-        cancelDecryptTask()
-        decryptTask = Task {
-            do {
-                // Start viewer-level progress. If we have a known file size, expose it
-                await MainActor.run {
-                    let total = photo.fileSize
-                    albumManager.viewerProgress.start("Decrypting \(photo.filename)…", totalBytes: total)
-                }
-
-                let tempURL = try await albumManager.decryptPhotoToTemporaryURL(photo) { bytes in
-                    // Update viewer progress with bytes processed
-                    Task { @MainActor in
-                        albumManager.viewerProgress.update(bytesProcessed: bytes)
+#endif
+                } catch is CancellationError {
+                    // Cancellation is expected when the viewer is dismissed mid-decrypt
+                } catch {
+                    AppLog.error("Failed to decrypt photo: \(error.localizedDescription)")
+                    await MainActor.run {
+                        decryptErrorMessage = error.localizedDescription
+                        showDecryptErrorAlert = true
                     }
                 }
-                try Task.checkCancellation()
-                await MainActor.run {
-                    self.videoURL = tempURL
-                }
-            } catch is CancellationError {
-                // Expected when the viewer is dismissed; partial temp files are cleaned up downstream
-            } catch {
-                AppLog.error("Failed to decrypt video: \(error.localizedDescription)")
-                await MainActor.run {
-                    decryptErrorMessage = error.localizedDescription
-                    showDecryptErrorAlert = true
-                }
-            }
                 await MainActor.run {
                     decryptTask = nil
                     albumManager.viewerProgress.finish()
                 }
+            }
+        }
+        
+        func loadVideo() {
+            cancelDecryptTask()
+            decryptTask = Task {
+                do {
+                    // Start viewer-level progress. If we have a known file size, expose it
+                    await MainActor.run {
+                        let total = photo.fileSize
+                        albumManager.viewerProgress.start("Decrypting \(photo.filename)…", totalBytes: total)
+                    }
+                    
+                    let tempURL = try await albumManager.decryptPhotoToTemporaryURL(photo) { bytes in
+                        // Update viewer progress with bytes processed
+                        Task { @MainActor in
+                            albumManager.viewerProgress.update(bytesProcessed: bytes)
+                        }
+                    }
+                    try Task.checkCancellation()
+                    await MainActor.run {
+                        self.videoURL = tempURL
+                    }
+                } catch is CancellationError {
+                    // Expected when the viewer is dismissed; partial temp files are cleaned up downstream
+                } catch {
+                    AppLog.error("Failed to decrypt video: \(error.localizedDescription)")
+                    await MainActor.run {
+                        decryptErrorMessage = error.localizedDescription
+                        showDecryptErrorAlert = true
+                    }
+                }
+                await MainActor.run {
+                    decryptTask = nil
+                    albumManager.viewerProgress.finish()
+                }
+            }
+        }
+        
+        func cleanupVideo() {
+            if let url = videoURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+            videoURL = nil
+        }
+        
+        func cancelDecryptTask() {
+            decryptTask?.cancel()
+            decryptTask = nil
+        }
+        func dismissViewer() {
+            cancelDecryptTask()
+            cleanupVideo()
+            dismiss()
+        }
+        
+        func formatDuration(_ duration: TimeInterval) -> String {
+            let minutes = Int(duration) / 60
+            let seconds = Int(duration) % 60
+            return String(format: "%d:%02d", minutes, seconds)
         }
     }
-
-    private func cleanupVideo() {
-        if let url = videoURL {
-            try? FileManager.default.removeItem(at: url)
-        }
-        videoURL = nil
-    }
-
-    private func cancelDecryptTask() {
-        decryptTask?.cancel()
-        decryptTask = nil
-    }
-
-    private func dismissViewer() {
-        cancelDecryptTask()
-        cleanupVideo()
-        dismiss()
-    }
-
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
+    
+    // decryptingPlaceholder removed — replaced by PhotoViewerSheet.decryptingView
+    
 }
-
-// decryptingPlaceholder removed — replaced by PhotoViewerSheet.decryptingView
