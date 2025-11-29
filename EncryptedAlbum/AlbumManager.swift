@@ -383,6 +383,37 @@ class AlbumManager: ObservableObject {
     @Published var appTheme: String = "default"
     @Published var compactLayoutEnabled: Bool = false
     @Published var accentColorName: String = "blue"
+
+    /// Resolved accent color used by the UI. This maps the persisted name to a `Color` value
+    /// that's safe to use from SwiftUI views. Use this value from top-level views to apply
+    /// the user's chosen accent across the app.
+    var accentColorResolved: Color {
+        switch accentColorName.lowercased() {
+        case "green":
+            return Color.green
+        case "pink":
+            return Color.pink
+        case "winamp":
+            // Nostalgic Winamp-y accent tone
+            return Color(red: 0.98, green: 0.6, blue: 0.07)
+        case "system":
+            // Defer to system / asset catalog accent where applicable
+            return Color.accentColor
+        default:
+            // default to blue
+            return Color.blue
+        }
+    }
+
+    /// Machine-friendly identifier for the currently selected accent color.
+    /// Useful for tests and logic that don't depend on SwiftUI `Color` equality.
+    enum AccentColorId: String {
+        case blue, green, pink, winamp, system
+    }
+
+    var accentColorId: AccentColorId {
+        return AccentColorId(rawValue: accentColorName.lowercased()) ?? .blue
+    }
     @Published var cameraSaveToAlbumDirectly: Bool = false
     @Published var cameraMaxQuality: Bool = true
     @Published var cameraAutoRemoveFromPhotos: Bool = false

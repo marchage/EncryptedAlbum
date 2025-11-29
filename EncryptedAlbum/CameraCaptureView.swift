@@ -72,20 +72,55 @@ import SwiftUI
                     if let mediaSource = mediaSource {
                         Task {
                             do {
-                                try await self.parent.albumManager.hidePhoto(
-                                    mediaSource: mediaSource,
-                                    filename: filename,
-                                    dateTaken: Date(),
-                                    sourceAlbum: "Captured to Album",
-                                    assetIdentifier: nil,
-                                    mediaType: mediaType,
-                                    duration: duration,
-                                    location: nil,
-                                    isFavorite: nil
-                                )
-                                AppLog.debugPublic("✅ Captured to album: \(filename)")
+                                // Respect preference: save directly to album or to Photos library
+                                if self.parent.albumManager.cameraSaveToAlbumDirectly {
+                                    try await self.parent.albumManager.hidePhoto(
+                                        mediaSource: mediaSource,
+                                        filename: filename,
+                                        dateTaken: Date(),
+                                        sourceAlbum: "Captured to Album",
+                                        assetIdentifier: nil,
+                                        mediaType: mediaType,
+                                        duration: duration,
+                                        location: nil,
+                                        isFavorite: nil
+                                    )
+                                    AppLog.debugPublic("✅ Captured to album: \(filename)")
+                                } else {
+                                    // Save into system Photos library instead
+                                    switch mediaSource {
+                                    case .fileURL(let url):
+                                        PhotosLibraryService.shared.saveMediaFileToLibrary(
+                                            url, filename: filename, mediaType: mediaType, toAlbum: nil, creationDate: Date(), location: nil, isFavorite: nil
+                                        ) { success, error in
+                                            if success {
+                                                AppLog.debugPublic("Saved capture to Photos: \(filename)")
+                                            } else {
+                                                AppLog.error("Failed saving capture to Photos: \(error?.localizedDescription ?? "unknown")")
+                                            }
+                                        }
+                                    case .data(let data):
+                                        // materialize data to temporary file then save
+                                        let ext = (filename as NSString).pathExtension.isEmpty ? "jpg" : (filename as NSString).pathExtension
+                                        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
+                                        do {
+                                            try data.write(to: tempURL)
+                                            PhotosLibraryService.shared.saveMediaFileToLibrary(
+                                                tempURL, filename: filename, mediaType: mediaType, toAlbum: nil, creationDate: Date(), location: nil, isFavorite: nil
+                                            ) { success, error in
+                                                if !success {
+                                                    AppLog.error("Failed saving capture to Photos: \(error?.localizedDescription ?? "unknown")")
+                                                }
+                                                // Cleanup temp file
+                                                try? FileManager.default.removeItem(at: tempURL)
+                                            }
+                                        } catch {
+                                            AppLog.error("Failed to write temp capture file: \(error.localizedDescription)")
+                                        }
+                                    }
+                                }
                             } catch {
-                                AppLog.error("Failed to save to album: \(error.localizedDescription)")
+                                AppLog.error("Failed to save capture: \(error.localizedDescription)")
                             }
                         }
                     }
@@ -463,17 +498,35 @@ import SwiftUI
 
             Task {
                 do {
-                    try await albumManager?.hidePhoto(
-                        mediaSource: .data(data),
-                        filename: filename,
-                        dateTaken: Date(),
-                        sourceAlbum: "Captured to Album",
-                        assetIdentifier: nil,
-                        mediaType: .photo,
-                        duration: nil,
-                        location: nil,
-                        isFavorite: nil
-                    )
+                    if let albumManager, albumManager.cameraSaveToAlbumDirectly {
+                        try await albumManager.hidePhoto(
+                            mediaSource: .data(data),
+                            filename: filename,
+                            dateTaken: Date(),
+                            sourceAlbum: "Captured to Album",
+                            assetIdentifier: nil,
+                            mediaType: .photo,
+                            duration: nil,
+                            location: nil,
+                            isFavorite: nil
+                        )
+                    } else {
+                        // Write temporary photo file and save to Photos library
+                        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("jpg")
+                        do {
+                            try data.write(to: tempURL)
+                            PhotosLibraryService.shared.saveMediaFileToLibrary(
+                                tempURL, filename: filename, mediaType: .photo, toAlbum: nil, creationDate: Date(), location: nil, isFavorite: nil
+                            ) { success, error in
+                                if !success {
+                                    AppLog.error("Failed saving capture to Photos: \(error?.localizedDescription ?? "unknown")")
+                                }
+                                try? FileManager.default.removeItem(at: tempURL)
+                            }
+                        } catch {
+                            AppLog.error("Failed to write temporary photo for saving to Photos: \(error.localizedDescription)")
+                        }
+                    }
                 } catch {
                     AppLog.error("Failed to save capture: \(error.localizedDescription)")
                 }
@@ -511,20 +564,33 @@ import SwiftUI
                         duration = asset.duration.seconds
                     }
 
-                    try await albumManager?.hidePhoto(
-                        mediaSource: .fileURL(outputFileURL),
-                        filename: filename,
-                        dateTaken: Date(),
-                        sourceAlbum: "Captured to Album",
-                        assetIdentifier: nil,
-                        mediaType: .video,
-                        duration: duration,
-                        location: nil,
-                        isFavorite: nil
-                    )
+                    if let albumManager, albumManager.cameraSaveToAlbumDirectly {
+                        try await albumManager.hidePhoto(
+                            mediaSource: .fileURL(outputFileURL),
+                            filename: filename,
+                            dateTaken: Date(),
+                            sourceAlbum: "Captured to Album",
+                            assetIdentifier: nil,
+                            mediaType: .video,
+                            duration: duration,
+                            location: nil,
+                            isFavorite: nil
+                        )
 
-                    // Clean up temp file
-                    try? FileManager.default.removeItem(at: outputFileURL)
+                        // Clean up temp file
+                        try? FileManager.default.removeItem(at: outputFileURL)
+                    } else {
+                        // Save video file to Photos library
+                        PhotosLibraryService.shared.saveMediaFileToLibrary(
+                            outputFileURL, filename: filename, mediaType: .video, toAlbum: nil, creationDate: Date(), location: nil, isFavorite: nil
+                        ) { success, error in
+                            if !success {
+                                AppLog.error("Failed saving video to Photos: \(error?.localizedDescription ?? "unknown")")
+                            }
+                            // Remove temp file regardless
+                            try? FileManager.default.removeItem(at: outputFileURL)
+                        }
+                    }
                 } catch {
                     AppLog.error("Failed to save video: \(error.localizedDescription)")
                 }
@@ -541,7 +607,18 @@ import SwiftUI
     class PreviewView: NSView {
         override func layout() {
             super.layout()
-            self.layer?.frame = self.bounds
+            // Keep the preview layer fully sized to the view bounds.
+            // Setting bounds and position avoids partial clipping when window changes size
+            // (fixes issue where only the top half was visible when rotated/resized).
+            if let layer = self.layer {
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                layer.bounds = self.bounds
+                layer.position = CGPoint(x: self.bounds.midX, y: self.bounds.midY)
+                layer.contentsScale = NSScreen.main?.backingScaleFactor ?? 1.0
+                layer.needsDisplayOnBoundsChange = true
+                CATransaction.commit()
+            }
         }
     }
 
@@ -550,15 +627,25 @@ import SwiftUI
 
         func makeNSView(context: Context) -> NSView {
             let view = PreviewView()
-            let layer = AVCaptureVideoPreviewLayer(session: session)
-            layer.videoGravity = .resizeAspectFill
-            view.layer = layer
+            let previewLayer = AVCaptureVideoPreviewLayer(session: session)
+            previewLayer.videoGravity = .resizeAspectFill
+            // Allow the preview layer to resize with the view
+            previewLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+            view.layer = previewLayer
             view.wantsLayer = true
             return view
         }
 
         func updateNSView(_ nsView: NSView, context: Context) {
-            // Session is already set on the layer
+            // Ensure the preview layer matches the view's bounds during layout updates
+            if let layer = nsView.layer as? AVCaptureVideoPreviewLayer {
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                layer.bounds = nsView.bounds
+                layer.position = CGPoint(x: nsView.bounds.midX, y: nsView.bounds.midY)
+                layer.needsDisplayOnBoundsChange = true
+                CATransaction.commit()
+            }
         }
 
         static func dismantleNSView(_ nsView: NSView, coordinator: ()) {

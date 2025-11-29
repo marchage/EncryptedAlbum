@@ -185,6 +185,9 @@ struct PreferencesView: View {
                             .onChange(of: albumManager.enableRecoveryKey) { _ in
                                 albumManager.saveSettings()
                             }
+                        Text("When enabled, the app keeps an encrypted recovery key to help recover an interrupted password-change operation. This is internal and does not display a recovery code in the menus — it is used only during password-change recovery.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
 
                         Toggle("Secure Deletion (Overwrite)", isOn: $albumManager.secureDeletionEnabled)
                         Text(
@@ -202,6 +205,9 @@ struct PreferencesView: View {
                                 albumManager.compactLayoutEnabled = storedCompactLayoutEnabled
                                 albumManager.saveSettings()
                             }
+                        Text("Enables a denser layout in some screens (e.g. smaller buttons and tighter paddings). Effects are visible in a few places such as the unlock screen and lists.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
 
                         HStack {
                             Text("Accent Color")
@@ -220,6 +226,9 @@ struct PreferencesView: View {
                             albumManager.accentColorName = storedAccentColorName
                             albumManager.saveSettings()
                         }
+                        Text("Choose the app accent color used for highlighted UI elements across the app. Choosing 'System' defers to the platform default accent color.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
 
                         Divider()
 
@@ -231,6 +240,9 @@ struct PreferencesView: View {
                                 albumManager.cameraSaveToAlbumDirectly = storedCameraSaveToAlbumDirectly
                                 albumManager.saveSettings()
                             }
+                        Text("When enabled, photos/videos taken in the in-app camera are saved into the Encrypted Album instead of (or in addition to) the system Photos library. Note: this may affect how other apps access your captures.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
 
                         Toggle("Capture at max quality", isOn: $storedCameraMaxQuality)
                             .onChange(of: storedCameraMaxQuality) { _ in
@@ -269,6 +281,9 @@ struct PreferencesView: View {
                         } message: {
                             Text("Enabling this will automatically remove photos from the Photos app after they are securely imported into Encrypted Album. This is potentially destructive — make sure you have backups and understand the behaviour.")
                         }
+                        Text("Note: this operation requires Photos permission and will permanently remove items from the system Photos library (it moves items to the Recently Deleted album). You may be prompted to grant access when first used.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                         Button("Change Album Password") {
                             showChangePasswordSheet = true
                         }

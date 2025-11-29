@@ -968,33 +968,51 @@ struct MainAlbumView: View {
             }
             #if os(iOS)
                 .fullScreenCover(isPresented: $showingPreferences) {
-                    PreferencesView()
-                        .environmentObject(albumManager)
+                    ZStack(alignment: .top) {
+                        PreferencesView()
+                            .environmentObject(albumManager)
+                        NotificationBannerView().environmentObject(albumManager)
+                    }
                 }
             #else
                 .sheet(isPresented: $showingPreferences) {
-                    PreferencesView(isPresented: $showingPreferences)
-                        .environmentObject(albumManager)
+                    ZStack(alignment: .top) {
+                        PreferencesView(isPresented: $showingPreferences)
+                            .environmentObject(albumManager)
+                        NotificationBannerView().environmentObject(albumManager)
+                    }
                 }
             #endif
             #if os(iOS)
                 .fullScreenCover(isPresented: $showingPhotosLibrary) {
-                    PhotosLibraryPicker()
-                        .environmentObject(albumManager)
+                    ZStack(alignment: .top) {
+                        PhotosLibraryPicker()
+                            .environmentObject(albumManager)
+                        NotificationBannerView().environmentObject(albumManager)
+                    }
                 }
             #else
                 .sheet(isPresented: $showingPhotosLibrary) {
-                    PhotosLibraryPicker()
-                        .environmentObject(albumManager)
+                    ZStack(alignment: .top) {
+                        PhotosLibraryPicker()
+                            .environmentObject(albumManager)
+                        NotificationBannerView().environmentObject(albumManager)
+                    }
                 }
             #endif
             #if os(iOS)
                 .fullScreenCover(isPresented: $showingCamera) {
-                    CameraCaptureView()
+                    ZStack(alignment: .top) {
+                        CameraCaptureView()
+                        NotificationBannerView().environmentObject(albumManager)
+                    }
                 }
             #else
                 .sheet(isPresented: $showingCamera) {
-                    CameraCaptureView()
+                    ZStack(alignment: .top) {
+                        CameraCaptureView()
+                        NotificationBannerView().environmentObject(albumManager)
+                    }
                 }
             #endif
             .confirmationDialog(
@@ -1171,7 +1189,7 @@ struct MainAlbumView: View {
             VStack(spacing: 12) {
                 selectionBar
                 privacySection
-                notificationBanner
+                NotificationBannerView().environmentObject(albumManager)
                 if albumManager.hiddenPhotos.isEmpty {
                     emptyState
                 } else {
@@ -1284,85 +1302,7 @@ struct MainAlbumView: View {
         .privacyCardStyle()
     }
 
-    private var notificationBanner: some View {
-        Group {
-            if let note = albumManager.hideNotification {
-                let validPhotos =
-                    note.photos?.filter { returned in
-                        albumManager.hiddenPhotos.contains(where: { $0.id == returned.id })
-                    } ?? []
-
-                VStack {
-                    HStack(spacing: 12) {
-                        Image(systemName: iconName(for: note.type))
-                            .foregroundStyle(.white)
-                            .padding(6)
-                            .background(Circle().fill(iconColor(for: note.type)))
-
-                        Text(note.message)
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-
-                        Spacer()
-
-                        if !validPhotos.isEmpty {
-                            Button("Undo") {
-                                if startRestorationTask({
-                                    await restorePhotos(validPhotos, toSourceAlbums: true)
-                                }) {
-                                    withAnimation {
-                                        albumManager.hideNotification = nil
-                                    }
-                                }
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.small)
-                        }
-
-                        Button("Open Photos App") {
-                            #if os(macOS)
-                                NSWorkspace.shared.open(URL(string: "photos://")!)
-                            #endif
-                            withAnimation {
-                                albumManager.hideNotification = nil
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel(
-                        hideNotificationAccessibilityLabel(note: note, hasUndo: !validPhotos.isEmpty)
-                    )
-                    .accessibilityHint("Hide status banner")
-                    .padding(.horizontal)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        Group {
-                            if note.type == .success {
-                                Color.green.opacity(0.14)
-                            } else if note.type == .failure {
-                                Color.red.opacity(0.14)
-                            } else {
-                                Color.gray.opacity(0.12)
-                            }
-                        }
-                    )
-                    .cornerRadius(8)
-                    .padding(.horizontal)
-                }
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .onAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + undoTimeoutSeconds) {
-                        withAnimation {
-                            albumManager.hideNotification = nil
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // Notification banner moved into the reusable `NotificationBannerView` component.
 
     private var emptyState: some View {
         VStack(spacing: 20) {

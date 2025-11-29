@@ -28,6 +28,9 @@ struct EncryptedAlbumApp: App {
                             .transition(.opacity)
                     }
                 }
+                    // Apply the user's chosen accent color at the app level
+                    .accentColor(albumManager.accentColorResolved)
+
                     .onChange(of: albumManager.isBusy) { isBusy in
                         if !isBusy {
                             hasNotifiedBackgroundActivity = false

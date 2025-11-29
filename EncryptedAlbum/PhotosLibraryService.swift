@@ -39,10 +39,20 @@ enum PhotosLibraryServiceError: LocalizedError {
 }
 
 /// Service for interacting with the Photos library across platforms.
-class PhotosLibraryService {
-    static let shared = PhotosLibraryService()
+protocol PhotosLibraryServiceProtocol: AnyObject {
+    func requestAccess(completion: @escaping (Bool) -> Void)
+    func getAllAlbums(libraryType: LibraryType) -> [(name: String, collection: PHAssetCollection)]
+    func getAssets(from collection: PHAssetCollection) -> [PHAsset]
+    func getMediaDataAsync(for asset: PHAsset) async -> MediaFetchResult?
+    func saveMediaFileToLibrary(_ fileURL: URL, filename: String, mediaType: MediaType, toAlbum albumName: String?, creationDate: Date?, location: SecurePhoto.Location?, isFavorite: Bool?, completion: @escaping (Bool, Error?) -> Void)
+    func batchDeleteAssets(_ assets: [PHAsset], completion: @escaping (Bool) -> Void)
+    func batchSaveMediaToLibrary(_ mediaItems: [(data: Data, filename: String, mediaType: MediaType, creationDate: Date?, location: SecurePhoto.Location?, isFavorite: Bool?)], toAlbum albumName: String?, completion: @escaping (Int) -> Void)
+}
 
-    private init() {}
+class PhotosLibraryService: PhotosLibraryServiceProtocol {
+    static var shared: PhotosLibraryServiceProtocol = PhotosLibraryService()
+
+    init() {}
 
     /// Requests read/write access to the Photos library.
     /// - Parameter completion: Called with true if access granted, false otherwise

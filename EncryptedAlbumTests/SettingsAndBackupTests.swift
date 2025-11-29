@@ -1,5 +1,9 @@
 import XCTest
+#if canImport(EncryptedAlbum)
 @testable import EncryptedAlbum
+#elseif canImport(EncryptedAlbum_iOS)
+@testable import EncryptedAlbum_iOS
+#endif
 
 final class SettingsAndBackupTests: XCTestCase {
     let albumManager = AlbumManager.shared

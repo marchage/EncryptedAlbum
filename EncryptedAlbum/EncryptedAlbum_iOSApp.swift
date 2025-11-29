@@ -50,6 +50,9 @@ struct EncryptedAlbumApp_iOS: App {
                     ScreenshotBlockerOverlay()
                         .environmentObject(screenshotBlocker)
                 }
+                // Apply user-selected accent color across the top-level view
+                .accentColor(albumManager.accentColorResolved)
+
                 // Ensure AlbumManager is authoritative about idle state when app appears
                 .onAppear {
                     Task { @MainActor in
