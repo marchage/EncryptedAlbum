@@ -24,14 +24,21 @@ import SwiftUI
         }
 
         func makeCoordinator() -> Coordinator {
-            Coordinator(self)
+            // Capture albumManager strongly in the coordinator so the async
+            // save call can rely on it even after the picker / parent view is
+            // dismissed. Avoids lost writes when the modal closes immediately.
+            Coordinator(self, albumManager: albumManager)
         }
 
         class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
             let parent: CameraCaptureView
+            // Strong reference to the environment object so async work can
+            // continue after the parent view is dismissed
+            let albumManagerRef: AlbumManager
 
-            init(_ parent: CameraCaptureView) {
+            init(_ parent: CameraCaptureView, albumManager: AlbumManager) {
                 self.parent = parent
+                self.albumManagerRef = albumManager
             }
 
             func imagePickerController(
@@ -46,12 +53,20 @@ import SwiftUI
                     var mediaType: MediaType = .photo
                     var duration: TimeInterval?
 
-                    if let image = info[.originalImage] as? UIImage,
-                        let imageData = image.jpegData(compressionQuality: 0.9)
-                    {
-                        mediaSource = .data(imageData)
-                        filename = "Capture_\(Date().timeIntervalSince1970).jpg"
-                        mediaType = .photo
+                    if let image = info[.originalImage] as? UIImage {
+                        // Prefer JPEG but fall back to PNG if JPEG conversion fails
+                        var imageData: Data? = image.jpegData(compressionQuality: 0.9)
+                        if imageData == nil {
+                            AppLog.debugPrivate("JPEG conversion failed for captured image; falling back to PNG")
+                            imageData = image.pngData()
+                        }
+                        if let imageData = imageData {
+                            mediaSource = .data(imageData)
+                            filename = "Capture_\(Date().timeIntervalSince1970).jpg"
+                            mediaType = .photo
+                        } else {
+                            AppLog.error("Captured image had no usable data")
+                        }
                     } else if let videoURL = info[.mediaURL] as? URL {
                         mediaSource = .fileURL(videoURL)
                         filename = "Video_\(Date().timeIntervalSince1970).mov"
@@ -59,6 +74,7 @@ import SwiftUI
 
                         let asset = AVAsset(url: videoURL)
                         if #available(iOS 16.0, macOS 13.0, *) {
+                            // Use an async Task to load the duration on newer platforms.
                             Task {
                                 if let loadedDuration = try? await asset.load(.duration) {
                                     duration = loadedDuration.seconds
@@ -67,14 +83,15 @@ import SwiftUI
                         } else {
                             duration = asset.duration.seconds
                         }
+                    } else {
+                        AppLog.error("Captured media had no usable data")
                     }
-
                     if let mediaSource = mediaSource {
                         Task {
                             do {
                                 // Forward capture handling to AlbumManager helper which centralises
                                 // the save-to-album vs save-to-photos behaviour and is testable.
-                                try await self.parent.albumManager.handleCapturedMedia(
+                                try await self.albumManagerRef.handleCapturedMedia(
                                     mediaSource: mediaSource,
                                     filename: filename,
                                     dateTaken: Date(),
@@ -92,8 +109,7 @@ import SwiftUI
                         }
                     }
                 }
-
-                }
+            }
 
             func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
                 parent.dismiss()
