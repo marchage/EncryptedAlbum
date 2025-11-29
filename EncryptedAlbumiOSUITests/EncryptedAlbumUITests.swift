@@ -11,6 +11,9 @@ final class EncryptedAlbumUITests: XCTestCase {
         app.launchArguments = ["--reset-state", "--ui-tests"]
         // Tests frequently need a deterministic password. Provide it via launchEnvironment
         app.launchEnvironment["UI_TEST_PASSWORD"] = "TestPass123!"
+        // Allow the app to perform a destructive reset during UI tests in debug builds.
+        // AlbumManager only performs the reset when ALLOW_DESTRUCTIVE_RESET == "1".
+        app.launchEnvironment["ALLOW_DESTRUCTIVE_RESET"] = "1"
         print("Launching app with arguments: \(app.launchArguments)")
         app.launch()
     }
