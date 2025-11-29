@@ -7,16 +7,16 @@ struct PreferencesView: View {
     @AppStorage("requireForegroundReauthentication") private var requireForegroundReauthentication: Bool = true
     @AppStorage("stealthModeEnabled") private var stealthModeEnabled: Bool = false
     @AppStorage("decoyPasswordHash") private var decoyPasswordHash: String = ""
-
+    
     @State private var healthReport: SecurityHealthReport?
     @State private var isCheckingHealth = false
     @State private var healthCheckError: String?
-
+    
     @State private var showDecoyPasswordSheet = false
     @State private var decoyPasswordInput = ""
     @State private var decoyPasswordConfirm = ""
     @State private var decoyPasswordError: String?
-
+    
     @State private var showChangePasswordSheet = false
     @State private var currentPasswordInput = ""
     @State private var newPasswordInput = ""
@@ -24,7 +24,7 @@ struct PreferencesView: View {
     @State private var changePasswordError: String?
     @State private var isChangingPassword = false
     @State private var changePasswordProgress: String?
-
+    
     // New settings states for backup and UX
     @AppStorage("autoLockTimeoutSeconds") private var storedAutoLockTimeout: Double = CryptoConstants.idleTimeout
     @AppStorage("requirePasscodeOnLaunch") private var storedRequirePasscodeOnLaunch: Bool = false
@@ -37,8 +37,11 @@ struct PreferencesView: View {
     @AppStorage("keepScreenAwakeWhileUnlocked") private var storedKeepScreenAwakeWhileUnlocked: Bool = false
     @AppStorage("keepScreenAwakeDuringSuspensions") private var storedKeepScreenAwakeDuringSuspensions: Bool = true
     @AppStorage("lockdownModeEnabled") private var storedLockdownMode: Bool = false
+    
+    @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
+    
     @State private var showLockdownConfirm: Bool = false
-
+    
     @State private var showBackupSheet = false
     @State private var backupPassword = ""
     @State private var backupPasswordConfirm = ""
@@ -49,67 +52,68 @@ struct PreferencesView: View {
     @State private var showShareSheet = false
     @State private var showCameraAutoRemoveConfirm = false
     @State private var pendingCameraAutoRemoveValue: Bool = false
-
-    #if os(iOS)
-    @Environment(\.dismiss) private var dismiss
-    #endif
     
-    #if os(macOS)
+#if os(iOS)
+    @Environment(\.dismiss) private var dismiss
+#endif
+    
+#if os(macOS)
     @Binding var isPresented: Bool
     private let isSheet: Bool
-    #endif
-
+#endif
+    
     init() {
-        #if os(macOS)
+#if os(macOS)
         self._isPresented = .constant(true)
         self.isSheet = false
-        #endif
+#endif
     }
-
-    #if os(macOS)
+    
+#if os(macOS)
     init(isPresented: Binding<Bool>) {
         self._isPresented = isPresented
         self.isSheet = true
     }
-    #endif
-
+#endif
+    
     var body: some View {
-        #if os(iOS)
+#if os(iOS)
         content
-        #else
+#else
         content
-        #endif
+#endif
     }
-
+    
     private var content: some View {
         ZStack {
             PrivacyOverlayBackground(asBackground: true)
-
+            
             if albumManager.isUnlocked {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
+                        // 🔮 Paste all your UI elements here
                         sectionTop
                         sectionMid
                         sectionBottom
-                    }
-
-                        Toggle("Auto-remove from Photos after import", isOn: Binding(
-                            get: { storedCameraAutoRemoveFromPhotos },
-                            set: { newValue in
-                                // Show confirmation when enabling auto-remove to respect Photos policy
-                                if newValue {
-                                    pendingCameraAutoRemoveValue = true
-                                    showCameraAutoRemoveConfirm = true
-                                } else {
-                                    storedCameraAutoRemoveFromPhotos = false
-                                    albumManager.cameraAutoRemoveFromPhotos = false
-                                    albumManager.saveSettings()
+                        
+                        Group {
+                            Toggle("Auto-remove from Photos after import", isOn: Binding(
+                                get: { storedCameraAutoRemoveFromPhotos },
+                                set: { newValue in
+                                    // Show confirmation when enabling auto-remove to respect Photos policy
+                                    if newValue {
+                                        pendingCameraAutoRemoveValue = true
+                                        showCameraAutoRemoveConfirm = true
+                                    } else {
+                                        storedCameraAutoRemoveFromPhotos = false
+                                        albumManager.cameraAutoRemoveFromPhotos = false
+                                        albumManager.saveSettings()
+                                    }
                                 }
-                            }
-                        ))
-
-                        Divider()
-    
+                            ))
+                            
+                            Divider()
+                        }
                         // Confirmation alert for camera auto-remove
                         .alert("Enable Auto-remove from Photos?", isPresented: $showCameraAutoRemoveConfirm) {
                             Button("Enable", role: .destructive) {
@@ -134,29 +138,29 @@ struct PreferencesView: View {
                         Text("Change your album password. This will re-encrypt all data.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-
+                        
                         Text("Stealth Features")
                             .font(.headline)
-
+                        
                         Toggle("Stealth Mode (Fake Crash)", isOn: $stealthModeEnabled)
                         Text(
                             "When enabled, the app will appear to crash or freeze on launch. Long press the screen for 1.5 seconds to unlock."
                         )
                         .font(.caption)
                         .foregroundStyle(.secondary)
-
+                        
                         HStack {
                             Text("Decoy Password")
                             Spacer()
                             if !decoyPasswordHash.isEmpty {
                                 Button("Remove") {
-                                    albumManager.clearDecoyPassword()
+                                    AlbumManager.shared.clearDecoyPassword()
                                     // Force update since AppStorage might not sync immediately with direct UserDefaults modification in manager
                                     decoyPasswordHash = ""
                                 }
                                 .buttonStyle(.bordered)
                                 .tint(.red)
-
+                                
                                 Button("Change") {
                                     decoyPasswordInput = ""
                                     decoyPasswordConfirm = ""
@@ -177,9 +181,9 @@ struct PreferencesView: View {
                         Text("A decoy password unlocks an empty album. Use this if forced to unlock your device.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-
+                        
                         Divider()
-
+                        
                         Toggle("Lockdown Mode (restrict imports/exports & iCloud)", isOn: $storedLockdownMode)
                             .accessibilityIdentifier("lockdownToggle")
                             .onChange(of: storedLockdownMode) { isOn in
@@ -207,21 +211,21 @@ struct PreferencesView: View {
                             } message: {
                                 Text("Lockdown Mode will disable iCloud sync, imports and exports. Use this when you need to minimize external connectivity and data movement.")
                             }
-
+                        
                         Text("While Lockdown Mode is enabled the app will refuse imports, exports, and iCloud verification. Share extensions will be blocked from depositing files into the album's inbox.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-
+                        
                         Text("Import & Export")
                             .font(.headline)
-
+                        
                         // Export & privacy controls
                         Toggle("Require re-auth for exports", isOn: $albumManager.requireReauthForExports)
                             .disabled(albumManager.lockdownModeEnabled)
                             .onChange(of: albumManager.requireReauthForExports) { _ in
                                 albumManager.saveSettings()
                             }
-
+                        
                         HStack {
                             Text("Backup Schedule")
                             Spacer()
@@ -237,13 +241,13 @@ struct PreferencesView: View {
                         .onChange(of: albumManager.backupSchedule) { _ in
                             albumManager.saveSettings()
                         }
-
+                        
                         Toggle("Encrypted iCloud Sync", isOn: $albumManager.encryptedCloudSyncEnabled)
                             .disabled(albumManager.lockdownModeEnabled)
                             .onChange(of: albumManager.encryptedCloudSyncEnabled) { _ in
                                 albumManager.saveSettings()
                             }
-
+                        
                         // Cloud sync controls — last sync, manual sync, encryption status
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -253,7 +257,7 @@ struct PreferencesView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-
+                            
                             HStack(spacing: 12) {
                                 if let last = albumManager.lastCloudSync {
                                     Text("Last sync: \(DateFormatter.localizedString(from: last, dateStyle: .short, timeStyle: .short))")
@@ -264,13 +268,13 @@ struct PreferencesView: View {
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                 }
-
+                                
                                 Spacer()
-
+                                
                                 Button(action: {
                                     let manager: AlbumManager = albumManager
                                     Task {
-                                        _ = await manager.performManualCloudSync()
+                                        let _ = try? await AlbumManager.shared.performManualCloudSync()
                                     }
                                 }) {
                                     Text("Sync now")
@@ -278,13 +282,13 @@ struct PreferencesView: View {
                                 .buttonStyle(.bordered)
                                 .disabled(albumManager.lockdownModeEnabled || !albumManager.encryptedCloudSyncEnabled || albumManager.cloudSyncStatus == .syncing)
                             }
-
+                            
                             // Quick encrypted sync verification (writes a short encrypted file to iCloud container and verifies round-trip)
                             HStack {
                                 Button(action: {
                                     let manager: AlbumManager = albumManager
                                     Task {
-                                        let _ = await manager.performQuickEncryptedCloudVerification()
+                                        let _ = try? await AlbumManager.shared.performQuickEncryptedCloudVerification()
                                         // no-op; AlbumManager updates state for UI
                                     }
                                 }) {
@@ -292,21 +296,21 @@ struct PreferencesView: View {
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .disabled(albumManager.lockdownModeEnabled || !albumManager.encryptedCloudSyncEnabled || albumManager.cloudSyncStatus == .syncing)
-
+                                
                                 Spacer()
-
+                                
                                 Text(albumManager.cloudVerificationStatus.rawValue.capitalized)
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
-
+                            
                             if let cloudMessage = albumManager.cloudSyncErrorMessage {
                                 Text(cloudMessage)
                                     .font(.caption2)
                                     .foregroundStyle(.orange)
                                     .multilineTextAlignment(.leading)
                             }
-
+                            
                             // Show whether encryption is performed client-side for items pushed to cloud
                             HStack {
                                 Text("Encryption status")
@@ -317,7 +321,7 @@ struct PreferencesView: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
-
+                        
                         HStack {
                             Text("Thumbnail Privacy")
                             Spacer()
@@ -332,19 +336,19 @@ struct PreferencesView: View {
                         .onChange(of: albumManager.thumbnailPrivacy) { _ in
                             albumManager.saveSettings()
                         }
-
+                        
                         Toggle("Strip metadata on export", isOn: $albumManager.stripMetadataOnExport)
                             .disabled(albumManager.lockdownModeEnabled)
                             .onChange(of: albumManager.stripMetadataOnExport) { _ in
                                 albumManager.saveSettings()
                             }
-
+                        
                         Toggle("Password-protect exports", isOn: $albumManager.exportPasswordProtect)
                             .disabled(albumManager.lockdownModeEnabled)
                             .onChange(of: albumManager.exportPasswordProtect) { _ in
                                 albumManager.saveSettings()
                             }
-
+                        
                         HStack {
                             Text("Export expiry (days)")
                             Spacer()
@@ -355,12 +359,12 @@ struct PreferencesView: View {
                         .onChange(of: albumManager.exportExpiryDays) { _ in
                             albumManager.saveSettings()
                         }
-
+                        
                         Toggle("Enable verbose logging", isOn: $albumManager.enableVerboseLogging)
                             .onChange(of: albumManager.enableVerboseLogging) { _ in
                                 albumManager.saveSettings()
                             }
-
+                        
                         HStack {
                             Text("Passphrase minimum length")
                             Spacer()
@@ -370,41 +374,41 @@ struct PreferencesView: View {
                         .onChange(of: albumManager.passphraseMinLength) { _ in
                             albumManager.saveSettings()
                         }
-
+                        
                         Toggle("Telemetry (opt-in)", isOn: $albumManager.telemetryEnabled)
                             .onChange(of: albumManager.telemetryEnabled) { _ in
                                 albumManager.saveSettings()
                             }
-
+                        
                         Toggle("Auto-remove duplicates on import", isOn: $albumManager.autoRemoveDuplicatesOnImport)
-
-                            Divider()
-
-                            // Screen sleep behaviour
-                            Toggle("Keep screen awake while unlocked", isOn: $storedKeepScreenAwakeWhileUnlocked)
-                                .onChange(of: storedKeepScreenAwakeWhileUnlocked) { newValue in
-                                    // Save to user defaults (AppStorage already persists), nothing else needed here.
-                                    // AlbumManager will read the setting when suspensions end to decide behavior.
-                                    albumManager.saveSettings()
-                                }
-                                Toggle("Prevent system sleep during imports & viewing", isOn: $storedKeepScreenAwakeDuringSuspensions)
-                                    .onChange(of: storedKeepScreenAwakeDuringSuspensions) { newValue in
-                                        albumManager.saveSettings()
-                                    }
+                        
+                        Divider()
+                        
+                        // Screen sleep behaviour
+                        Toggle("Keep screen awake while unlocked", isOn: $storedKeepScreenAwakeWhileUnlocked)
+                            .onChange(of: storedKeepScreenAwakeWhileUnlocked) { newValue in
+                                // Save to user defaults (AppStorage already persists), nothing else needed here.
+                                // AlbumManager will read the setting when suspensions end to decide behavior.
+                                albumManager.saveSettings()
+                            }
+                        Toggle("Prevent system sleep during imports & viewing", isOn: $storedKeepScreenAwakeDuringSuspensions)
+                            .onChange(of: storedKeepScreenAwakeDuringSuspensions) { newValue in
+                                albumManager.saveSettings()
+                            }
                         Text("Automatically skip importing photos that are already in the album.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-
+                        
                         Toggle("Enable import notifications", isOn: $albumManager.enableImportNotifications)
                         Text("Show system notifications when batch imports complete.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-
+                        
                         Divider()
-
+                        
                         Text("Diagnostics")
                             .font(.headline)
-
+                        
                         HStack {
                             Text("Lockdown Mode")
                             Spacer()
@@ -412,7 +416,7 @@ struct PreferencesView: View {
                                 .font(.caption2)
                                 .foregroundStyle(albumManager.lockdownModeEnabled ? .red : .secondary)
                         }
-
+                        
                         Button {
                             runHealthCheck()
                         } label: {
@@ -423,7 +427,7 @@ struct PreferencesView: View {
                             }
                         }
                         .disabled(isCheckingHealth)
-
+                        
                         if let report = healthReport {
                             VStack(alignment: .leading, spacing: 8) {
                                 HealthCheckRow(label: "Random Generation (Entropy)", passed: report.randomGenerationHealthy)
@@ -443,18 +447,18 @@ struct PreferencesView: View {
                             .background(Color.gray.opacity(0.1))
                             .cornerRadius(8)
                         }
-
+                        
                         if let error = healthCheckError {
                             Text("Check failed: \(error)")
                                 .foregroundStyle(.red)
                                 .font(.caption)
                         }
-
+                        
                         Divider()
-
+                        
                         Text("Key Management")
                             .font(.headline)
-
+                        
                         HStack {
                             Button("Export Encrypted Key Backup") {
                                 backupPassword = ""
@@ -466,7 +470,7 @@ struct PreferencesView: View {
                             .buttonStyle(.bordered)
                             Spacer()
                         }
-
+                        
                         .sheet(isPresented: $showBackupSheet) {
                             VStack(spacing: 16) {
                                 Text("Export Encrypted Key Backup")
@@ -474,24 +478,24 @@ struct PreferencesView: View {
                                 Text("Enter a password to protect the exported key backup file.")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-
+                                
                                 SecureField("Backup Password", text: $backupPassword)
                                     .textFieldStyle(.roundedBorder)
                                     .frame(maxWidth: 320)
                                 SecureField("Confirm Password", text: $backupPasswordConfirm)
                                     .textFieldStyle(.roundedBorder)
                                     .frame(maxWidth: 320)
-
+                                
                                 if let error = backupError {
                                     Text(error)
                                         .foregroundStyle(.red)
                                         .font(.caption)
                                 }
-
+                                
                                 HStack(spacing: 16) {
                                     Button("Cancel") { showBackupSheet = false }
-                                    .buttonStyle(.bordered)
-
+                                        .buttonStyle(.bordered)
+                                    
                                     Button {
                                         guard !backupPassword.isEmpty else {
                                             backupError = "Password cannot be empty"
@@ -501,7 +505,7 @@ struct PreferencesView: View {
                                             backupError = "Passwords do not match"
                                             return
                                         }
-
+                                        
                                         isBackingUp = true
                                         backupError = nil
                                         Task {
@@ -527,7 +531,7 @@ struct PreferencesView: View {
                             .padding()
                             .presentationDetents([.height(320)])
                         }
-
+                        
                         // Share sheet for exported backup (iOS). After successful sharing we remove the temp file.
                         .sheet(isPresented: $showShareSheet) {
                             if let url = backupResultURL {
@@ -544,10 +548,10 @@ struct PreferencesView: View {
                                 EmptyView()
                             }
                         }
-
+                        
                         Spacer()
-
-                        #if os(iOS)
+                        
+#if os(iOS)
                         Divider()
                         
                         HStack {
@@ -558,9 +562,9 @@ struct PreferencesView: View {
                             .buttonStyle(.borderedProminent)
                             Spacer()
                         }
-                        #endif
-
-                        #if os(macOS)
+#endif
+                        
+#if os(macOS)
                         if isSheet {
                             Divider()
                             
@@ -573,7 +577,9 @@ struct PreferencesView: View {
                                 Spacer()
                             }
                         }
-                        #endif
+#endif
+                        
+                        
                     }
                     .padding(20)
                 }
@@ -592,9 +598,9 @@ struct PreferencesView: View {
             }
         }
         .frame(minWidth: 360, minHeight: 450)
-        #if os(macOS)
+#if os(macOS)
         .navigationTitle("Settings")
-        #endif
+#endif
         .onChange(of: albumManager.secureDeletionEnabled) { _ in
             albumManager.saveSettings()
         }
@@ -612,35 +618,35 @@ struct PreferencesView: View {
             VStack(spacing: 20) {
                 Text("Set Decoy Password")
                     .font(.headline)
-
+                
                 Text("Enter a password that will unlock a fake, empty album.")
                     .multilineTextAlignment(.center)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
-
+                
                 SecureField("Decoy Password", text: $decoyPasswordInput)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.password)
                     .frame(maxWidth: 300)
-
+                
                 SecureField("Confirm Password", text: $decoyPasswordConfirm)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.password)
                     .frame(maxWidth: 300)
-
+                
                 if let error = decoyPasswordError {
                     Text(error)
                         .foregroundStyle(.red)
                         .font(.caption)
                 }
-
+                
                 HStack(spacing: 20) {
                     Button("Cancel") {
                         showDecoyPasswordSheet = false
                     }
                     .buttonStyle(.bordered)
-
+                    
                     Button("Save") {
                         if decoyPasswordInput.isEmpty {
                             decoyPasswordError = "Password cannot be empty"
@@ -666,36 +672,36 @@ struct PreferencesView: View {
             VStack(spacing: 20) {
                 Text("Change Album Password")
                     .font(.headline)
-
+                
                 SecureField("Current Password", text: $currentPasswordInput)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.password)
                     .frame(maxWidth: 300)
-
+                
                 SecureField("New Password", text: $newPasswordInput)
                     .textFieldStyle(.roundedBorder)
-                    #if os(iOS)
+#if os(iOS)
                     .textContentType(.newPassword)
-                    #endif
+#endif
                     .frame(maxWidth: 300)
-
+                
                 SecureField("Confirm New Password", text: $confirmPasswordInput)
                     .textFieldStyle(.roundedBorder)
-                    #if os(iOS)
+#if os(iOS)
                     .textContentType(.newPassword)
-                    #endif
+#endif
                     .frame(maxWidth: 300)
-
+                
                 if let error = changePasswordError {
                     Text(error).foregroundStyle(.red).font(.caption)
                 }
-
+                
                 if let progress = changePasswordProgress {
                     Text(progress)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-
+                
                 HStack(spacing: 20) {
                     Button("Cancel") {
                         showChangePasswordSheet = false
@@ -706,7 +712,7 @@ struct PreferencesView: View {
                         changePasswordProgress = nil
                     }
                     .buttonStyle(.bordered)
-
+                    
                     Button("Change") {
                         if newPasswordInput.isEmpty {
                             changePasswordError = "New password cannot be empty"
@@ -754,184 +760,184 @@ struct PreferencesView: View {
         }
         .preferredColorScheme(colorScheme)
     }
-
-        // Split large view into smaller computed subviews to help the Swift type checker
-        @ViewBuilder
-        private var sectionTop: some View {
-            Text("General")
-                .font(.headline)
-
-            HStack {
-                Text("Privacy Screen Style")
-                Spacer()
-                Picker("", selection: $privacyBackgroundStyle) {
-                    ForEach(PrivacyBackgroundStyle.allCases) { style in
-                        Text(style.displayName).tag(style)
-                    }
+    
+    // Split large view into smaller computed subviews to help the Swift type checker
+    @ViewBuilder
+    private var sectionTop: some View {
+        Text("General")
+            .font(.headline)
+        
+        HStack {
+            Text("Privacy Screen Style")
+            Spacer()
+            Picker("", selection: $privacyBackgroundStyle) {
+                ForEach(PrivacyBackgroundStyle.allCases) { style in
+                    Text(style.displayName).tag(style)
                 }
-                .pickerStyle(.menu)
-                .onChange(of: storedAppTheme) { _ in
-                    albumManager.appTheme = storedAppTheme
-                    albumManager.saveSettings()
-                }
-                .labelsHidden()
             }
-
-            Divider()
-
-            HStack {
-                Text("Undo banner timeout")
-                Spacer()
-                Text("\(Int(undoTimeoutSeconds))s")
-                    .foregroundStyle(.secondary)
-            }
-
-            Slider(value: $undoTimeoutSeconds, in: 2...20, step: 1)
-
-            Divider()
-
-            Text("Security")
-                .font(.headline)
-
-            HStack {
-                Text("Auto-lock timeout")
-                Spacer()
-                Text("\(Int(storedAutoLockTimeout))s")
-                    .foregroundStyle(.secondary)
-            }
-            Slider(value: $storedAutoLockTimeout, in: 30...3600, step: 30) {
-            }
-            .onChange(of: storedAutoLockTimeout) { _ in
-                albumManager.autoLockTimeoutSeconds = storedAutoLockTimeout
+            .pickerStyle(.menu)
+            .onChange(of: storedAppTheme) { _ in
+                albumManager.appTheme = storedAppTheme
                 albumManager.saveSettings()
             }
-
-            Toggle("Require Passcode On Launch", isOn: $storedRequirePasscodeOnLaunch)
-                .onChange(of: storedRequirePasscodeOnLaunch) { _ in
-                    albumManager.requirePasscodeOnLaunch = storedRequirePasscodeOnLaunch
-                    albumManager.saveSettings()
-                }
-
-            HStack {
-                Text("Biometric Policy")
-                Spacer()
-                Picker("", selection: $storedBiometricPolicy) {
-                    Text("Prefer Biometrics").tag("biometrics_preferred")
-                    Text("Require Biometrics").tag("biometrics_required")
-                    Text("Disable Biometrics").tag("biometrics_disabled")
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-            }
-            .onChange(of: storedBiometricPolicy) { _ in
-                albumManager.biometricPolicy = storedBiometricPolicy
+            .labelsHidden()
+        }
+        
+        Divider()
+        
+        HStack {
+            Text("Undo banner timeout")
+            Spacer()
+            Text("\(Int(undoTimeoutSeconds))s")
+                .foregroundStyle(.secondary)
+        }
+        
+        Slider(value: $undoTimeoutSeconds, in: 2...20, step: 1)
+        
+        Divider()
+        
+        Text("Security")
+            .font(.headline)
+        
+        HStack {
+            Text("Auto-lock timeout")
+            Spacer()
+            Text("\(Int(storedAutoLockTimeout))s")
+                .foregroundStyle(.secondary)
+        }
+        Slider(value: $storedAutoLockTimeout, in: 30...3600, step: 30) {
+        }
+        .onChange(of: storedAutoLockTimeout) { _ in
+            albumManager.autoLockTimeoutSeconds = storedAutoLockTimeout
+            albumManager.saveSettings()
+        }
+        
+        Toggle("Require Passcode On Launch", isOn: $storedRequirePasscodeOnLaunch)
+            .onChange(of: storedRequirePasscodeOnLaunch) { _ in
+                albumManager.requirePasscodeOnLaunch = storedRequirePasscodeOnLaunch
                 albumManager.saveSettings()
             }
-
-            Toggle("Require Re-authentication", isOn: $requireForegroundReauthentication)
-            Text("When enabled, the album will lock when the app goes to the background or is inactive.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            // Auto-wipe on failed unlock attempts
-            Toggle("Auto-wipe on repeated failed unlocks", isOn: $albumManager.autoWipeOnFailedAttemptsEnabled)
-                .onChange(of: albumManager.autoWipeOnFailedAttemptsEnabled) { _ in
-                    albumManager.saveSettings()
-                }
-
-            if albumManager.autoWipeOnFailedAttemptsEnabled {
-                HStack {
-                    Text("Wipe threshold")
-                    Spacer()
-                    Stepper("\(albumManager.autoWipeFailedAttemptsThreshold)", value: $albumManager.autoWipeFailedAttemptsThreshold, in: 1...100)
-                        .labelsHidden()
-                }
-                .onChange(of: albumManager.autoWipeFailedAttemptsThreshold) { _ in
-                    albumManager.saveSettings()
-                }
+        
+        HStack {
+            Text("Biometric Policy")
+            Spacer()
+            Picker("", selection: $storedBiometricPolicy) {
+                Text("Prefer Biometrics").tag("biometrics_preferred")
+                Text("Require Biometrics").tag("biometrics_required")
+                Text("Disable Biometrics").tag("biometrics_disabled")
             }
-
-            Toggle("Enable Recovery Key", isOn: $albumManager.enableRecoveryKey)
-                .onChange(of: albumManager.enableRecoveryKey) { _ in
-                    albumManager.saveSettings()
-                }
-            Text("When enabled, the app keeps an encrypted recovery key to help recover an interrupted password-change operation. This is internal and does not display a recovery code in the menus — it is used only during password-change recovery.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Toggle("Secure Deletion (Overwrite)", isOn: $albumManager.secureDeletionEnabled)
-            Text(
-                "When enabled, deleted files are overwritten 3 times. This is slower but more secure. Note: on modern devices (APFS / SSD) overwrites may not always guarantee physical erasure — see app documentation for details. Secure overwrite is limited to the first \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)) of each file; larger files will be removed but only the first chunk will be overwritten."
-            )
+            .pickerStyle(.menu)
+            .labelsHidden()
+        }
+        .onChange(of: storedBiometricPolicy) { _ in
+            albumManager.biometricPolicy = storedBiometricPolicy
+            albumManager.saveSettings()
+        }
+        
+        Toggle("Require Re-authentication", isOn: $requireForegroundReauthentication)
+        Text("When enabled, the album will lock when the app goes to the background or is inactive.")
             .font(.caption)
             .foregroundStyle(.secondary)
-
-            Divider()
-            Text("Appearance")
-                .font(.headline)
-
-            Toggle("Compact Layout", isOn: $storedCompactLayoutEnabled)
-                .onChange(of: storedCompactLayoutEnabled) { _ in
-                    albumManager.compactLayoutEnabled = storedCompactLayoutEnabled
-                    albumManager.saveSettings()
-                }
-            Text("Enables a denser layout in some screens (e.g. smaller buttons and tighter paddings). Effects are visible in a few places such as the unlock screen and lists.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            HStack {
-                Text("Accent Color")
-                Spacer()
-                Picker("Accent", selection: $storedAccentColorName) {
-                    Text("Blue").tag("blue")
-                    Text("Green").tag("green")
-                    Text("Pink").tag("pink")
-                    Text("Winamp").tag("winamp")
-                    Text("System").tag("system")
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-            }
-            .onChange(of: storedAccentColorName) { _ in
-                albumManager.accentColorName = storedAccentColorName
+        
+        // Auto-wipe on failed unlock attempts
+        Toggle("Auto-wipe on repeated failed unlocks", isOn: $albumManager.autoWipeOnFailedAttemptsEnabled)
+            .onChange(of: albumManager.autoWipeOnFailedAttemptsEnabled) { _ in
                 albumManager.saveSettings()
             }
-            Text("Choose the app accent color used for highlighted UI elements across the app. Choosing 'System' defers to the platform default accent color.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Divider()
-
-            Text("Camera")
-                .font(.headline)
-
-            Toggle("Capture at max quality", isOn: $storedCameraMaxQuality)
-                .onChange(of: storedCameraMaxQuality) { _ in
-                    albumManager.cameraMaxQuality = storedCameraMaxQuality
+        
+        if albumManager.autoWipeOnFailedAttemptsEnabled {
+            HStack {
+                Text("Wipe threshold")
+                Spacer()
+                Stepper("\(albumManager.autoWipeFailedAttemptsThreshold)", value: $albumManager.autoWipeFailedAttemptsThreshold, in: 1...100)
+                    .labelsHidden()
+            }
+            .onChange(of: albumManager.autoWipeFailedAttemptsThreshold) { _ in
+                albumManager.saveSettings()
+            }
+        }
+        
+        Toggle("Enable Recovery Key", isOn: $albumManager.enableRecoveryKey)
+            .onChange(of: albumManager.enableRecoveryKey) { _ in
+                albumManager.saveSettings()
+            }
+        Text("When enabled, the app keeps an encrypted recovery key to help recover an interrupted password-change operation. This is internal and does not display a recovery code in the menus — it is used only during password-change recovery.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        
+        Toggle("Secure Deletion (Overwrite)", isOn: $albumManager.secureDeletionEnabled)
+        Text(
+            "When enabled, deleted files are overwritten 3 times. This is slower but more secure. Note: on modern devices (APFS / SSD) overwrites may not always guarantee physical erasure — see app documentation for details. Secure overwrite is limited to the first \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)) of each file; larger files will be removed but only the first chunk will be overwritten."
+        )
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        
+        Divider()
+        Text("Appearance")
+            .font(.headline)
+        
+        Toggle("Compact Layout", isOn: $storedCompactLayoutEnabled)
+            .onChange(of: storedCompactLayoutEnabled) { _ in
+                albumManager.compactLayoutEnabled = storedCompactLayoutEnabled
+                albumManager.saveSettings()
+            }
+        Text("Enables a denser layout in some screens (e.g. smaller buttons and tighter paddings). Effects are visible in a few places such as the unlock screen and lists.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        
+        HStack {
+            Text("Accent Color")
+            Spacer()
+            Picker("Accent", selection: $storedAccentColorName) {
+                Text("Blue").tag("blue")
+                Text("Green").tag("green")
+                Text("Pink").tag("pink")
+                Text("Winamp").tag("winamp")
+                Text("System").tag("system")
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+        }
+        .onChange(of: storedAccentColorName) { _ in
+            albumManager.accentColorName = storedAccentColorName
+            albumManager.saveSettings()
+        }
+        Text("Choose the app accent color used for highlighted UI elements across the app. Choosing 'System' defers to the platform default accent color.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        
+        Divider()
+        
+        Text("Camera")
+            .font(.headline)
+        
+        Toggle("Capture at max quality", isOn: $storedCameraMaxQuality)
+            .onChange(of: storedCameraMaxQuality) { _ in
+                albumManager.cameraMaxQuality = storedCameraMaxQuality
+                albumManager.saveSettings()
+            }
+    }
+    
+    @ViewBuilder
+    private var sectionMid: some View {
+        Toggle("Auto-remove from Photos after import", isOn: Binding(
+            get: { storedCameraAutoRemoveFromPhotos },
+            set: { newValue in
+                // Show confirmation when enabling auto-remove to respect Photos policy
+                if newValue {
+                    pendingCameraAutoRemoveValue = true
+                    showCameraAutoRemoveConfirm = true
+                } else {
+                    storedCameraAutoRemoveFromPhotos = false
+                    albumManager.cameraAutoRemoveFromPhotos = false
                     albumManager.saveSettings()
                 }
-        }
-
-        @ViewBuilder
-        private var sectionMid: some View {
-            Toggle("Auto-remove from Photos after import", isOn: Binding(
-                get: { storedCameraAutoRemoveFromPhotos },
-                set: { newValue in
-                    // Show confirmation when enabling auto-remove to respect Photos policy
-                    if newValue {
-                        pendingCameraAutoRemoveValue = true
-                        showCameraAutoRemoveConfirm = true
-                    } else {
-                        storedCameraAutoRemoveFromPhotos = false
-                        albumManager.cameraAutoRemoveFromPhotos = false
-                        albumManager.saveSettings()
-                    }
-                }
-            ))
-
-            Divider()
-
-            // Confirmation alert for camera auto-remove
+            }
+        ))
+        
+        Divider()
+        
+        // Confirmation alert for camera auto-remove
             .alert("Enable Auto-remove from Photos?", isPresented: $showCameraAutoRemoveConfirm) {
                 Button("Enable", role: .destructive) {
                     storedCameraAutoRemoveFromPhotos = true
@@ -945,352 +951,352 @@ struct PreferencesView: View {
             } message: {
                 Text("Enabling this will automatically remove photos from the Photos app after they are securely imported into Encrypted Album. This is potentially destructive — make sure you have backups and understand the behaviour.")
             }
-            Text("Note: this operation requires Photos permission and will permanently remove items from the system Photos library (it moves items to the Recently Deleted album). You may be prompted to grant access when first used.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Button("Change Album Password") {
-                showChangePasswordSheet = true
-            }
-            .buttonStyle(.bordered)
-            Text("Change your album password. This will re-encrypt all data.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Text("Stealth Features")
-                .font(.headline)
-
-            Toggle("Stealth Mode (Fake Crash)", isOn: $stealthModeEnabled)
-            Text(
-                "When enabled, the app will appear to crash or freeze on launch. Long press the screen for 1.5 seconds to unlock."
-            )
+        Text("Note: this operation requires Photos permission and will permanently remove items from the system Photos library (it moves items to the Recently Deleted album). You may be prompted to grant access when first used.")
             .font(.caption)
             .foregroundStyle(.secondary)
-
-            HStack {
-                Text("Decoy Password")
-                Spacer()
-                if !decoyPasswordHash.isEmpty {
-                    Button("Remove") {
-                        albumManager.clearDecoyPassword()
-                        // Force update since AppStorage might not sync immediately with direct UserDefaults modification in manager
-                        decoyPasswordHash = ""
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(.red)
-
-                    Button("Change") {
-                        decoyPasswordInput = ""
-                        decoyPasswordConfirm = ""
-                        decoyPasswordError = nil
-                        showDecoyPasswordSheet = true
-                    }
-                    .buttonStyle(.bordered)
-                } else {
-                    Button("Set Decoy Password") {
-                        decoyPasswordInput = ""
-                        decoyPasswordConfirm = ""
-                        decoyPasswordError = nil
-                        showDecoyPasswordSheet = true
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
-            Text("A decoy password unlocks an empty album. Use this if forced to unlock your device.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Divider()
-
-            Toggle("Lockdown Mode (restrict imports/exports & iCloud)", isOn: $storedLockdownMode)
-                .accessibilityIdentifier("lockdownToggle")
-                .onChange(of: storedLockdownMode) { isOn in
-                    if isOn {
-                        // Ask for confirmation before enabling
-                        showLockdownConfirm = true
-                        // revert until confirmed
-                        storedLockdownMode = false
-                    } else {
-                        albumManager.lockdownModeEnabled = false
-                        albumManager.saveSettings()
-                    }
-                }
-                .toggleStyle(SwitchToggleStyle(tint: .red))
-                .padding(.vertical)
-                .alert("Enable Lockdown Mode?", isPresented: $showLockdownConfirm) {
-                    Button("Enable", role: .destructive) {
-                        storedLockdownMode = true
-                        albumManager.lockdownModeEnabled = true
-                        albumManager.saveSettings()
-                    }
-                    Button("Cancel", role: .cancel) {
-                        storedLockdownMode = false
-                    }
-                } message: {
-                    Text("Lockdown Mode will disable iCloud sync, imports and exports. Use this when you need to minimize external connectivity and data movement.")
-                }
-
-            Text("While Lockdown Mode is enabled the app will refuse imports, exports, and iCloud verification. Share extensions will be blocked from depositing files into the album's inbox.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Text("Import & Export")
-                .font(.headline)
-
-            // Export & privacy controls
-            Toggle("Require re-auth for exports", isOn: $albumManager.requireReauthForExports)
-                .disabled(albumManager.lockdownModeEnabled)
-                .onChange(of: albumManager.requireReauthForExports) { _ in
-                    albumManager.saveSettings()
-                }
-
-            HStack {
-                Text("Backup Schedule")
-                Spacer()
-                Picker("Backup", selection: $albumManager.backupSchedule) {
-                    Text("Manual").tag("manual")
-                    Text("Weekly").tag("weekly")
-                    Text("Monthly").tag("monthly")
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-            }
-            .disabled(albumManager.lockdownModeEnabled)
-            .onChange(of: albumManager.backupSchedule) { _ in
-                albumManager.saveSettings()
-            }
-
-            Toggle("Encrypted iCloud Sync", isOn: $albumManager.encryptedCloudSyncEnabled)
-                .disabled(albumManager.lockdownModeEnabled)
-                .onChange(of: albumManager.encryptedCloudSyncEnabled) { _ in
-                    albumManager.saveSettings()
-                }
-
-            // Cloud sync controls — last sync, manual sync, encryption status
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("iCloud Sync")
-                    Spacer()
-                    Text(albumManager.cloudSyncStatus.rawValue.capitalized)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                HStack(spacing: 12) {
-                    if let last = albumManager.lastCloudSync {
-                        Text("Last sync: \(DateFormatter.localizedString(from: last, dateStyle: .short, timeStyle: .short))")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("Last sync: —")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer()
-
-                    Button(action: {
-                        let manager: AlbumManager = albumManager
-                        Task {
-                            _ = await manager.performManualCloudSync()
-                        }
-                    }) {
-                        Text("Sync now")
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(albumManager.lockdownModeEnabled || !albumManager.encryptedCloudSyncEnabled || albumManager.cloudSyncStatus == .syncing)
-                }
-
-                // Quick encrypted sync verification (writes a short encrypted file to iCloud container and verifies round-trip)
-                HStack {
-                    Button(action: {
-                        let manager: AlbumManager = albumManager
-                        Task {
-                            let _ = await manager.performQuickEncryptedCloudVerification()
-                            // no-op; AlbumManager updates state for UI
-                        }
-                    }) {
-                        Text("Verify encryption")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(albumManager.lockdownModeEnabled || !albumManager.encryptedCloudSyncEnabled || albumManager.cloudSyncStatus == .syncing)
-
-                    Spacer()
-
-                    Text(albumManager.cloudVerificationStatus.rawValue.capitalized)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                if let cloudMessage = albumManager.cloudSyncErrorMessage {
-                    Text(cloudMessage)
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                        .multilineTextAlignment(.leading)
-                }
-
-                // Show whether encryption is performed client-side for items pushed to cloud
-                HStack {
-                    Text("Encryption status")
-                    Spacer()
-                    Text(albumManager.encryptedCloudSyncEnabled ? "Client-side encrypted (AES-GCM)" : "Disabled")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            HStack {
-                Text("Thumbnail Privacy")
-                Spacer()
-                Picker("Thumbnail", selection: $albumManager.thumbnailPrivacy) {
-                    Text("Blur").tag("blur")
-                    Text("Hide").tag("hide")
-                    Text("None").tag("none")
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-            }
-            .onChange(of: albumManager.thumbnailPrivacy) { _ in
-                albumManager.saveSettings()
-            }
+        Button("Change Album Password") {
+            showChangePasswordSheet = true
         }
-
-        @ViewBuilder
-        private var sectionBottom: some View {
-            Toggle("Strip metadata on export", isOn: $albumManager.stripMetadataOnExport)
-                .disabled(albumManager.lockdownModeEnabled)
-                .onChange(of: albumManager.stripMetadataOnExport) { _ in
-                    albumManager.saveSettings()
+        .buttonStyle(.bordered)
+        Text("Change your album password. This will re-encrypt all data.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        
+        Text("Stealth Features")
+            .font(.headline)
+        
+        Toggle("Stealth Mode (Fake Crash)", isOn: $stealthModeEnabled)
+        Text(
+            "When enabled, the app will appear to crash or freeze on launch. Long press the screen for 1.5 seconds to unlock."
+        )
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        
+        HStack {
+            Text("Decoy Password")
+            Spacer()
+            if !decoyPasswordHash.isEmpty {
+                Button("Remove") {
+                    AlbumManager.shared.clearDecoyPassword()
+                    // Force update since AppStorage might not sync immediately with direct UserDefaults modification in manager
+                    decoyPasswordHash = ""
                 }
-
-            Toggle("Password-protect exports", isOn: $albumManager.exportPasswordProtect)
-                .disabled(albumManager.lockdownModeEnabled)
-                .onChange(of: albumManager.exportPasswordProtect) { _ in
-                    albumManager.saveSettings()
-                }
-
-            HStack {
-                Text("Export expiry (days)")
-                Spacer()
-                Stepper("\(albumManager.exportExpiryDays)", value: $albumManager.exportExpiryDays, in: 1...365)
-                    .labelsHidden()
-            }
-            .disabled(albumManager.lockdownModeEnabled)
-            .onChange(of: albumManager.exportExpiryDays) { _ in
-                albumManager.saveSettings()
-            }
-
-            Toggle("Enable verbose logging", isOn: $albumManager.enableVerboseLogging)
-                .onChange(of: albumManager.enableVerboseLogging) { _ in
-                    albumManager.saveSettings()
-                }
-
-            HStack {
-                Text("Passphrase minimum length")
-                Spacer()
-                Stepper("\(albumManager.passphraseMinLength)", value: $albumManager.passphraseMinLength, in: 6...64)
-                    .labelsHidden()
-            }
-            .onChange(of: albumManager.passphraseMinLength) { _ in
-                albumManager.saveSettings()
-            }
-
-            Toggle("Telemetry (opt-in)", isOn: $albumManager.telemetryEnabled)
-                .onChange(of: albumManager.telemetryEnabled) { _ in
-                    albumManager.saveSettings()
-                }
-
-            Toggle("Auto-remove duplicates on import", isOn: $albumManager.autoRemoveDuplicatesOnImport)
-
-            Divider()
-
-            // Screen sleep behaviour
-            Toggle("Keep screen awake while unlocked", isOn: $storedKeepScreenAwakeWhileUnlocked)
-                .onChange(of: storedKeepScreenAwakeWhileUnlocked) { newValue in
-                    albumManager.saveSettings()
-                }
-            Toggle("Prevent system sleep during imports & viewing", isOn: $storedKeepScreenAwakeDuringSuspensions)
-                .onChange(of: storedKeepScreenAwakeDuringSuspensions) { newValue in
-                    albumManager.saveSettings()
-                }
-            Text("Automatically skip importing photos that are already in the album.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Toggle("Enable import notifications", isOn: $albumManager.enableImportNotifications)
-            Text("Show system notifications when batch imports complete.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Divider()
-
-            Text("Diagnostics")
-                .font(.headline)
-
-            HStack {
-                Text("Lockdown Mode")
-                Spacer()
-                Text(albumManager.lockdownModeEnabled ? "Enabled" : "Disabled")
-                    .font(.caption2)
-                    .foregroundStyle(albumManager.lockdownModeEnabled ? .red : .secondary)
-            }
-
-            Button {
-                runHealthCheck()
-            } label: {
-                if isCheckingHealth {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Text("Run Security Health Check")
-                }
-            }
-            .disabled(isCheckingHealth)
-
-            if let report = healthReport {
-                VStack(alignment: .leading, spacing: 8) {
-                    HealthCheckRow(label: "Random Generation (Entropy)", passed: report.randomGenerationHealthy)
-                    HealthCheckRow(label: "Crypto Operations", passed: report.cryptoOperationsHealthy)
-                    HealthCheckRow(label: "File System Security", passed: report.fileSystemSecure)
-                    HealthCheckRow(label: "Memory Security", passed: report.memorySecurityHealthy)
-                    Divider()
-                    HStack {
-                        Text("Overall Status:")
-                        Spacer()
-                        Text(report.overallHealthy ? "PASSED" : "FAILED")
-                            .fontWeight(.bold)
-                            .foregroundStyle(report.overallHealthy ? .green : .red)
-                    }
-                }
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(8)
-            }
-
-            if let error = healthCheckError {
-                Text("Check failed: \(error)")
-                    .foregroundStyle(.red)
-                    .font(.caption)
-            }
-
-            Divider()
-
-            Text("Key Management")
-                .font(.headline)
-
-            HStack {
-                Button("Export Encrypted Key Backup") {
-                    backupPassword = ""
-                    backupPasswordConfirm = ""
-                    backupError = nil
-                    showBackupSheet = true
-                }
-                .disabled(albumManager.lockdownModeEnabled)
                 .buttonStyle(.bordered)
-                Spacer()
+                .tint(.red)
+                
+                Button("Change") {
+                    decoyPasswordInput = ""
+                    decoyPasswordConfirm = ""
+                    decoyPasswordError = nil
+                    showDecoyPasswordSheet = true
+                }
+                .buttonStyle(.bordered)
+            } else {
+                Button("Set Decoy Password") {
+                    decoyPasswordInput = ""
+                    decoyPasswordConfirm = ""
+                    decoyPasswordError = nil
+                    showDecoyPasswordSheet = true
+                }
+                .buttonStyle(.bordered)
             }
-
-            // share/export sheet handled in content's chaining (unchanged)
         }
-
+        Text("A decoy password unlocks an empty album. Use this if forced to unlock your device.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        
+        Divider()
+        
+        Toggle("Lockdown Mode (restrict imports/exports & iCloud)", isOn: $storedLockdownMode)
+            .accessibilityIdentifier("lockdownToggle")
+            .onChange(of: storedLockdownMode) { isOn in
+                if isOn {
+                    // Ask for confirmation before enabling
+                    showLockdownConfirm = true
+                    // revert until confirmed
+                    storedLockdownMode = false
+                } else {
+                    albumManager.lockdownModeEnabled = false
+                    albumManager.saveSettings()
+                }
+            }
+            .toggleStyle(SwitchToggleStyle(tint: .red))
+            .padding(.vertical)
+            .alert("Enable Lockdown Mode?", isPresented: $showLockdownConfirm) {
+                Button("Enable", role: .destructive) {
+                    storedLockdownMode = true
+                    albumManager.lockdownModeEnabled = true
+                    albumManager.saveSettings()
+                }
+                Button("Cancel", role: .cancel) {
+                    storedLockdownMode = false
+                }
+            } message: {
+                Text("Lockdown Mode will disable iCloud sync, imports and exports. Use this when you need to minimize external connectivity and data movement.")
+            }
+        
+        Text("While Lockdown Mode is enabled the app will refuse imports, exports, and iCloud verification. Share extensions will be blocked from depositing files into the album's inbox.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        
+        Text("Import & Export")
+            .font(.headline)
+        
+        // Export & privacy controls
+        Toggle("Require re-auth for exports", isOn: $albumManager.requireReauthForExports)
+            .disabled(albumManager.lockdownModeEnabled)
+            .onChange(of: albumManager.requireReauthForExports) { _ in
+                albumManager.saveSettings()
+            }
+        
+        HStack {
+            Text("Backup Schedule")
+            Spacer()
+            Picker("Backup", selection: $albumManager.backupSchedule) {
+                Text("Manual").tag("manual")
+                Text("Weekly").tag("weekly")
+                Text("Monthly").tag("monthly")
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+        }
+        .disabled(albumManager.lockdownModeEnabled)
+        .onChange(of: albumManager.backupSchedule) { _ in
+            albumManager.saveSettings()
+        }
+        
+        Toggle("Encrypted iCloud Sync", isOn: $albumManager.encryptedCloudSyncEnabled)
+            .disabled(albumManager.lockdownModeEnabled)
+            .onChange(of: albumManager.encryptedCloudSyncEnabled) { _ in
+                albumManager.saveSettings()
+            }
+        
+        // Cloud sync controls — last sync, manual sync, encryption status
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("iCloud Sync")
+                Spacer()
+                Text(albumManager.cloudSyncStatus.rawValue.capitalized)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            
+            HStack(spacing: 12) {
+                if let last = albumManager.lastCloudSync {
+                    Text("Last sync: \(DateFormatter.localizedString(from: last, dateStyle: .short, timeStyle: .short))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Last sync: —")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    let manager: AlbumManager = albumManager
+                    Task {
+                        let _ = try? await AlbumManager.shared.performManualCloudSync()
+                    }
+                }) {
+                    Text("Sync now")
+                }
+                .buttonStyle(.bordered)
+                .disabled(albumManager.lockdownModeEnabled || !albumManager.encryptedCloudSyncEnabled || albumManager.cloudSyncStatus == .syncing)
+            }
+            
+            // Quick encrypted sync verification (writes a short encrypted file to iCloud container and verifies round-trip)
+            HStack {
+                Button(action: {
+                    let manager: AlbumManager = albumManager
+                    Task {
+                        let _ = try? await AlbumManager.shared.performQuickEncryptedCloudVerification()
+                        // no-op; AlbumManager updates state for UI
+                    }
+                }) {
+                    Text("Verify encryption")
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(albumManager.lockdownModeEnabled || !albumManager.encryptedCloudSyncEnabled || albumManager.cloudSyncStatus == .syncing)
+                
+                Spacer()
+                
+                Text(albumManager.cloudVerificationStatus.rawValue.capitalized)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            
+            if let cloudMessage = albumManager.cloudSyncErrorMessage {
+                Text(cloudMessage)
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.leading)
+            }
+            
+            // Show whether encryption is performed client-side for items pushed to cloud
+            HStack {
+                Text("Encryption status")
+                Spacer()
+                Text(albumManager.encryptedCloudSyncEnabled ? "Client-side encrypted (AES-GCM)" : "Disabled")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        
+        HStack {
+            Text("Thumbnail Privacy")
+            Spacer()
+            Picker("Thumbnail", selection: $albumManager.thumbnailPrivacy) {
+                Text("Blur").tag("blur")
+                Text("Hide").tag("hide")
+                Text("None").tag("none")
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+        }
+        .onChange(of: albumManager.thumbnailPrivacy) { _ in
+            albumManager.saveSettings()
+        }
+    }
+    
+    @ViewBuilder
+    private var sectionBottom: some View {
+        Toggle("Strip metadata on export", isOn: $albumManager.stripMetadataOnExport)
+            .disabled(albumManager.lockdownModeEnabled)
+            .onChange(of: albumManager.stripMetadataOnExport) { _ in
+                albumManager.saveSettings()
+            }
+        
+        Toggle("Password-protect exports", isOn: $albumManager.exportPasswordProtect)
+            .disabled(albumManager.lockdownModeEnabled)
+            .onChange(of: albumManager.exportPasswordProtect) { _ in
+                albumManager.saveSettings()
+            }
+        
+        HStack {
+            Text("Export expiry (days)")
+            Spacer()
+            Stepper("\(albumManager.exportExpiryDays)", value: $albumManager.exportExpiryDays, in: 1...365)
+                .labelsHidden()
+        }
+        .disabled(albumManager.lockdownModeEnabled)
+        .onChange(of: albumManager.exportExpiryDays) { _ in
+            albumManager.saveSettings()
+        }
+        
+        Toggle("Enable verbose logging", isOn: $albumManager.enableVerboseLogging)
+            .onChange(of: albumManager.enableVerboseLogging) { _ in
+                albumManager.saveSettings()
+            }
+        
+        HStack {
+            Text("Passphrase minimum length")
+            Spacer()
+            Stepper("\(albumManager.passphraseMinLength)", value: $albumManager.passphraseMinLength, in: 6...64)
+                .labelsHidden()
+        }
+        .onChange(of: albumManager.passphraseMinLength) { _ in
+            albumManager.saveSettings()
+        }
+        
+        Toggle("Telemetry (opt-in)", isOn: $albumManager.telemetryEnabled)
+            .onChange(of: albumManager.telemetryEnabled) { _ in
+                albumManager.saveSettings()
+            }
+        
+        Toggle("Auto-remove duplicates on import", isOn: $albumManager.autoRemoveDuplicatesOnImport)
+        
+        Divider()
+        
+        // Screen sleep behaviour
+        Toggle("Keep screen awake while unlocked", isOn: $storedKeepScreenAwakeWhileUnlocked)
+            .onChange(of: storedKeepScreenAwakeWhileUnlocked) { newValue in
+                albumManager.saveSettings()
+            }
+        Toggle("Prevent system sleep during imports & viewing", isOn: $storedKeepScreenAwakeDuringSuspensions)
+            .onChange(of: storedKeepScreenAwakeDuringSuspensions) { newValue in
+                albumManager.saveSettings()
+            }
+        Text("Automatically skip importing photos that are already in the album.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        
+        Toggle("Enable import notifications", isOn: $albumManager.enableImportNotifications)
+        Text("Show system notifications when batch imports complete.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        
+        Divider()
+        
+        Text("Diagnostics")
+            .font(.headline)
+        
+        HStack {
+            Text("Lockdown Mode")
+            Spacer()
+            Text(albumManager.lockdownModeEnabled ? "Enabled" : "Disabled")
+                .font(.caption2)
+                .foregroundStyle(albumManager.lockdownModeEnabled ? .red : .secondary)
+        }
+        
+        Button {
+            runHealthCheck()
+        } label: {
+            if isCheckingHealth {
+                ProgressView().controlSize(.small)
+            } else {
+                Text("Run Security Health Check")
+            }
+        }
+        .disabled(isCheckingHealth)
+        
+        if let report = healthReport {
+            VStack(alignment: .leading, spacing: 8) {
+                HealthCheckRow(label: "Random Generation (Entropy)", passed: report.randomGenerationHealthy)
+                HealthCheckRow(label: "Crypto Operations", passed: report.cryptoOperationsHealthy)
+                HealthCheckRow(label: "File System Security", passed: report.fileSystemSecure)
+                HealthCheckRow(label: "Memory Security", passed: report.memorySecurityHealthy)
+                Divider()
+                HStack {
+                    Text("Overall Status:")
+                    Spacer()
+                    Text(report.overallHealthy ? "PASSED" : "FAILED")
+                        .fontWeight(.bold)
+                        .foregroundStyle(report.overallHealthy ? .green : .red)
+                }
+            }
+            .padding()
+            .background(Color.gray.opacity(0.1))
+            .cornerRadius(8)
+        }
+        
+        if let error = healthCheckError {
+            Text("Check failed: \(error)")
+                .foregroundStyle(.red)
+                .font(.caption)
+        }
+        
+        Divider()
+        
+        Text("Key Management")
+            .font(.headline)
+        
+        HStack {
+            Button("Export Encrypted Key Backup") {
+                backupPassword = ""
+                backupPasswordConfirm = ""
+                backupError = nil
+                showBackupSheet = true
+            }
+            .disabled(albumManager.lockdownModeEnabled)
+            .buttonStyle(.bordered)
+            Spacer()
+        }
+        
+        // share/export sheet handled in content's chaining (unchanged)
+    }
+    
     private var colorScheme: ColorScheme? {
         switch privacyBackgroundStyle {
         case .followSystem:
@@ -1303,12 +1309,12 @@ struct PreferencesView: View {
             return nil  // Follow system
         }
     }
-
+    
     private func runHealthCheck() {
         isCheckingHealth = true
         healthReport = nil
         healthCheckError = nil
-
+        
         let manager: AlbumManager = albumManager
         Task {
             do {
@@ -1325,6 +1331,7 @@ struct PreferencesView: View {
             }
         }
     }
+}
 struct HealthCheckRow: View {
     let label: String
     let passed: Bool

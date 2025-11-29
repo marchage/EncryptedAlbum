@@ -156,7 +156,7 @@ final class AlbumManagerTests: XCTestCase {
         // Make sure the setting is set so the method attempts to exercise the path
         sut.encryptedCloudSyncEnabled = true
 
-        let success = await sut.performManualCloudSync()
+        let success = try await sut.performManualCloudSync()
 
         // The environment where tests run may not have iCloud available; assert the method completes
         // and lands in a final non-syncing state that is one of notAvailable/failed/idle.
@@ -177,7 +177,7 @@ final class AlbumManagerTests: XCTestCase {
         try await sut.setupPassword(password)
         try await sut.unlock(password: password)
 
-        let result = await sut.performQuickEncryptedCloudVerification()
+        let result = try await sut.performQuickEncryptedCloudVerification()
 
         XCTAssertTrue([AlbumManager.CloudVerificationStatus.success, .failed, .notAvailable].contains(sut.cloudVerificationStatus))
         // If result succeeded we should have a timestamp
@@ -193,7 +193,7 @@ final class AlbumManagerTests: XCTestCase {
     func testManualCloudSyncNotAvailableOnMacShowsMessage() async throws {
         #if !canImport(UIKit)
         sut.encryptedCloudSyncEnabled = true
-        let success = await sut.performManualCloudSync()
+        let success = try await sut.performManualCloudSync()
         XCTAssertFalse(success)
         XCTAssertEqual(sut.cloudSyncStatus, .notAvailable)
         XCTAssertNotNil(sut.cloudSyncErrorMessage)
@@ -204,7 +204,7 @@ final class AlbumManagerTests: XCTestCase {
 
     func testQuickEncryptedCloudVerificationNotAvailableOnMacShowsMessage() async throws {
         #if !canImport(UIKit)
-        let result = await sut.performQuickEncryptedCloudVerification()
+        let result = try await sut.performQuickEncryptedCloudVerification()
         XCTAssertFalse(result)
         XCTAssertEqual(sut.cloudVerificationStatus, .notAvailable)
         XCTAssertNotNil(sut.cloudSyncErrorMessage)
@@ -219,7 +219,7 @@ final class AlbumManagerTests: XCTestCase {
         sut.lockdownModeEnabled = true
         sut.encryptedCloudSyncEnabled = true
 
-        let success = await sut.performManualCloudSync()
+        let success = try await sut.performManualCloudSync()
 
         XCTAssertFalse(success)
         XCTAssertEqual(sut.cloudSyncStatus, .failed)
@@ -237,7 +237,7 @@ final class AlbumManagerTests: XCTestCase {
         sut.lockdownModeEnabled = true
         sut.encryptedCloudSyncEnabled = true
 
-        let result = await sut.performQuickEncryptedCloudVerification()
+        let result = try await sut.performQuickEncryptedCloudVerification()
 
         XCTAssertFalse(result)
         XCTAssertEqual(sut.cloudVerificationStatus, .failed)
