@@ -139,7 +139,7 @@ struct PhotoViewerSheet: View {
                 cleanupVideo()
                 albumManager.resumeIdleTimer(reason: .viewing)
             }
-            .onChange(of: scenePhase) { _, newPhase in
+            .onChange(of: scenePhase) { newPhase in
                 guard newPhase == .active else {
                     dismissViewer()
                     return

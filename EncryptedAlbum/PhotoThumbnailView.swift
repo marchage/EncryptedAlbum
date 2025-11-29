@@ -116,12 +116,12 @@ struct PhotoThumbnailView: View {
                 loadThumbnail()
             }
         }
-        .onChange(of: privacyModeEnabled) { _, newValue in
+        .onChange(of: privacyModeEnabled) { newValue in
             if !newValue && thumbnailImage == nil {
                 loadThumbnail()
             }
         }
-        .onChange(of: albumManager.isUnlocked) { _, isUnlocked in
+        .onChange(of: albumManager.isUnlocked) { isUnlocked in
             if !isUnlocked {
                 thumbnailImage = nil
             } else if !privacyModeEnabled {
