@@ -46,6 +46,55 @@ import SwiftUI
                 _ picker: UIImagePickerController,
                 didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
             ) {
+                // Handle the common case of file-backed media URLs synchronously so we
+                // copy them to an app-owned temp file before dismissal. The picker may
+                // remove its temporary files once dismissed, so we must materialize
+                // a stable copy if we're handed a file URL.
+                if let mediaURL = info[.mediaURL] as? URL {
+                    let ext = mediaURL.pathExtension.isEmpty ? "mov" : mediaURL.pathExtension
+                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
+                    do {
+                        try FileManager.default.copyItem(at: mediaURL, to: tempURL)
+                        // Proceed to process the copy asynchronously but only after we've
+                        // made our own stable copy.
+                        parent.dismiss()
+                        Task.detached(priority: .userInitiated) {
+                            do {
+                                let mediaSource: MediaSource = .fileURL(tempURL)
+                                let filename = "Video_\(Date().timeIntervalSince1970).\(ext)"
+                                let asset = AVAsset(url: tempURL)
+                                var duration: TimeInterval? = nil
+                                if #available(iOS 16.0, *) {
+                                    if let loaded = try? await asset.load(.duration) { duration = loaded.seconds }
+                                } else {
+                                    duration = asset.duration.seconds
+                                }
+
+                                try await self.albumManagerRef.handleCapturedMedia(
+                                    mediaSource: mediaSource,
+                                    filename: filename,
+                                    dateTaken: Date(),
+                                    sourceAlbum: "Captured to Album",
+                                    assetIdentifier: nil,
+                                    mediaType: .video,
+                                    duration: duration,
+                                    location: nil,
+                                    isFavorite: nil
+                                )
+                                AppLog.debugPublic("Handled captured media: \(filename)")
+                                AppLog.debugPrivate("CameraCoordinator: Determined mediaSource=\(mediaSource) filename=\(filename) mediaType=video duration=\(String(describing: duration))")
+                            } catch {
+                                AppLog.error("Failed to handle captured media: \(error.localizedDescription)")
+                                AppLog.debugPrivate("CameraCoordinator: Error handling captured video file at temp URL: \(tempURL.path)")
+                            }
+                        }
+                    } catch {
+                        AppLog.error("Failed to copy captured media to temp file: \(error.localizedDescription)")
+                        parent.dismiss()
+                    }
+                    return
+                }
+
                 parent.dismiss()
 
                 Task.detached(priority: .userInitiated) {
@@ -557,6 +606,43 @@ import SwiftUI
 
             if let error = error {
                 AppLog.error("Video recording error: \(error.localizedDescription)")
+                return
+            }
+
+            // If the picker handed us an image file URL (e.g. a camera-captured file),
+            // we should also copy it to an app-owned temp file before dismissal.
+            if let imageURL = info[.imageURL] as? URL {
+                let ext = imageURL.pathExtension.isEmpty ? "jpg" : imageURL.pathExtension
+                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
+                do {
+                    try FileManager.default.copyItem(at: imageURL, to: tempURL)
+                    parent.dismiss()
+                    Task.detached(priority: .userInitiated) {
+                        do {
+                            let mediaSource: MediaSource = .fileURL(tempURL)
+                            let filename = "Capture_\(Date().timeIntervalSince1970).\(ext)"
+                            try await self.albumManagerRef.handleCapturedMedia(
+                                mediaSource: mediaSource,
+                                filename: filename,
+                                dateTaken: Date(),
+                                sourceAlbum: "Captured to Album",
+                                assetIdentifier: nil,
+                                mediaType: .photo,
+                                duration: nil,
+                                location: nil,
+                                isFavorite: nil
+                            )
+                            AppLog.debugPublic("Handled captured media: \(filename)")
+                            AppLog.debugPrivate("CameraCoordinator: Determined mediaSource=\(mediaSource) filename=\(filename) mediaType=photo")
+                        } catch {
+                            AppLog.error("Failed to handle captured media: \(error.localizedDescription)")
+                            AppLog.debugPrivate("CameraCoordinator: Error handling captured image file at temp URL: \(tempURL.path)")
+                        }
+                    }
+                } catch {
+                    AppLog.error("Failed to copy captured image to temp file: \(error.localizedDescription)")
+                    parent.dismiss()
+                }
                 return
             }
 

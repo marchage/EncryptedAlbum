@@ -180,31 +180,33 @@ struct PhotoViewerSheet: View {
             })
         }
         
-        @ViewBuilder
-        var decryptingView: some View {
-            VStack(spacing: 10) {
-                if albumManager.viewerProgress.bytesTotal > 0 {
-                    ProgressView(value: albumManager.viewerProgress.percentComplete)
-                        .scaleEffect(1.2)
-                    Text(albumManager.viewerProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.viewerProgress.statusMessage)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    
-                    Text("\(ByteCountFormatter.string(fromByteCount: albumManager.viewerProgress.bytesProcessed, countStyle: .file)) of \(ByteCountFormatter.string(fromByteCount: albumManager.viewerProgress.bytesTotal, countStyle: .file))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    ProgressView()
-                        .scaleEffect(1.2)
-                    Text(albumManager.viewerProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.viewerProgress.statusMessage)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        
-        func loadFullImage() {
+
+    @ViewBuilder
+    private var decryptingView: some View {
+        VStack(spacing: 10) {
+            if albumManager.viewerProgress.bytesTotal > 0 {
+                ProgressView(value: albumManager.viewerProgress.percentComplete)
+                    .scaleEffect(1.2)
+                Text(albumManager.viewerProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.viewerProgress.statusMessage)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Text("\(ByteCountFormatter.string(fromByteCount: albumManager.viewerProgress.bytesProcessed, countStyle: .file)) of \(ByteCountFormatter.string(fromByteCount: albumManager.viewerProgress.bytesTotal, countStyle: .file))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ProgressView()
+                    .scaleEffect(1.2)
+                Text(albumManager.viewerProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.viewerProgress.statusMessage)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    func loadFullImage() {
             cancelDecryptTask()
             decryptTask = Task {
                 do {
@@ -283,24 +285,24 @@ struct PhotoViewerSheet: View {
             }
         }
         
-        func cleanupVideo() {
-            if let url = videoURL {
-                try? FileManager.default.removeItem(at: url)
-            }
-            videoURL = nil
+    func cleanupVideo() {
+        if let url = videoURL {
+            try? FileManager.default.removeItem(at: url)
         }
-        
-        func cancelDecryptTask() {
-            decryptTask?.cancel()
-            decryptTask = nil
-        }
-        func dismissViewer() {
-            cancelDecryptTask()
-            cleanupVideo()
-            dismiss()
-        }
-        
-        func formatDuration(_ duration: TimeInterval) -> String {
+        videoURL = nil
+    }
+    func cancelDecryptTask() {
+        decryptTask?.cancel()
+        decryptTask = nil
+    }
+
+    func dismissViewer() {
+        cancelDecryptTask()
+        cleanupVideo()
+        dismiss()
+    }
+
+    func formatDuration(_ duration: TimeInterval) -> String {
             let minutes = Int(duration) / 60
             let seconds = Int(duration) % 60
             return String(format: "%d:%02d", minutes, seconds)
@@ -309,4 +311,3 @@ struct PhotoViewerSheet: View {
     
     // decryptingPlaceholder removed — replaced by PhotoViewerSheet.decryptingView
     
-}
