@@ -39,6 +39,12 @@ struct PreferencesView: View {
     @AppStorage("lockdownModeEnabled") private var storedLockdownMode: Bool = false
     
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
+    // Allow user to force fallback to legacy Keychain behavior if Data Protection Keychain causes issues
+    @AppStorage("security.useDataProtectionKeychain") private var useDataProtectionKeychain: Bool = true
+
+    // App Icon selection service
+    @ObservedObject private var appIconService = AppIconService.shared
+    @State private var uiSelectedAppIcon: String = "AppIcon"
     
     @State private var showLockdownConfirm: Bool = false
     
@@ -458,6 +464,16 @@ struct PreferencesView: View {
                         
                         Text("Key Management")
                             .font(.headline)
+
+                        #if os(macOS)
+                        Toggle("Use Data Protection Keychain (macOS)", isOn: $useDataProtectionKeychain)
+                            .onChange(of: useDataProtectionKeychain) { _ in
+                                // No-op: SecurityService reads the UserDefaults value at runtime
+                            }
+                        Text("When enabled the app probes for and prefers the Data Protection Keychain domain (stronger protection). If this causes problems, turn it OFF to fall back to the legacy login keychain behaviour immediately.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        #endif
                         
                         HStack {
                             Button("Export Encrypted Key Backup") {
@@ -613,6 +629,8 @@ struct PreferencesView: View {
         .onAppear {
             // Ensure UI toggle reflects manager state on first load
             storedLockdownMode = albumManager.lockdownModeEnabled
+            // Initialize local picker state for app icon
+            uiSelectedAppIcon = appIconService.selectedIconName.isEmpty ? "AppIcon" : appIconService.selectedIconName
         }
         .sheet(isPresented: $showDecoyPasswordSheet) {
             VStack(spacing: 20) {
@@ -785,6 +803,42 @@ struct PreferencesView: View {
         
         Divider()
         
+        // App icon selection & preview
+        HStack(alignment: .center, spacing: 12) {
+            Text("App Icon")
+            Spacer()
+            // Preview image (generated 1024 marketing image when available)
+            if let platformImg = appIconService.runtimeMarketingImage {
+                Image(platformImage: platformImg)
+                    .resizable()
+                    .frame(width: 64, height: 64)
+                    .cornerRadius(12)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.secondary.opacity(0.7), lineWidth: 1))
+            } else {
+                Image("AppIcon")
+                    .resizable()
+                    .frame(width: 64, height: 64)
+                    .cornerRadius(12)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.secondary.opacity(0.7), lineWidth: 1))
+            }
+
+            Picker("App Icon", selection: $uiSelectedAppIcon) {
+                ForEach(appIconService.availableIcons, id: \.self) { name in
+                    Text(appIconService.displayName(for: name)).tag(name)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .onChange(of: uiSelectedAppIcon) { newValue in
+                // Treat the default AppIcon as no alternate (nil)
+                if newValue == "AppIcon" || newValue.isEmpty {
+                    appIconService.select(iconName: nil)
+                } else {
+                    appIconService.select(iconName: newValue)
+                }
+            }
+        }
+
         HStack {
             Text("Undo banner timeout")
             Spacer()
@@ -916,6 +970,39 @@ struct PreferencesView: View {
                 albumManager.cameraMaxQuality = storedCameraMaxQuality
                 albumManager.saveSettings()
             }
+
+        // App Icon selection
+        Divider()
+        Text("App Icon")
+            .font(.headline)
+
+        HStack {
+            Text("Choose app icon")
+            Spacer()
+            Picker("App Icon", selection: $uiSelectedAppIcon) {
+                ForEach(appIconService.availableIcons, id: \.self) { name in
+                    Text(appIconService.displayName(for: name)).tag(name)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .frame(maxWidth: 220)
+        }
+        .onChange(of: uiSelectedAppIcon) { newValue in
+            // Treat the canonical primary name as nil for primary icon
+            let selected = (newValue == "AppIcon") ? nil : newValue
+            appIconService.select(iconName: selected)
+        }
+
+        #if os(iOS)
+        Text("Note: iOS will only change the Home screen icon if alternate icons are declared in Info.plist (CFBundleAlternateIcons). If you don't see a system change, the app is using the default icon.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        #else
+        Text("On macOS this will update the Dock/window icon immediately for the chosen set.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        #endif
     }
     
     @ViewBuilder

@@ -189,4 +189,24 @@ final class PasswordServiceTests: XCTestCase {
         let retrievedAfterClear = try await passwordService.retrievePasswordCredentials()
         XCTAssertNil(retrievedAfterClear)
     }
+
+    func testPreparePasswordChange_ReturnsNewKeys() async throws {
+        let oldPassword = "OldPass123!"
+        let newPassword = "NewPass456!"
+
+        // Create and store credentials for the old password
+        let (oldHash, oldSalt) = try await passwordService.hashPassword(oldPassword)
+        try await passwordService.storePasswordHash(oldHash, salt: oldSalt)
+
+        // Call preparePasswordChange
+        let (newVerifier, newSalt, newEncKey, newHmacKey) = try await passwordService.preparePasswordChange(currentPassword: oldPassword, newPassword: newPassword)
+
+        XCTAssertFalse(newVerifier.isEmpty)
+        XCTAssertFalse(newSalt.isEmpty)
+        XCTAssertEqual(newEncKey.bitCount, 256)
+        XCTAssertEqual(newHmacKey.bitCount, 256)
+
+        // Cleanup
+        try await passwordService.clearPasswordCredentials()
+    }
 }

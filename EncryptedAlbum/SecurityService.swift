@@ -561,6 +561,13 @@ class SecurityService {
         }
 
         func shouldUseDataProtectionKeychain() -> Bool {
+            // Honor a runtime override so users (or devs) can opt out of Data Protection keychain probing.
+            // This makes turning off the Data Protection keychain easy to revert if it causes UX problems.
+            if let forced = UserDefaults.standard.object(forKey: "security.useDataProtectionKeychain") as? Bool {
+                // If the user explicitly set a preference, honor it
+                return forced
+            }
+
             if #available(macOS 10.15, *) {
                 switch SecurityService.keychainDomainPreference {
                 case .dataProtection:

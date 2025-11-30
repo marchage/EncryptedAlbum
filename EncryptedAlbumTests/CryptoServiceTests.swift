@@ -31,6 +31,19 @@ final class CryptoServiceTests: XCTestCase {
         XCTAssertEqual(encryptionKey.bitCount, 256)
         XCTAssertEqual(hmacKey.bitCount, 256)
     }
+
+    func testDeriveKeys_WithDataInput() async throws {
+        let password = "TestPassword123!"
+        let salt = try await sut.generateSalt()
+        guard let pwdData = password.data(using: .utf8) else {
+            XCTFail("Failed to encode password")
+            return
+        }
+
+        let (encryptionKey, hmacKey) = try await sut.deriveKeys(password: pwdData, salt: salt)
+        XCTAssertEqual(encryptionKey.bitCount, 256)
+        XCTAssertEqual(hmacKey.bitCount, 256)
+    }
     
     func testDeriveKeys_Deterministic() async throws {
         let password = "TestPassword123!"

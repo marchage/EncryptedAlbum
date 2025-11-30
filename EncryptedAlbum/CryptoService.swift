@@ -8,15 +8,10 @@ class CryptoService {
 
     // MARK: - Key Derivation
 
-    /// Derives encryption and HMAC keys from password and salt
-    func deriveKeys(password: String, salt: Data) async throws -> (encryptionKey: SymmetricKey, hmacKey: SymmetricKey) {
+    /// Derives encryption and HMAC keys from password (Data) and salt
+    func deriveKeys(password: Data, salt: Data) async throws -> (encryptionKey: SymmetricKey, hmacKey: SymmetricKey) {
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
-                guard let passwordData = password.data(using: .utf8) else {
-                    continuation.resume(throwing: AlbumError.keyDerivationFailed(reason: "Invalid password encoding"))
-                    return
-                }
-
                 // Derive master key using PBKDF2
                 guard let derivedKeyBuffer = SecureMemory.allocateSecureBuffer(count: CryptoConstants.masterKeySize)
                 else {
@@ -28,7 +23,7 @@ class CryptoService {
                 let saltBytes = [UInt8](salt)
 
                 let result = saltBytes.withUnsafeBytes { saltPtr in
-                    passwordData.withUnsafeBytes { passwordPtr in
+                    password.withUnsafeBytes { passwordPtr in
                         CCKeyDerivationPBKDF(
                             CCPBKDFAlgorithm(kCCPBKDF2),
                             passwordPtr.baseAddress, passwordPtr.count,
@@ -68,17 +63,20 @@ class CryptoService {
         }
     }
 
+    /// Convenience wrapper for callers that still pass a String; this converts to Data and calls the secure implementation.
+    func deriveKeys(password: String, salt: Data) async throws -> (encryptionKey: SymmetricKey, hmacKey: SymmetricKey) {
+        guard let data = password.data(using: .utf8) else {
+            throw AlbumError.keyDerivationFailed(reason: "Invalid password encoding")
+        }
+        return try await deriveKeys(password: data, salt: salt)
+    }
+
     // MARK: - Verifier Derivation
 
     /// Derives a password verifier for secure storage (separate from encryption keys)
-    func deriveVerifier(password: String, salt: Data) async throws -> Data {
+    func deriveVerifier(password: Data, salt: Data) async throws -> Data {
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
-                guard let passwordData = password.data(using: .utf8) else {
-                    continuation.resume(throwing: AlbumError.keyDerivationFailed(reason: "Invalid password encoding"))
-                    return
-                }
-
                 // Derive master key using PBKDF2 (Same as deriveKeys)
                 guard let derivedKeyBuffer = SecureMemory.allocateSecureBuffer(count: CryptoConstants.masterKeySize)
                 else {
@@ -90,7 +88,7 @@ class CryptoService {
                 let saltBytes = [UInt8](salt)
 
                 let result = saltBytes.withUnsafeBytes { saltPtr in
-                    passwordData.withUnsafeBytes { passwordPtr in
+                    password.withUnsafeBytes { passwordPtr in
                         CCKeyDerivationPBKDF(
                             CCPBKDFAlgorithm(kCCPBKDF2),
                             passwordPtr.baseAddress, passwordPtr.count,
@@ -122,6 +120,14 @@ class CryptoService {
                 continuation.resume(returning: verifier)
             }
         }
+    }
+
+    /// Convenience wrapper for callers that still pass a String; this converts to Data and calls the secure implementation.
+    func deriveVerifier(password: String, salt: Data) async throws -> Data {
+        guard let data = password.data(using: .utf8) else {
+            throw AlbumError.keyDerivationFailed(reason: "Invalid password encoding")
+        }
+        return try await deriveVerifier(password: data, salt: salt)
     }
 
     // MARK: - Encryption
@@ -238,6 +244,14 @@ class CryptoService {
                     continuation.resume(
                         throwing: AlbumError.randomGenerationFailed(
                             reason: "SecRandomCopyBytes failed with code \(result)"))
+                    return
+                }
+
+                // Validate entropy quickly (basic checks)
+                let isValidEntropy = self.validateEntropy(data)
+                guard isValidEntropy else {
+                    continuation.resume(
+                        throwing: AlbumError.randomGenerationFailed(reason: "Generated data failed entropy validation"))
                     return
                 }
 

@@ -72,6 +72,20 @@ final class SecurityServiceTests: XCTestCase {
         // Cleanup
         try await securityService.deleteFromKeychain(for: key)
     }
+
+    func testDataProtectionKeychainOverride() async throws {
+        // Force the UserDefaults flag OFF and make sure the code honors it
+        UserDefaults.standard.set(false, forKey: "security.useDataProtectionKeychain")
+        defer { UserDefaults.standard.removeObject(forKey: "security.useDataProtectionKeychain") }
+
+        // When forced off, shouldUseDataProtectionKeychain should immediately return false
+        #if os(macOS)
+        XCTAssertFalse(securityService.shouldUseDataProtectionKeychain())
+        #else
+        // On non-macOS platforms this function is a no-op / not used - still call it safely
+        _ = securityService.shouldUseDataProtectionKeychain()
+        #endif
+    }
     
     // MARK: - Biometric Password Storage Tests
     
