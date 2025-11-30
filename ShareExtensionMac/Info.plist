@@ -10,9 +10,9 @@
 		<dict>
 			<!-- Only match share items that include an image or a movie attachment -->
 			<key>NSExtensionActivationSupportsImageWithMaxCount</key>
-			<integer>1</integer>
+			<integer>99</integer>
 			<key>NSExtensionActivationSupportsMovieWithMaxCount</key>
-			<integer>1</integer>
+			<integer>99</integer>
 		</dict>
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.share-services</string>

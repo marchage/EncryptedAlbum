@@ -9,9 +9,9 @@
 		<key>NSExtensionAttributes</key>
 		<dict>
 			<key>NSExtensionActivationSupportsImageWithMaxCount</key>
-			<integer>1</integer>
+			<integer>99</integer>
 			<key>NSExtensionActivationSupportsMovieWithMaxCount</key>
-			<integer>1</integer>
+			<integer>99</integer>
 		</dict>
 		<key>NSExtensionMainStoryboard</key>
 		<string>MainInterface</string>
