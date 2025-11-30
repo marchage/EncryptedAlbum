@@ -56,7 +56,8 @@ struct UnlockView: View {
         // by filename. Try the generated "AppIcon" name first (other views use this),
         // and fall back to the marketing filename if available.
         // Helpful debug logging — no DEBUG guard required; AppLog handles gating.
-        let attemptNames = ["AppIconMarketingRuntime", "AppIcon", "app-icon~ios-marketing"]
+        // Prefer the dedicated 512@2x marketing asset for crisp large icons
+        let attemptNames = ["AppIcon-512@2x", "AppIconMarketingRuntime", "AppIcon", "app-icon~ios-marketing"]
 
         // Try a runtime image set first (recommended). Fall back to AppIcon and marketing asset names.
         var appIcon = attemptNames.compactMap { UIImage(named: $0) }.first
