@@ -781,13 +781,22 @@ import SwiftUI
             // Setting bounds and position avoids partial clipping when window changes size
             // (fixes issue where only the top half was visible when rotated/resized).
             // Ensure the preview sublayer (if present) always matches view bounds.
-            if let previewLayer = self.layer?.sublayers?.first as? AVCaptureVideoPreviewLayer {
+                if let previewLayer = self.layer?.sublayers?.first as? AVCaptureVideoPreviewLayer {
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
                 previewLayer.frame = self.bounds
                 previewLayer.position = CGPoint(x: self.bounds.midX, y: self.bounds.midY)
                 previewLayer.contentsScale = NSScreen.main?.backingScaleFactor ?? 1.0
                 previewLayer.needsDisplayOnBoundsChange = true
+                    // Ensure video orientation follows view aspect (portrait vs. landscape)
+                    if let connection = previewLayer.connection, connection.isVideoOrientationSupported {
+                        let bounds = self.bounds
+                        if bounds.width >= bounds.height {
+                            connection.videoOrientation = .landscapeRight
+                        } else {
+                            connection.videoOrientation = .portrait
+                        }
+                    }
                 CATransaction.commit()
             }
         }
@@ -819,6 +828,11 @@ import SwiftUI
                 previewLayer.frame = nsView.bounds
                 previewLayer.position = CGPoint(x: nsView.bounds.midX, y: nsView.bounds.midY)
                 previewLayer.needsDisplayOnBoundsChange = true
+                // Align preview orientation with view aspect ratio so it doesn't remain landscape-only
+                if let connection = previewLayer.connection, connection.isVideoOrientationSupported {
+                    let b = nsView.bounds
+                    connection.videoOrientation = (b.width >= b.height) ? .landscapeRight : .portrait
+                }
                 CATransaction.commit()
             }
         }

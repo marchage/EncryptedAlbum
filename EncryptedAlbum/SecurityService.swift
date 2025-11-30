@@ -2,8 +2,6 @@ import CryptoKit
 import Foundation
 import LocalAuthentication
 import Security
-
-/// Service responsible for security validation and health checks
 class SecurityService {
     private let queue = DispatchQueue(label: "biz.front-end.encryptedalbum.security", qos: .userInitiated)
     private let queueSpecificKey = DispatchSpecificKey<Void>()
@@ -17,6 +15,8 @@ class SecurityService {
     init(cryptoService: CryptoService) {
         self.cryptoService = cryptoService
         queue.setSpecific(key: queueSpecificKey, value: ())
+
+
     }
 
     // MARK: - Biometric Authentication
@@ -24,8 +24,8 @@ class SecurityService {
     /// Performs biometric authentication
     func authenticateWithBiometrics(reason: String) async throws {
         return try await withCheckedThrowingContinuation { continuation in
-            queue.async {
-                // Avoid presenting biometric UI while a trusted modal is active
+            // Check trusted-modal state on the main actor before proceeding to background work.
+            Task { @MainActor in
                 #if os(iOS)
                     if UltraPrivacyCoordinator.shared.isTrustedModalActive {
                         continuation.resume(throwing: AlbumError.biometricCancelled)
@@ -37,6 +37,8 @@ class SecurityService {
                         return
                     }
                 #endif
+
+                queue.async {
                 // Check rate limiting
                 if let lastAttempt = self.lastBiometricAttempt {
                     let timeSinceLastAttempt = Date().timeIntervalSince(lastAttempt)
@@ -99,6 +101,7 @@ class SecurityService {
             }
         }
     }
+}
 
     private func resetBiometricRateLimit() {
         biometricAttemptCount = 0
@@ -449,8 +452,9 @@ class SecurityService {
         context.localizedReason = prompt
 
         return try await withCheckedThrowingContinuation { continuation in
-            queue.async {
-                // If a trusted modal is active, do not trigger the biometric prompt
+            // Ensure we check trusted-modal state on the main actor before performing
+            // keychain/biometric access on the background queue.
+            Task { @MainActor in
                 #if os(iOS)
                     if UltraPrivacyCoordinator.shared.isTrustedModalActive {
                         continuation.resume(throwing: AlbumError.biometricCancelled)
@@ -462,6 +466,8 @@ class SecurityService {
                         return
                     }
                 #endif
+
+                queue.async {
                 Task {
                     #if os(macOS)
                         // If we are not using Data Protection Keychain, we likely used the fallback storage (no Access Control).
@@ -526,6 +532,8 @@ class SecurityService {
                 }
             }
         }
+    }
+
     }
 
     /// Checks if a biometric-protected password exists without triggering user interaction
@@ -680,6 +688,7 @@ class SecurityService {
     #endif
 
 }
+
 
 /// Report structure for security health checks
 struct SecurityHealthReport {

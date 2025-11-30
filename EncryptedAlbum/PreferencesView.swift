@@ -278,7 +278,6 @@ struct PreferencesView: View {
                                 Spacer()
                                 
                                 Button(action: {
-                                    let manager: AlbumManager = albumManager
                                     Task {
                                         let _ = try? await AlbumManager.shared.performManualCloudSync()
                                     }
@@ -292,7 +291,6 @@ struct PreferencesView: View {
                             // Quick encrypted sync verification (writes a short encrypted file to iCloud container and verifies round-trip)
                             HStack {
                                 Button(action: {
-                                    let manager: AlbumManager = albumManager
                                     Task {
                                         let _ = try? await AlbumManager.shared.performQuickEncryptedCloudVerification()
                                         // no-op; AlbumManager updates state for UI
