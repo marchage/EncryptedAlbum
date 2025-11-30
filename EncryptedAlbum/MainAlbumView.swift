@@ -951,30 +951,35 @@ struct MainAlbumView: View {
 
         let viewWithInitialModifiers = baseView
             .onAppear {
+                // Keep onAppear minimal — avoid view-builder items inside this closure
                 if !didForcePrivacyModeThisSession {
-                ToolbarItem(placement: .principal) {
-                    HStack(spacing: 6) {
-                        // principal toolbar is intentionally small; keep the title only (no icon)
-                        Text("Encrypted Album")
-                            .font(.headline)
-                            .lineLimit(1)
-                            .foregroundStyle(.primary)
-                    }
+                    // No automatic toolbar additions here; keep life-cycle work only
+                    didForcePrivacyModeThisSession = true
                 }
+            }
+            .confirmationDialog(
+                "How would you like to restore \(photosToRestore.count) item(s)?",
+                isPresented: $showingRestoreOptions,
+                titleVisibility: .visible
+            ) {
+                Button("Restore to Original Albums") {
                     startRestorationTask {
                         await restoreToOriginalAlbums()
                     }
                 }
+
                 Button("Restore to New Album") {
                     startRestorationTask {
                         await restoreToNewAlbum()
                     }
                 }
+
                 Button("Just Add to Library") {
                     startRestorationTask {
                         await restoreToLibrary()
                     }
                 }
+
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("How would you like to restore \(photosToRestore.count) item(s)?")
@@ -1339,7 +1344,12 @@ struct MainAlbumView: View {
                 .foregroundStyle(.secondary)
 
             Button {
-                showingPhotosLibrary = true
+                #if os(iOS)
+                    // Use the safe flow on iOS so we ask for permission inside a trusted modal
+                    startPhotoLibraryFlow()
+                #else
+                    showingPhotosLibrary = true
+                #endif
             } label: {
                 Image(systemName: "lock.fill")
                     .font(.system(size: actionIconFontSize))
@@ -1460,9 +1470,13 @@ struct MainAlbumView: View {
 
         @MainActor
         private func presentPhotoLibraryFlow() async {
-            let granted = await MediaPermissionHelper.ensurePhotoLibraryAccess()
+                let coordinator = UltraPrivacyCoordinator.shared
+                coordinator.beginTrustedModal()
+
+                let granted = await MediaPermissionHelper.ensurePhotoLibraryAccess()
             guard granted else {
-                showPermissionDenied(
+                    coordinator.endTrustedModal()
+                    showPermissionDenied(
                     "Photos access is required to import from your library.")
                 return
             }
