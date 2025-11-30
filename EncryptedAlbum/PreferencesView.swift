@@ -826,8 +826,8 @@ struct PreferencesView: View {
                 }
             }
             .pickerStyle(.menu)
-            .onChange(of: storedAppTheme) { _ in
-                albumManager.appTheme = storedAppTheme
+            .onChange(of: privacyBackgroundStyle) { _ in
+                albumManager.privacyBackgroundStyle = privacyBackgroundStyle
                 albumManager.saveSettings()
             }
             .labelsHidden()
@@ -835,41 +835,6 @@ struct PreferencesView: View {
         
         Divider()
         
-        // App icon selection & preview
-        HStack(alignment: .center, spacing: 12) {
-            Text("App Icon")
-            Spacer()
-            // Preview image (generated 1024 marketing image when available)
-            if let platformImg = appIconService.runtimeMarketingImage {
-                Image(platformImage: platformImg)
-                    .resizable()
-                    .frame(width: 64, height: 64)
-                    .cornerRadius(12)
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.secondary.opacity(0.7), lineWidth: 1))
-            } else {
-                Image("AppIcon")
-                    .resizable()
-                    .frame(width: 64, height: 64)
-                    .cornerRadius(12)
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.secondary.opacity(0.7), lineWidth: 1))
-            }
-
-            Picker("App Icon", selection: $uiSelectedAppIcon) {
-                ForEach(appIconService.availableIcons, id: \.self) { name in
-                    Text(appIconService.displayName(for: name)).tag(name)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .onChange(of: uiSelectedAppIcon) { newValue in
-                // Treat the default AppIcon as no alternate (nil)
-                if newValue == "AppIcon" || newValue.isEmpty {
-                    appIconService.select(iconName: nil)
-                } else {
-                    appIconService.select(iconName: newValue)
-                }
-            }
-        }
 
         HStack {
             Text("Undo banner timeout")
@@ -1019,7 +984,9 @@ struct PreferencesView: View {
             .pickerStyle(.menu)
             .labelsHidden()
             .frame(maxWidth: 220)
-
+            .onChange(of: uiSelectedAppIcon) { _ in
+                /* no-op: Set button applies the selection */
+            }
             // Explicit apply button: changing the picker should not immediately
             // trigger a system icon update (prevents accidental changes). User
             // must press Set to apply their chosen icon.
