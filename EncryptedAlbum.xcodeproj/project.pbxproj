@@ -74,6 +74,14 @@
 		98A4C2732EDBC9B500742B99 /* AlbumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F96EA3625074B045C751E84 /* AlbumManager.swift */; };
 		98A4C2752EDBF32100742B99 /* icon.iconset in Resources */ = {isa = PBXBuildFile; fileRef = 98A4C2742EDBF32100742B99 /* icon.iconset */; };
 		98A4C2772EDBF39700742B99 /* icon.iconset in Resources */ = {isa = PBXBuildFile; fileRef = 98A4C2762EDBF39700742B99 /* icon.iconset */; };
+		98BE893E2EDCF0D200AF3A5A /* PreferencesSectionMid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BE893A2EDCF0D200AF3A5A /* PreferencesSectionMid.swift */; };
+		98BE893F2EDCF0D200AF3A5A /* PreferencesSectionMid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BE893A2EDCF0D200AF3A5A /* PreferencesSectionMid.swift */; };
+		98BE89402EDCF0D200AF3A5A /* PreferencesSectionTop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BE893B2EDCF0D200AF3A5A /* PreferencesSectionTop.swift */; };
+		98BE89412EDCF0D200AF3A5A /* PreferencesSectionTop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BE893B2EDCF0D200AF3A5A /* PreferencesSectionTop.swift */; };
+		98BE89422EDCF0D200AF3A5A /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BE893C2EDCF0D200AF3A5A /* ThumbnailCache.swift */; };
+		98BE89432EDCF0D200AF3A5A /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BE893C2EDCF0D200AF3A5A /* ThumbnailCache.swift */; };
+		98BE89442EDCF0D200AF3A5A /* PreferencesSectionBottom.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BE893D2EDCF0D200AF3A5A /* PreferencesSectionBottom.swift */; };
+		98BE89452EDCF0D200AF3A5A /* PreferencesSectionBottom.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BE893D2EDCF0D200AF3A5A /* PreferencesSectionBottom.swift */; };
 		98C6A2E62ED905F500290D1E /* TelemetryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E2D3C4B5A6978877665544 /* TelemetryService.swift */; };
 		98C6A2E72ED905F500290D1E /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDEEFF001122334455667788 /* Logging.swift */; };
 		98C835F92EC9E6CD000997CF /* PhotosLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */; };
@@ -239,6 +247,10 @@
 		989B68D62ED8C1DB00FA9A5B /* ShareHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ShareHelper.swift; sourceTree = "<group>"; };
 		98A4C2742EDBF32100742B99 /* icon.iconset */ = {isa = PBXFileReference; lastKnownFileType = folder.iconset; name = icon.iconset; path = ../../../../Desktop/Copilot_20251129_173347/icon.iconset; sourceTree = "<group>"; };
 		98A4C2762EDBF39700742B99 /* icon.iconset */ = {isa = PBXFileReference; lastKnownFileType = folder.iconset; name = icon.iconset; path = ../../../../Desktop/Copilot_20251129_173347/icon.iconset; sourceTree = "<group>"; };
+		98BE893A2EDCF0D200AF3A5A /* PreferencesSectionMid.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreferencesSectionMid.swift; sourceTree = "<group>"; };
+		98BE893B2EDCF0D200AF3A5A /* PreferencesSectionTop.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreferencesSectionTop.swift; sourceTree = "<group>"; };
+		98BE893C2EDCF0D200AF3A5A /* ThumbnailCache.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
+		98BE893D2EDCF0D200AF3A5A /* PreferencesSectionBottom.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreferencesSectionBottom.swift; sourceTree = "<group>"; };
 		98D6909B2EDB369700200BB7 /* OnChangeCompat.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OnChangeCompat.swift; sourceTree = "<group>"; };
 		98D6909C2EDB369700200BB7 /* SharedModels.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
 		98D6909D2EDB369700200BB7 /* SharePreviewHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SharePreviewHelper.swift; sourceTree = "<group>"; };
@@ -382,6 +394,10 @@
 		9849B4532EB9893D00B17DAC /* EncryptedAlbum */ = {
 			isa = PBXGroup;
 			children = (
+				98BE893D2EDCF0D200AF3A5A /* PreferencesSectionBottom.swift */,
+				98BE893A2EDCF0D200AF3A5A /* PreferencesSectionMid.swift */,
+				98BE893B2EDCF0D200AF3A5A /* PreferencesSectionTop.swift */,
+				98BE893C2EDCF0D200AF3A5A /* ThumbnailCache.swift */,
 				C5C904A396A6B1968CDD78D9 /* AlbumDetailView.swift */,
 				A61A2BD7A0514BCA85111D3F /* AlbumError.swift */,
 				9F96EA3625074B045C751E84 /* AlbumManager.swift */,
@@ -762,6 +778,7 @@
 				986328C92ECE882D00EAE9A9 /* ContentView.swift in Sources */,
 				981926552EC854B600C67291 /* EncryptedAlbum_iOSApp.swift in Sources */,
 				98D6909F2EDB369800200BB7 /* OnChangeCompat.swift in Sources */,
+				98BE893F2EDCF0D200AF3A5A /* PreferencesSectionMid.swift in Sources */,
 				98C835F92EC9E6CD000997CF /* PhotosLibraryService.swift in Sources */,
 				98797BD02ED7CB64008E03C4 /* AlbumManager+Export.swift in Sources */,
 				98C835FA2EC9E6CD000997CF /* AlbumDetailView.swift in Sources */,
@@ -777,6 +794,7 @@
 				9823D7782ECD7BF400FFB750 /* CameraCaptureView.swift in Sources */,
 				98797BD32ED7E27B008E03C4 /* FakeCrashView.swift in Sources */,
 				98D690A12EDB369800200BB7 /* SharedModels.swift in Sources */,
+				98BE89412EDCF0D200AF3A5A /* PreferencesSectionTop.swift in Sources */,
 				98797BCD2ED7C9C6008E03C4 /* PhotoViewerSheet.swift in Sources */,
 				98797BC52ED7C9C6008E03C4 /* ZoomableImageView.swift in Sources */,
 				98C835FF2EC9E6CD000997CF /* PreferencesView.swift in Sources */,
@@ -785,6 +803,7 @@
 				989ADDE22ED5BDE400994E72 /* UltraPrivacyCoordinator.swift in Sources */,
 				986328CC2ECE882D00EAE9A9 /* FileService.swift in Sources */,
 				986328CD2ECE882D00EAE9A9 /* PasswordService.swift in Sources */,
+				98BE89452EDCF0D200AF3A5A /* PreferencesSectionBottom.swift in Sources */,
 				98797BC72ED7C9C6008E03C4 /* ImageHelpers.swift in Sources */,
 				98FAA8192EDAB9F400A5C3DD /* ImportSaver.swift in Sources */,
 				986328CE2ECE882D00EAE9A9 /* SecurityService.swift in Sources */,
@@ -794,6 +813,7 @@
 				98797BC92ED7C9C6008E03C4 /* CustomVideoPlayer.swift in Sources */,
 				989B68D82ED8C1DB00FA9A5B /* ShareHelper.swift in Sources */,
 				98EAD99F2EDB4D64009FCA49 /* NotificationBannerView.swift in Sources */,
+				98BE89432EDCF0D200AF3A5A /* ThumbnailCache.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -816,6 +836,7 @@
 				988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */,
 				9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */,
 				98D6909E2EDB369800200BB7 /* OnChangeCompat.swift in Sources */,
+				98BE893E2EDCF0D200AF3A5A /* PreferencesSectionMid.swift in Sources */,
 				1CA80AC13D192EBBFCD3B516 /* PhotosLibraryService.swift in Sources */,
 				98797BCF2ED7CB64008E03C4 /* AlbumManager+Export.swift in Sources */,
 				432DD49F40365EA5EAEBFD23 /* AlbumDetailView.swift in Sources */,
@@ -831,6 +852,7 @@
 				98797BD22ED7E27B008E03C4 /* FakeCrashView.swift in Sources */,
 				98D690A02EDB369800200BB7 /* SharedModels.swift in Sources */,
 				98797BCC2ED7C9C6008E03C4 /* PhotoViewerSheet.swift in Sources */,
+				98BE89402EDCF0D200AF3A5A /* PreferencesSectionTop.swift in Sources */,
 				98797BC42ED7C9C6008E03C4 /* ZoomableImageView.swift in Sources */,
 				A1B2C3D4E5F6789012345678 /* PreferencesView.swift in Sources */,
 				0A1A2C90CFC24033BB978D99 /* Constants.swift in Sources */,
@@ -839,6 +861,7 @@
 				DD69BC27985C4D09BA6690A2 /* FileService.swift in Sources */,
 				9FA39564407F407B82E34796 /* PasswordService.swift in Sources */,
 				98797BC62ED7C9C6008E03C4 /* ImageHelpers.swift in Sources */,
+				98BE89442EDCF0D200AF3A5A /* PreferencesSectionBottom.swift in Sources */,
 				98FAA8182EDAB9F400A5C3DD /* ImportSaver.swift in Sources */,
 				98C835FE2EC9E6CD000997CF /* AlbumManager.swift in Sources */,
 				AB219FCE33BC4485A762BDA6 /* SecurityService.swift in Sources */,
@@ -848,6 +871,7 @@
 				98797BC82ED7C9C6008E03C4 /* CustomVideoPlayer.swift in Sources */,
 				989B68D72ED8C1DB00FA9A5B /* ShareHelper.swift in Sources */,
 				9900AABBCCDDEEFF00112234 /* NotificationBannerView.swift in Sources */,
+				98BE89422EDCF0D200AF3A5A /* ThumbnailCache.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

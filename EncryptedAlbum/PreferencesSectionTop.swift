@@ -6,6 +6,9 @@ struct PreferencesSectionTop: View {
     @AppStorage("privacyBackgroundStyle") private var privacyBackgroundStyle: PrivacyBackgroundStyle = .classic
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
 
+    // Track whether the app requires re-auth on foreground; other views use AppStorage too
+    @AppStorage("requireForegroundReauthentication") private var requireForegroundReauthentication: Bool = true
+
     @AppStorage("autoLockTimeoutSeconds") private var storedAutoLockTimeout: Double = CryptoConstants.idleTimeout
     @AppStorage("requirePasscodeOnLaunch") private var storedRequirePasscodeOnLaunch: Bool = false
     @AppStorage("biometricPolicy") private var storedBiometricPolicy: String = "biometrics_preferred"
@@ -18,7 +21,7 @@ struct PreferencesSectionTop: View {
     @State private var uiSelectedAppIcon: String = "AppIcon"
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 8) {
             // Privacy style & Undo timeout
             HStack {
                 Text("Privacy Screen Style")
@@ -30,7 +33,8 @@ struct PreferencesSectionTop: View {
                 }
                 .pickerStyle(.menu)
                 .onChange(of: privacyBackgroundStyle) { _ in
-                    albumManager.privacyBackgroundStyle = privacyBackgroundStyle
+                    // privacyBackgroundStyle is stored via AppStorage (shared key across views).
+                    // AlbumManager doesn't own this setting; just trigger a save in case other settings changed.
                     albumManager.saveSettings()
                 }
                 .labelsHidden()
@@ -83,8 +87,8 @@ struct PreferencesSectionTop: View {
                 albumManager.saveSettings()
             }
 
-            Toggle("Require Re-authentication", isOn: .constant(albumManager.requireForegroundReauthentication))
-                .disabled(true)
+            Toggle("Require Re-authentication", isOn: $requireForegroundReauthentication)
+                .disabled(false)
 
             // Auto-wipe & recovery key
             Toggle("Auto-wipe on repeated failed unlocks", isOn: Binding(

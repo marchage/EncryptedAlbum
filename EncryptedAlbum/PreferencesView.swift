@@ -106,9 +106,6 @@ struct PreferencesView: View {
                         )
                         PreferencesSectionBottom(showBackupSheet: $showBackupSheet)
                         
-                        
-                        }
-                        
                         if let error = healthCheckError {
                             Text("Check failed: \(error)")
                                 .foregroundStyle(.red)
@@ -431,8 +428,6 @@ struct PreferencesView: View {
             .presentationDetents([.height(400)])
         }
         .preferredColorScheme(colorScheme)
-    }
-    
     }
     
     private var colorScheme: ColorScheme? {
