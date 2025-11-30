@@ -177,14 +177,8 @@ final class AppIconService: ObservableObject {
         if iconName == nil || iconName == "AppIcon" {
             nameToLoad = "AppIcon"
         } else if iconName == "AppIconMarketingRuntime" {
-            // Try to find the preferred 512@2x candidate first, fall back to standard names
-            if let found = marketingCandidates.compactMap({ UIImage(named: $0) }).first {
-                // We have a direct UIImage for the preferred candidate — use the exact name
-                // (the generator below will re-load by name as needed)
-                nameToLoad = marketingCandidates.first(where: { UIImage(named: $0) != nil }) ?? iconName!
-            } else {
-                nameToLoad = iconName!
-            }
+            // Try to find the preferred 512@2x candidate first, fall back to the provided icon name
+            nameToLoad = marketingCandidates.first(where: { UIImage(named: $0) != nil }) ?? iconName!
         } else {
             nameToLoad = iconName!
         }

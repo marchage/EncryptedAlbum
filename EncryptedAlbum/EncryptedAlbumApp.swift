@@ -167,7 +167,7 @@ struct EncryptedAlbumApp: App {
             content.title = "Import Complete"
             content.body = "Successfully imported \(urls.count) items from Service."
             let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-            try? await UNUserNotificationCenter.current().add(request)
+            _ = try? await UNUserNotificationCenter.current().add(request)
         }
 
         @MainActor

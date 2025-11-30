@@ -857,7 +857,7 @@ struct MainAlbumView: View {
                         .appendingPathComponent("EncryptedAlbum")
 
                     if let albumDirectory = albumDirectory {
-                        try? fileManager.removeItem(at: albumDirectory)
+                        _ = try? fileManager.removeItem(at: albumDirectory)
                     }
 
                     // Delete password hash
@@ -1553,7 +1553,7 @@ struct MainAlbumView: View {
             cancelScheduledForegroundLock()
             pendingForegroundLockTask = Task {
                 let grace: TimeInterval = 1.5
-                try? await Task.sleep(nanoseconds: UInt64(grace * 1_000_000_000))
+                _ = try? await Task.sleep(nanoseconds: UInt64(grace * 1_000_000_000))
                 guard !Task.isCancelled else { return }
                 await MainActor.run {
                     guard requireForegroundReauthentication, !shouldSuppressForegroundLock else { return }

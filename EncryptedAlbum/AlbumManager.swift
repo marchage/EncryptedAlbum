@@ -3281,7 +3281,7 @@ extension AlbumManager {
         let verified = try await cryptoService.decryptDataWithIntegrity(payloadData, nonce: nonceData, hmac: hmacData, encryptionKey: encryptionKey, hmacKey: hmacKey)
         
         // Clean up created record
-        try? await privateDB.deleteRecord(withID: saved.recordID)
+        _ = try? await privateDB.deleteRecord(withID: saved.recordID)
         
         // Compare payloads
         if verified == testPayload {

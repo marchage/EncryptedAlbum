@@ -12,8 +12,9 @@ class CryptoService {
     func deriveKeys(password: Data, salt: Data) async throws -> (encryptionKey: SymmetricKey, hmacKey: SymmetricKey) {
         return try await withCheckedThrowingContinuation { continuation in
             queue.async { [weak self] in
-                // Ensure we explicitly capture `self` for clarity inside this escaping closure.
-                guard let self = self else {
+                // Ensure the service hasn't been deallocated while the work is enqueued.
+                // We don't need a local `self` binding here; just verify presence.
+                guard self != nil else {
                     continuation.resume(
                         throwing: AlbumError.randomGenerationFailed(reason: "CryptoService deallocated while generating random data")
                     )
@@ -83,7 +84,15 @@ class CryptoService {
     /// Derives a password verifier for secure storage (separate from encryption keys)
     func deriveVerifier(password: Data, salt: Data) async throws -> Data {
         return try await withCheckedThrowingContinuation { continuation in
-            queue.async {
+            queue.async { [weak self] in
+                // Make sure the service hasn't been deallocated while the work is enqueued.
+                // No local binding is required since this closure doesn't use `self`.
+                guard self != nil else {
+                    continuation.resume(
+                        throwing: AlbumError.randomGenerationFailed(reason: "CryptoService deallocated while generating random data")
+                    )
+                    return
+                }
                 // Derive master key using PBKDF2 (Same as deriveKeys)
                 guard let derivedKeyBuffer = SecureMemory.allocateSecureBuffer(count: CryptoConstants.masterKeySize)
                 else {
@@ -283,7 +292,7 @@ class CryptoService {
 
                      attempt += 1
                      var retryData = Data(count: length)
-                    let retryResult = retryData.withUnsafeMutableBytes {
+                     let retryResult = retryData.withUnsafeMutableBytes {
                          SecRandomCopyBytes(kSecRandomDefault, length, $0.baseAddress!)
                      }
 

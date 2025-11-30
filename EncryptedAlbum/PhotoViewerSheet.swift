@@ -289,7 +289,7 @@ struct PhotoViewerSheet: View {
         
     func cleanupVideo() {
         if let url = videoURL {
-            try? FileManager.default.removeItem(at: url)
+            _ = try? FileManager.default.removeItem(at: url)
         }
         videoURL = nil
     }
