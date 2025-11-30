@@ -666,16 +666,32 @@ struct MainAlbumView: View {
         .accessibilityLabel("Add Photos from Library")
         .accessibilityIdentifier("addPhotosButton")
 
-        Button {
-            #if os(iOS)
-                startCameraCaptureFlow()
-            #else
+        #if os(macOS)
+            Button {
+                showingFilePicker = true
+            } label: {
+                Label("Import Files", systemImage: "doc.badge.plus")
+            }
+            .disabled(directImportProgress.isImporting || albumManager.exportProgress.isExporting)
+
+            Button {
                 showingCamera = true
-            #endif
-        } label: {
-            Image(systemName: "camera.fill")
-        }
-        .accessibilityLabel("Capture Photo or Video")
+            } label: {
+                Image(systemName: "camera.fill")
+            }
+            .accessibilityLabel("Capture Photo or Video")
+        #else
+            Button {
+                #if os(iOS)
+                    startCameraCaptureFlow()
+                #else
+                    showingCamera = true
+                #endif
+            } label: {
+                Image(systemName: "camera.fill")
+            }
+            .accessibilityLabel("Capture Photo or Video")
+          #endif
 
         #if os(macOS)
             Button {
@@ -925,6 +941,27 @@ struct MainAlbumView: View {
             }
         #else
             .toolbar {
+                // macOS: add a small app icon next to the title in the title bar so
+                // the window reads more like a native mac app and gives a visual
+                // anchor to the user. Keep this compact so it doesn't crowd the
+                // title area.
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 8) {
+                        #if os(macOS)
+                            if let nsIcon = NSApp.applicationIconImage {
+                                Image(nsImage: nsIcon)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 18, height: 18)
+                                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                            }
+                        #endif
+                        Text("Encrypted Album")
+                            .font(.headline)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 2)
+                }
                 ToolbarItemGroup(placement: .navigation) {
                     selectionToolbarControls
                 }
@@ -933,6 +970,8 @@ struct MainAlbumView: View {
                         isActive: albumManager.viewerProgress.isDecrypting || directImportProgress.isImporting || albumManager.exportProgress.isExporting || albumManager.restorationProgress.isRestoring,
                         message: albumManager.viewerProgress.isDecrypting ? (albumManager.viewerProgress.statusMessage.isEmpty ? (albumManager.viewerProgress.bytesTotal > 0 ? String(format: "Decrypting… %d%%", Int(albumManager.viewerProgress.percentComplete * 100)) : "Decrypting…") : (albumManager.viewerProgress.bytesTotal > 0 ? String(format: "%@ — %d%%", albumManager.viewerProgress.statusMessage, Int(albumManager.viewerProgress.percentComplete * 100)) : albumManager.viewerProgress.statusMessage)) : (directImportProgress.isImporting ? (directImportProgress.statusMessage.isEmpty ? "Importing…" : directImportProgress.statusMessage) : (albumManager.exportProgress.isExporting ? (albumManager.exportProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.exportProgress.statusMessage) : (albumManager.restorationProgress.isRestoring ? (albumManager.restorationProgress.statusMessage.isEmpty ? "Restoring…" : albumManager.restorationProgress.statusMessage) : "")))
                     )
+                    // Ensure macOS toolbar button order mirrors the toolbar visible
+                    // in the content area (Photos, Files, Camera) for consistent UX.
                     toolbarActions
                 }
             }
@@ -1307,6 +1346,10 @@ struct MainAlbumView: View {
                         Label("Files", systemImage: "doc.badge.plus")
                     }
                     .buttonStyle(.bordered)
+                    // Give the file/photos toolbar row a subtle, translucent
+                    // background so its controls remain visible across the various
+                    // privacy/theme combinations (dark / rainbow / retro TV etc.)
+                    .padding(4)
                     .disabled(
                         directImportProgress.isImporting || albumManager.exportProgress.isExporting)
 
@@ -1318,6 +1361,13 @@ struct MainAlbumView: View {
                     .buttonStyle(.bordered)
                 }
                 .controlSize(.small)
+                // Add a subtle background to make these controls readable against
+                // high-contrast privacy backgrounds (e.g., Rainbow). The padding
+                // and material help ensure good contrast without locking in a
+                // heavy, opaque visual.
+                .padding(6)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             #endif
         }
         .padding(.horizontal)
@@ -1331,9 +1381,23 @@ struct MainAlbumView: View {
 
     private var emptyState: some View {
         VStack(spacing: 20) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 60))
-                .foregroundStyle(.secondary)
+            #if os(macOS)
+                if let nsIcon = NSApp.applicationIconImage {
+                    Image(nsImage: nsIcon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 80, height: 80)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 60))
+                        .foregroundStyle(.secondary)
+                }
+            #else
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(.secondary)
+            #endif
 
             Text("No Encrypted Items")
                 .font(.title2)
