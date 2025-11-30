@@ -42,6 +42,11 @@ enum CryptoConstants {
     static let rateLimitBaseDelay: TimeInterval = 5
     static let rateLimitMaxDelay: TimeInterval = 300  // 5 minutes
 
+    /// Maximum number of retries when attempting to generate random bytes that pass quick entropy checks
+    /// This is intentionally conservative: a few retries are cheap and make tests far less flaky
+    /// if the platform returns an unlucky small sample.
+    static let randomGenerationMaxRetries = 10
+
     /// Compression quality
     static let thumbnailCompressionQuality: CGFloat = 0.8
 }

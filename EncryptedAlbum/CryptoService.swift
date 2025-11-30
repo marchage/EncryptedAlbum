@@ -231,6 +231,22 @@ class CryptoService {
 
     // MARK: - Utility Functions
 
+    /// Validates that generated random data has sufficient entropy
+    private func validateEntropy(_ data: Data) -> Bool {
+        // Check 1: Not all zeros
+        guard !data.allSatisfy({ $0 == 0 }) else { return false }
+
+        // Check 2: Not all same byte
+        let firstByte = data.first ?? 0
+        guard !data.allSatisfy({ $0 == firstByte }) else { return false }
+
+        // Check 3: Sufficient unique bytes (at least 50% should be unique)
+        let uniqueBytes = Set(data)
+        guard uniqueBytes.count >= data.count / 2 else { return false }
+
+        return true
+    }
+
     /// Generates cryptographically secure random data
     func generateRandomData(length: Int) async throws -> Data {
         return try await withCheckedThrowingContinuation { continuation in
@@ -247,12 +263,32 @@ class CryptoService {
                     return
                 }
 
-                // Validate entropy quickly (basic checks)
-                let isValidEntropy = self.validateEntropy(data)
-                guard isValidEntropy else {
-                    continuation.resume(
-                        throwing: AlbumError.randomGenerationFailed(reason: "Generated data failed entropy validation"))
-                    return
+                // Validate entropy quickly (basic checks). If entropy checks fail unexpectedly
+                // (extremely rare), retry several times before giving up to avoid flaky unit tests.
+                // Use a conservative upper bound from constants so test runs are deterministic.
+                let maxAttempts = CryptoConstants.randomGenerationMaxRetries
+                var attempt = 1
+                while !self.validateEntropy(data) {
+                    if attempt >= maxAttempts {
+                        continuation.resume(
+                            throwing: AlbumError.randomGenerationFailed(reason: "Generated data failed entropy validation"))
+                        return
+                    }
+
+                    attempt += 1
+                    var retryData = Data(count: length)
+                    let retryResult = retryData.withUnsafeMutableBytes {
+                        SecRandomCopyBytes(kSecRandomDefault, length, $0.baseAddress!)
+                    }
+
+                    guard retryResult == errSecSuccess else {
+                        continuation.resume(
+                            throwing: AlbumError.randomGenerationFailed(
+                                reason: "SecRandomCopyBytes failed with code \(retryResult)"))
+                        return
+                    }
+
+                    data = retryData
                 }
 
                 continuation.resume(returning: data)

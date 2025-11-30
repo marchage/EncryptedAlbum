@@ -107,4 +107,36 @@ final class SecurityServiceTests: XCTestCase {
         // Cleanup
         try await securityService.clearBiometricPassword()
     }
+
+    func testBiometricsAreSuppressedWhenTrustedModalActive() async throws {
+        // Activate trusted modal and ensure biometric calls are suppressed (no UI should be triggered)
+        #if os(iOS)
+        // Coordinator is @MainActor-isolated; call via MainActor to satisfy isolation rules
+        await MainActor.run { UltraPrivacyCoordinator.shared.beginTrustedModal() }
+        defer { Task { @MainActor in UltraPrivacyCoordinator.shared.endTrustedModal() } }
+        #elseif os(macOS)
+        await MainActor.run { MacPrivacyCoordinator.shared.beginTrustedModal() }
+        defer { Task { @MainActor in MacPrivacyCoordinator.shared.endTrustedModal() } }
+        #endif
+
+        // Expect the authenticate call to be rejected as cancelled due to active trusted modal
+        do {
+            _ = try await securityService.authenticateWithBiometrics(reason: "Test")
+            XCTFail("Expected authenticateWithBiometrics to throw when trusted modal is active")
+        } catch let err as AlbumError {
+            XCTAssertEqual(err, AlbumError.biometricCancelled)
+        } catch {
+            XCTFail("Unexpected error type thrown: \(error)")
+        }
+
+        // Retrieval should also be cancelled
+        do {
+            _ = try await securityService.retrieveBiometricPassword()
+            XCTFail("Expected retrieveBiometricPassword to throw when trusted modal is active")
+        } catch let err as AlbumError {
+            XCTAssertEqual(err, AlbumError.biometricCancelled)
+        } catch {
+            XCTFail("Unexpected error type thrown: \(error)")
+        }
+    }
 }

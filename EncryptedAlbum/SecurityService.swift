@@ -25,6 +25,18 @@ class SecurityService {
     func authenticateWithBiometrics(reason: String) async throws {
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
+                // Avoid presenting biometric UI while a trusted modal is active
+                #if os(iOS)
+                    if UltraPrivacyCoordinator.shared.isTrustedModalActive {
+                        continuation.resume(throwing: AlbumError.biometricCancelled)
+                        return
+                    }
+                #elseif os(macOS)
+                    if MacPrivacyCoordinator.shared.isTrustedModalActive {
+                        continuation.resume(throwing: AlbumError.biometricCancelled)
+                        return
+                    }
+                #endif
                 // Check rate limiting
                 if let lastAttempt = self.lastBiometricAttempt {
                     let timeSinceLastAttempt = Date().timeIntervalSince(lastAttempt)
@@ -438,6 +450,18 @@ class SecurityService {
 
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
+                // If a trusted modal is active, do not trigger the biometric prompt
+                #if os(iOS)
+                    if UltraPrivacyCoordinator.shared.isTrustedModalActive {
+                        continuation.resume(throwing: AlbumError.biometricCancelled)
+                        return
+                    }
+                #elseif os(macOS)
+                    if MacPrivacyCoordinator.shared.isTrustedModalActive {
+                        continuation.resume(throwing: AlbumError.biometricCancelled)
+                        return
+                    }
+                #endif
                 Task {
                     #if os(macOS)
                         // If we are not using Data Protection Keychain, we likely used the fallback storage (no Access Control).
@@ -646,6 +670,13 @@ class SecurityService {
         }
     #else
         private func applyMacKeychainAttributes(to query: inout [String: Any], requireUISkip: Bool) {}
+
+        // Non-macOS platforms don't probe the macOS Data Protection Keychain.
+        // Keep the method present so tests and callers can safely invoke it without needing
+        // platform-specific compilation checks.
+        func shouldUseDataProtectionKeychain() -> Bool {
+            return false
+        }
     #endif
 
 }

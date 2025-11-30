@@ -59,12 +59,36 @@ struct UnlockView: View {
         let attemptNames = ["AppIconMarketingRuntime", "AppIcon", "app-icon~ios-marketing"]
 
         // Try a runtime image set first (recommended). Fall back to AppIcon and marketing asset names.
-        let appIcon = UIImage(named: "AppIconMarketingRuntime") ?? UIImage(named: "AppIcon") ?? UIImage(named: "app-icon~ios-marketing")
-        if appIcon == nil {
-            AppLog.debugPublic("UnlockView: could not load app icon using names: \(attemptNames)")
-        } else {
-            AppLog.debugPublic("UnlockView: loaded app icon using a fallback name")
+        var appIcon = attemptNames.compactMap { UIImage(named: $0) }.first
+
+        // If we found an image but it appears low-resolution (small pixel size), try loading explicit
+        // high-resolution PNGs bundled in the app (e.g. exported marketing icon). This allows
+        // keeping a single 1024x1024 asset file and still rendering crisply at large sizes.
+        func isHighRes(_ img: UIImage?) -> Bool {
+            guard let img = img else { return false }
+            // Prefer at least 512px on the longest side for crisp rendering in our 256pt frame
+            let px = max(img.size.width * img.scale, img.size.height * img.scale)
+            return px >= 512.0
         }
+
+        if !isHighRes(appIcon) {
+            let bundleNames = ["AppIcon-1024", "AppIcon1024", "AppIcon_marketing", "MarketingIcon"]
+            for name in bundleNames {
+                if let url = Bundle.main.url(forResource: name, withExtension: "png"),
+                   let data = try? Data(contentsOf: url),
+                   // Use screen scale so the image reports correct scale
+                   let img = UIImage(data: data, scale: UIScreen.main.scale) {
+                    appIcon = img
+                    AppLog.debugPublic("UnlockView: loaded high-res app icon from bundle file \(name).png")
+                    break
+                }
+            }
+        } else if appIcon != nil {
+            AppLog.debugPublic("UnlockView: loaded app icon using a runtime asset name")
+        } else {
+            AppLog.debugPublic("UnlockView: could not load app icon using names: \(attemptNames)")
+        }
+
         if let appIcon = appIcon {
             return AnyView(Image(uiImage: appIcon)
                 .resizable()
