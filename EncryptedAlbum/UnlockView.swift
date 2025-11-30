@@ -71,12 +71,28 @@ struct UnlockView: View {
         // rounded corners baked-in which gives the same rounded corner every time.
         let attemptNames = ["AppIcon", "AppIcon-1024", "AppIcon1024", "AppIcon-512@2x"]
 
-        // Try a runtime image set first (recommended). Fall back to AppIcon and marketing asset names.
-        var appIcon = attemptNames.compactMap { UIImage(named: $0) }.first
+        // First try to load explicit high-resolution bundle files (preferred):
+        // check common large filenames first so we get the true full-res PNG instead
+        // of an image set resolution that may be lower.
+        let bundleAttemptNames = ["AppIcon-1024", "AppIcon-512@2x", "AppIcon1024", "AppIcon-512"]
+        var appIcon: UIImage? = nil
+        for name in bundleAttemptNames {
+            if let url = Bundle.main.url(forResource: name, withExtension: "png"),
+               let data = try? Data(contentsOf: url),
+               let img = UIImage(data: data, scale: UIScreen.main.scale)
+            {
+                appIcon = img
+                AppLog.debugPublic("UnlockView: loaded high-res app icon from bundle file \(name).png")
+                break
+            }
+        }
 
-        // If we found an image but it appears low-resolution (small pixel size), try loading explicit
-        // high-resolution PNGs bundled in the app (e.g. exported marketing icon). This allows
-        // keeping a single 1024x1024 asset file and still rendering crisply at large sizes.
+        // If we still don't have an explicit bundle PNG, fall back to UIImage(named:)
+        if appIcon == nil {
+            appIcon = attemptNames.compactMap { UIImage(named: $0) }.first
+        }
+
+        // If appIcon is nil here, we'll log and return an EmptyView later.
         func isHighRes(_ img: UIImage?) -> Bool {
             guard let img = img else { return false }
             // Prefer at least 512px on the longest side for crisp rendering in our 256pt frame
@@ -103,16 +119,19 @@ struct UnlockView: View {
         }
 
         if let appIcon = appIcon {
+            // Constrain icon size on phones so it doesn't dominate the screen.
+            #if os(iOS)
+                let maxDimension = min(256, UIScreen.main.bounds.width * 0.35)
+            #else
+                let maxDimension: CGFloat = 256
+            #endif
+
             return AnyView(Image(uiImage: appIcon)
                 .resizable()
                 .renderingMode(.original)
                 .interpolation(.high)
                 .aspectRatio(1, contentMode: .fit)
-                .frame(maxWidth: 256, maxHeight: 256)
-            // .padding(.top, 24)
-            // Use a smaller corner radius so the app icon doesn't always show an
-            // exaggerated rounded mask if the source asset already provides one.
-            .cornerRadius(8)
+                .frame(maxWidth: maxDimension, maxHeight: maxDimension)
                 .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
         }
         return AnyView(EmptyView())
