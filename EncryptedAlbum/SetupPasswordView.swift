@@ -225,7 +225,7 @@ struct SetupPasswordView: View {
 
                                 if revealPassword {
                                     VStack(spacing: 8) {
-                                        Text(generatedPasswords[0])
+                                        Text(generatedPasswords.indices.contains(selectedPasswordIndex) ? generatedPasswords[selectedPasswordIndex] : "")
                                             .font(.system(.title3, design: .monospaced))
                                             .fontWeight(.semibold)
                                             .padding()
@@ -250,26 +250,54 @@ struct SetupPasswordView: View {
                                         .buttonStyle(.bordered)
                                     }
                                 } else {
-                                    HStack {
-                                        Image(systemName: "eye.slash.fill")
-                                            .foregroundStyle(.secondary)
-                                        Text("Password hidden for security.")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-
-                                        Spacer()
-
-                                        Button {
-                                            revealPasswordWithFlash()
-                                        } label: {
-                                            HStack(spacing: 4) {
-                                                Image(systemName: "eye.fill")
-                                                Text("Reveal")
+                                    VStack(spacing: 8) {
+                                        // Candidate passwords — horizontally scrollable so iOS users
+                                        // can pick which generated password they prefer.
+                                        ScrollView(.horizontal, showsIndicators: false) {
+                                            HStack(spacing: 12) {
+                                                ForEach(Array(generatedPasswords.enumerated()), id: \.offset) { idx, pw in
+                                                    Button(action: { selectedPasswordIndex = idx }) {
+                                                        VStack(alignment: .leading, spacing: 6) {
+                                                            Text(pw)
+                                                                .font(.system(.body, design: .monospaced))
+                                                                .lineLimit(1)
+                                                                .truncationMode(.middle)
+                                                                .frame(maxWidth: 320, alignment: .leading)
+                                                            Text(passwordStrength.text)
+                                                                .font(.caption)
+                                                                .foregroundStyle(.secondary)
+                                                        }
+                                                        .padding(10)
+                                                        .background(RoundedRectangle(cornerRadius: 10).fill(selectedPasswordIndex == idx ? Color.blue.opacity(0.12) : Color.gray.opacity(0.06)))
+                                                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(selectedPasswordIndex == idx ? Color.blue : Color.clear, lineWidth: 2))
+                                                    }
+                                                    .buttonStyle(.plain)
+                                                    .frame(minWidth: 250)
+                                                }
                                             }
-                                            .font(.caption)
                                         }
-                                        .buttonStyle(.plain)
-                                        .foregroundStyle(.orange)
+
+                                        HStack {
+                                            Image(systemName: "eye.slash.fill")
+                                                .foregroundStyle(.secondary)
+                                            Text("Password hidden for security.")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+
+                                            Spacer()
+
+                                            Button {
+                                                revealPasswordWithFlash()
+                                            } label: {
+                                                HStack(spacing: 4) {
+                                                    Image(systemName: "eye.fill")
+                                                    Text("Reveal")
+                                                }
+                                                .font(.caption)
+                                            }
+                                            .buttonStyle(.plain)
+                                            .foregroundStyle(.orange)
+                                        }
                                     }
                                     .padding(.horizontal)
                                     .frame(width: 400, alignment: .leading)
@@ -450,8 +478,14 @@ struct SetupPasswordView: View {
     }
 
     private func generatePasswords() {
-        // Only generate one password - no need to show it
-        generatedPasswords = [generateStrongPassword()]
+        // Generate a few candidates so users can pick one they prefer.
+        var list: [String] = []
+        for _ in 0..<3 {
+            list.append(generateStrongPassword())
+        }
+        generatedPasswords = list
+        // Reset selection if we somehow re-generate while the view is showing
+        selectedPasswordIndex = 0
     }
 
     private func generateStrongPassword() -> String {
@@ -483,7 +517,7 @@ struct SetupPasswordView: View {
             #if os(iOS)
                 // On iOS, the Keychain will prompt for Face ID when storing with .biometryAny
                 // No need to authenticate first
-                let password = generatedPasswords[0]
+                let password = generatedPasswords.indices.contains(selectedPasswordIndex) ? generatedPasswords[selectedPasswordIndex] : (generatedPasswords.first ?? "")
                 Task {
                     await completeSetup(with: password)
                 }
@@ -536,7 +570,7 @@ struct SetupPasswordView: View {
         context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, error in
             DispatchQueue.main.async {
                 if success {
-                    let password = generatedPasswords[0]
+                    let password = generatedPasswords.indices.contains(selectedPasswordIndex) ? generatedPasswords[selectedPasswordIndex] : (generatedPasswords.first ?? "")
                     Task {
                         await completeSetup(with: password)
                     }
@@ -560,7 +594,8 @@ struct SetupPasswordView: View {
 
     private func completeSetup(with password: String) async {
         do {
-            try await albumManager.setupPassword(password)
+            // Respect the user's choice for storing in biometric-protected keychain.
+            try await albumManager.setupPassword(password, storeBiometric: useAutoPassword)
             // Immediately unlock so session keys are derived and the user can start working
             try await albumManager.unlock(password: password)
         } catch {

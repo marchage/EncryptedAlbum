@@ -654,7 +654,7 @@ public class AlbumManager: ObservableObject {
     /// Sets up the album password with proper validation and secure hashing.
     /// - Parameter password: The password to set (must be 8-128 characters)
     /// - Returns: `true` on success, `false` if validation fails
-    func setupPassword(_ password: String) async throws {
+    func setupPassword(_ password: String, storeBiometric: Bool = true) async throws {
         // Verify system entropy before generating keys. Do not block setup on a
         // potentially flaky or overly-strict health check — log and continue.
         do {
@@ -683,11 +683,15 @@ public class AlbumManager: ObservableObject {
             cachedEncryptionKey = nil
             cachedHMACKey = nil
             saveSettings()
-            UserDefaults.standard.set(true, forKey: "biometricConfigured")
+            if storeBiometric {
+                UserDefaults.standard.set(true, forKey: "biometricConfigured")
+            }
         }
         
-        // Store password for biometric unlock
-        await saveBiometricPassword(password)
+        // Store password for biometric unlock if requested
+        if storeBiometric {
+            await saveBiometricPassword(password)
+        }
         
 #if os(iOS)
         // Respect lockdown state - do not attempt cloud/network operations.
@@ -698,7 +702,7 @@ public class AlbumManager: ObservableObject {
         }
         // On iOS, verify biometric storage by attempting to retrieve it
         // This triggers Face ID prompt immediately to confirm biometric works
-        if !isRunningUnitTests {
+        if storeBiometric && !isRunningUnitTests {
             if await getBiometricPassword() == nil {
                 throw AlbumError.biometricFailed
             }

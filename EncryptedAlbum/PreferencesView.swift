@@ -421,23 +421,57 @@ struct PreferencesView: View {
                                 .foregroundStyle(albumManager.lockdownModeEnabled ? .red : .secondary)
                         }
                         
-                        Button {
-                            runHealthCheck()
-                        } label: {
-                            if isCheckingHealth {
-                                ProgressView().controlSize(.small)
-                            } else {
-                                Text("Run Security Health Check")
+                        HStack(spacing: 10) {
+                            Text("Choose app icon")
+                            Spacer()
+                            Picker("App Icon", selection: $uiSelectedAppIcon) {
+                                ForEach(appIconService.availableIcons, id: \ .self) { name in
+                                    Text(appIconService.displayName(for: name)).tag(name)
+                                }
                             }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                            .frame(maxWidth: 220)
+
+                            // Provide an explicit Apply/Set button so the user can force the system change
+                            Button("Set") {
+                                let selected = (uiSelectedAppIcon == "AppIcon") ? nil : uiSelectedAppIcon
+                                appIconService.select(iconName: selected)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
                         }
-                        .disabled(isCheckingHealth)
-                        
-                        if let report = healthReport {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HealthCheckRow(label: "Random Generation (Entropy)", passed: report.randomGenerationHealthy)
-                                HealthCheckRow(label: "Crypto Operations", passed: report.cryptoOperationsHealthy)
-                                HealthCheckRow(label: "File System Security", passed: report.fileSystemSecure)
-                                HealthCheckRow(label: "Memory Security", passed: report.memorySecurityHealthy)
+                        .onChange(of: uiSelectedAppIcon) { newValue in
+                            // Keep UI state in sync but require explicit Set to apply system icon.
+                            // This avoids accidentally changing the user's icon on simple UI navigation.
+                        }
+
+                        // Show current system/app service state and a force-apply button (iOS specific)
+                        HStack {
+                            Text("Current icon")
+                            Spacer()
+                            Text(appIconService.selectedIconName.isEmpty ? "Default" : appIconService.selectedIconName)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            #if os(iOS)
+                            Button("Force apply") {
+                                // Re-attempt an explicit system call regardless of stored state.
+                                let selected = (uiSelectedAppIcon == "AppIcon") ? nil : uiSelectedAppIcon
+                                UIApplication.shared.setAlternateIconName(selected) { error in
+                                    if let error = error {
+                                        AppLog.debugPrivate("PreferencesView: force set alternate icon failed: \(error.localizedDescription)")
+                                    } else {
+                                        AppLog.debugPrivate("PreferencesView: force set alternate icon success")
+                                        // Update our persisted value so other UIs match
+                                        appIconService.select(iconName: selected)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            #endif
+                        }
                                 Divider()
                                 HStack {
                                     Text("Overall Status:")
@@ -985,12 +1019,51 @@ struct PreferencesView: View {
             .pickerStyle(.menu)
             .labelsHidden()
             .frame(maxWidth: 220)
+
+            // Explicit apply button: changing the picker should not immediately
+            // trigger a system icon update (prevents accidental changes). User
+            // must press Set to apply their chosen icon.
+            Button("Set") {
+                let selected = (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
+                appIconService.select(iconName: selected)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
         }
-        .onChange(of: uiSelectedAppIcon) { newValue in
-            // Treat the canonical primary name as nil for primary icon
-            let selected = (newValue == "AppIcon") ? nil : newValue
-            appIconService.select(iconName: selected)
+        // Keep the UI state in-sync with selection changes, but require an explicit
+        // Set action to perform the system call (safer UX). Leave the onChange
+        // handler lightweight so we don't accidentally execute cross-platform
+        // API calls in unexpected contexts.
+        .onChange(of: uiSelectedAppIcon) { _ in
+            /* no-op: Set button applies the selection */
         }
+
+        // iOS-only helpers: allow the user to see/add a force apply if the system
+        // icon didn't update; this calls UIApplication.setAlternateIconName and
+        // ensures our AppIconService state matches the actual system state.
+        #if os(iOS)
+        HStack {
+            Text("Current icon")
+            Spacer()
+            Text(appIconService.selectedIconName.isEmpty ? "Default" : appIconService.selectedIconName)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Button("Force apply") {
+                let selected = (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
+                UIApplication.shared.setAlternateIconName(selected) { error in
+                    if let error = error {
+                        AppLog.debugPrivate("PreferencesView: force set alternate icon failed: \(error.localizedDescription)")
+                    } else {
+                        AppLog.debugPrivate("PreferencesView: force set alternate icon success")
+                        appIconService.select(iconName: selected)
+                    }
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        #endif
 
         #if os(iOS)
         Text("Note: iOS will only change the Home screen icon if alternate icons are declared in Info.plist (CFBundleAlternateIcons). If you don't see a system change, the app is using the default icon.")

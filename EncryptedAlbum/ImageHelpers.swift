@@ -43,6 +43,7 @@ final class AppIconService: ObservableObject {
         "AppIcon 1",
         "AppIcon 2",
         "AppIcon 3",
+        "AppIcon 4"
     ]
 
     // AppStorage does not support optional types directly, so store as a non-optional
@@ -55,16 +56,57 @@ final class AppIconService: ObservableObject {
     @Published public private(set) var runtimeMarketingImage: PlatformImage? = nil
 
     private init() {
-        // Try to apply persisted value at startup
-        DispatchQueue.main.async { [weak self] in self?.applySelectedIcon() }
+        // Try to sync persisted value with the current system state at startup.
+        // Important: don't blindly re-apply the stored value — that could reset a
+        // user-chosen alternate icon set from a previous run. Instead, if there is
+        // a system-set alternate icon (UIApplication.alternateIconName) and our
+        // stored `selectedIconName` is empty, adopt the system value so the UI
+        // shows the icon that is actually active. Otherwise, apply the stored value.
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+#if os(iOS)
+            if UIApplication.shared.supportsAlternateIcons {
+                // If system currently has an alternate icon set and our persisted value
+                // is empty, sync to system without re-applying (avoid a reset).
+                if let current = UIApplication.shared.alternateIconName, !current.isEmpty {
+                    if self.selectedIconName.isEmpty {
+                        // Adopt the system's alternate icon into our AppStorage so UI reflects reality.
+                        self.selectedIconName = current
+                        self.runtimeMarketingImage = Self.generateMarketingImage(from: current)
+                        return
+                    }
+                }
+            }
+#endif
+            self.applySelectedIcon()
+        }
     }
 
     func applySelectedIcon() {
         let name = selectedIconName
-        guard !name.isEmpty else {
+        // If nothing was chosen by the UI, prefer the system state (e.g. alternate icon
+        // set by the OS or a previous run). If the system has an alternate name and
+        // we don't have a persisted one, don't overwrite it — instead reflect it.
+#if os(iOS)
+        if name.isEmpty {
+            if UIApplication.shared.supportsAlternateIcons,
+               let current = UIApplication.shared.alternateIconName,
+               !current.isEmpty {
+                // System already uses an alternate; sync runtime image and avoid calling setAlternateIconName
+                runtimeMarketingImage = Self.generateMarketingImage(from: current)
+                return
+            } else {
+                // No selection and no system alternate -> ensure primary icon shown
+                setSystemIcon(nil)
+                return
+            }
+        }
+#else
+        if name.isEmpty {
             setSystemIcon(nil)
             return
         }
+#endif
         // Generate a runtime 1024 image and store it for preview purposes
         runtimeMarketingImage = Self.generateMarketingImage(from: name)
         setSystemIcon(name)

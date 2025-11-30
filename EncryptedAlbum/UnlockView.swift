@@ -60,7 +60,14 @@ struct UnlockView: View {
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
             }
         }
-        return AnyView(EmptyView())
+        // If we couldn't load an app icon, fall back to a friendly lock symbol
+        return AnyView(
+            Image(systemName: "lock.fill")
+                .font(.system(size: 72))
+                .foregroundStyle(
+                    LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+        )
         #else
         // On iOS the AppIcon entries in AppIcon.appiconset are not always addressable
         // by filename. Try the generated "AppIcon" name first (other views use this),
@@ -134,7 +141,14 @@ struct UnlockView: View {
                 .frame(maxWidth: maxDimension, maxHeight: maxDimension)
                 .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
         }
-        return AnyView(EmptyView())
+        // If no app icon could be loaded, show a neutral lock symbol instead of an empty view
+        return AnyView(
+            Image(systemName: "lock.fill")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(maxWidth: 120, maxHeight: 120)
+                .foregroundStyle(LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
+        )
         #endif
     }
 
