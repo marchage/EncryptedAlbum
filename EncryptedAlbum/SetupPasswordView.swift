@@ -258,7 +258,10 @@ struct SetupPasswordView: View {
                                                 ForEach(Array(generatedPasswords.enumerated()), id: \.offset) { idx, pw in
                                                     Button(action: { selectedPasswordIndex = idx }) {
                                                         VStack(alignment: .leading, spacing: 6) {
-                                                            Text(pw)
+                                                            // Show a masked preview in the candidate list so we don't
+                                                            // accidentally expose the full password. The Reveal button
+                                                            // shows the full secret intentionally.
+                                                            Text(maskedPreview(for: pw))
                                                                 .font(.system(.body, design: .monospaced))
                                                                 .lineLimit(1)
                                                                 .truncationMode(.middle)
@@ -449,6 +452,18 @@ struct SetupPasswordView: View {
                 }
             }
         )
+    }
+
+    /// Return a privacy-preserving preview of a generated password.
+    /// We show only the last 4 characters (if available) and mask the rest using bullet characters.
+    /// This gives users a recognizable short hint without exposing the full secret.
+    private func maskedPreview(for pw: String) -> String {
+        let visibleCount = min(4, pw.count)
+        let maskCount = max(0, pw.count - visibleCount)
+        let masked = String(repeating: "•", count: maskCount)
+        let start = pw.index(pw.endIndex, offsetBy: -visibleCount)
+        let suffix = String(pw[start...])
+        return masked + suffix
     }
 
     private func checkBiometrics() {

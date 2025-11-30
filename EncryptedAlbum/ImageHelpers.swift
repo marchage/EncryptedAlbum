@@ -43,7 +43,16 @@ final class AppIconService: ObservableObject {
         "AppIcon 1",
         "AppIcon 2",
         "AppIcon 3",
-        "AppIcon 4"
+        "AppIcon 4",
+        "AppIcon 5",
+        "AppIcon 6",
+        "AppIcon 7",
+        "AppIcon 8",
+        "AppIcon 9",
+        "AppIcon 10",
+        "AppIcon 11",
+        "AppIcon 12",
+        "AppIcon 13"
     ]
 
     // AppStorage does not support optional types directly, so store as a non-optional
