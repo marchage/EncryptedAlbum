@@ -12,7 +12,6 @@
 		432DD49F40365EA5EAEBFD23 /* AlbumDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5C904A396A6B1968CDD78D9 /* AlbumDetailView.swift */; };
 		4F5E1087AAB34BAD93E89C2A /* AlbumState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC21B534704407E965288CF /* AlbumState.swift */; };
 		72601657C5564D06A303EECF /* CryptoService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E6FD95D924253BFFFAD57 /* CryptoService.swift */; };
-		98185B852ED9BB0D00A963D2 /* icon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 98185B842ED9BB0D00A963D2 /* icon.icns */; };
 		98185B872ED9BB0D00A963D2 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98185B862ED9BB0D00A963D2 /* ShareViewController.swift */; };
 		98185B8A2ED9BB0D00A963D2 /* ShareViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 98185B882ED9BB0D00A963D2 /* ShareViewController.xib */; };
 		98185B8F2ED9BB0D00A963D2 /* ShareExtensionMac.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 98185B822ED9BB0D00A963D2 /* ShareExtensionMac.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -72,6 +71,9 @@
 		989ADDE22ED5BDE400994E72 /* UltraPrivacyCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */; };
 		989B68D72ED8C1DB00FA9A5B /* ShareHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989B68D62ED8C1DB00FA9A5B /* ShareHelper.swift */; };
 		989B68D82ED8C1DB00FA9A5B /* ShareHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989B68D62ED8C1DB00FA9A5B /* ShareHelper.swift */; };
+		98A4C2732EDBC9B500742B99 /* AlbumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F96EA3625074B045C751E84 /* AlbumManager.swift */; };
+		98A4C2752EDBF32100742B99 /* icon.iconset in Resources */ = {isa = PBXBuildFile; fileRef = 98A4C2742EDBF32100742B99 /* icon.iconset */; };
+		98A4C2772EDBF39700742B99 /* icon.iconset in Resources */ = {isa = PBXBuildFile; fileRef = 98A4C2762EDBF39700742B99 /* icon.iconset */; };
 		98C6A2E62ED905F500290D1E /* TelemetryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E2D3C4B5A6978877665544 /* TelemetryService.swift */; };
 		98C6A2E72ED905F500290D1E /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDEEFF001122334455667788 /* Logging.swift */; };
 		98C835F92EC9E6CD000997CF /* PhotosLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */; };
@@ -112,7 +114,6 @@
 		CC33DD4455EE66FF77AA88BB /* MainAlbumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE5566FF77AA88BB99CC /* MainAlbumView.swift */; };
 		DD69BC27985C4D09BA6690A2 /* FileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ECB74A746149529B6DE078 /* FileService.swift */; };
 		DDEEFF8899AABBCCDDEEFF00 /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDEEFF001122334455667788 /* Logging.swift */; };
-
 		F2A3B4C56D7E8F9012345678 /* TelemetryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E2D3C4B5A6978877665544 /* TelemetryService.swift */; };
 		F9B0EAD109417F32CF3B7D50 /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C068CD08B70A6DBEA00400 /* UnlockView.swift */; };
 /* End PBXBuildFile section */
@@ -193,7 +194,6 @@
 		4A6E6FD95D924253BFFFAD57 /* CryptoService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CryptoService.swift; sourceTree = "<group>"; };
 		8CC21B534704407E965288CF /* AlbumState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumState.swift; sourceTree = "<group>"; };
 		98185B822ED9BB0D00A963D2 /* ShareExtensionMac.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtensionMac.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		98185B842ED9BB0D00A963D2 /* icon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = icon.icns; sourceTree = "<group>"; };
 		98185B862ED9BB0D00A963D2 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		98185B892ED9BB0D00A963D2 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/ShareViewController.xib; sourceTree = "<group>"; };
 		98185B8B2ED9BB0D00A963D2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -237,6 +237,8 @@
 		989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InactiveAppOverlay.swift; sourceTree = "<group>"; };
 		989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UltraPrivacyCoordinator.swift; sourceTree = "<group>"; };
 		989B68D62ED8C1DB00FA9A5B /* ShareHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ShareHelper.swift; sourceTree = "<group>"; };
+		98A4C2742EDBF32100742B99 /* icon.iconset */ = {isa = PBXFileReference; lastKnownFileType = folder.iconset; name = icon.iconset; path = ../../../../Desktop/Copilot_20251129_173347/icon.iconset; sourceTree = "<group>"; };
+		98A4C2762EDBF39700742B99 /* icon.iconset */ = {isa = PBXFileReference; lastKnownFileType = folder.iconset; name = icon.iconset; path = ../../../../Desktop/Copilot_20251129_173347/icon.iconset; sourceTree = "<group>"; };
 		98D6909B2EDB369700200BB7 /* OnChangeCompat.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OnChangeCompat.swift; sourceTree = "<group>"; };
 		98D6909C2EDB369700200BB7 /* SharedModels.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
 		98D6909D2EDB369700200BB7 /* SharePreviewHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SharePreviewHelper.swift; sourceTree = "<group>"; };
@@ -328,7 +330,7 @@
 		98185B832ED9BB0D00A963D2 /* ShareExtensionMac */ = {
 			isa = PBXGroup;
 			children = (
-				98185B842ED9BB0D00A963D2 /* icon.icns */,
+				98A4C2742EDBF32100742B99 /* icon.iconset */,
 				98185B862ED9BB0D00A963D2 /* ShareViewController.swift */,
 				98185B882ED9BB0D00A963D2 /* ShareViewController.xib */,
 				98185B8B2ED9BB0D00A963D2 /* Info.plist */,
@@ -340,6 +342,7 @@
 		981D44D12ED79E5100287DFC /* ShareExtension */ = {
 			isa = PBXGroup;
 			children = (
+				98A4C2762EDBF39700742B99 /* icon.iconset */,
 				981D44DF2ED7A10400287DFC /* ShareExtension.entitlements */,
 				981D44D22ED79E5100287DFC /* ShareViewController.swift */,
 				981D44D42ED79E5100287DFC /* MainInterface.storyboard */,
@@ -680,7 +683,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				98185B8A2ED9BB0D00A963D2 /* ShareViewController.xib in Resources */,
-				98185B852ED9BB0D00A963D2 /* icon.icns in Resources */,
+				98A4C2752EDBF32100742B99 /* icon.iconset in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -696,6 +699,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				98A4C2772EDBF39700742B99 /* icon.iconset in Resources */,
 				981D44D62ED79E5100287DFC /* MainInterface.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -766,7 +770,7 @@
 				98C835FC2EC9E6CD000997CF /* SetupPasswordView.swift in Sources */,
 				98C835FD2EC9E6CD000997CF /* MainAlbumView.swift in Sources */,
 				98900B512ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */,
-				98C835FE2EC9E6CD000997CF /* AlbumManager.swift in Sources */,
+				98A4C2732EDBC9B500742B99 /* AlbumManager.swift in Sources */,
 				98C6A2E62ED905F500290D1E /* TelemetryService.swift in Sources */,
 				98C6A2E72ED905F500290D1E /* Logging.swift in Sources */,
 				98D690A32EDB369800200BB7 /* SharePreviewHelper.swift in Sources */,
@@ -820,7 +824,6 @@
 				AA11BB2233CC44DD55EE66FF /* SetupPasswordView.swift in Sources */,
 				CC33DD4455EE66FF77AA88BB /* MainAlbumView.swift in Sources */,
 				98900B502ED624A900B92B85 /* PrivacyOverlayBackground.swift in Sources */,
-
 				F2A3B4C56D7E8F9012345678 /* TelemetryService.swift in Sources */,
 				DDEEFF8899AABBCCDDEEFF00 /* Logging.swift in Sources */,
 				98D690A22EDB369800200BB7 /* SharePreviewHelper.swift in Sources */,

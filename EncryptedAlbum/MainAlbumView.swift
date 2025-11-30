@@ -891,6 +891,18 @@ struct MainAlbumView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
+                // Title-area toolbar item: show a tiny app icon next to the window title
+                // so it appears in the macOS title bar adjacent to "Encrypted Album".
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 6) {
+                        Text("Encrypted Album")
+                            .font(.headline)
+                            .lineLimit(1)
+                            .foregroundStyle(.primary)
+                        // Small padding so the icon isn't flush against the title text
+                        appIconTiny().padding(.leading, 6)
+                    }
+                }
                 ToolbarItemGroup(placement: .navigationBarLeading) {
                     selectionToolbarControls
                 }
@@ -1266,12 +1278,19 @@ struct MainAlbumView: View {
     private var privacySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 12) {
-                Label(
-                    privacyModeEnabled ? "Privacy Mode On" : "Privacy Mode Off",
-                    systemImage: privacyModeEnabled ? "eye.slash.fill" : "eye.fill"
-                )
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                // Tiny app icon on the left + title (low-profile). Icon is intentionally small and
+                // placed left so it's always anchored to the leading edge regardless of text length.
+                HStack(spacing: 8) {
+                    // Small, subtle circular app icon — intentionally tiny/low-contrast so it doesn't
+                    // draw too much attention. If no runtime app icon is available, the view is empty.
+                    appIconTiny()
+                    Label(
+                        privacyModeEnabled ? "Privacy Mode On" : "Privacy Mode Off",
+                        systemImage: privacyModeEnabled ? "eye.slash.fill" : "eye.fill"
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
                 Spacer()
                 Toggle("", isOn: $privacyModeEnabled)
                     .labelsHidden()
@@ -1308,6 +1327,36 @@ struct MainAlbumView: View {
         .padding(.horizontal)
         .padding(.vertical, privacyCardVerticalPadding)
         .privacyCardStyle()
+    }
+
+    // Tiny app icon used in header locations where we want something low-profile.
+    private func appIconTiny() -> AnyView {
+        #if os(macOS)
+        if let nsimg = NSImage(named: "AppIcon") {
+            return AnyView(Image(nsImage: nsimg)
+                .resizable()
+                .renderingMode(.original)
+                .interpolation(.high)
+                .aspectRatio(1, contentMode: .fit)
+                .frame(width: 18, height: 18)
+                .clipShape(Circle())
+                .opacity(0.78))
+        }
+        return AnyView(EmptyView())
+        #else
+        let attemptNames = ["AppIconMarketingRuntime", "AppIcon", "app-icon~ios-marketing"]
+        if let uiImg = attemptNames.compactMap({ UIImage(named: $0) }).first {
+            return AnyView(Image(uiImage: uiImg)
+                .resizable()
+                .renderingMode(.original)
+                .interpolation(.high)
+                .aspectRatio(1, contentMode: .fit)
+                .frame(width: 18, height: 18)
+                .clipShape(Circle())
+                .opacity(0.78))
+        }
+        return AnyView(EmptyView())
+        #endif
     }
 
     // Notification banner moved into the reusable `NotificationBannerView` component.

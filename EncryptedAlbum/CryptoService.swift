@@ -11,7 +11,14 @@ class CryptoService {
     /// Derives encryption and HMAC keys from password (Data) and salt
     func deriveKeys(password: Data, salt: Data) async throws -> (encryptionKey: SymmetricKey, hmacKey: SymmetricKey) {
         return try await withCheckedThrowingContinuation { continuation in
-            queue.async {
+            queue.async { [weak self] in
+                // Ensure we explicitly capture `self` for clarity inside this escaping closure.
+                guard let self = self else {
+                    continuation.resume(
+                        throwing: AlbumError.randomGenerationFailed(reason: "CryptoService deallocated while generating random data")
+                    )
+                    return
+                }
                 // Derive master key using PBKDF2
                 guard let derivedKeyBuffer = SecureMemory.allocateSecureBuffer(count: CryptoConstants.masterKeySize)
                 else {
@@ -232,7 +239,7 @@ class CryptoService {
     // MARK: - Utility Functions
 
     /// Validates that generated random data has sufficient entropy
-    private func validateEntropy(_ data: Data) -> Bool {
+    fileprivate func validateEntropy(_ data: Data) -> Bool {
         // Check 1: Not all zeros
         guard !data.allSatisfy({ $0 == 0 }) else { return false }
 
@@ -264,40 +271,39 @@ class CryptoService {
                 }
 
                 // Validate entropy quickly (basic checks). If entropy checks fail unexpectedly
-                // (extremely rare), retry several times before giving up to avoid flaky unit tests.
-                // Use a conservative upper bound from constants so test runs are deterministic.
-                let maxAttempts = CryptoConstants.randomGenerationMaxRetries
+                // (very rare), retry a few times before giving up to avoid flaky unit tests.
+                let maxAttempts = 3
                 var attempt = 1
                 while !self.validateEntropy(data) {
-                    if attempt >= maxAttempts {
-                        continuation.resume(
-                            throwing: AlbumError.randomGenerationFailed(reason: "Generated data failed entropy validation"))
-                        return
-                    }
+                     if attempt >= maxAttempts {
+                         continuation.resume(
+                             throwing: AlbumError.randomGenerationFailed(reason: "Generated data failed entropy validation"))
+                         return
+                     }
 
-                    attempt += 1
-                    var retryData = Data(count: length)
+                     attempt += 1
+                     var retryData = Data(count: length)
                     let retryResult = retryData.withUnsafeMutableBytes {
-                        SecRandomCopyBytes(kSecRandomDefault, length, $0.baseAddress!)
-                    }
+                         SecRandomCopyBytes(kSecRandomDefault, length, $0.baseAddress!)
+                     }
 
-                    guard retryResult == errSecSuccess else {
-                        continuation.resume(
-                            throwing: AlbumError.randomGenerationFailed(
-                                reason: "SecRandomCopyBytes failed with code \(retryResult)"))
-                        return
-                    }
+                     guard retryResult == errSecSuccess else {
+                         continuation.resume(
+                             throwing: AlbumError.randomGenerationFailed(
+                                 reason: "SecRandomCopyBytes failed with code \(retryResult)"))
+                         return
+                     }
 
-                    data = retryData
-                }
+                     data = retryData
+                 }
 
-                continuation.resume(returning: data)
-            }
-        }
-    }
+                 continuation.resume(returning: data)
+             }
+         }
+     }
 
-    /// Generates a random salt for key derivation
-    func generateSalt() async throws -> Data {
-        return try await generateRandomData(length: CryptoConstants.saltSize)
-    }
-}
+     /// Generates a random salt for key derivation
+     func generateSalt() async throws -> Data {
+         return try await generateRandomData(length: CryptoConstants.saltSize)
+     }
+ }
