@@ -48,7 +48,6 @@ final class AppIconService: ObservableObject {
         "AppIcon 12",
         "AppIcon 13",
         "AppIcon 14",
-        "AppIcon 15",
         "AppIconMarketingRuntime"
     ]
 
