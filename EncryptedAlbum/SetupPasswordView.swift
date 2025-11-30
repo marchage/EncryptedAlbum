@@ -337,6 +337,7 @@ struct SetupPasswordView: View {
                     .padding(.horizontal)
                 SecureField("Enter password", text: $manualPassword)
                     .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 300)
                     #if os(macOS)
                         .textContentType(.password)
                     #else
@@ -383,6 +384,7 @@ struct SetupPasswordView: View {
                     .padding(.horizontal)
                 SecureField("Re-enter password", text: $confirmPassword)
                     .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 300)
                     #if os(macOS)
                         .textContentType(.password)
                     #else
