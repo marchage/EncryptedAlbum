@@ -425,7 +425,7 @@ struct PreferencesView: View {
                             Text("Choose app icon")
                             Spacer()
                             Picker("App Icon", selection: $uiSelectedAppIcon) {
-                                ForEach(appIconService.availableIcons, id: \ .self) { name in
+                                ForEach(appIconService.availableIcons, id: \.self) { name in
                                     Text(appIconService.displayName(for: name)).tag(name)
                                 }
                             }
