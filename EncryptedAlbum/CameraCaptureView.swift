@@ -13,6 +13,10 @@ import SwiftUI
             let picker = UIImagePickerController()
             picker.delegate = context.coordinator
             picker.sourceType = .camera
+            // Give the system camera UI a reasonable default flash behavior.
+            // UIImagePickerController.CameraFlashMode doesn't have an `.unknown` case
+            // so set a sensible default directly.
+            picker.cameraFlashMode = .auto
             picker.mediaTypes = ["public.image", "public.movie"]
             picker.allowsEditing = false
             picker.modalPresentationStyle = .fullScreen
@@ -242,6 +246,23 @@ import SwiftUI
 
                         Spacer()
 
+                        // Torch (flash) toggle — some cameras support a torch mode
+                        // that can be toggled while previewing. Expose that control
+                        // here so users don't have to reach for a small system control
+                        // that might be hidden at the top of the preview.
+                        if model.torchAvailable {
+                            Button {
+                                model.toggleTorch()
+                            } label: {
+                                Image(systemName: model.torchOn ? "bolt.fill" : "bolt")
+                                    .font(.title2)
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 6)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.trailing, 6)
+                        }
+
                         Button {
                             model.stopSession()
                             dismiss()
@@ -382,6 +403,8 @@ import SwiftUI
         @Published var isRecording = false
         @Published var recordingDuration: TimeInterval? = nil
         @Published var cameraError: String?
+        @Published var torchAvailable: Bool = false
+        @Published var torchOn: Bool = false
 
         private var recordingTimer: Timer?
         private var recordingStartTime: Date?
@@ -453,6 +476,9 @@ import SwiftUI
                     return
                 }
 
+                // Keep a reference to the selected device so we can toggle torch later
+                self.selectedDevice = device
+
                 // Add this check to ensure the device is connected
                 guard device.isConnected else {
                     self.handleCameraError("Camera device is not connected. Please check your camera.")
@@ -510,6 +536,16 @@ import SwiftUI
 
                 session.commitConfiguration()
 
+                // Publish torch availability initial state on main thread
+                DispatchQueue.main.async {
+                    self.torchAvailable = device.hasTorch
+                    if device.hasTorch {
+                        self.torchOn = device.isTorchActive
+                    } else {
+                        self.torchOn = false
+                    }
+                }
+
                 session.startRunning()
 
                 DispatchQueue.main.async {
@@ -557,6 +593,34 @@ import SwiftUI
             DispatchQueue.main.async {
                 self.cameraError = message
                 self.isAuthorized = false
+            }
+        }
+
+        private var selectedDevice: AVCaptureDevice? = nil
+
+        /// Toggle torch/flash state if the current device supports it.
+        func toggleTorch() {
+            sessionQueue.async { [weak self] in
+                guard let self = self, let device = self.selectedDevice, device.hasTorch else { return }
+                do {
+                    try device.lockForConfiguration()
+                    if device.isTorchActive {
+                        device.torchMode = .off
+                    } else {
+                        // Default to level 1.0 (full) if available
+                        if device.isTorchModeSupported(.on) {
+                            try device.setTorchModeOn(level: 1.0)
+                        } else {
+                            device.torchMode = .on
+                        }
+                    }
+                    device.unlockForConfiguration()
+                    DispatchQueue.main.async {
+                        self.torchOn = device.isTorchActive
+                    }
+                } catch {
+                    AppLog.debugPrivate("CameraModel: failed to toggle torch: \(error.localizedDescription)")
+                }
             }
         }
 

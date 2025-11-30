@@ -40,15 +40,9 @@ final class AppIconService: ObservableObject {
     /// (preferred) so previews and marketing renderings are consistent.
     let availableIcons: [String] = [
         "AppIcon", // default
-        "AppIcon 4",
-        "AppIcon 5",
-        "AppIcon 6",
-        "AppIcon 8",
-        "AppIcon 11",
-        "AppIcon 12",
-        "AppIcon 13",
-        "AppIcon 14",
-        "AppIconMarketingRuntime"
+        "AppIcon 1",
+        "AppIcon 2",
+        "AppIcon 3",
     ]
 
     // AppStorage does not support optional types directly, so store as a non-optional

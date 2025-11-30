@@ -22,31 +22,41 @@ struct UnlockView: View {
 
     private func appIconView() -> some View {
         #if os(macOS)
-        if let appIcon = NSImage(named: "AppIcon") {
-            // Force loading the 2x representation if available (512px for 256pt @2x)
-            if let bitmapRep = appIcon.representations.first(where: { 
-                ($0 as? NSBitmapImageRep)?.pixelsWide == 512 
-            }) as? NSBitmapImageRep {
-                let highResImage = NSImage(size: NSSize(width: 256, height: 256))
-                highResImage.addRepresentation(bitmapRep)
+        // Prefer the running application's icon first (it reflects the
+        // actual icon macOS is using at runtime). Fall back to named AppIcon
+        // resources if for some reason the runtime icon is not available.
+        if let runtimeIcon = NSApp.applicationIconImage ?? NSImage(named: "AppIcon") {
+            // Prefer the highest-resolution representation available (ideally 1024px)
+            // so the icon renders crisply at larger sizes, but avoid forcing a
+            // small rounded corner at 26px which makes the asset look baked-in.
+            if let bestRep = runtimeIcon.representations
+                .compactMap({ $0 as? NSBitmapImageRep })
+                .sorted(by: { $0.pixelsWide > $1.pixelsWide })
+                .first
+            {
+                let px = bestRep.pixelsWide
+                // create a target image scaled appropriately to avoid odd scaling artifacts
+                let size = NSSize(width: px/2, height: px/2)
+                let highResImage = NSImage(size: size)
+                highResImage.addRepresentation(bestRep)
                 return AnyView(Image(nsImage: highResImage)
                     .resizable()
                     .renderingMode(.original)
                     .interpolation(.high)
                     .aspectRatio(1, contentMode: .fit)
                     .frame(maxWidth: 256, maxHeight: 256)
-                    // .padding(.top, 36)
-                    .clipShape(RoundedRectangle(cornerRadius: 26))
+                    // Do not force a large corner radius here — prefer the icon
+                    // to render as bundled. If the asset is pre-rounded, showing
+                    // it as-is avoids the repeated rounded look.
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
             } else {
-                return AnyView(Image(nsImage: appIcon)
+                return AnyView(Image(nsImage: runtimeIcon)
                     .resizable()
                     .renderingMode(.original)
                     .interpolation(.high)
                     .aspectRatio(1, contentMode: .fit)
                     .frame(maxWidth: 256, maxHeight: 256)
-                    // .padding(.top, 36)
-                    .clipShape(RoundedRectangle(cornerRadius: 26))
+                    // Show runtime icon as-is (no forced corner radius)
                     .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
             }
         }
@@ -56,8 +66,10 @@ struct UnlockView: View {
         // by filename. Try the generated "AppIcon" name first (other views use this),
         // and fall back to the marketing filename if available.
         // Helpful debug logging — no DEBUG guard required; AppLog handles gating.
-        // Prefer the dedicated 512@2x marketing asset for crisp large icons
-        let attemptNames = ["AppIcon-512@2x", "AppIconMarketingRuntime", "AppIcon", "app-icon~ios-marketing"]
+        // Prefer generated AppIcon entries and the high-res 1024 file if present.
+        // Avoid preferring the 512@2x 'marketing' asset because it often includes
+        // rounded corners baked-in which gives the same rounded corner every time.
+        let attemptNames = ["AppIcon", "AppIcon-1024", "AppIcon1024", "AppIcon-512@2x"]
 
         // Try a runtime image set first (recommended). Fall back to AppIcon and marketing asset names.
         var appIcon = attemptNames.compactMap { UIImage(named: $0) }.first
@@ -73,7 +85,7 @@ struct UnlockView: View {
         }
 
         if !isHighRes(appIcon) {
-            let bundleNames = ["AppIcon-1024", "AppIcon1024", "AppIcon_marketing", "MarketingIcon"]
+            let bundleNames = ["AppIcon-1024", "AppIcon1024"]
             for name in bundleNames {
                 if let url = Bundle.main.url(forResource: name, withExtension: "png"),
                    let data = try? Data(contentsOf: url),
@@ -97,8 +109,10 @@ struct UnlockView: View {
                 .interpolation(.high)
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: 256, maxHeight: 256)
-                // .padding(.top, 24)
-                .clipShape(RoundedRectangle(cornerRadius: 26))
+            // .padding(.top, 24)
+            // Use a smaller corner radius so the app icon doesn't always show an
+            // exaggerated rounded mask if the source asset already provides one.
+            .cornerRadius(8)
                 .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
         }
         return AnyView(EmptyView())

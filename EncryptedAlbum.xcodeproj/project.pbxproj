@@ -980,7 +980,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum.ShareExtensionMac";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "EncyptedAlbumShareExtensionMac@dev";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "EncryptedAlbumExtMac@Developer";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -1012,7 +1012,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum.ShareExtensionMac";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "EncyptedAlbumShareExtensionMac@dev";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "EncryptedAlbumExtMac@Developer";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -1314,7 +1314,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = ASDF;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "EncryptedAlbum@Developer";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -1350,7 +1350,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = ASDF;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "EncryptedAlbum@Developer";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};

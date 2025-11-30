@@ -2985,23 +2985,34 @@ extension AlbumManager {
     ///
     /// WARNING: This is destructive and irreversible. Only use in development.
     func nukeAllData() {
-        AppLog.warning("Nuking all data (DEBUG only).")
-        try? FileManager.default.removeItem(at: storage.baseURL)
-        // Reset defaults
-        if let bundleID = Bundle.main.bundleIdentifier {
-            UserDefaults.standard.removePersistentDomain(forName: bundleID)
+        AppLog.warning("Nuking all data (DEBUG only). Performing destructive cleanup on a background queue.")
+
+        // Perform destructive IO/keychain operations off the main thread so UI
+        // doesn't freeze if this helper is invoked while running the app.
+        Task.detached(priority: .background) {
+            try? FileManager.default.removeItem(at: self.storage.baseURL)
+
+            // Reset defaults
+            if let bundleID = Bundle.main.bundleIdentifier {
+                UserDefaults.standard.removePersistentDomain(forName: bundleID)
+            }
+
+            // Reset keychain (simplified)
+            let secItemClasses = [
+                kSecClassGenericPassword, kSecClassInternetPassword, kSecClassCertificate, kSecClassKey,
+                kSecClassIdentity,
+            ]
+            for itemClass in secItemClasses {
+                let spec: [String: Any] = [kSecClass as String: itemClass]
+                SecItemDelete(spec as CFDictionary)
+            }
+
+            // Re-init storage to recreate directories. Do this in the background
+            // but it's safe to create/prepare storage off-main in DEBUG helper.
+            _ = AlbumStorage()
+
+            AppLog.debugPrivate("Nuke complete (DEBUG): storage wiped and defaults/keychain cleared.")
         }
-        // Reset keychain (simplified)
-        let secItemClasses = [
-            kSecClassGenericPassword, kSecClassInternetPassword, kSecClassCertificate, kSecClassKey,
-            kSecClassIdentity,
-        ]
-        for itemClass in secItemClasses {
-            let spec: [String: Any] = [kSecClass as String: itemClass]
-            SecItemDelete(spec as CFDictionary)
-        }
-        // Re-init storage to recreate directories
-        _ = AlbumStorage()
 }
 #endif
 }
@@ -3053,14 +3064,21 @@ extension AlbumManager {
             let uniqueAssets = Array(Set(successfulAssets))
             
             if cameraAutoRemoveFromPhotos {
+                // Perform the potentially expensive Photos batch-delete off the
+                // main thread — PhotosLibraryService may perform disk / database
+                // operations which can freeze the UI if handled synchronously on
+                // the main actor. Run the call from a detached task so the
+                // continuation is resumed when the background work completes.
                 await withCheckedContinuation { continuation in
-                    PhotosLibraryService.shared.batchDeleteAssets(uniqueAssets) { success in
-                        if success {
-                            AppLog.debugPublic("Successfully deleted \(uniqueAssets.count) photos from library")
-                        } else {
-                            AppLog.error("Failed to delete some photos from library")
+                    Task.detached(priority: .userInitiated) {
+                        PhotosLibraryService.shared.batchDeleteAssets(uniqueAssets) { success in
+                            if success {
+                                AppLog.debugPublic("Successfully deleted \(uniqueAssets.count) photos from library")
+                            } else {
+                                AppLog.error("Failed to delete some photos from library")
+                            }
+                            continuation.resume()
                         }
-                        continuation.resume()
                     }
                 }
             } else {
