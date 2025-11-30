@@ -38,22 +38,49 @@ final class AppIconService: ObservableObject {
     /// Trimmed down to the canonical runtime candidates. The special name
     /// "AppIconMarketingRuntime" maps to a dedicated 512@2x rounded asset
     /// (preferred) so previews and marketing renderings are consistent.
-    let availableIcons: [String] = [
-        "AppIcon", // default
-        "AppIcon 1",
-        "AppIcon 2",
-        "AppIcon 3",
-        "AppIcon 4",
-        "AppIcon 5",
-        "AppIcon 6",
-        "AppIcon 7",
-        "AppIcon 8",
-        "AppIcon 9",
-        "AppIcon 10",
-        "AppIcon 11",
-        "AppIcon 12",
-        "AppIcon 13"
-    ]
+    // Available icon names — computed at runtime from Info.plist and the asset catalog.
+    // This avoids offering an icon name the OS cannot actually apply which would
+    // otherwise fail silently (or return a transient error).
+    var availableIcons: [String] {
+        #if os(iOS)
+        // Gather keys declared in Info.plist under CFBundleIcons->CFBundleAlternateIcons
+        var names = [String]()
+        if let plist = Bundle.main.infoDictionary,
+           let bundleIcons = plist["CFBundleIcons"] as? [String: Any],
+           let alternates = bundleIcons["CFBundleAlternateIcons"] as? [String: Any] {
+            // alternates keys are the names used with UIApplication.setAlternateIconName
+            names.append(contentsOf: alternates.keys)
+        }
+
+        // Always include the default primary name "AppIcon"
+        names.append("AppIcon")
+
+        // Deduplicate and keep a stable ordering (prefer declared order then default)
+        var unique: [String] = []
+        for n in names where !unique.contains(n) { unique.append(n) }
+
+        // Filter to only those that we can reasonably render at runtime
+        return unique.filter { Self.isIconUsable(iconName: $0) }
+        #else
+        // On macOS keep the same known list for previews
+        return [
+            "AppIcon", // default
+            "AppIcon 1",
+            "AppIcon 2",
+            "AppIcon 3",
+            "AppIcon 4",
+            "AppIcon 5",
+            "AppIcon 6",
+            "AppIcon 7",
+            "AppIcon 8",
+            "AppIcon 9",
+            "AppIcon 10",
+            "AppIcon 11",
+            "AppIcon 12",
+            "AppIcon 13"
+        ]
+        #endif
+    }
 
     // AppStorage does not support optional types directly, so store as a non-optional
     // string and treat the empty string as "no selection".
@@ -121,6 +148,14 @@ final class AppIconService: ObservableObject {
         setSystemIcon(name)
     }
 
+    /// Last error seen when attempting to apply an alternate icon. Useful for
+    /// surfacing UI feedback when the OS reports a failure.
+    @Published public private(set) var lastIconApplyError: String? = nil
+
+    /// Clear any last reported icon apply error. Public so UI code can reset the alert.
+    public func clearLastIconApplyError() { lastIconApplyError = nil }
+
+
     /// Return easy display names for UI
     func displayName(for iconName: String) -> String {
         if iconName == "AppIcon" { return "Default" }
@@ -138,13 +173,7 @@ final class AppIconService: ObservableObject {
         // The default primary icon is represented by nil
         let iconNameToSet = (name == nil || name == "AppIcon") ? nil : name
 
-        UIApplication.shared.setAlternateIconName(iconNameToSet) { error in
-            if let error = error {
-                AppLog.debugPrivate("AppIconService: failed to set alternate icon \(iconNameToSet ?? "<primary>"): \(error.localizedDescription)")
-            } else {
-                AppLog.debugPrivate("AppIconService: set alternate icon \(iconNameToSet ?? "<primary>")")
-            }
-        }
+        attemptSetAlternateIcon(iconNameToSet, attemptsRemaining: 1)
 #elseif os(macOS)
         // On macOS we can update the Dock icon at runtime using NSApplication
         if let name = name, name != "AppIcon" {
@@ -157,6 +186,53 @@ final class AppIconService: ObservableObject {
                 NSApplication.shared.applicationIconImage = defaultImage
             }
         }
+#endif
+    }
+
+#if os(iOS)
+    /// Attempt to call setAlternateIconName, retrying once for transient failures.
+    private func attemptSetAlternateIcon(_ iconNameToSet: String?, attemptsRemaining: Int) {
+        UIApplication.shared.setAlternateIconName(iconNameToSet) { [weak self] error in
+            guard let self = self else { return }
+            if let error = error {
+                AppLog.debugPrivate("AppIconService: failed to set alternate icon \(iconNameToSet ?? "<primary>"): \(error.localizedDescription)")
+
+                // Detect transient errors and retry once after a short delay.
+                let message = error.localizedDescription.lowercased()
+                let transient = message.contains("temporarily") || message.contains("unavailable") || message.contains("try again")
+
+                if attemptsRemaining > 0 && transient {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        self.attemptSetAlternateIcon(iconNameToSet, attemptsRemaining: attemptsRemaining - 1)
+                    }
+                    return
+                }
+
+                // Final failure — publish the message for UI
+                DispatchQueue.main.async {
+                    self.lastIconApplyError = error.localizedDescription
+                }
+            } else {
+                AppLog.debugPrivate("AppIconService: set alternate icon \(iconNameToSet ?? "<primary>")")
+                DispatchQueue.main.async { self.lastIconApplyError = nil }
+            }
+        }
+    }
+#endif
+
+    /// Returns whether we can reasonably render / find an icon for preview/apply
+    static func isIconUsable(iconName: String?) -> Bool {
+#if os(iOS)
+        let nameToTest = (iconName == nil || iconName == "AppIcon") ? "AppIcon" : iconName!
+
+        // Try common methods: UIImage(named:) and our marketing renderer
+        if UIImage(named: nameToTest) != nil { return true }
+        if generateMarketingImage(from: nameToTest) != nil { return true }
+        return false
+#else
+        // On macOS prefer to check NSImage(named:)
+        let nameToTest = (iconName == nil || iconName == "AppIcon") ? "AppIcon" : iconName!
+        return NSImage(named: NSImage.Name(nameToTest)) != nil
 #endif
     }
 

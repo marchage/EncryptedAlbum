@@ -19,6 +19,7 @@ struct PreferencesSectionTop: View {
 
     @ObservedObject private var appIconService = AppIconService.shared
     @State private var uiSelectedAppIcon: String = "AppIcon"
+    // Use service error so we can show failures originating from setSystemIcon retries
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -187,12 +188,24 @@ struct PreferencesSectionTop: View {
                     // no-op; Set button in parent will apply
                 }
 
+                #if os(iOS)
+                Button("Set") {
+                    let selected = (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
+                    // Let the service drive the apply+retry behavior so failures are surfaced
+                    // via appIconService.lastIconApplyError.
+                    appIconService.select(iconName: selected)
+                }
+                .disabled(!UIApplication.shared.supportsAlternateIcons)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                #else
                 Button("Set") {
                     let selected = (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
                     appIconService.select(iconName: selected)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                #endif
             }
 
             HStack {
@@ -227,6 +240,9 @@ struct PreferencesSectionTop: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             #endif
+        }
+        .alert(isPresented: Binding(get: { appIconService.lastIconApplyError != nil }, set: { if !$0 { appIconService.clearLastIconApplyError() } })) {
+            Alert(title: Text("App Icon"), message: Text(appIconService.lastIconApplyError ?? ""), dismissButton: .default(Text("OK")))
         }
         .onAppear {
             uiSelectedAppIcon = appIconService.selectedIconName.isEmpty ? "AppIcon" : appIconService.selectedIconName

@@ -161,23 +161,62 @@ struct PhotosLibraryPicker: View {
     }
 }
 
-// UIKit wrapper for PHPickerViewController
+// UIKit wrapper for PHPickerViewController — present the picker modally from a
+// simple container view controller. Embedding PHPicker directly as the
+// representable's root controller sometimes produces layout/presentation
+// surprises when nested inside SwiftUI fullScreenCover; presenting it
+// modally from a small container keeps platform expectations consistent.
 private struct PHPickerWrapper: UIViewControllerRepresentable {
     var onFinish: ([PHPickerResult]) -> Void
 
-    func makeUIViewController(context: Context) -> PHPickerViewController {
-        var config = PHPickerConfiguration(photoLibrary: PHPhotoLibrary.shared())
-        config.selectionLimit = 0 // allow multiple
-        config.filter = .any(of: [.images, .videos])
-
-        let controller = PHPickerViewController(configuration: config)
-        controller.delegate = context.coordinator
-        return controller
+    func makeUIViewController(context: Context) -> UIViewController {
+        let container = ContainerViewController()
+        container.configure(onFinish: onFinish, coordinator: context.coordinator)
+        return container
     }
 
-    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        // No dynamic updates required
+    }
 
     func makeCoordinator() -> Coordinator { Coordinator(onFinish: onFinish) }
+
+    // Small container that will present PHPicker modally as soon as it appears.
+    private class ContainerViewController: UIViewController {
+        private var hasPresented = false
+        private var onFinish: (([PHPickerResult]) -> Void)?
+        private weak var coordinator: Coordinator?
+
+        func configure(onFinish: @escaping ([PHPickerResult]) -> Void, coordinator: Coordinator) {
+            self.onFinish = onFinish
+            self.coordinator = coordinator
+        }
+
+        override func viewDidLoad() {
+            super.viewDidLoad()
+            view.backgroundColor = UIColor.systemBackground
+        }
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            // Present once
+            guard !hasPresented else { return }
+            hasPresented = true
+
+            var config = PHPickerConfiguration(photoLibrary: PHPhotoLibrary.shared())
+            config.selectionLimit = 0 // allow multiple
+            config.filter = .any(of: [.images, .videos])
+
+            let picker = PHPickerViewController(configuration: config)
+            picker.delegate = coordinator
+            picker.modalPresentationStyle = .automatic
+
+            // Brief debug trace to help diagnose black/blank presentations
+            AppLog.debugPrivate("PHPickerWrapper: presenting PHPicker (modal)")
+
+            present(picker, animated: true)
+        }
+    }
 
     class Coordinator: NSObject, PHPickerViewControllerDelegate {
         let onFinish: ([PHPickerResult]) -> Void
@@ -185,8 +224,10 @@ private struct PHPickerWrapper: UIViewControllerRepresentable {
         init(onFinish: @escaping ([PHPickerResult]) -> Void) { self.onFinish = onFinish }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            picker.dismiss(animated: true)
-            onFinish(results)
+            // Dismiss the presented picker and call the finish callback.
+            picker.dismiss(animated: true) {
+                self.onFinish(results)
+            }
         }
     }
 }
