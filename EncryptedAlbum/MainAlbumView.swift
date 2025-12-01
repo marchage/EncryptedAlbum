@@ -65,6 +65,7 @@ struct MainAlbumView: View {
     @State private var showingPreferences = false
     @State private var showLockdownTooltip: Bool = false
     @State private var animateLockdownPulse: Bool = false
+        @State private var sleepIndicatorPulse: Bool = false
     #if os(iOS)
         @Environment(\.verticalSizeClass) private var verticalSizeClass
     #else
@@ -626,42 +627,6 @@ struct MainAlbumView: View {
                     .zIndex(1)
             }
         }
-        // Indicator for when the app is preventing system sleep (e.g., during imports or
-        // when user opts to keep screen awake while unlocked). Visible only on platforms
-        // where system sleep is controllable (iOS).
-        if albumManager.isSystemSleepPrevented {
-            HStack(spacing: 8) {
-                Image(systemName: "bolt.fill")
-                    .foregroundColor(.yellow)
-                    .font(.system(size: 12, weight: .semibold))
-                    .padding(5)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.yellow.opacity(0.15)))
-
-                if let label = albumManager.sleepPreventionReasonLabel {
-                    Text(label)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Awake")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .accessibilityIdentifier("sleepPreventionChip")
-            .padding(.vertical, 3)
-            .padding(.horizontal, 6)
-            #if os(iOS)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Color(uiColor: .systemBackground).opacity(0.0001)))
-                .accessibilityLabel("Preventing system sleep")
-            #else
-                .background(
-                    RoundedRectangle(cornerRadius: 8).fill(
-                        Color(nsColor: NSColor.windowBackgroundColor).opacity(0.0001))
-                )
-                .accessibilityLabel("Preventing system sleep")
-                .help("Device will remain awake")
-            #endif
-        }
         Button {
             #if os(iOS)
                 startPhotoLibraryFlow()
@@ -745,6 +710,50 @@ struct MainAlbumView: View {
             Image(systemName: "ellipsis.circle")
         }
         .accessibilityLabel("More Options")
+    }
+
+    /// Badge showing when the app is intentionally keeping the device awake.
+    @ViewBuilder
+    private var sleepPreventionBadge: some View {
+        if albumManager.isSystemSleepPrevented {
+            HStack(spacing: 8) {
+                Image(systemName: "bolt.fill")
+                    .foregroundColor(.yellow)
+                    .font(.system(size: 14, weight: .bold))
+                    .scaleEffect(sleepIndicatorPulse ? 1.12 : 0.9)
+                    .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: sleepIndicatorPulse)
+                    .padding(6)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.yellow.opacity(0.2)))
+
+                if let label = albumManager.sleepPreventionReasonLabel {
+                    Text(label)
+                        .font(.caption)
+                        .foregroundStyle(.primary)
+                } else {
+                    Text("Awake")
+                        .font(.caption)
+                        .foregroundStyle(.primary)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                .ultraThinMaterial,
+                in: Capsule()
+            )
+            .shadow(radius: 6, x: 0, y: 2)
+            .padding(.top, 12)
+            .padding(.trailing, 16)
+            .accessibilityIdentifier("sleepPreventionChip")
+            .accessibilityLabel("Preventing system sleep")
+            .allowsHitTesting(false)
+            .zIndex(50)
+            .onAppear { sleepIndicatorPulse = true }
+            .onDisappear { sleepIndicatorPulse = false }
+            #if os(macOS)
+                .help("Encrypted Album is keeping the device awake")
+            #endif
+        }
     }
 
     /// Compact cross-platform toolbar chip used to show short progress messages and a tiny
@@ -978,15 +987,18 @@ struct MainAlbumView: View {
                         #if os(macOS)
                             if let nsIcon = NSApp.applicationIconImage {
                                 Image(nsImage: nsIcon)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 18, height: 18)
-                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 36, height: 36)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            } else {
+                                Image(systemName: "lock.fill")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 36, height: 36)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
                         #endif
-                        Text("Encrypted Album")
-                        .font(.headline)
-                        .lineLimit(1)
                     }
                     .padding(.horizontal, 2)
                 }
@@ -1231,6 +1243,9 @@ struct MainAlbumView: View {
                             }
                     }
                 #endif
+            }
+            .overlay(alignment: .topTrailing) {
+                sleepPreventionBadge
             }
         #if os(macOS)
             return
