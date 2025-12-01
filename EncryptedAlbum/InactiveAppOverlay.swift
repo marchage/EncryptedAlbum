@@ -82,7 +82,7 @@ import SwiftUI
             }
             .padding(24)
         }
-        
+
         @ViewBuilder
         private var appIconView: some View {
             // Prefer the runtime icon from NSApplication on macOS
@@ -94,7 +94,9 @@ import SwiftUI
                     .aspectRatio(1, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 18))
                     .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-            } else if let generated = AppIconService.generateMarketingImage(from: appIconService.selectedIconName.isEmpty ? nil : appIconService.selectedIconName) {
+            } else if let generated = AppIconService.generateMarketingImage(
+                from: appIconService.selectedIconName.isEmpty ? nil : appIconService.selectedIconName)
+            {
                 Image(nsImage: generated)
                     .resizable()
                     .renderingMode(.original)

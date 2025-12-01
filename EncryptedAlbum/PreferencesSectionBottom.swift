@@ -17,16 +17,19 @@ struct PreferencesSectionBottom: View {
             HStack {
                 Text("Strip metadata on export")
                 Spacer()
-                Toggle("", isOn: Binding(
-                    get: { albumManager.stripMetadataOnExport },
-                    set: {
-                        albumManager.stripMetadataOnExport = $0
-                        albumManager.saveSettings()
-                    }))
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { albumManager.stripMetadataOnExport },
+                        set: {
+                            albumManager.stripMetadataOnExport = $0
+                            albumManager.saveSettings()
+                        })
+                )
                 .labelsHidden()
             }
             .disabled(albumManager.lockdownModeEnabled)
-            
+
             Text("Removes EXIF data (location, camera info) from exported photos for privacy.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -34,12 +37,15 @@ struct PreferencesSectionBottom: View {
             HStack {
                 Text("Password-protect exports")
                 Spacer()
-                Toggle("", isOn: Binding(
-                    get: { albumManager.exportPasswordProtect },
-                    set: {
-                        albumManager.exportPasswordProtect = $0
-                        albumManager.saveSettings()
-                    }))
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { albumManager.exportPasswordProtect },
+                        set: {
+                            albumManager.exportPasswordProtect = $0
+                            albumManager.saveSettings()
+                        })
+                )
                 .labelsHidden()
             }
             .disabled(albumManager.lockdownModeEnabled)
@@ -47,27 +53,33 @@ struct PreferencesSectionBottom: View {
             HStack {
                 Text("Verbose logging")
                 Spacer()
-                Toggle("", isOn: Binding(
-                    get: { albumManager.enableVerboseLogging },
-                    set: {
-                        albumManager.enableVerboseLogging = $0
-                        albumManager.saveSettings()
-                    }))
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { albumManager.enableVerboseLogging },
+                        set: {
+                            albumManager.enableVerboseLogging = $0
+                            albumManager.saveSettings()
+                        })
+                )
                 .labelsHidden()
             }
 
             HStack {
                 Text("Telemetry (opt-in)")
                 Spacer()
-                Toggle("", isOn: Binding(
-                    get: { albumManager.telemetryEnabled },
-                    set: {
-                        albumManager.telemetryEnabled = $0
-                        albumManager.saveSettings()
-                    }))
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { albumManager.telemetryEnabled },
+                        set: {
+                            albumManager.telemetryEnabled = $0
+                            albumManager.saveSettings()
+                        })
+                )
                 .labelsHidden()
             }
-            
+
             Text("Anonymous usage data to help improve the app. No personal data is collected.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -75,12 +87,15 @@ struct PreferencesSectionBottom: View {
             HStack {
                 Text("Skip duplicate imports")
                 Spacer()
-                Toggle("", isOn: Binding(
-                    get: { albumManager.autoRemoveDuplicatesOnImport },
-                    set: { albumManager.autoRemoveDuplicatesOnImport = $0 }))
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { albumManager.autoRemoveDuplicatesOnImport },
+                        set: { albumManager.autoRemoveDuplicatesOnImport = $0 })
+                )
                 .labelsHidden()
             }
-            
+
             Text("Automatically skip importing photos that are already in the album (detected by file hash).")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -95,7 +110,7 @@ struct PreferencesSectionBottom: View {
                     .labelsHidden()
                     .onChange(of: storedKeepScreenAwakeWhileUnlocked) { _ in albumManager.saveSettings() }
             }
-            
+
             HStack {
                 Text("Prevent sleep during imports & viewing")
                 Spacer()
@@ -107,12 +122,15 @@ struct PreferencesSectionBottom: View {
             HStack {
                 Text("Import notifications")
                 Spacer()
-                Toggle("", isOn: Binding(
-                    get: { albumManager.enableImportNotifications },
-                    set: {
-                        albumManager.enableImportNotifications = $0
-                        albumManager.saveSettings()
-                    }))
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { albumManager.enableImportNotifications },
+                        set: {
+                            albumManager.enableImportNotifications = $0
+                            albumManager.saveSettings()
+                        })
+                )
                 .labelsHidden()
             }
 

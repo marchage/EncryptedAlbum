@@ -179,14 +179,16 @@
                 }
             }
         }
-        
+
         @ViewBuilder
         private var appIconView: some View {
             let selectedIcon = appIconService.selectedIconName.isEmpty ? nil : appIconService.selectedIconName
             let runtimeImage = appIconService.runtimeMarketingImage
             let generatedImage = AppIconService.generateMarketingImage(from: selectedIcon)
-            
-            if let bestImage = Image.chooseBestMarketingImage(runtime: runtimeImage, generated: generatedImage, visualCap: 80) {
+
+            if let bestImage = Image.chooseBestMarketingImage(
+                runtime: runtimeImage, generated: generatedImage, visualCap: 80)
+            {
                 Image(platformImage: bestImage)
                     .resizable()
                     .renderingMode(.original)

@@ -65,7 +65,7 @@ struct MainAlbumView: View {
     @State private var showingPreferences = false
     @State private var showLockdownTooltip: Bool = false
     @State private var animateLockdownPulse: Bool = false
-        @State private var sleepIndicatorPulse: Bool = false
+    @State private var sleepIndicatorPulse: Bool = false
     #if os(iOS)
         @Environment(\.verticalSizeClass) private var verticalSizeClass
     #else
@@ -998,16 +998,16 @@ struct MainAlbumView: View {
                         #if os(macOS)
                             if let nsIcon = NSApp.applicationIconImage {
                                 Image(nsImage: nsIcon)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 36, height: 36)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 36, height: 36)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
                             } else {
                                 Image(systemName: "lock.fill")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 36, height: 36)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 36, height: 36)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
                         #endif
                     }

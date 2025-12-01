@@ -75,7 +75,7 @@ final class CameraCaptureTests: XCTestCase {
 
         XCTAssertEqual(sut.hiddenPhotos.count, 1, "Expected queued captured media to be processed after album unlock")
     }
-    
+
     func testHandleCapturedMedia_videoWithDuration() async throws {
         // Setup account
         let password = "VideoTest123!"
@@ -86,18 +86,17 @@ final class CameraCaptureTests: XCTestCase {
         XCTAssertEqual(sut.hiddenPhotos.count, 0)
 
         try await sut.handleCapturedMedia(
-            mediaSource: .data(data), 
-            filename: "video.mov", 
-            dateTaken: Date(), 
+            mediaSource: .data(data),
+            filename: "video.mov",
+            dateTaken: Date(),
             mediaType: .video,
             duration: 10.5)
 
         XCTAssertEqual(sut.hiddenPhotos.count, 1, "Expected captured video to be saved into the album.")
-        
+
         if let savedMedia = sut.hiddenPhotos.first {
             XCTAssertEqual(savedMedia.mediaType, .video)
             XCTAssertEqual(savedMedia.duration, 10.5)
         }
     }
 }
-

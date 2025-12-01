@@ -22,7 +22,7 @@ extension Image {
     /// Given a runtime image and an optional generated marketing image, pick the
     /// best one to display so we prefer high-resolution images (downscale) over
     /// upscaling small images. `visualCap` is in points.
-    /// 
+    ///
     /// ALWAYS prefers the generated image if it has more pixels, since that's our
     /// carefully crafted 1024px marketing image from the bundle.
     static func chooseBestMarketingImage(runtime: PlatformImage?, generated: PlatformImage?, visualCap: CGFloat)
@@ -45,19 +45,21 @@ extension Image {
 
         let runtimePixels = pixels(of: runtime)
         let generatedPixels = pixels(of: generated)
-        
+
         // If generated has more pixels, ALWAYS prefer it - it's our high-res marketing image
         if let gen = generated, generatedPixels > runtimePixels {
-            AppLog.debugPrivate("chooseBestMarketingImage: preferring generated (\(Int(generatedPixels))px) over runtime (\(Int(runtimePixels))px)")
+            AppLog.debugPrivate(
+                "chooseBestMarketingImage: preferring generated (\(Int(generatedPixels))px) over runtime (\(Int(runtimePixels))px)"
+            )
             return gen
         }
-        
+
         // If runtime has same or more pixels, use runtime
         if let rt = runtime {
             AppLog.debugPrivate("chooseBestMarketingImage: using runtime (\(Int(runtimePixels))px)")
             return rt
         }
-        
+
         // Fall back to generated if runtime is nil
         return generated
     }
@@ -161,7 +163,7 @@ final class AppIconService: ObservableObject {
                 "AppIcon19",
                 "AppIcon20",
                 "AppIcon21",
-                "AppIcon22"
+                "AppIcon22",
             ]
         #endif
     }
@@ -365,13 +367,13 @@ final class AppIconService: ObservableObject {
     /// Used to defer the system alert on iOS until settings is dismissed.
     @Published public private(set) var hasPendingIconChange: Bool = false
     private var pendingIconName: String? = nil
-    
+
     /// Programmatic helper to set icon from UI controls.
     /// On iOS, this defers the actual system icon change to avoid dismissing the current view.
     public func select(iconName: String?) {
         selectedIconName = iconName ?? ""
     }
-    
+
     /// Selects an icon but defers the system API call (which shows an alert on iOS).
     /// Call `applyPendingIconChange()` when the settings view is dismissed.
     public func selectDeferred(iconName: String?) {
@@ -385,14 +387,14 @@ final class AppIconService: ObservableObject {
         UserDefaults.standard.set(name, forKey: "selectedAppIconName")
         objectWillChange.send()
     }
-    
+
     /// Apply any pending icon change to the system. Call this when settings is dismissed.
     public func applyPendingIconChange() {
         guard hasPendingIconChange else { return }
         hasPendingIconChange = false
         let name = pendingIconName ?? ""
         pendingIconName = nil
-        
+
         #if os(iOS)
             // Now actually apply to the system
             let iconNameToSet = name.isEmpty || name == "AppIcon" ? nil : name
@@ -519,15 +521,16 @@ final class AppIconService: ObservableObject {
                 // The appiconset folder is typically named like "AppIcon1.appiconset"
                 return "\(name).appiconset"
             }()
-            
+
             // Try to find mac1024.png (preferred - 512@2x = 1024px) or appstore1024.png within the specific icon's folder
             if let folder = iconSetFolder {
                 // Prefer mac1024.png (the 512@2x macOS marketing image - highest quality)
                 if let iconURL = bundleResourceURL(matching: "mac1024.png", withinFolder: folder),
-                   let data = try? Data(contentsOf: iconURL),
-                   let iconImg = UIImage(data: data, scale: 1.0)
+                    let data = try? Data(contentsOf: iconURL),
+                    let iconImg = UIImage(data: data, scale: 1.0)
                 {
-                    AppLog.debugPublic("AppIconService: found mac1024.png for \(iconName ?? "default") at: \(iconURL.path)")
+                    AppLog.debugPublic(
+                        "AppIconService: found mac1024.png for \(iconName ?? "default") at: \(iconURL.path)")
                     let format = UIGraphicsImageRendererFormat()
                     format.scale = 1.0
                     let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
@@ -541,10 +544,11 @@ final class AppIconService: ObservableObject {
                 }
                 // Fall back to appstore1024.png within the icon's folder
                 if let iconURL = bundleResourceURL(matching: "appstore1024.png", withinFolder: folder),
-                   let data = try? Data(contentsOf: iconURL),
-                   let iconImg = UIImage(data: data, scale: 1.0)
+                    let data = try? Data(contentsOf: iconURL),
+                    let iconImg = UIImage(data: data, scale: 1.0)
                 {
-                    AppLog.debugPublic("AppIconService: found appstore1024.png for \(iconName ?? "default") at: \(iconURL.path)")
+                    AppLog.debugPublic(
+                        "AppIconService: found appstore1024.png for \(iconName ?? "default") at: \(iconURL.path)")
                     let format = UIGraphicsImageRendererFormat()
                     format.scale = 1.0
                     let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
@@ -557,7 +561,7 @@ final class AppIconService: ObservableObject {
                     }
                 }
             }
-            
+
             // For the default icon (nil or "AppIcon"), try the dedicated mac1024 imageset FIRST
             // This ensures we get the 1024px image we explicitly created in the asset catalog
             if iconName == nil || iconName == "AppIcon" || iconName?.isEmpty == true {
@@ -579,8 +583,8 @@ final class AppIconService: ObservableObject {
 
                 // Second priority for default icon: bundled mac1024.png file from AppIcon.appiconset
                 if let macURL = bundleResourceURL(matching: "mac1024.png", withinFolder: "AppIcon.appiconset"),
-                   let data = try? Data(contentsOf: macURL),
-                   let macImg = UIImage(data: data, scale: 1.0)
+                    let data = try? Data(contentsOf: macURL),
+                    let macImg = UIImage(data: data, scale: 1.0)
                 {
                     AppLog.debugPublic("AppIconService: found mac1024.png at runtime: \(macURL.path)")
                     let format = UIGraphicsImageRendererFormat()
@@ -594,11 +598,11 @@ final class AppIconService: ObservableObject {
                         macImg.draw(in: rect)
                     }
                 }
-                
+
                 // Try any mac1024.png as last resort for default icon
                 if let macURL = bundleResourceURL(matching: "mac1024.png"),
-                   let data = try? Data(contentsOf: macURL),
-                   let macImg = UIImage(data: data, scale: 1.0)
+                    let data = try? Data(contentsOf: macURL),
+                    let macImg = UIImage(data: data, scale: 1.0)
                 {
                     AppLog.debugPublic("AppIconService: found generic mac1024.png at runtime: \(macURL.path)")
                     let format = UIGraphicsImageRendererFormat()
@@ -613,7 +617,7 @@ final class AppIconService: ObservableObject {
                     }
                 }
             }
-            
+
             var marketingCandidates = [
                 "AppIcon-1024", "AppIcon-512@2x", "AppIcon1024", "AppIcon-512", "AppIcon512",
                 "AppIcon_marketing", "AppIconMarketingRuntime", "AppIcon",

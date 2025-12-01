@@ -855,7 +855,7 @@ public class AlbumManager: ObservableObject {
             return false
         }
     }
-    
+
     /// Changes the album password and re-encrypts all data.
     /// - Parameters:
     ///   - currentPassword: Current password for verification

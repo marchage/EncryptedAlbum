@@ -157,7 +157,9 @@ struct UnlockView: View {
                 if let generated = AppIconService.generateMarketingImage(from: fallbackIconName) {
                     // Log the actual size for debugging
                     let pixels = max(generated.size.width * generated.scale, generated.size.height * generated.scale)
-                    AppLog.debugPublic("UnlockView: using fallback marketing image with \(Int(pixels))px for icon \(fallbackIconName ?? "default")")
+                    AppLog.debugPublic(
+                        "UnlockView: using fallback marketing image with \(Int(pixels))px for icon \(fallbackIconName ?? "default")"
+                    )
 
                     return AnyView(
                         Image(platformImage: generated)
@@ -170,7 +172,8 @@ struct UnlockView: View {
                 }
 
             #else
-                let selectedIconName = AppIconService.shared.selectedIconName.isEmpty ? nil : AppIconService.shared.selectedIconName
+                let selectedIconName =
+                    AppIconService.shared.selectedIconName.isEmpty ? nil : AppIconService.shared.selectedIconName
                 if let runtime = AppIconService.shared.runtimeMarketingImage {
                     return AnyView(
                         Image(platformImage: runtime)

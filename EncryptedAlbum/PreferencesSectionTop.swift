@@ -88,19 +88,23 @@ struct PreferencesSectionTop: View {
                 albumManager.saveSettings()
             }
 
-            Text(storedBiometricPolicy == "biometrics_preferred"
-                 ? "The app will try Face ID / Touch ID first; if unavailable or cancelled, you can enter your password."
-                 : storedBiometricPolicy == "biometrics_required"
-                 ? "Only biometrics can unlock the album. If biometrics fail or are unavailable, you cannot unlock."
-                 : "Biometrics are disabled. You must always enter your password to unlock.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Text(
+                storedBiometricPolicy == "biometrics_preferred"
+                    ? "The app will try Face ID / Touch ID first; if unavailable or cancelled, you can enter your password."
+                    : storedBiometricPolicy == "biometrics_required"
+                        ? "Only biometrics can unlock the album. If biometrics fail or are unavailable, you cannot unlock."
+                        : "Biometrics are disabled. You must always enter your password to unlock."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
 
             Toggle("Require Re-authentication on Return", isOn: $requireForegroundReauthentication)
 
-            Text("When enabled, switching away from the app (e.g., pressing Home or switching apps) will lock the album. You'll need to authenticate again when you return.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Text(
+                "When enabled, switching away from the app (e.g., pressing Home or switching apps) will lock the album. You'll need to authenticate again when you return."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
 
             // Auto-wipe & recovery key
             Toggle(
@@ -129,9 +133,11 @@ struct PreferencesSectionTop: View {
                     .labelsHidden()
                 }
 
-                Text("⚠️ DANGER: After \(albumManager.autoWipeFailedAttemptsThreshold) consecutive wrong passwords, ALL encrypted data will be permanently and irrecoverably deleted. This cannot be undone.")
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                Text(
+                    "⚠️ DANGER: After \(albumManager.autoWipeFailedAttemptsThreshold) consecutive wrong passwords, ALL encrypted data will be permanently and irrecoverably deleted. This cannot be undone."
+                )
+                .font(.caption)
+                .foregroundStyle(.red)
             } else {
                 Text("When enabled, entering the wrong password too many times will permanently delete all album data.")
                     .font(.caption)
@@ -202,11 +208,13 @@ struct PreferencesSectionTop: View {
                     albumManager.saveSettings()
                 }
 
-            Text(storedCameraMaxQuality
-                 ? "Photos and videos are captured at the device's highest resolution. Files will be larger but preserve maximum detail."
-                 : "Photos and videos are captured at a balanced quality. Files will be smaller but may lose some detail.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Text(
+                storedCameraMaxQuality
+                    ? "Photos and videos are captured at the device's highest resolution. Files will be larger but preserve maximum detail."
+                    : "Photos and videos are captured at a balanced quality. Files will be smaller but may lose some detail."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
 
             Divider()
             Text("App Icon").font(.headline)

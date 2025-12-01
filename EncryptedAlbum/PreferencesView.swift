@@ -114,7 +114,7 @@ struct PreferencesView: View {
                             Divider()
                             Text("Advanced Key Management")
                                 .font(.headline)
-                            
+
                             HStack {
                                 Text("Data Protection Keychain")
                                 Spacer()
@@ -134,82 +134,86 @@ struct PreferencesView: View {
                         Spacer()
                             .frame(height: 1)
                             .sheet(isPresented: $showBackupSheet) {
-                            VStack(spacing: 16) {
-                                Text("Export Encrypted Key Backup")
-                                    .font(.headline)
-                                Text("Enter a password to protect the exported key backup file.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-
-                                SecureField("Backup Password", text: $backupPassword)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(maxWidth: 320)
-                                SecureField("Confirm Password", text: $backupPasswordConfirm)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(maxWidth: 320)
-
-                                if let error = backupError {
-                                    Text(error)
-                                        .foregroundStyle(.red)
+                                VStack(spacing: 16) {
+                                    Text("Export Encrypted Key Backup")
+                                        .font(.headline)
+                                    Text("Enter a password to protect the exported key backup file.")
                                         .font(.caption)
-                                }
+                                        .foregroundStyle(.secondary)
 
-                                HStack(spacing: 16) {
-                                    Button("Cancel") { showBackupSheet = false }
-                                        .buttonStyle(.bordered)
+                                    SecureField("Backup Password", text: $backupPassword)
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(maxWidth: 320)
+                                    SecureField("Confirm Password", text: $backupPasswordConfirm)
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(maxWidth: 320)
 
-                                    Button {
-                                        guard !backupPassword.isEmpty else {
-                                            backupError = "Password cannot be empty"
-                                            return
-                                        }
-                                        guard backupPassword == backupPasswordConfirm else {
-                                            backupError = "Passwords do not match"
-                                            return
-                                        }
+                                    if let error = backupError {
+                                        Text(error)
+                                            .foregroundStyle(.red)
+                                            .font(.caption)
+                                    }
 
-                                        isBackingUp = true
-                                        backupError = nil
-                                        Task {
-                                            let manager: AlbumManager = albumManager
-                                            do {
-                                                let url = try await manager.exportMasterKeyBackup(
-                                                    backupPassword: backupPassword)
-                                                backupResultURL = url
-                                                showBackupSheet = false
-                                                // Present share sheet on iOS; on macOS the alert will remain as fallback
-                                                showShareSheet = true
-                                            } catch {
-                                                backupError = error.localizedDescription
+                                    HStack(spacing: 16) {
+                                        Button("Cancel") { showBackupSheet = false }
+                                            .buttonStyle(.bordered)
+
+                                        Button {
+                                            guard !backupPassword.isEmpty else {
+                                                backupError = "Password cannot be empty"
+                                                return
                                             }
-                                            isBackingUp = false
-                                        }
-                                    } label: {
-                                        if isBackingUp { ProgressView().controlSize(.small) } else { Text("Export") }
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                }
-                            }
-                            .padding()
-                            .presentationDetents([.height(320)])
-                        }
+                                            guard backupPassword == backupPasswordConfirm else {
+                                                backupError = "Passwords do not match"
+                                                return
+                                            }
 
-                        // Share sheet for exported backup (iOS). After successful sharing we remove the temp file.
-                        .sheet(isPresented: $showShareSheet) {
-                            if let url = backupResultURL {
-                                ActivityView(activityItems: [url]) { completed in
-                                    if completed {
-                                        // Attempt to securely remove the temporary file after successful share
-                                        _ = try? FileManager.default.removeItem(at: url)
+                                            isBackingUp = true
+                                            backupError = nil
+                                            Task {
+                                                let manager: AlbumManager = albumManager
+                                                do {
+                                                    let url = try await manager.exportMasterKeyBackup(
+                                                        backupPassword: backupPassword)
+                                                    backupResultURL = url
+                                                    showBackupSheet = false
+                                                    // Present share sheet on iOS; on macOS the alert will remain as fallback
+                                                    showShareSheet = true
+                                                } catch {
+                                                    backupError = error.localizedDescription
+                                                }
+                                                isBackingUp = false
+                                            }
+                                        } label: {
+                                            if isBackingUp {
+                                                ProgressView().controlSize(.small)
+                                            } else {
+                                                Text("Export")
+                                            }
+                                        }
+                                        .buttonStyle(.borderedProminent)
                                     }
-                                    // Clear state
-                                    backupResultURL = nil
-                                    showShareSheet = false
                                 }
-                            } else {
-                                EmptyView()
+                                .padding()
+                                .presentationDetents([.height(320)])
                             }
-                        }
+
+                            // Share sheet for exported backup (iOS). After successful sharing we remove the temp file.
+                            .sheet(isPresented: $showShareSheet) {
+                                if let url = backupResultURL {
+                                    ActivityView(activityItems: [url]) { completed in
+                                        if completed {
+                                            // Attempt to securely remove the temporary file after successful share
+                                            _ = try? FileManager.default.removeItem(at: url)
+                                        }
+                                        // Clear state
+                                        backupResultURL = nil
+                                        showShareSheet = false
+                                    }
+                                } else {
+                                    EmptyView()
+                                }
+                            }
 
                         Spacer()
 
@@ -342,11 +346,11 @@ struct PreferencesView: View {
                     // Step 1: Verify current password
                     Text("Change Album Password")
                         .font(.headline)
-                    
+
                     Text("Step 1 of 2: Verify your identity")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    
+
                     Text("Enter your current password to proceed with changing it.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -395,16 +399,18 @@ struct PreferencesView: View {
                     // Step 2: Enter new password
                     Text("Change Album Password")
                         .font(.headline)
-                    
+
                     Text("Step 2 of 2: Set new password")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    
-                    Text("Choose a strong, memorable password. You won't be able to recover your data if you forget it.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 280)
+
+                    Text(
+                        "Choose a strong, memorable password. You won't be able to recover your data if you forget it."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 280)
 
                     SecureField("New Password", text: $newPasswordInput)
                         .textFieldStyle(.roundedBorder)

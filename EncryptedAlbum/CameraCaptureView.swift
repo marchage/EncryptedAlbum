@@ -14,12 +14,12 @@ import SwiftUI
         @StateObject private var model = iOSCameraModel()
         @State private var showCaptureFlash = false
         @State private var captureCount = 0
-        
+
         var body: some View {
             GeometryReader { geometry in
                 ZStack {
                     Color.black.ignoresSafeArea()
-                    
+
                     if model.isAuthorized, let session = model.session {
                         iOSCameraPreview(session: session)
                             .ignoresSafeArea()
@@ -35,20 +35,20 @@ import SwiftUI
                                 .foregroundStyle(.gray)
                         }
                     }
-                    
+
                     // Capture flash overlay
                     if showCaptureFlash {
                         Color.white
                             .ignoresSafeArea()
                             .allowsHitTesting(false)
                     }
-                    
+
                     // Camera controls overlay
                     VStack {
                         // Top bar with close button
                         HStack {
                             Spacer()
-                            
+
                             // Flash toggle
                             if model.flashAvailable {
                                 Button {
@@ -60,7 +60,7 @@ import SwiftUI
                                         .padding(12)
                                 }
                             }
-                            
+
                             Button {
                                 model.stopSession()
                                 dismiss()
@@ -72,9 +72,9 @@ import SwiftUI
                             }
                         }
                         .padding(.top, geometry.safeAreaInsets.top > 0 ? 0 : 8)
-                        
+
                         Spacer()
-                        
+
                         // Bottom controls
                         HStack(alignment: .center, spacing: 40) {
                             // Camera flip button
@@ -86,7 +86,7 @@ import SwiftUI
                                     .foregroundStyle(.white)
                                     .frame(width: 50, height: 50)
                             }
-                            
+
                             // Capture button
                             if model.captureMode == .video {
                                 Button {
@@ -135,7 +135,7 @@ import SwiftUI
                                     }
                                 }
                             }
-                            
+
                             // Mode toggle (photo/video)
                             Button {
                                 model.captureMode = model.captureMode == .photo ? .video : .photo
@@ -147,7 +147,7 @@ import SwiftUI
                             }
                         }
                         .padding(.bottom, 30)
-                        
+
                         // Recording duration indicator
                         if model.isRecording, let duration = model.recordingDuration {
                             Text(String(format: "%02d:%02d", Int(duration) / 60, Int(duration) % 60))
@@ -155,7 +155,7 @@ import SwiftUI
                                 .foregroundStyle(.red)
                                 .padding(.bottom, 8)
                         }
-                        
+
                         // Capture count badge
                         if captureCount > 0 {
                             Text("\(captureCount) saved")
@@ -180,14 +180,14 @@ import SwiftUI
             }
         }
     }
-    
+
     // MARK: - iOS Camera Model
-    
+
     enum iOSCaptureMode {
         case photo
         case video
     }
-    
+
     class iOSCameraModel: NSObject, ObservableObject {
         @Published var isAuthorized = false
         @Published var authorizationChecked = false
@@ -196,18 +196,18 @@ import SwiftUI
         @Published var recordingDuration: TimeInterval?
         @Published var flashAvailable = false
         @Published var flashMode: AVCaptureDevice.FlashMode = .auto
-        
+
         var session: AVCaptureSession?
         private let photoOutput = AVCapturePhotoOutput()
         private let movieOutput = AVCaptureMovieFileOutput()
         private let sessionQueue = DispatchQueue(label: "biz.front-end.encryptedalbum.ios.camera")
         private var currentDevice: AVCaptureDevice?
         private var currentPosition: AVCaptureDevice.Position = .back
-        
+
         private var recordingTimer: Timer?
         private var recordingStartTime: Date?
         private var albumManager: AlbumManager?
-        
+
         var flashIconName: String {
             switch flashMode {
             case .auto: return "bolt.badge.automatic.fill"
@@ -216,7 +216,7 @@ import SwiftUI
             @unknown default: return "bolt.fill"
             }
         }
-        
+
         func checkPermissions() {
             switch AVCaptureDevice.authorizationStatus(for: .video) {
             case .authorized:
@@ -239,106 +239,113 @@ import SwiftUI
                     self.authorizationChecked = true
                 }
             }
-            
+
             // Also request microphone for video
             if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
                 AVCaptureDevice.requestAccess(for: .audio) { _ in }
             }
         }
-        
+
         func setupSession() {
             sessionQueue.async { [weak self] in
                 guard let self = self else { return }
-                
+
                 let session = AVCaptureSession()
                 session.beginConfiguration()
                 session.sessionPreset = .photo
-                
+
                 // Add video input
                 guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-                      let videoInput = try? AVCaptureDeviceInput(device: videoDevice) else {
+                    let videoInput = try? AVCaptureDeviceInput(device: videoDevice)
+                else {
                     session.commitConfiguration()
                     return
                 }
-                
+
                 if session.canAddInput(videoInput) {
                     session.addInput(videoInput)
                     self.currentDevice = videoDevice
                 }
-                
+
                 // Add photo output
                 if session.canAddOutput(self.photoOutput) {
                     session.addOutput(self.photoOutput)
                 }
-                
+
                 // Add movie output
                 if session.canAddOutput(self.movieOutput) {
                     session.addOutput(self.movieOutput)
                 }
-                
+
                 // Add audio input for video recording
                 if AVCaptureDevice.authorizationStatus(for: .audio) == .authorized,
-                   let audioDevice = AVCaptureDevice.default(for: .audio),
-                   let audioInput = try? AVCaptureDeviceInput(device: audioDevice) {
+                    let audioDevice = AVCaptureDevice.default(for: .audio),
+                    let audioInput = try? AVCaptureDeviceInput(device: audioDevice)
+                {
                     if session.canAddInput(audioInput) {
                         session.addInput(audioInput)
                     }
                 }
-                
+
                 session.commitConfiguration()
                 session.startRunning()
-                
+
                 self.session = session
-                
+
                 DispatchQueue.main.async {
                     self.flashAvailable = videoDevice.hasFlash
                 }
             }
         }
-        
+
         func stopSession() {
             recordingTimer?.invalidate()
             recordingTimer = nil
-            
+
             sessionQueue.async { [weak self] in
                 self?.session?.stopRunning()
             }
         }
-        
+
         func switchCamera() {
             sessionQueue.async { [weak self] in
                 guard let self = self, let session = self.session else { return }
-                
+
                 session.beginConfiguration()
-                
+
                 // Remove current video input
-                if let currentInput = session.inputs.first(where: { ($0 as? AVCaptureDeviceInput)?.device.hasMediaType(.video) == true }) {
+                if let currentInput = session.inputs.first(where: {
+                    ($0 as? AVCaptureDeviceInput)?.device.hasMediaType(.video) == true
+                }) {
                     session.removeInput(currentInput)
                 }
-                
+
                 // Switch position
                 let newPosition: AVCaptureDevice.Position = self.currentPosition == .back ? .front : .back
-                
-                guard let newDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: newPosition),
-                      let newInput = try? AVCaptureDeviceInput(device: newDevice) else {
+
+                guard
+                    let newDevice = AVCaptureDevice.default(
+                        .builtInWideAngleCamera, for: .video, position: newPosition),
+                    let newInput = try? AVCaptureDeviceInput(device: newDevice)
+                else {
                     session.commitConfiguration()
                     return
                 }
-                
+
                 if session.canAddInput(newInput) {
                     session.addInput(newInput)
                     self.currentDevice = newDevice
                     self.currentPosition = newPosition
-                    
+
                     DispatchQueue.main.async {
                         self.flashAvailable = newDevice.hasFlash
                     }
                 }
-                
+
                 session.commitConfiguration()
             }
         }
-        
+
         func cycleFlashMode() {
             switch flashMode {
             case .auto:
@@ -351,26 +358,26 @@ import SwiftUI
                 flashMode = .auto
             }
         }
-        
+
         func capturePhoto(albumManager: AlbumManager) {
             self.albumManager = albumManager
-            
+
             let settings = AVCapturePhotoSettings()
             if flashAvailable {
                 settings.flashMode = flashMode
             }
-            
+
             photoOutput.capturePhoto(with: settings, delegate: self)
         }
-        
+
         func startRecording() {
             guard !movieOutput.isRecording else { return }
-            
+
             let tempURL = FileManager.default.temporaryDirectory
                 .appendingPathComponent("video_\(Date().timeIntervalSince1970).mov")
-            
+
             movieOutput.startRecording(to: tempURL, recordingDelegate: self)
-            
+
             recordingStartTime = Date()
             DispatchQueue.main.async {
                 self.isRecording = true
@@ -380,33 +387,35 @@ import SwiftUI
                 }
             }
         }
-        
+
         func stopRecording(albumManager: AlbumManager) {
             self.albumManager = albumManager
             movieOutput.stopRecording()
-            
+
             recordingTimer?.invalidate()
             recordingTimer = nil
-            
+
             DispatchQueue.main.async {
                 self.isRecording = false
                 self.recordingDuration = nil
             }
         }
     }
-    
+
     // MARK: - Photo Capture Delegate
-    
+
     extension iOSCameraModel: AVCapturePhotoCaptureDelegate {
-        func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?)
+        {
             guard let data = photo.fileDataRepresentation(),
-                  let albumManager = albumManager else {
+                let albumManager = albumManager
+            else {
                 AppLog.error("iOSCameraModel: Failed to get photo data")
                 return
             }
-            
+
             let filename = "Capture_\(Date().timeIntervalSince1970).jpg"
-            
+
             Task {
                 do {
                     try await albumManager.handleCapturedMedia(
@@ -427,20 +436,23 @@ import SwiftUI
             }
         }
     }
-    
+
     // MARK: - Video Recording Delegate
-    
+
     extension iOSCameraModel: AVCaptureFileOutputRecordingDelegate {
-        func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL, from connections: [AVCaptureConnection], error: Error?) {
+        func fileOutput(
+            _ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL,
+            from connections: [AVCaptureConnection], error: Error?
+        ) {
             if let error = error {
                 AppLog.error("Video recording error: \(error.localizedDescription)")
                 return
             }
-            
+
             guard let albumManager = albumManager else { return }
-            
+
             let filename = "Video_\(Date().timeIntervalSince1970).mov"
-            
+
             Task {
                 let asset = AVAsset(url: outputFileURL)
                 var duration: TimeInterval?
@@ -451,7 +463,7 @@ import SwiftUI
                 } else {
                     duration = asset.duration.seconds
                 }
-                
+
                 do {
                     try await albumManager.handleCapturedMedia(
                         mediaSource: .fileURL(outputFileURL),
@@ -468,38 +480,38 @@ import SwiftUI
                 } catch {
                     AppLog.error("Failed to save captured video: \(error.localizedDescription)")
                 }
-                
+
                 // Clean up temp file
                 try? FileManager.default.removeItem(at: outputFileURL)
             }
         }
     }
-    
+
     // MARK: - iOS Camera Preview (AVCaptureSession based)
-    
+
     struct iOSCameraPreview: UIViewRepresentable {
         let session: AVCaptureSession
-        
+
         func makeUIView(context: Context) -> iOSPreviewView {
             let view = iOSPreviewView()
             view.session = session
             return view
         }
-        
+
         func updateUIView(_ uiView: iOSPreviewView, context: Context) {
             // Preview layer updates automatically with device orientation
         }
     }
-    
+
     class iOSPreviewView: UIView {
         override class var layerClass: AnyClass {
             AVCaptureVideoPreviewLayer.self
         }
-        
+
         var previewLayer: AVCaptureVideoPreviewLayer {
             layer as! AVCaptureVideoPreviewLayer
         }
-        
+
         var session: AVCaptureSession? {
             get { previewLayer.session }
             set {
@@ -507,10 +519,10 @@ import SwiftUI
                 previewLayer.videoGravity = .resizeAspectFill
             }
         }
-        
+
         override func layoutSubviews() {
             super.layoutSubviews()
-            
+
             // Update video orientation based on device orientation
             if let connection = previewLayer.connection, connection.isVideoOrientationSupported {
                 let orientation = UIDevice.current.orientation
@@ -556,7 +568,7 @@ import SwiftUI
                     Text("Camera access required")
                         .foregroundStyle(.white)
                 }
-                
+
                 // Capture flash overlay
                 if showCaptureFlash {
                     Color.white
@@ -576,7 +588,7 @@ import SwiftUI
                         .padding(.leading)
 
                         Spacer()
-                        
+
                         // Capture count badge
                         if captureCount > 0 {
                             Text("\\(captureCount) saved")

@@ -54,7 +54,7 @@ final class AppIconServicePreferredImageTests: XCTestCase {
         XCTAssertNotNil(chosen)
         XCTAssertEqual(chosen?.size.width, runtime.size.width, "Should prefer runtime when it has more pixels")
     }
-    
+
     func test_choosePrefersRuntimeWhenBothHaveSamePixels() {
         // Both have same pixel count - should prefer runtime
         let runtime = makeImage(width: 512)

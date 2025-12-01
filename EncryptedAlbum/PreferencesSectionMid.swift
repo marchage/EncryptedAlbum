@@ -123,20 +123,23 @@ struct PreferencesSectionMid: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Toggle("", isOn: Binding(
-                    get: { albumManager.lockdownModeEnabled },
-                    set: { newValue in
-                        if newValue && !albumManager.lockdownModeEnabled {
-                            // Turning ON - ask for confirmation
-                            showLockdownConfirm = true
-                        } else if !newValue && albumManager.lockdownModeEnabled {
-                            // Turning OFF - no confirmation needed
-                            albumManager.lockdownModeEnabled = false
-                            storedLockdownMode = false
-                            albumManager.saveSettings()
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { albumManager.lockdownModeEnabled },
+                        set: { newValue in
+                            if newValue && !albumManager.lockdownModeEnabled {
+                                // Turning ON - ask for confirmation
+                                showLockdownConfirm = true
+                            } else if !newValue && albumManager.lockdownModeEnabled {
+                                // Turning OFF - no confirmation needed
+                                albumManager.lockdownModeEnabled = false
+                                storedLockdownMode = false
+                                albumManager.saveSettings()
+                            }
                         }
-                    }
-                ))
+                    )
+                )
                 .labelsHidden()
                 .toggleStyle(SwitchToggleStyle(tint: .red))
             }
@@ -157,11 +160,13 @@ struct PreferencesSectionMid: View {
                 )
             }
 
-            Text(albumManager.lockdownModeEnabled
-                 ? "🔒 LOCKDOWN ACTIVE: No data can enter or leave this album until you disable Lockdown Mode above."
-                 : "When enabled, the app refuses all data movement — no imports, exports, or cloud sync. Use this for maximum isolation.")
-                .font(.caption)
-                .foregroundStyle(albumManager.lockdownModeEnabled ? .red : .secondary)
+            Text(
+                albumManager.lockdownModeEnabled
+                    ? "🔒 LOCKDOWN ACTIVE: No data can enter or leave this album until you disable Lockdown Mode above."
+                    : "When enabled, the app refuses all data movement — no imports, exports, or cloud sync. Use this for maximum isolation."
+            )
+            .font(.caption)
+            .foregroundStyle(albumManager.lockdownModeEnabled ? .red : .secondary)
 
             Text("Import & Export").font(.headline)
 
@@ -198,11 +203,13 @@ struct PreferencesSectionMid: View {
             }
             .disabled(albumManager.lockdownModeEnabled)
 
-            Text(albumManager.backupSchedule == "manual"
-                 ? "Backups are only created when you manually export. Use 'Export Encrypted Key Backup' below to create a backup file you can store anywhere."
-                 : "The app will automatically create encrypted backup archives (password-protected .tar.gz) to your iCloud Drive on a \(albumManager.backupSchedule) basis.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Text(
+                albumManager.backupSchedule == "manual"
+                    ? "Backups are only created when you manually export. Use 'Export Encrypted Key Backup' below to create a backup file you can store anywhere."
+                    : "The app will automatically create encrypted backup archives (password-protected .tar.gz) to your iCloud Drive on a \(albumManager.backupSchedule) basis."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
 
             Toggle(
                 "Encrypt iCloud Sync",
@@ -215,11 +222,13 @@ struct PreferencesSectionMid: View {
             )
             .disabled(albumManager.lockdownModeEnabled)
 
-            Text(albumManager.encryptedCloudSyncEnabled
-                 ? "✅ Your album is synced to iCloud with client-side AES-GCM encryption. Apple cannot read your data — only devices with your password can decrypt it."
-                 : "❌ iCloud sync is disabled. Your album exists only on this device. Enable this to back up encrypted data to iCloud and sync across your devices.")
-                .font(.caption)
-                .foregroundStyle(albumManager.encryptedCloudSyncEnabled ? .green : .secondary)
+            Text(
+                albumManager.encryptedCloudSyncEnabled
+                    ? "✅ Your album is synced to iCloud with client-side AES-GCM encryption. Apple cannot read your data — only devices with your password can decrypt it."
+                    : "❌ iCloud sync is disabled. Your album exists only on this device. Enable this to back up encrypted data to iCloud and sync across your devices."
+            )
+            .font(.caption)
+            .foregroundStyle(albumManager.encryptedCloudSyncEnabled ? .green : .secondary)
 
             // Cloud sync UI (small group)
             VStack(alignment: .leading, spacing: 8) {

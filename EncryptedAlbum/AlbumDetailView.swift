@@ -275,11 +275,11 @@ struct AlbumDetailView: View {
     // macOS implementation: Show albums from Photos library and let user select items
     import AppKit
     import PhotosUI
-    
+
     struct PhotosLibraryPicker: View {
         @EnvironmentObject var albumManager: AlbumManager
         @Environment(\.dismiss) private var dismiss
-        
+
         @State private var albums: [(name: String, collection: PHAssetCollection)] = []
         @State private var selectedAlbum: PHAssetCollection?
         @State private var assets: [PHAsset] = []
@@ -290,9 +290,9 @@ struct AlbumDetailView: View {
         @State private var importTotal: Int = 0
         @State private var accessGranted = false
         @State private var thumbnails: [String: NSImage] = [:]
-        
+
         private let photosService = PhotosLibraryService.shared
-        
+
         var body: some View {
             VStack(spacing: 0) {
                 // Header
@@ -300,17 +300,17 @@ struct AlbumDetailView: View {
                     Text("Import from Photos Library")
                         .font(.headline)
                     Spacer()
-                    
+
                     if !selectedAssets.isEmpty {
                         Text("\(selectedAssets.count) selected")
                             .foregroundStyle(.secondary)
                     }
-                    
+
                     Button("Cancel") {
                         dismiss()
                     }
                     .keyboardShortcut(.cancelAction)
-                    
+
                     Button("Import \(selectedAssets.count > 0 ? "(\(selectedAssets.count))" : "")") {
                         Task { await importSelectedAssets() }
                     }
@@ -319,9 +319,9 @@ struct AlbumDetailView: View {
                     .keyboardShortcut(.defaultAction)
                 }
                 .padding()
-                
+
                 Divider()
-                
+
                 if !accessGranted {
                     // Request access view
                     VStack(spacing: 16) {
@@ -351,15 +351,18 @@ struct AlbumDetailView: View {
                 } else {
                     HSplitView {
                         // Albums list
-                        List(albums, id: \.collection.localIdentifier, selection: Binding(
-                            get: { selectedAlbum?.localIdentifier },
-                            set: { newId in
-                                selectedAlbum = albums.first { $0.collection.localIdentifier == newId }?.collection
-                                if let album = selectedAlbum {
-                                    loadAssets(from: album)
+                        List(
+                            albums, id: \.collection.localIdentifier,
+                            selection: Binding(
+                                get: { selectedAlbum?.localIdentifier },
+                                set: { newId in
+                                    selectedAlbum = albums.first { $0.collection.localIdentifier == newId }?.collection
+                                    if let album = selectedAlbum {
+                                        loadAssets(from: album)
+                                    }
                                 }
-                            }
-                        )) { album in
+                            )
+                        ) { album in
                             HStack {
                                 Image(systemName: albumIcon(for: album.collection))
                                     .foregroundStyle(.secondary)
@@ -370,7 +373,7 @@ struct AlbumDetailView: View {
                         }
                         .listStyle(.sidebar)
                         .frame(minWidth: 180, maxWidth: 250)
-                        
+
                         // Assets grid
                         if isLoading {
                             ProgressView("Loading...")
@@ -386,7 +389,9 @@ struct AlbumDetailView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                         } else {
                             ScrollView {
-                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100, maximum: 120), spacing: 8)], spacing: 8) {
+                                LazyVGrid(
+                                    columns: [GridItem(.adaptive(minimum: 100, maximum: 120), spacing: 8)], spacing: 8
+                                ) {
                                     ForEach(assets, id: \.localIdentifier) { asset in
                                         assetThumbnail(asset)
                                             .onTapGesture {
@@ -405,7 +410,7 @@ struct AlbumDetailView: View {
                 requestAccess()
             }
         }
-        
+
         private func albumIcon(for collection: PHAssetCollection) -> String {
             switch collection.assetCollectionSubtype {
             case .smartAlbumAllHidden:
@@ -426,11 +431,11 @@ struct AlbumDetailView: View {
                 return "photo.on.rectangle"
             }
         }
-        
+
         @ViewBuilder
         private func assetThumbnail(_ asset: PHAsset) -> some View {
             let isSelected = selectedAssets.contains(asset.localIdentifier)
-            
+
             ZStack(alignment: .bottomTrailing) {
                 Group {
                     if let thumbnail = thumbnails[asset.localIdentifier] {
@@ -456,7 +461,7 @@ struct AlbumDetailView: View {
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
                 )
-                
+
                 // Selection checkmark
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
@@ -464,7 +469,7 @@ struct AlbumDetailView: View {
                         .font(.system(size: 20))
                         .padding(4)
                 }
-                
+
                 // Video duration badge
                 if asset.mediaType == .video {
                     HStack(spacing: 2) {
@@ -482,13 +487,13 @@ struct AlbumDetailView: View {
                 }
             }
         }
-        
+
         private func formatDuration(_ duration: TimeInterval) -> String {
             let minutes = Int(duration) / 60
             let seconds = Int(duration) % 60
             return String(format: "%d:%02d", minutes, seconds)
         }
-        
+
         private func toggleSelection(_ asset: PHAsset) {
             if selectedAssets.contains(asset.localIdentifier) {
                 selectedAssets.remove(asset.localIdentifier)
@@ -496,7 +501,7 @@ struct AlbumDetailView: View {
                 selectedAssets.insert(asset.localIdentifier)
             }
         }
-        
+
         private func requestAccess() {
             photosService.requestAccess { granted in
                 accessGranted = granted
@@ -505,22 +510,22 @@ struct AlbumDetailView: View {
                 }
             }
         }
-        
+
         private func loadAlbums() {
             albums = photosService.getAllAlbums(libraryType: .both)
-            
+
             // Auto-select first album
             if let first = albums.first {
                 selectedAlbum = first.collection
                 loadAssets(from: first.collection)
             }
         }
-        
+
         private func loadAssets(from collection: PHAssetCollection) {
             isLoading = true
             selectedAssets.removeAll()
             thumbnails.removeAll()
-            
+
             DispatchQueue.global(qos: .userInitiated).async {
                 let fetchedAssets = photosService.getAssets(from: collection)
                 DispatchQueue.main.async {
@@ -529,13 +534,13 @@ struct AlbumDetailView: View {
                 }
             }
         }
-        
+
         private func loadThumbnail(for asset: PHAsset) {
             let options = PHImageRequestOptions()
             options.deliveryMode = .opportunistic
             options.isNetworkAccessAllowed = true
             options.resizeMode = .fast
-            
+
             PHImageManager.default().requestImage(
                 for: asset,
                 targetSize: CGSize(width: 200, height: 200),
@@ -549,15 +554,15 @@ struct AlbumDetailView: View {
                 }
             }
         }
-        
+
         private func importSelectedAssets() async {
             let assetsToImport = assets.filter { selectedAssets.contains($0.localIdentifier) }
             guard !assetsToImport.isEmpty else { return }
-            
+
             isImporting = true
             importTotal = assetsToImport.count
             importProgress = 0
-            
+
             for asset in assetsToImport {
                 do {
                     if let result = await photosService.getMediaDataAsync(for: asset) {
@@ -581,10 +586,10 @@ struct AlbumDetailView: View {
                 } catch {
                     AppLog.error("Failed to import asset \(asset.localIdentifier): \(error.localizedDescription)")
                 }
-                
+
                 importProgress += 1
             }
-            
+
             dismiss()
         }
     }
