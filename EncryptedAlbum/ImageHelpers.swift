@@ -343,7 +343,8 @@ final class AppIconService: ObservableObject {
     /// Search the app bundle recursively for a resource with the exact filename (case-insensitive).
     /// Returns the first matching URL or nil if not found. This helps locate files like
     /// `mac1024.png` that may exist inside AppIcon.appiconset folders in the bundle.
-    private static func bundleResourceURL(matching filename: String) -> URL? {
+    /// If `withinFolder` is provided, only returns matches whose path contains that folder name.
+    private static func bundleResourceURL(matching filename: String, withinFolder folderName: String? = nil) -> URL? {
         guard let resourceRoot = Bundle.main.resourceURL else { return nil }
         let fm = FileManager.default
         let options: FileManager.DirectoryEnumerationOptions = [.skipsHiddenFiles]
@@ -352,7 +353,14 @@ final class AppIconService: ObservableObject {
         {
             for case let url as URL in enumerator {
                 if url.lastPathComponent.lowercased() == filename.lowercased() {
-                    return url
+                    // If a folder constraint is provided, check that the path contains it
+                    if let folderName = folderName {
+                        if url.path.contains(folderName) {
+                            return url
+                        }
+                    } else {
+                        return url
+                    }
                 }
             }
         }
@@ -430,41 +438,108 @@ final class AppIconService: ObservableObject {
 
             return target
         #else
-            // iOS path: ALWAYS try the dedicated mac1024 imageset FIRST (highest priority)
+            // iOS path: First check if a specific alternate icon was requested
+            // If so, try to find the high-res image from that icon's appiconset folder
+            let iconSetFolder: String? = {
+                guard let name = iconName, !name.isEmpty, name != "AppIcon" else { return nil }
+                // The appiconset folder is typically named like "AppIcon1.appiconset"
+                return "\(name).appiconset"
+            }()
+            
+            // Try to find mac1024.png (preferred - 512@2x = 1024px) or appstore1024.png within the specific icon's folder
+            if let folder = iconSetFolder {
+                // Prefer mac1024.png (the 512@2x macOS marketing image - highest quality)
+                if let iconURL = bundleResourceURL(matching: "mac1024.png", withinFolder: folder),
+                   let data = try? Data(contentsOf: iconURL),
+                   let iconImg = UIImage(data: data, scale: 1.0)
+                {
+                    AppLog.debugPublic("AppIconService: found mac1024.png for \(iconName ?? "default") at: \(iconURL.path)")
+                    let format = UIGraphicsImageRendererFormat()
+                    format.scale = 1.0
+                    let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
+                    return renderer.image { ctx in
+                        let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
+                        let corner = CGFloat(0.15 * 1024)
+                        let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
+                        path.addClip()
+                        iconImg.draw(in: rect)
+                    }
+                }
+                // Fall back to appstore1024.png within the icon's folder
+                if let iconURL = bundleResourceURL(matching: "appstore1024.png", withinFolder: folder),
+                   let data = try? Data(contentsOf: iconURL),
+                   let iconImg = UIImage(data: data, scale: 1.0)
+                {
+                    AppLog.debugPublic("AppIconService: found appstore1024.png for \(iconName ?? "default") at: \(iconURL.path)")
+                    let format = UIGraphicsImageRendererFormat()
+                    format.scale = 1.0
+                    let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
+                    return renderer.image { ctx in
+                        let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
+                        let corner = CGFloat(0.15 * 1024)
+                        let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
+                        path.addClip()
+                        iconImg.draw(in: rect)
+                    }
+                }
+            }
+            
+            // For the default icon (nil or "AppIcon"), try the dedicated mac1024 imageset FIRST
             // This ensures we get the 1024px image we explicitly created in the asset catalog
-            if let mac1024 = UIImage(named: "mac1024") {
-                AppLog.debugPublic(
-                    "AppIconService: found mac1024 imageset, pixels=\(max(mac1024.size.width * mac1024.scale, mac1024.size.height * mac1024.scale))"
-                )
-                let format = UIGraphicsImageRendererFormat()
-                format.scale = 1.0
-                let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
-                return renderer.image { ctx in
-                    let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
-                    let corner = CGFloat(0.15 * 1024)
-                    let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
-                    path.addClip()
-                    mac1024.draw(in: rect)
+            if iconName == nil || iconName == "AppIcon" || iconName?.isEmpty == true {
+                if let mac1024 = UIImage(named: "mac1024") {
+                    AppLog.debugPublic(
+                        "AppIconService: found mac1024 imageset, pixels=\(max(mac1024.size.width * mac1024.scale, mac1024.size.height * mac1024.scale))"
+                    )
+                    let format = UIGraphicsImageRendererFormat()
+                    format.scale = 1.0
+                    let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
+                    return renderer.image { ctx in
+                        let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
+                        let corner = CGFloat(0.15 * 1024)
+                        let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
+                        path.addClip()
+                        mac1024.draw(in: rect)
+                    }
                 }
-            }
 
-            // Second priority: bundled mac1024.png file (recursive search)
-            if let macURL = bundleResourceURL(matching: "mac1024.png"), let data = try? Data(contentsOf: macURL),
-                let macImg = UIImage(data: data, scale: 1.0)
-            {
-                AppLog.debugPublic("AppIconService: found mac1024.png at runtime: \(macURL.path)")
-                // Render to 1024x1024 marketing canvas for consistency
-                let format = UIGraphicsImageRendererFormat()
-                format.scale = 1.0
-                let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
-                return renderer.image { ctx in
-                    let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
-                    let corner = CGFloat(0.15 * 1024)
-                    let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
-                    path.addClip()
-                    macImg.draw(in: rect)
+                // Second priority for default icon: bundled mac1024.png file from AppIcon.appiconset
+                if let macURL = bundleResourceURL(matching: "mac1024.png", withinFolder: "AppIcon.appiconset"),
+                   let data = try? Data(contentsOf: macURL),
+                   let macImg = UIImage(data: data, scale: 1.0)
+                {
+                    AppLog.debugPublic("AppIconService: found mac1024.png at runtime: \(macURL.path)")
+                    let format = UIGraphicsImageRendererFormat()
+                    format.scale = 1.0
+                    let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
+                    return renderer.image { ctx in
+                        let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
+                        let corner = CGFloat(0.15 * 1024)
+                        let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
+                        path.addClip()
+                        macImg.draw(in: rect)
+                    }
+                }
+                
+                // Try any mac1024.png as last resort for default icon
+                if let macURL = bundleResourceURL(matching: "mac1024.png"),
+                   let data = try? Data(contentsOf: macURL),
+                   let macImg = UIImage(data: data, scale: 1.0)
+                {
+                    AppLog.debugPublic("AppIconService: found generic mac1024.png at runtime: \(macURL.path)")
+                    let format = UIGraphicsImageRendererFormat()
+                    format.scale = 1.0
+                    let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
+                    return renderer.image { ctx in
+                        let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
+                        let corner = CGFloat(0.15 * 1024)
+                        let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
+                        path.addClip()
+                        macImg.draw(in: rect)
+                    }
                 }
             }
+            
             var marketingCandidates = [
                 "AppIcon-1024", "AppIcon-512@2x", "AppIcon1024", "AppIcon-512", "AppIcon512",
                 "AppIcon_marketing", "AppIconMarketingRuntime", "AppIcon",
@@ -485,10 +560,18 @@ final class AppIconService: ObservableObject {
 
             for base in marketingCandidates {
                 // Try explicit bundle PNGs first (these are exact files in the bundle resources)
+                // If we have a specific icon folder, search within that folder first
                 for suffix in suffixes {
                     let candidateName = base + suffix
-                    // First try to find the resource anywhere in the bundle (recursively).
-                    var url: URL? = bundleResourceURL(matching: candidateName + ".png")
+                    // First try to find the resource within the specific icon folder if provided
+                    var url: URL? = nil
+                    if let folder = iconSetFolder {
+                        url = bundleResourceURL(matching: candidateName + ".png", withinFolder: folder)
+                    }
+                    // If not found in specific folder, try anywhere in the bundle
+                    if url == nil {
+                        url = bundleResourceURL(matching: candidateName + ".png")
+                    }
                     // If not found recursively, fall back to the top-level resource lookup.
                     if url == nil {
                         url = Bundle.main.url(forResource: candidateName, withExtension: "png")
