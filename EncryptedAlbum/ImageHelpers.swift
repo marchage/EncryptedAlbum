@@ -155,6 +155,13 @@ final class AppIconService: ObservableObject {
                 "AppIcon13",
                 "AppIcon14",
                 "AppIcon15",
+                "AppIcon16",
+                "AppIcon17",
+                "AppIcon18",
+                "AppIcon19",
+                "AppIcon20",
+                "AppIcon21",
+                "AppIcon22"
             ]
         #endif
     }
