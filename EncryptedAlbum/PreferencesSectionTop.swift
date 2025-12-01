@@ -229,6 +229,17 @@ struct PreferencesSectionTop: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 #endif
+                // If we have a last apply error, expose an explicit Try again control
+                if appIconService.lastIconApplyError != nil {
+                    Button("Try again") {
+                        // Re-attempt the same selection
+                        let selected = (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
+                        appIconService.clearLastIconApplyError()
+                        appIconService.select(iconName: selected)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
             }
 
             #if os(iOS)
@@ -246,6 +257,16 @@ struct PreferencesSectionTop: View {
         }
         .onAppear {
             uiSelectedAppIcon = appIconService.selectedIconName.isEmpty ? "AppIcon" : appIconService.selectedIconName
+
+            // Diagnostics: if we don't have a runtime image and the asset lookup fails,
+            // log a helpful message once on appear (avoid returning Void inside the view builder).
+            if appIconService.runtimeMarketingImage == nil {
+                #if os(iOS)
+                if UIImage(named: "AppIcon") == nil {
+                    AppLog.debugPublic("PreferencesSectionTop: No image named 'AppIcon' found in asset catalog. Consider adding a preview image (e.g., AppIconPreview or AppIcon-1024) or rely on runtimeMarketingImage.")
+                }
+                #endif
+            }
         }
     }
 }

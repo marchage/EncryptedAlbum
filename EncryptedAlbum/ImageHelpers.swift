@@ -125,16 +125,12 @@ final class AppIconService: ObservableObject {
     @Published public private(set) var runtimeMarketingImage: PlatformImage? = nil
 
     private let iconApplier: IconApplier
-    private let maxApplyAttempts: Int
-    private let initialApplyDelay: TimeInterval
 
     /// Designated initializer — production use will default to DefaultIconApplier.
     // Bump default attempts to make transient platform errors less visible to users —
     // retries are cheap and reduce the likelihood of the UI showing "Resource temporarily unavailable".
-    init(iconApplier: IconApplier = DefaultIconApplier(), maxApplyAttempts: Int = 6, initialApplyDelay: TimeInterval = 0.25) {
+    init(iconApplier: IconApplier = DefaultIconApplier()) {
         self.iconApplier = iconApplier
-        self.maxApplyAttempts = maxApplyAttempts
-        self.initialApplyDelay = initialApplyDelay
         // Try to sync persisted value with the current system state at startup.
         // Important: don't blindly re-apply the stored value — that could reset a
         // user-chosen alternate icon set from a previous run. Instead, if there is
@@ -162,8 +158,8 @@ final class AppIconService: ObservableObject {
     }
 
     /// Convenience initializer used by tests to inject a test applier and custom retry/backoff parameters.
-    convenience init(testApplier: IconApplier, maxApplyAttempts: Int, initialApplyDelay: TimeInterval) {
-        self.init(iconApplier: testApplier, maxApplyAttempts: maxApplyAttempts, initialApplyDelay: initialApplyDelay)
+    convenience init(testApplier: IconApplier) {
+        self.init(iconApplier: testApplier)
     }
 
     func applySelectedIcon() {
@@ -232,8 +228,17 @@ final class AppIconService: ObservableObject {
         // The default primary icon is represented by nil
         let iconNameToSet = (name == nil || name == "AppIcon") ? nil : name
 
-        // Start the apply / retry process.
-        attemptSetAlternateIcon(iconNameToSet, attemptNumber: 1)
+        // Directly invoke the applier once (no retry/backoff).
+        iconApplier.apply(iconName: iconNameToSet) { [weak self] error in
+            guard let self = self else { return }
+            if let error = error {
+                AppLog.debugPrivate("AppIconService: failed to set alternate icon \(iconNameToSet ?? "<primary>"): \(error.localizedDescription)")
+                DispatchQueue.main.async { self.lastIconApplyError = error.localizedDescription }
+            } else {
+                AppLog.debugPrivate("AppIconService: set alternate icon \(iconNameToSet ?? "<primary>")")
+                DispatchQueue.main.async { self.lastIconApplyError = nil }
+            }
+        }
 #elseif os(macOS)
         // On macOS we can update the Dock icon at runtime using NSApplication
         if let name = name, name != "AppIcon" {
@@ -250,35 +255,8 @@ final class AppIconService: ObservableObject {
     }
 
 #if os(iOS)
-    /// Attempt to call the applier and retry transient failures using an exponential backoff.
-    private func attemptSetAlternateIcon(_ iconNameToSet: String?, attemptNumber: Int) {
-        iconApplier.apply(iconName: iconNameToSet) { [weak self] error in
-            guard let self = self else { return }
-
-            if let error = error {
-                AppLog.debugPrivate("AppIconService: failed to set alternate icon \(iconNameToSet ?? "<primary>") on attempt \(attemptNumber): \(error.localizedDescription)")
-
-                let message = error.localizedDescription.lowercased()
-                let transient = message.contains("temporarily") || message.contains("unavailable") || message.contains("try again")
-
-                if transient && attemptNumber < self.maxApplyAttempts {
-                    let delay = self.initialApplyDelay * pow(2.0, Double(attemptNumber - 1))
-                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                        self.attemptSetAlternateIcon(iconNameToSet, attemptNumber: attemptNumber + 1)
-                    }
-                    return
-                }
-
-                // Final failure — publish the message for UI
-                DispatchQueue.main.async {
-                    self.lastIconApplyError = error.localizedDescription
-                }
-            } else {
-                AppLog.debugPrivate("AppIconService: set alternate icon \(iconNameToSet ?? "<primary>")")
-                DispatchQueue.main.async { self.lastIconApplyError = nil }
-            }
-        }
-    }
+    // No retry/backoff; single-shot apply path. Tests can inject an IconApplier to
+    // simulate platform success/failure.
 #endif
 
     /// Returns whether we can reasonably render / find an icon for preview/apply

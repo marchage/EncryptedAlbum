@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SetupPasswordView: View {
     @EnvironmentObject var albumManager: AlbumManager
+    @ObservedObject private var appIconService = AppIconService.shared
     @State private var useAutoPassword = true
     @State private var generatedPasswords: [String] = []
     @State private var selectedPasswordIndex = 0
@@ -68,7 +69,18 @@ struct SetupPasswordView: View {
 
                 // App Icon
                 #if os(macOS)
-                    if let appIcon = NSImage(named: "AppIcon") {
+                    // Prefer the appIconService runtime image if available (reflects selected alternate icon)
+                    if let runtime = appIconService.runtimeMarketingImage {
+                        Image(nsImage: runtime)
+                            .resizable()
+                            .renderingMode(.original)
+                            .interpolation(.high)
+                            .aspectRatio(1, contentMode: .fit)
+                            .frame(maxWidth: 180, maxHeight: 180)
+                            .clipShape(RoundedRectangle(cornerRadius: 26))
+                            .compositingGroup()
+                            .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
+                    } else if let appIcon = NSImage(named: "AppIcon") {
                         Image(nsImage: appIcon)
                             .resizable()
                             .renderingMode(.original)
@@ -92,7 +104,18 @@ struct SetupPasswordView: View {
                             )
                     }
                 #elseif os(iOS)
-                    if let appIcon = UIImage(named: "AppIcon") {
+                    // Prefer runtimeMarketingImage (reflects selected alternate icon), fall back to bundle asset
+                    if let runtime = appIconService.runtimeMarketingImage {
+                        Image(uiImage: runtime)
+                            .resizable()
+                            .renderingMode(.original)
+                            .interpolation(.high)
+                            .aspectRatio(1, contentMode: .fit)
+                            .frame(maxWidth: 120, maxHeight: 120)
+                            .clipShape(RoundedRectangle(cornerRadius: 26))
+                            .compositingGroup()
+                            .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
+                    } else if let appIcon = UIImage(named: "AppIcon") {
                         Image(uiImage: appIcon)
                             .resizable()
                             .renderingMode(.original)
@@ -104,7 +127,7 @@ struct SetupPasswordView: View {
                             .compositingGroup()
                             .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
                     } else {
-                        // Fallback to lock circle
+                        // Fallback to lock circle; attach an onAppear handler for diagnostics
                         Image(systemName: "lock.fill")
                             .font(.system(size: 72))
                             .foregroundStyle(
@@ -114,6 +137,9 @@ struct SetupPasswordView: View {
                                     endPoint: .bottomTrailing
                                 )
                             )
+                            .onAppear {
+                                AppLog.debugPublic("SetupPasswordView: no UIImage named 'AppIcon' found in asset catalog — using fallback symbol.")
+                            }
                     }
                 #else
                     // Default fallback for other platforms: keep existing behavior

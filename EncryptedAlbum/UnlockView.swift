@@ -21,6 +21,7 @@ struct UnlockView: View {
     @State private var showFakeCrash = false
 
     private func appIconView() -> some View {
+        // Prefer runtime image if AppIconService has one; otherwise fall back to bundle files
         #if os(macOS)
         // Prefer the running application's icon first (it reflects the
         // actual icon macOS is using at runtime). Fall back to named AppIcon
@@ -78,6 +79,20 @@ struct UnlockView: View {
         // rounded corners baked-in which gives the same rounded corner every time.
         let attemptNames = ["AppIcon", "AppIcon-1024", "AppIcon1024", "AppIcon-512@2x"]
 
+        // If AppIconService has a runtime marketing image, prefer it so the unlock
+        // UI always reflects the currently selected icon (if available).
+        if let runtime = AppIconService.shared.runtimeMarketingImage {
+            AppLog.debugPublic("UnlockView: using runtime marketing image for app icon")
+            let maxDimension = min(256, UIScreen.main.bounds.width * 0.35)
+            return AnyView(Image(uiImage: runtime)
+                .resizable()
+                .renderingMode(.original)
+                .interpolation(.high)
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: maxDimension, maxHeight: maxDimension)
+                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+        }
+
         // First try to load explicit high-resolution bundle files (preferred):
         // check common large filenames first so we get the true full-res PNG instead
         // of an image set resolution that may be lower.
@@ -96,7 +111,12 @@ struct UnlockView: View {
 
         // If we still don't have an explicit bundle PNG, fall back to UIImage(named:)
         if appIcon == nil {
-            appIcon = attemptNames.compactMap { UIImage(named: $0) }.first
+            let found = attemptNames.compactMap { UIImage(named: $0) }.first
+            if found == nil {
+                // Add a helpful diagnostic so console clearly explains why Image may be missing
+                AppLog.debugPublic("UnlockView: UIImage lookup failed for names: \(attemptNames). Consider adding a preview asset (e.g., AppIconPreview or AppIcon-1024).")
+            }
+            appIcon = found
         }
 
         // If appIcon is nil here, we'll log and return an EmptyView later.

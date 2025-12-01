@@ -29,18 +29,42 @@ final class AppIconServiceRetryTests: XCTestCase {
         }
     }
 
-    func testTransientFailuresThenSuccess() {
-        // Choose a known icon name (prefer an alternate if available)
-        let svc = AppIconService(iconApplier: TestIconApplier(failures: 2), maxApplyAttempts: 4, initialApplyDelay: 0.01)
+    func testApplyFailsWhenApplierReportsError() {
+        // If the applier returns an error we expect the service to publish the error
+        // immediately (no retry/backoff behavior).
+        let svc = AppIconService(iconApplier: TestIconApplier(failures: 2))
 
         let candidate = svc.availableIcons.first ?? "AppIcon"
-        let expectation = XCTestExpectation(description: "Icon apply eventually succeeds after retries")
+        let expectation = XCTestExpectation(description: "Icon apply fails and publishes an error")
 
-        // Observe lastIconApplyError and wait for it to be nil (success)
         svc.select(iconName: candidate)
 
-        // Poll until success or timeout
-        let deadline = Date().addingTimeInterval(2.0)
+        // Poll until we see an error or timeout
+        let deadline = Date().addingTimeInterval(1.0)
+        func check() {
+            if let err = svc.lastIconApplyError, !err.isEmpty {
+                expectation.fulfill()
+            } else if Date() < deadline {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { check() }
+            } else {
+                XCTFail("Expected error but got none")
+                expectation.fulfill()
+            }
+        }
+
+        check()
+        wait(for: [expectation], timeout: 2.0)
+    }
+
+    func testApplySucceedsWhenApplierReturnsSuccess() {
+        let svc = AppIconService(iconApplier: TestIconApplier(failures: 0))
+        let candidate = svc.availableIcons.first ?? "AppIcon"
+        let expectation = XCTestExpectation(description: "Icon apply succeeds and publishes no error")
+
+        svc.select(iconName: candidate)
+
+        // Poll until success (lastIconApplyError == nil)
+        let deadline = Date().addingTimeInterval(1.0)
         func check() {
             if svc.lastIconApplyError == nil {
                 expectation.fulfill()
@@ -53,31 +77,8 @@ final class AppIconServiceRetryTests: XCTestCase {
         }
 
         check()
-        wait(for: [expectation], timeout: 3.0)
+        wait(for: [expectation], timeout: 2.0)
     }
 
-    func testPermanentFailurePublishesError() {
-        let svc = AppIconService(iconApplier: TestIconApplier(failures: 100), maxApplyAttempts: 3, initialApplyDelay: 0.01)
-        let candidate = svc.availableIcons.first ?? "AppIcon"
-
-        let expectation = XCTestExpectation(description: "Icon apply fails permanently and publishes error")
-
-        svc.select(iconName: candidate)
-
-        // Poll until final error appears
-        let deadline = Date().addingTimeInterval(2.0)
-        func check() {
-            if let err = svc.lastIconApplyError, !err.isEmpty {
-                expectation.fulfill()
-            } else if Date() < deadline {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { check() }
-            } else {
-                XCTFail("Expected final error but got none")
-                expectation.fulfill()
-            }
-        }
-
-        check()
-        wait(for: [expectation], timeout: 3.0)
-    }
+    // The permanent-failure case is covered by testApplyFailsWhenApplierReportsError
 }

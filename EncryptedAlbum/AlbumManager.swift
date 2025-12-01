@@ -374,7 +374,7 @@ public class AlbumManager: ObservableObject {
     /// When enabled, 'Lockdown Mode' restricts network, import/export and other risky operations
     /// to minimize attack surface and data leakage.
     @Published var lockdownModeEnabled: Bool = false
-    @Published var passphraseMinLength: Int = 8
+    @Published var passphraseMinLength: Int = 24
     @Published var enableRecoveryKey: Bool = false
     
     // Queue for imports that arrive while the album is locked
@@ -1809,9 +1809,9 @@ public class AlbumManager: ObservableObject {
         return formatter.string(fromByteCount: size)
     }
     
-    private func restorationDetailText(for filename: String, albumName: String?, sizeDescription: String?) -> String {
+    private func restorationDetailText(for filename: String, albumName: String?, sizeDescription: String) -> String {
         var parts: [String] = [filename]
-        if let sizeDescription {
+        if !sizeDescription.isEmpty {
             parts.append(sizeDescription)
         }
         if let albumName {
@@ -2335,6 +2335,8 @@ public class AlbumManager: ObservableObject {
             
             if let compactString = settings["compactLayoutEnabled"], let compact = Bool(compactString) {
                 compactLayoutEnabled = compact
+            } else {
+                compactLayoutEnabled = false
             }
             
             if let accent = settings["accentColorName"] {
@@ -2422,7 +2424,7 @@ public class AlbumManager: ObservableObject {
             if let passMinString = settings["passphraseMinLength"], let passMin = Int(passMinString) {
                 passphraseMinLength = passMin
             } else {
-                passphraseMinLength = 8
+                passphraseMinLength = 24
             }
             
             if let recoveryString = settings["enableRecoveryKey"], let recovery = Bool(recoveryString) {
@@ -3169,9 +3171,9 @@ extension AlbumManager {
     // guard statement in case other platforms need to use same return path
         }
         
-        /// Quick verification: write a small encrypted test record to the app's iCloud container
-        /// then read it back and verify decryption. This is non-destructive and removes the
-        /// temporary file after verification. Returns true on success.
+    /// Quick verification: write a small encrypted test record to the app's iCloud container
+    /// then read it back and verify decryption. This is non-destructive and removes the
+    /// temporary file after verification. Returns true on success.
     @MainActor public func performQuickEncryptedCloudVerification() async throws -> Bool {
 #if os(iOS)
     // Respect Lockdown Mode first — deny verification while lockdown is active
