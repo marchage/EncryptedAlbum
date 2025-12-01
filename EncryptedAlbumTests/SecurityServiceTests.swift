@@ -82,8 +82,8 @@ final class SecurityServiceTests: XCTestCase {
         #if os(macOS)
         XCTAssertFalse(securityService.shouldUseDataProtectionKeychain())
         #else
-        // On non-macOS platforms this function is a no-op / not used - still call it safely
-        _ = securityService.shouldUseDataProtectionKeychain()
+        // On non-macOS platforms this function does not exist / isn't relevant — nothing to assert.
+        XCTAssertTrue(true)
         #endif
     }
     

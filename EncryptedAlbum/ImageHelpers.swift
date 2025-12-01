@@ -22,7 +22,7 @@ extension Image {
     /// Given a runtime image and an optional generated marketing image, pick the
     /// best one to display so we prefer high-resolution images (downscale) over
     /// upscaling small images. `visualCap` is in points.
-    public static func chooseBestMarketingImage(runtime: PlatformImage?, generated: PlatformImage?, visualCap: CGFloat) -> PlatformImage? {
+    static func chooseBestMarketingImage(runtime: PlatformImage?, generated: PlatformImage?, visualCap: CGFloat) -> PlatformImage? {
         func width(of img: PlatformImage?) -> CGFloat {
             guard let img = img else { return 0 }
             return img.size.width
