@@ -109,42 +109,31 @@ struct PreferencesView: View {
                         )
                         PreferencesSectionBottom(showBackupSheet: $showBackupSheet)
 
-                        if let error = healthCheckError {
-                            Text("Check failed: \(error)")
-                                .foregroundStyle(.red)
-                                .font(.caption)
-                        }
-
-                        Divider()
-
-                        Text("Key Management")
-                            .font(.headline)
-
+                        // macOS-specific key management setting
                         #if os(macOS)
-                            Toggle("Use Data Protection Keychain (macOS)", isOn: $useDataProtectionKeychain)
-                                .onChange(of: useDataProtectionKeychain) { _ in
-                                    // No-op: SecurityService reads the UserDefaults value at runtime
-                                }
+                            Divider()
+                            Text("Advanced Key Management")
+                                .font(.headline)
+                            
+                            HStack {
+                                Text("Data Protection Keychain")
+                                Spacer()
+                                Toggle("", isOn: $useDataProtectionKeychain)
+                                    .labelsHidden()
+                                    .onChange(of: useDataProtectionKeychain) { _ in
+                                        // No-op: SecurityService reads the UserDefaults value at runtime
+                                    }
+                            }
                             Text(
-                                "When enabled the app probes for and prefers the Data Protection Keychain domain (stronger protection). If this causes problems, turn it OFF to fall back to the legacy login keychain behaviour immediately."
+                                "Uses the stronger Data Protection Keychain when available. Disable if you experience keychain access issues."
                             )
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         #endif
 
-                        HStack {
-                            Button("Export Encrypted Key Backup") {
-                                backupPassword = ""
-                                backupPasswordConfirm = ""
-                                backupError = nil
-                                showBackupSheet = true
-                            }
-                            .disabled(albumManager.lockdownModeEnabled)
-                            .buttonStyle(.bordered)
-                            Spacer()
-                        }
-
-                        .sheet(isPresented: $showBackupSheet) {
+                        Spacer()
+                            .frame(height: 1)
+                            .sheet(isPresented: $showBackupSheet) {
                             VStack(spacing: 16) {
                                 Text("Export Encrypted Key Backup")
                                     .font(.headline)
@@ -286,6 +275,11 @@ struct PreferencesView: View {
             // Ensure UI toggle reflects manager state on first load
             storedLockdownMode = albumManager.lockdownModeEnabled
             // App icon picker state is now managed by the PreferencesSectionTop subview
+        }
+        .onDisappear {
+            // Apply any deferred icon changes now that settings is dismissed
+            // This prevents the iOS system alert from dismissing the settings view
+            AppIconService.shared.applyPendingIconChange()
         }
         .sheet(isPresented: $showDecoyPasswordSheet) {
             VStack(spacing: 20) {

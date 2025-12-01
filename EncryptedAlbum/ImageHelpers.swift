@@ -354,9 +354,55 @@ final class AppIconService: ObservableObject {
         #endif
     }
 
-    /// Programmatic helper to set icon from UI controls
+    /// Tracks whether there's a pending icon change that hasn't been applied to the system yet.
+    /// Used to defer the system alert on iOS until settings is dismissed.
+    @Published public private(set) var hasPendingIconChange: Bool = false
+    private var pendingIconName: String? = nil
+    
+    /// Programmatic helper to set icon from UI controls.
+    /// On iOS, this defers the actual system icon change to avoid dismissing the current view.
     public func select(iconName: String?) {
         selectedIconName = iconName ?? ""
+    }
+    
+    /// Selects an icon but defers the system API call (which shows an alert on iOS).
+    /// Call `applyPendingIconChange()` when the settings view is dismissed.
+    public func selectDeferred(iconName: String?) {
+        let name = iconName ?? ""
+        // Only generate the preview image, don't call the system API
+        runtimeMarketingImage = Self.generateMarketingImage(from: name.isEmpty ? nil : name)
+        pendingIconName = name
+        hasPendingIconChange = true
+        // Update the stored preference so the UI reflects the choice
+        // but skip the didSet trigger by going directly to UserDefaults
+        UserDefaults.standard.set(name, forKey: "selectedAppIconName")
+        objectWillChange.send()
+    }
+    
+    /// Apply any pending icon change to the system. Call this when settings is dismissed.
+    public func applyPendingIconChange() {
+        guard hasPendingIconChange else { return }
+        hasPendingIconChange = false
+        let name = pendingIconName ?? ""
+        pendingIconName = nil
+        
+        #if os(iOS)
+            // Now actually apply to the system
+            let iconNameToSet = name.isEmpty || name == "AppIcon" ? nil : name
+            guard UIApplication.shared.supportsAlternateIcons else { return }
+            iconApplier.apply(iconName: iconNameToSet) { [weak self] error in
+                guard let self = self else { return }
+                if let error = error {
+                    AppLog.debugPrivate("AppIconService: deferred apply failed: \(error.localizedDescription)")
+                    DispatchQueue.main.async { self.lastIconApplyError = error.localizedDescription }
+                } else {
+                    DispatchQueue.main.async { self.lastIconApplyError = nil }
+                }
+            }
+        #elseif os(macOS)
+            // macOS doesn't have the alert issue, but handle it for consistency
+            setSystemIcon(name.isEmpty ? nil : name)
+        #endif
     }
 
     // MARK: - Image generation helpers

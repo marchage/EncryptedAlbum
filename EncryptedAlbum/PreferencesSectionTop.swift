@@ -241,9 +241,8 @@ struct PreferencesSectionTop: View {
                     Button("Set") {
                         let selected =
                             (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
-                        // Let the service drive the apply+retry behavior so failures are surfaced
-                        // via appIconService.lastIconApplyError.
-                        appIconService.select(iconName: selected)
+                        // Use deferred selection to avoid the system alert dismissing settings
+                        appIconService.selectDeferred(iconName: selected)
                     }
                     .disabled(!UIApplication.shared.supportsAlternateIcons)
                     .buttonStyle(.bordered)
@@ -275,7 +274,7 @@ struct PreferencesSectionTop: View {
                         // Clear previous error so user receives fresh status
                         appIconService.clearLastIconApplyError()
 
-                        // Calling select will drive the same apply+retry logic already used by the Set button
+                        // Force apply uses immediate selection (shows system alert but sometimes needed)
                         appIconService.select(iconName: selected)
                     }
                     .buttonStyle(.bordered)
