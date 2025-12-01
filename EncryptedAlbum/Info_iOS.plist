@@ -132,6 +132,24 @@
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
+            <key>AppIcon 14</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon 14</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+            <key>AppIcon 15</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon 15</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
 		</dict>
 	</dict>
 </dict>
