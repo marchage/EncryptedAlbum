@@ -2,6 +2,8 @@ import CryptoKit
 import Foundation
 import LocalAuthentication
 import Security
+
+/// Service responsible for security validation and health checks
 class SecurityService {
     private let queue = DispatchQueue(label: "biz.front-end.encryptedalbum.security", qos: .userInitiated)
     private let queueSpecificKey = DispatchSpecificKey<Void>()
@@ -15,8 +17,6 @@ class SecurityService {
     init(cryptoService: CryptoService) {
         self.cryptoService = cryptoService
         queue.setSpecific(key: queueSpecificKey, value: ())
-
-
     }
 
     // MARK: - Biometric Authentication
@@ -24,21 +24,7 @@ class SecurityService {
     /// Performs biometric authentication
     func authenticateWithBiometrics(reason: String) async throws {
         return try await withCheckedThrowingContinuation { continuation in
-            // Check trusted-modal state on the main actor before proceeding to background work.
-            Task { @MainActor in
-                #if os(iOS)
-                    if UltraPrivacyCoordinator.shared.isTrustedModalActive {
-                        continuation.resume(throwing: AlbumError.biometricCancelled)
-                        return
-                    }
-                #elseif os(macOS)
-                    if MacPrivacyCoordinator.shared.isTrustedModalActive {
-                        continuation.resume(throwing: AlbumError.biometricCancelled)
-                        return
-                    }
-                #endif
-
-                queue.async {
+            queue.async {
                 // Check rate limiting
                 if let lastAttempt = self.lastBiometricAttempt {
                     let timeSinceLastAttempt = Date().timeIntervalSince(lastAttempt)
@@ -81,17 +67,21 @@ class SecurityService {
 
                 // Introduce a short delay so the biometric sheet does not appear abruptly.
                 Thread.sleep(forTimeInterval: 1.0)
+                AppLog.debugPublic("SecurityService.authenticateWithBiometrics: evaluatePolicy starting (queue: \(self.queue.label))")
 
                 context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) {
                     success, error in
                     if success {
                         self.resetBiometricRateLimit()
+                        AppLog.debugPublic("SecurityService.authenticateWithBiometrics: evaluatePolicy SUCCESS")
                         continuation.resume(returning: ())
                     } else if let error = error as? LAError {
                         switch error.code {
                         case .userCancel, .appCancel, .systemCancel:
+                            AppLog.debugPublic("SecurityService.authenticateWithBiometrics: evaluatePolicy CANCELLED: \(error.code)")
                             continuation.resume(throwing: AlbumError.biometricCancelled)
                         default:
+                            AppLog.debugPublic("SecurityService.authenticateWithBiometrics: evaluatePolicy FAILED: \(error.code)")
                             continuation.resume(throwing: AlbumError.biometricFailed)
                         }
                     } else {
@@ -101,7 +91,6 @@ class SecurityService {
             }
         }
     }
-}
 
     private func resetBiometricRateLimit() {
         biometricAttemptCount = 0
@@ -452,22 +441,7 @@ class SecurityService {
         context.localizedReason = prompt
 
         return try await withCheckedThrowingContinuation { continuation in
-            // Ensure we check trusted-modal state on the main actor before performing
-            // keychain/biometric access on the background queue.
-            Task { @MainActor in
-                #if os(iOS)
-                    if UltraPrivacyCoordinator.shared.isTrustedModalActive {
-                        continuation.resume(throwing: AlbumError.biometricCancelled)
-                        return
-                    }
-                #elseif os(macOS)
-                    if MacPrivacyCoordinator.shared.isTrustedModalActive {
-                        continuation.resume(throwing: AlbumError.biometricCancelled)
-                        return
-                    }
-                #endif
-
-                queue.async {
+            queue.async {
                 Task {
                     #if os(macOS)
                         // If we are not using Data Protection Keychain, we likely used the fallback storage (no Access Control).
@@ -509,7 +483,9 @@ class SecurityService {
                     #endif
 
                     var result: AnyObject?
+                    AppLog.debugPublic("SecurityService.retrieveBiometricPassword: SecItemCopyMatching starting (account: \(self.biometricPasswordKey))")
                     let status = SecItemCopyMatching(query as CFDictionary, &result)
+                    AppLog.debugPublic("SecurityService.retrieveBiometricPassword: SecItemCopyMatching returned status \(status)")
 
                     if status == errSecItemNotFound {
                         continuation.resume(returning: nil)
@@ -522,18 +498,19 @@ class SecurityService {
                     }
 
                     guard status == errSecSuccess, let data = result as? Data else {
+                        AppLog.debugPublic("SecurityService.retrieveBiometricPassword: SecItemCopyMatching failed (status: \(status))")
                         continuation.resume(
                             throwing: AlbumError.unknownError(
                                 reason: "Keychain retrieval failed with status: \(status)"))
                         return
                     }
 
-                    continuation.resume(returning: String(data: data, encoding: .utf8))
+                    let s = String(data: data, encoding: .utf8)
+                    AppLog.debugPublic("SecurityService.retrieveBiometricPassword: retrieved biometric password (length: \(s?.count ?? 0))")
+                    continuation.resume(returning: s)
                 }
             }
         }
-    }
-
     }
 
     /// Checks if a biometric-protected password exists without triggering user interaction
@@ -678,17 +655,9 @@ class SecurityService {
         }
     #else
         private func applyMacKeychainAttributes(to query: inout [String: Any], requireUISkip: Bool) {}
-
-        // Non-macOS platforms don't probe the macOS Data Protection Keychain.
-        // Keep the method present so tests and callers can safely invoke it without needing
-        // platform-specific compilation checks.
-        func shouldUseDataProtectionKeychain() -> Bool {
-            return false
-        }
     #endif
 
 }
-
 
 /// Report structure for security health checks
 struct SecurityHealthReport {

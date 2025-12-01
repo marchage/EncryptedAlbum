@@ -13,6 +13,7 @@ import SwiftUI
 struct MainAlbumView: View {
     @EnvironmentObject var albumManager: AlbumManager
     @ObservedObject var directImportProgress: DirectImportProgress
+    @ObservedObject private var appIconService = AppIconService.shared
 
     @State private var showingPhotosLibrary = false
     @State private var selectedPhoto: SecurePhoto?
@@ -1319,6 +1320,21 @@ struct MainAlbumView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 12) {
                 HStack(spacing: 8) {
+                    // Small app icon in the privacy bar (helps identify the app in portrait mode)
+                    #if os(iOS)
+                    if let runtime = appIconService.runtimeMarketingImage {
+                        Image(uiImage: runtime)
+                            .resizable()
+                            .frame(width: 28, height: 28)
+                            .cornerRadius(6)
+                    } else if UIImage(named: "AppIcon") != nil {
+                        Image("AppIcon")
+                            .resizable()
+                            .frame(width: 28, height: 28)
+                            .cornerRadius(6)
+                    }
+                    #endif
+
                     Label(
                         privacyModeEnabled ? "Privacy Mode On" : "Privacy Mode Off",
                         systemImage: privacyModeEnabled ? "eye.slash.fill" : "eye.fill"

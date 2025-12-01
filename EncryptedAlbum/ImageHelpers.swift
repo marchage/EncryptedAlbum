@@ -282,6 +282,23 @@ final class AppIconService: ObservableObject {
 
     // MARK: - Image generation helpers
 
+    /// Search the app bundle recursively for a resource with the exact filename (case-insensitive).
+    /// Returns the first matching URL or nil if not found. This helps locate files like
+    /// `mac1024.png` that may exist inside AppIcon.appiconset folders in the bundle.
+    private static func bundleResourceURL(matching filename: String) -> URL? {
+        guard let resourceRoot = Bundle.main.resourceURL else { return nil }
+        let fm = FileManager.default
+        let options: FileManager.DirectoryEnumerationOptions = [.skipsHiddenFiles]
+        if let enumerator = fm.enumerator(at: resourceRoot, includingPropertiesForKeys: [.isRegularFileKey], options: options) {
+            for case let url as URL in enumerator {
+                if url.lastPathComponent.lowercased() == filename.lowercased() {
+                    return url
+                }
+            }
+        }
+        return nil
+    }
+
     /// Creates a 1024x1024 image for the given icon asset name by rendering the best available representation.
     /// This is used for previews and the macOS dock image — it does not alter the app bundle.
     static func generateMarketingImage(from iconName: String?) -> PlatformImage? {
@@ -327,23 +344,81 @@ final class AppIconService: ObservableObject {
         return target
         #else
         // Prefer the dedicated 512@2x runtime marketing asset when requested.
-        let marketingCandidates = [
-            "AppIcon-512@2x", "AppIcon512@2x", "AppIcon-512", "AppIcon512",
+        var marketingCandidates = [
+            "AppIcon-1024", "AppIcon-512@2x", "AppIcon1024", "AppIcon-512", "AppIcon512",
             "AppIcon_marketing", "AppIconMarketingRuntime", "AppIcon"
         ]
 
-        // Resolve which asset name to use for rendering.
-        let nameToLoad: String
-        if iconName == nil || iconName == "AppIcon" {
-            nameToLoad = "AppIcon"
-        } else if iconName == "AppIconMarketingRuntime" {
-            // Try to find the preferred 512@2x candidate first, fall back to the provided icon name
-            nameToLoad = marketingCandidates.first(where: { UIImage(named: $0) != nil }) ?? iconName!
-        } else {
-            nameToLoad = iconName!
+        // If a specific iconName was provided (e.g. an alternate icon), prefer it as a candidate
+        if let iconName = iconName, !iconName.isEmpty {
+            // Put the explicit name first so explicit alternates are preferred
+            marketingCandidates.insert(iconName, at: 0)
         }
 
-        guard let ui = UIImage(named: nameToLoad) ?? UIImage(named: "AppIcon") else { return nil }
+        // Helper: try bundle PNGs and asset-named images, picking the one with the largest pixel dimension
+        var bestImage: UIImage? = nil
+        var bestPixels: CGFloat = 0
+
+        // Common suffixes and variants used by designers / Xcode exports
+        let suffixes = ["-1024", "1024", "-512@2x", "512@2x", "-512", "512", "_marketing", "MarketingRuntime", ""]
+
+        for base in marketingCandidates {
+            // Try explicit bundle PNGs first (these are exact files in the bundle resources)
+            for suffix in suffixes {
+                let candidateName = base + suffix
+                if let url = Bundle.main.url(forResource: candidateName, withExtension: "png") {
+                    if let data = try? Data(contentsOf: url), let img = UIImage(data: data) {
+                        let px = max(img.size.width * img.scale, img.size.height * img.scale)
+                        if px > bestPixels {
+                            bestPixels = px
+                            bestImage = img
+                        }
+                        // If we already found >=1024px, prefer immediately
+                        if bestPixels >= 1024 { break }
+                    }
+                }
+            }
+            if bestPixels >= 1024 { break }
+
+            // Next try asset catalog lookup (UIImage(named:)) which may provide higher-res variants
+            for suffix in ["", "@2x", "@3x"] {
+                let candidateAsset = base + suffix
+                if let img = UIImage(named: candidateAsset) {
+                    let px = max(img.size.width * img.scale, img.size.height * img.scale)
+                    if px > bestPixels {
+                        bestPixels = px
+                        bestImage = img
+                    }
+                    if bestPixels >= 1024 { break }
+                }
+            }
+            if bestPixels >= 1024 { break }
+        }
+
+        // As a final fallback, try bare UIImage(named: nameToLoad) where nameToLoad defaults to AppIcon
+        if bestImage == nil {
+            let fallbackNames = ["AppIcon-1024", "AppIcon1024", "AppIcon-512@2x", "AppIcon_marketing", "AppIcon"]
+            for name in fallbackNames {
+                if let img = UIImage(named: name) {
+                    let px = max(img.size.width * img.scale, img.size.height * img.scale)
+                    if px > bestPixels {
+                        bestPixels = px
+                        bestImage = img
+                    }
+                    if bestPixels >= 1024 { break }
+                }
+                if let url = Bundle.main.url(forResource: name, withExtension: "png"), let data = try? Data(contentsOf: url), let img = UIImage(data: data) {
+                    let px = max(img.size.width * img.scale, img.size.height * img.scale)
+                    if px > bestPixels {
+                        bestPixels = px
+                        bestImage = img
+                    }
+                    if bestPixels >= 1024 { break }
+                }
+            }
+        }
+
+        guard let ui = bestImage ?? UIImage(named: "AppIcon") else { return nil }
 
         // Always render a 1024x1024 marketing image with rounded corners for a consistent look.
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024))

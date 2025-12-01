@@ -96,7 +96,9 @@ import SwiftUI
                 height: scaledHeight
             )
 
-            scrollView.contentSize = view.bounds.size
+            // Content size should match the imageView's actual size so panning / zooming
+            // calculations are based on the rendered image size rather than the view's bounds.
+            scrollView.contentSize = imageView.frame.size
         }
 
         func viewForZooming(in scrollView: UIScrollView) -> UIView? {
@@ -104,10 +106,12 @@ import SwiftUI
         }
 
         func scrollViewDidZoom(_ scrollView: UIScrollView) {
+            // Center the image view when its content is smaller than the scroll view.
             let offsetX = max((scrollView.bounds.width - scrollView.contentSize.width) * 0.5, 0)
             let offsetY = max((scrollView.bounds.height - scrollView.contentSize.height) * 0.5, 0)
 
-            scrollView.contentInset = UIEdgeInsets(top: offsetY, left: offsetX, bottom: 0, right: 0)
+            // Apply symmetric insets so the image is centered both horizontally and vertically.
+            scrollView.contentInset = UIEdgeInsets(top: offsetY, left: offsetX, bottom: offsetY, right: offsetX)
         }
 
         @objc private func handleDoubleTap(_ gesture: UITapGestureRecognizer) {

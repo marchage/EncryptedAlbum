@@ -669,6 +669,8 @@ public class AlbumManager: ObservableObject {
     /// - Parameter password: The password to verify
     /// - Returns: `true` if unlock successful, `false` otherwise
     func unlock(password: String) async throws {
+        let overallStart = Date()
+        AppLog.debugPublic("unlock: starting unlock (mainThread: \(Thread.isMainThread))")
         // Rate limiting: exponential backoff on failed attempts
         if failedUnlockAttempts > 0, let lastAttempt = lastUnlockAttemptTime {
             let requiredDelay = calculateUnlockDelay()
@@ -732,8 +734,11 @@ public class AlbumManager: ObservableObject {
             failedUnlockAttempts = 0
             failedBiometricAttempts = 0
             
-            // Derive keys for this session
+            // Derive keys for this session (may be CPU intensive)
+            let deriveStart = Date()
+            AppLog.debugPublic("unlock: deriving keys (this may take a moment)")
             let (encryptionKey, hmacKey) = try await cryptoService.deriveKeys(password: password, salt: storedSalt)
+            AppLog.debugPublic("unlock: key derivation completed in \(String(format: "%.3f", Date().timeIntervalSince(deriveStart)))s")
             cachedEncryptionKey = encryptionKey
             cachedHMACKey = hmacKey
             
@@ -803,7 +808,10 @@ public class AlbumManager: ObservableObject {
                     }
                 }
             }
+            let loadStart = Date()
+            AppLog.debugPublic("unlock: loading photos from disk (this may take a moment)")
             try await loadPhotos()
+            AppLog.debugPublic("unlock: loadPhotos finished in \(String(format: "%.3f", Date().timeIntervalSince(loadStart)))s")
             await MainActor.run {
                 lastActivity = Date()
             }
@@ -813,6 +821,7 @@ public class AlbumManager: ObservableObject {
             await updateSystemIdleState()
 #endif
             
+            AppLog.debugPublic("unlock: finished overall unlock in \(String(format: "%.3f", Date().timeIntervalSince(overallStart)))s")
             // Update legacy properties for backward compatibility
             await MainActor.run {
                 // If we just migrated, passwordHash is already updated above.
@@ -2487,7 +2496,12 @@ public class AlbumManager: ObservableObject {
         }
         
         setPromptState(true)
-        defer { setPromptState(false) }
+        AppLog.debugPublic("authenticateAndRetrievePassword: prompt starting (mainThread: \(Thread.isMainThread))")
+        let promptStart = Date()
+        defer {
+            setPromptState(false)
+            AppLog.debugPublic("authenticateAndRetrievePassword: prompt ended in \(String(format: "%.3f", Date().timeIntervalSince(promptStart)))s")
+        }
         
         guard let password = try await securityService.retrieveBiometricPassword() else {
             throw AlbumError.biometricNotAvailable
@@ -2632,15 +2646,24 @@ public class AlbumManager: ObservableObject {
     
     /// Loads photos from disk
     private func loadPhotos() async throws {
-        guard let data = try? Data(contentsOf: photosMetadataFileURL) else {
-            await MainActor.run {
-                hiddenPhotos = []
-            }
+        // Do file IO and JSON decoding off the calling actor so we never block the main thread.
+        let normalizedPhotos: [SecurePhoto]
+        do {
+            // Capture the metadata file URL now so the detached task doesn't implicitly capture `self`.
+            let metadataURL = photosMetadataFileURL
+            normalizedPhotos = try await Task.detached(priority: .userInitiated) {
+                let data = try Data(contentsOf: metadataURL)
+                let decoded = try JSONDecoder().decode([SecurePhoto].self, from: data)
+                return decoded
+            }.value
+        } catch {
+            AppLog.debugPublic("loadPhotos: metadata file not present or failed to read/decode: \(error.localizedDescription)")
+            await MainActor.run { hiddenPhotos = [] }
             return
         }
-        
-        let decodedPhotos = try JSONDecoder().decode([SecurePhoto].self, from: data)
-        let normalizedPhotos = decodedPhotos.map { photo in
+
+        // Normalize stored paths on the main actor to safely interact with AlbumStorage
+        let normalizedMapped = normalizedPhotos.map { photo -> SecurePhoto in
             var updated = photo
             updated.encryptedDataPath = normalizedStoredPath(photo.encryptedDataPath)
             updated.thumbnailPath = normalizedStoredPath(photo.thumbnailPath)
@@ -2649,9 +2672,7 @@ public class AlbumManager: ObservableObject {
             }
             return updated
         }
-        await MainActor.run {
-            hiddenPhotos = normalizedPhotos
-        }
+        await MainActor.run { hiddenPhotos = normalizedMapped }
     }
 }
 
