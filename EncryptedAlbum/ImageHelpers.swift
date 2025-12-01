@@ -39,9 +39,16 @@ public protocol IconApplier: AnyObject {
 
 #if os(iOS)
 /// Default production applier for iOS that calls UIApplication.setAlternateIconName
+/// Ensure this is invoked on the main thread: UIApplication APIs expect main-thread usage
 final class DefaultIconApplier: IconApplier {
     func apply(iconName: String?, completion: @escaping (Error?) -> Void) {
-        UIApplication.shared.setAlternateIconName(iconName, completionHandler: completion)
+        if Thread.isMainThread {
+            UIApplication.shared.setAlternateIconName(iconName, completionHandler: completion)
+        } else {
+            DispatchQueue.main.async {
+                UIApplication.shared.setAlternateIconName(iconName, completionHandler: completion)
+            }
+        }
     }
 }
 #else
@@ -122,7 +129,9 @@ final class AppIconService: ObservableObject {
     private let initialApplyDelay: TimeInterval
 
     /// Designated initializer — production use will default to DefaultIconApplier.
-    init(iconApplier: IconApplier = DefaultIconApplier(), maxApplyAttempts: Int = 3, initialApplyDelay: TimeInterval = 0.25) {
+    // Bump default attempts to make transient platform errors less visible to users —
+    // retries are cheap and reduce the likelihood of the UI showing "Resource temporarily unavailable".
+    init(iconApplier: IconApplier = DefaultIconApplier(), maxApplyAttempts: Int = 6, initialApplyDelay: TimeInterval = 0.25) {
         self.iconApplier = iconApplier
         self.maxApplyAttempts = maxApplyAttempts
         self.initialApplyDelay = initialApplyDelay

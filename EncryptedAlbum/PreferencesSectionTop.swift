@@ -217,14 +217,14 @@ struct PreferencesSectionTop: View {
 
                 #if os(iOS)
                 Button("Force apply") {
+                    // Use the central AppIconService for force-apply so the retry/backoff and
+                    // last-error publishing behavior is consistent with the regular Set flow.
                     let selected = (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
-                    UIApplication.shared.setAlternateIconName(selected) { error in
-                        if let error = error {
-                            AppLog.debugPrivate("PreferencesSectionTop: force set alternate icon failed: \(error.localizedDescription)")
-                        } else {
-                            appIconService.select(iconName: selected)
-                        }
-                    }
+                    // Clear previous error so user receives fresh status
+                    appIconService.clearLastIconApplyError()
+
+                    // Calling select will drive the same apply+retry logic already used by the Set button
+                    appIconService.select(iconName: selected)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
