@@ -14,7 +14,7 @@ final class PasswordServiceTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
-        cryptoService = CryptoService()
+        cryptoService = CryptoService(randomProvider: TestRandomProvider())
         securityService = SecurityService(cryptoService: cryptoService)
         passwordService = PasswordService(cryptoService: cryptoService, securityService: securityService)
     }

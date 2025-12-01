@@ -13,7 +13,7 @@ final class FileServiceTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
-        cryptoService = CryptoService()
+        cryptoService = CryptoService(randomProvider: TestRandomProvider())
         sut = FileService(cryptoService: cryptoService)
         
         // Create a unique temp directory for each test

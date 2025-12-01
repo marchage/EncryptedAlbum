@@ -7,7 +7,7 @@ import XCTest
 
 final class SettingsAndBackupTests: XCTestCase {
     let albumManager = AlbumManager.shared
-    let cryptoService = CryptoService()
+    let cryptoService = CryptoService(randomProvider: TestRandomProvider())
 
     override func setUpWithError() throws {
         // Ensure a clean starting point where possible

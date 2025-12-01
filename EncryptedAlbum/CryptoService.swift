@@ -3,7 +3,30 @@ import CryptoKit
 import Foundation
 
 /// Service responsible for all cryptographic operations in the album
+protocol RandomProvider {
+    /// Generate `count` random bytes. Implementations must provide cryptographically secure random data in production.
+    func randomBytes(count: Int) async throws -> Data
+}
+
+struct SystemRandomProvider: RandomProvider {
+    func randomBytes(count: Int) async throws -> Data {
+        return try await withCheckedThrowingContinuation { continuation in
+            var data = Data(count: count)
+            let result = data.withUnsafeMutableBytes {
+                SecRandomCopyBytes(kSecRandomDefault, count, $0.baseAddress!)
+            }
+
+            if result == errSecSuccess {
+                continuation.resume(returning: data)
+            } else {
+                continuation.resume(throwing: AlbumError.randomGenerationFailed(reason: "SecRandomCopyBytes failed with code \(result)"))
+            }
+        }
+    }
+}
+
 class CryptoService {
+    private let randomProvider: RandomProvider
     private let queue = DispatchQueue(label: "biz.front-end.encryptedalbum.crypto", qos: .userInitiated)
 
     // MARK: - Key Derivation
@@ -256,60 +279,61 @@ class CryptoService {
         let firstByte = data.first ?? 0
         guard !data.allSatisfy({ $0 == firstByte }) else { return false }
 
-        // Check 3: Sufficient unique bytes (at least 50% should be unique)
+        // Check 3: Unique byte distribution
+        // For small samples we expect many unique bytes (at least ~50% unique). For large buffers
+        // (e.g. megabyte-sized payloads) it's impossible to have >50% unique bytes because a
+        // byte only has 256 distinct values. Be pragmatic: for very large buffers we only
+        // require a modest variety of unique bytes which is sufficient to detect trivial
+        // all-zero/constant patterns while avoiding false negatives on large payloads.
         let uniqueBytes = Set(data)
-        guard uniqueBytes.count >= data.count / 2 else { return false }
+        if data.count <= 512 {
+            // Small samples should have at least 50% unique values
+            guard uniqueBytes.count >= max(4, data.count / 2) else { return false }
+        } else {
+            // For larger samples require at least a small set of unique values (e.g. 16)
+            // — this avoids failing on large ephemeral buffers while still catching broken RNGs.
+            guard uniqueBytes.count >= 16 else { return false }
+        }
 
         return true
     }
 
     /// Generates cryptographically secure random data
+    init(randomProvider: RandomProvider = SystemRandomProvider()) {
+        self.randomProvider = randomProvider
+    }
+
     func generateRandomData(length: Int) async throws -> Data {
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
-                var data = Data(count: length)
-                let result = data.withUnsafeMutableBytes {
-                    SecRandomCopyBytes(kSecRandomDefault, length, $0.baseAddress!)
+                Task {
+                    do {
+                        // Acquire random bytes from the provider
+                        var data = try await self.randomProvider.randomBytes(count: length)
+
+                        // Validate entropy quickly (basic checks). If entropy checks fail unexpectedly
+                        // (very rare), retry a few times before giving up to avoid flaky unit tests.
+                        let maxAttempts = CryptoConstants.randomGenerationMaxRetries
+                        var attempt = 1
+                        while !self.validateEntropy(data) {
+                            if attempt >= maxAttempts {
+                                continuation.resume(
+                                    throwing: AlbumError.randomGenerationFailed(reason: "Generated data failed entropy validation"))
+                                return
+                            }
+
+                            attempt += 1
+                            data = try await self.randomProvider.randomBytes(count: length)
+                        }
+
+                        continuation.resume(returning: data)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
                 }
-
-                guard result == errSecSuccess else {
-                    continuation.resume(
-                        throwing: AlbumError.randomGenerationFailed(
-                            reason: "SecRandomCopyBytes failed with code \(result)"))
-                    return
-                }
-
-                // Validate entropy quickly (basic checks). If entropy checks fail unexpectedly
-                // (very rare), retry a few times before giving up to avoid flaky unit tests.
-                let maxAttempts = 3
-                var attempt = 1
-                while !self.validateEntropy(data) {
-                     if attempt >= maxAttempts {
-                         continuation.resume(
-                             throwing: AlbumError.randomGenerationFailed(reason: "Generated data failed entropy validation"))
-                         return
-                     }
-
-                     attempt += 1
-                     var retryData = Data(count: length)
-                     let retryResult = retryData.withUnsafeMutableBytes {
-                         SecRandomCopyBytes(kSecRandomDefault, length, $0.baseAddress!)
-                     }
-
-                     guard retryResult == errSecSuccess else {
-                         continuation.resume(
-                             throwing: AlbumError.randomGenerationFailed(
-                                 reason: "SecRandomCopyBytes failed with code \(retryResult)"))
-                         return
-                     }
-
-                     data = retryData
-                 }
-
-                 continuation.resume(returning: data)
-             }
-         }
-     }
+            }
+        }
+    }
 
      /// Generates a random salt for key derivation
      func generateSalt() async throws -> Data {

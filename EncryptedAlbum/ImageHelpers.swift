@@ -30,6 +30,30 @@ extension Image {
 
 // MARK: - AppIconService
 
+/// Abstraction over platform icon application so tests can simulate failures/successes
+public protocol IconApplier: AnyObject {
+    /// Request the platform to apply the given alternate icon name.
+    /// The completion must be called with nil on success or an Error on failure.
+    func apply(iconName: String?, completion: @escaping (Error?) -> Void)
+}
+
+#if os(iOS)
+/// Default production applier for iOS that calls UIApplication.setAlternateIconName
+final class DefaultIconApplier: IconApplier {
+    func apply(iconName: String?, completion: @escaping (Error?) -> Void) {
+        UIApplication.shared.setAlternateIconName(iconName, completionHandler: completion)
+    }
+}
+#else
+/// Default applier stub for non-iOS platforms (macOS) — performs local behavior synchronously.
+final class DefaultIconApplier: IconApplier {
+    func apply(iconName: String?, completion: @escaping (Error?) -> Void) {
+        // macOS runtime path manages the Dock icon directly; treat as success here.
+        completion(nil)
+    }
+}
+#endif
+
 /// Manages runtime switching of the app icon (best-effort) and exposes available icon names
 final class AppIconService: ObservableObject {
     static let shared = AppIconService()
@@ -91,7 +115,15 @@ final class AppIconService: ObservableObject {
     // Generated marketing icon (1024x1024) derived from the selected icon set for runtime previews
     @Published public private(set) var runtimeMarketingImage: PlatformImage? = nil
 
-    private init() {
+    private let iconApplier: IconApplier
+    private let maxApplyAttempts: Int
+    private let initialApplyDelay: TimeInterval
+
+    /// Designated initializer — production use will default to DefaultIconApplier.
+    init(iconApplier: IconApplier = DefaultIconApplier(), maxApplyAttempts: Int = 3, initialApplyDelay: TimeInterval = 0.25) {
+        self.iconApplier = iconApplier
+        self.maxApplyAttempts = maxApplyAttempts
+        self.initialApplyDelay = initialApplyDelay
         // Try to sync persisted value with the current system state at startup.
         // Important: don't blindly re-apply the stored value — that could reset a
         // user-chosen alternate icon set from a previous run. Instead, if there is
@@ -116,6 +148,11 @@ final class AppIconService: ObservableObject {
 #endif
             self.applySelectedIcon()
         }
+    }
+
+    /// Convenience initializer used by tests to inject a test applier and custom retry/backoff parameters.
+    convenience init(testApplier: IconApplier, maxApplyAttempts: Int, initialApplyDelay: TimeInterval) {
+        self.init(iconApplier: testApplier, maxApplyAttempts: maxApplyAttempts, initialApplyDelay: initialApplyDelay)
     }
 
     func applySelectedIcon() {
@@ -143,6 +180,17 @@ final class AppIconService: ObservableObject {
             return
         }
 #endif
+        // Validate the requested icon against the allowed set so we never pass arbitrary
+        // strings to the platform API (defense-in-depth).
+        if name.isEmpty == false {
+            let candidate = name
+            if !availableIcons.contains(candidate) {
+                AppLog.debugPrivate("AppIconService: prevented attempt to set unknown icon name \(candidate)")
+                DispatchQueue.main.async { self.lastIconApplyError = "Unknown icon: \(candidate)" }
+                return
+            }
+        }
+
         // Generate a runtime 1024 image and store it for preview purposes
         runtimeMarketingImage = Self.generateMarketingImage(from: name)
         setSystemIcon(name)
@@ -173,7 +221,8 @@ final class AppIconService: ObservableObject {
         // The default primary icon is represented by nil
         let iconNameToSet = (name == nil || name == "AppIcon") ? nil : name
 
-        attemptSetAlternateIcon(iconNameToSet, attemptsRemaining: 1)
+        // Start the apply / retry process.
+        attemptSetAlternateIcon(iconNameToSet, attemptNumber: 1)
 #elseif os(macOS)
         // On macOS we can update the Dock icon at runtime using NSApplication
         if let name = name, name != "AppIcon" {
@@ -190,20 +239,21 @@ final class AppIconService: ObservableObject {
     }
 
 #if os(iOS)
-    /// Attempt to call setAlternateIconName, retrying once for transient failures.
-    private func attemptSetAlternateIcon(_ iconNameToSet: String?, attemptsRemaining: Int) {
-        UIApplication.shared.setAlternateIconName(iconNameToSet) { [weak self] error in
+    /// Attempt to call the applier and retry transient failures using an exponential backoff.
+    private func attemptSetAlternateIcon(_ iconNameToSet: String?, attemptNumber: Int) {
+        iconApplier.apply(iconName: iconNameToSet) { [weak self] error in
             guard let self = self else { return }
-            if let error = error {
-                AppLog.debugPrivate("AppIconService: failed to set alternate icon \(iconNameToSet ?? "<primary>"): \(error.localizedDescription)")
 
-                // Detect transient errors and retry once after a short delay.
+            if let error = error {
+                AppLog.debugPrivate("AppIconService: failed to set alternate icon \(iconNameToSet ?? "<primary>") on attempt \(attemptNumber): \(error.localizedDescription)")
+
                 let message = error.localizedDescription.lowercased()
                 let transient = message.contains("temporarily") || message.contains("unavailable") || message.contains("try again")
 
-                if attemptsRemaining > 0 && transient {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                        self.attemptSetAlternateIcon(iconNameToSet, attemptsRemaining: attemptsRemaining - 1)
+                if transient && attemptNumber < self.maxApplyAttempts {
+                    let delay = self.initialApplyDelay * pow(2.0, Double(attemptNumber - 1))
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        self.attemptSetAlternateIcon(iconNameToSet, attemptNumber: attemptNumber + 1)
                     }
                     return
                 }

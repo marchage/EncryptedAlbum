@@ -124,6 +124,8 @@
 		DDEEFF8899AABBCCDDEEFF00 /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDEEFF001122334455667788 /* Logging.swift */; };
 		F2A3B4C56D7E8F9012345678 /* TelemetryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E2D3C4B5A6978877665544 /* TelemetryService.swift */; };
 		F9B0EAD109417F32CF3B7D50 /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C068CD08B70A6DBEA00400 /* UnlockView.swift */; };
+		C0FFEE11C0FFEE11C0FFEE11 /* TestRandomProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE00C0FFEE00C0FFEE00 /* TestRandomProvider.swift */; };
+		C0FFEE33C0FFEE33C0FFEE33 /* AppIconServiceRetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE22C0FFEE22C0FFEE22 /* AppIconServiceRetryTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -227,6 +229,8 @@
 		985C161D2ECF1DA200EC1701 /* SecurityServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityServiceTests.swift; sourceTree = "<group>"; };
 		986328D62ECE88F600EAE9A9 /* EncryptedAlbumTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EncryptedAlbumTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		986328D82ECE88F600EAE9A9 /* EncryptedAlbumTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedAlbumTests.swift; sourceTree = "<group>"; };
+		C0FFEE00C0FFEE00C0FFEE00 /* TestRandomProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestRandomProvider.swift; sourceTree = "<group>"; };
+		C0FFEE22C0FFEE22C0FFEE22 /* AppIconServiceRetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconServiceRetryTests.swift; sourceTree = "<group>"; };
 		986328DF2ECE894300EAE9A9 /* AlbumManagerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlbumManagerTests.swift; sourceTree = "<group>"; };
 		986328E02ECE894300EAE9A9 /* FileServiceTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FileServiceTests.swift; sourceTree = "<group>"; };
 		986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CryptoServiceTests.swift; sourceTree = "<group>"; };
@@ -459,6 +463,8 @@
 				986328E02ECE894300EAE9A9 /* FileServiceTests.swift */,
 				986328DF2ECE894300EAE9A9 /* AlbumManagerTests.swift */,
 				986328D82ECE88F600EAE9A9 /* EncryptedAlbumTests.swift */,
+				C0FFEE00C0FFEE00C0FFEE00 /* TestRandomProvider.swift */,
+				C0FFEE22C0FFEE22C0FFEE22 /* AppIconServiceRetryTests.swift */,
 				A7F684593F0A4BA800D12345 /* DirectImportProgressTests.swift */,
 			);
 			path = EncryptedAlbumTests;
@@ -888,6 +894,8 @@
 				986328E22ECE894300EAE9A9 /* AlbumManagerTests.swift in Sources */,
 				982404542ECF12930078B446 /* PasswordServiceTests.swift in Sources */,
 				986328D92ECE88F600EAE9A9 /* EncryptedAlbumTests.swift in Sources */,
+				C0FFEE11C0FFEE11C0FFEE11 /* TestRandomProvider.swift in Sources */,
+				C0FFEE33C0FFEE33C0FFEE33 /* AppIconServiceRetryTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
