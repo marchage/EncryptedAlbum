@@ -281,39 +281,40 @@ import SwiftUI
                         Spacer()
 
                         if model.captureMode == .video {
-                            // Video recording button
-                            Button {
-                                if model.isRecording {
-                                    model.stopRecording(albumManager: albumManager) {
-                                        // Keep camera open after recording
-                                    }
-                                } else {
-                                    model.startRecording()
+                            VStack(spacing: 12) {
+                                if model.isRecording, let duration = model.recordingDuration {
+                                    Text(String(format: "%02d:%02d", Int(duration) / 60, Int(duration) % 60))
+                                        .font(.system(.title2, design: .monospaced))
+                                        .foregroundStyle(.white)
                                 }
-                            } label: {
-                                ZStack {
-                                    Circle()
-                                        .fill(model.isRecording ? .red : .white)
-                                        .frame(width: 64, height: 64)
-                                    Circle()
-                                        .stroke(Color.white, lineWidth: 4)
-                                        .frame(width: 72, height: 72)
-                                    if model.isRecording {
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .fill(.white)
-                                            .frame(width: 24, height: 24)
-                                    }
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .padding(.bottom, 30)
 
-                            if model.isRecording, let duration = model.recordingDuration {
-                                Text(String(format: "%02d:%02d", Int(duration) / 60, Int(duration) % 60))
-                                    .font(.system(.title2, design: .monospaced))
-                                    .foregroundStyle(.white)
-                                    .padding(.bottom, 30)
+                                // Video recording button
+                                Button {
+                                    if model.isRecording {
+                                        model.stopRecording(albumManager: albumManager) {
+                                            // Keep camera open after recording
+                                        }
+                                    } else {
+                                        model.startRecording()
+                                    }
+                                } label: {
+                                    ZStack {
+                                        Circle()
+                                            .fill(model.isRecording ? .red : .white)
+                                            .frame(width: 64, height: 64)
+                                        Circle()
+                                            .stroke(Color.white, lineWidth: 4)
+                                            .frame(width: 72, height: 72)
+                                        if model.isRecording {
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .fill(.white)
+                                                .frame(width: 24, height: 24)
+                                        }
+                                    }
+                                }
+                                .buttonStyle(.plain)
                             }
+                            .padding(.bottom, 30)
                         } else {
                             // Photo capture button
                             Button {
