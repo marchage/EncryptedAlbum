@@ -363,7 +363,7 @@ final class ShareViewController: NSViewController {
             let containerURL = FileManager.default.containerURL(
                 forSecurityApplicationGroupIdentifier: appGroupIdentifier)
         else {
-            NSLog("ShareExtensionMac: App group container not found for id: %@", appGroupIdentifier)
+            AppLog.error("ShareExtensionMac: App group container not found for id: \(appGroupIdentifier)")
             return false
         }
 
@@ -381,10 +381,10 @@ final class ShareViewController: NSViewController {
                 try FileManager.default.removeItem(at: destination)
             }
             try FileManager.default.copyItem(at: url, to: destination)
-            NSLog("ShareExtensionMac: copied file to %@", destination.path)
+            AppLog.debugPrivate("ShareExtensionMac: copied file to \(destination.path)")
             return true
         } catch {
-            NSLog("ShareExtensionMac: failed to copy file: %@", error.localizedDescription)
+            AppLog.error("ShareExtensionMac: failed to copy file: \(error.localizedDescription)")
             return false
         }
     }
@@ -394,7 +394,7 @@ final class ShareViewController: NSViewController {
             let containerURL = FileManager.default.containerURL(
                 forSecurityApplicationGroupIdentifier: appGroupIdentifier)
         else {
-            NSLog("ShareExtensionMac: App group container not found for id: %@", appGroupIdentifier)
+            AppLog.error("ShareExtensionMac: App group container not found for id: \(appGroupIdentifier)")
             return false
         }
 
@@ -406,10 +406,10 @@ final class ShareViewController: NSViewController {
         let destination = inboxURL.appendingPathComponent(safe)
         do {
             try data.write(to: destination, options: [.atomic])
-            NSLog("ShareExtensionMac: wrote data to %@", destination.path)
+            AppLog.debugPrivate("ShareExtensionMac: wrote data to \(destination.path)")
             return true
         } catch {
-            NSLog("ShareExtensionMac: failed to write data: %@", error.localizedDescription)
+            AppLog.error("ShareExtensionMac: failed to write data: \(error.localizedDescription)")
             return false
         }
     }
