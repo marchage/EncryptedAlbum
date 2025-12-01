@@ -108,9 +108,7 @@ struct SetupPasswordView: View {
                     let selectedIcon = appIconService.selectedIconName.isEmpty ? nil : appIconService.selectedIconName
                     let runtimeIcon = appIconService.runtimeMarketingImage
                     let generatedIcon = AppIconService.generateMarketingImage(from: selectedIcon)
-                    if let marketingIcon = Image.chooseBestMarketingImage(
-                        runtime: runtimeIcon, generated: generatedIcon, visualCap: iconCap)
-                    {
+                    if let marketingIcon = Image.chooseBestMarketingImage(runtime: runtimeIcon, generated: generatedIcon, visualCap: iconCap) {
                         Image(platformImage: marketingIcon)
                             .resizable()
                             .renderingMode(.original)
@@ -120,18 +118,8 @@ struct SetupPasswordView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 26))
                             .compositingGroup()
                             .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
-                    } else if let appIcon = UIImage(named: "AppIcon") {
-                        Image(uiImage: appIcon)
-                            .resizable()
-                            .renderingMode(.original)
-                            .interpolation(.high)
-                            .aspectRatio(1, contentMode: .fit)
-                            .frame(width: iconCap, height: iconCap)
-                            .clipShape(RoundedRectangle(cornerRadius: 26))
-                            .compositingGroup()
-                            .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
                     } else {
-                        // Fallback to lock circle; attach an onAppear handler for diagnostics
+                        // Fallback to lock symbol if no icon could be generated
                         Image(systemName: "lock.fill")
                             .font(.system(size: 72))
                             .foregroundStyle(
@@ -142,21 +130,20 @@ struct SetupPasswordView: View {
                                 )
                             )
                             .onAppear {
-                                AppLog.debugPublic(
-                                    "SetupPasswordView: no UIImage named 'AppIcon' found in asset catalog — using fallback symbol."
-                                )
+                                AppLog.debugPublic("SetupPasswordView: could not generate marketing icon — using fallback symbol.")
                             }
                     }
                 #else
-                    // Default fallback for other platforms: keep existing behavior
-                    if let appIcon = UIImage(named: "AppIcon") {
-                        Image(uiImage: appIcon)
+                    // Default fallback for other platforms: use generated marketing image
+                    if let generated = AppIconService.generateMarketingImage(
+                        from: appIconService.selectedIconName.isEmpty ? nil : appIconService.selectedIconName)
+                    {
+                        Image(platformImage: generated)
                             .resizable()
                             .renderingMode(.original)
                             .interpolation(.high)
                             .aspectRatio(1, contentMode: .fit)
                             .frame(maxWidth: 140, maxHeight: 140)
-                            //.padding(.top, 24)
                             .clipShape(RoundedRectangle(cornerRadius: 26))
                             .compositingGroup()
                             .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
@@ -257,20 +244,17 @@ struct SetupPasswordView: View {
 
                                 if revealPassword {
                                     VStack(spacing: 8) {
-                                        Text(
-                                            generatedPasswords.indices.contains(selectedPasswordIndex)
-                                                ? generatedPasswords[selectedPasswordIndex] : ""
-                                        )
-                                        .font(.system(.title3, design: .monospaced))
-                                        .fontWeight(.semibold)
-                                        .padding()
-                                        .frame(width: 400)
-                                        .background(Color.red.opacity(0.1))
-                                        .cornerRadius(8)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(Color.red, lineWidth: 2)
-                                        )
+                                        Text(generatedPasswords.indices.contains(selectedPasswordIndex) ? generatedPasswords[selectedPasswordIndex] : "")
+                                            .font(.system(.title3, design: .monospaced))
+                                            .fontWeight(.semibold)
+                                            .padding()
+                                            .frame(width: 400)
+                                            .background(Color.red.opacity(0.1))
+                                            .cornerRadius(8)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .stroke(Color.red, lineWidth: 2)
+                                            )
 
                                         Button {
                                             withAnimation {
@@ -290,8 +274,7 @@ struct SetupPasswordView: View {
                                         // can pick which generated password they prefer.
                                         ScrollView(.horizontal, showsIndicators: false) {
                                             HStack(spacing: 12) {
-                                                ForEach(Array(generatedPasswords.enumerated()), id: \.offset) {
-                                                    idx, pw in
+                                                ForEach(Array(generatedPasswords.enumerated()), id: \.offset) { idx, pw in
                                                     Button(action: { selectedPasswordIndex = idx }) {
                                                         VStack(alignment: .leading, spacing: 6) {
                                                             // Show a masked preview in the candidate list so we don't
@@ -307,16 +290,8 @@ struct SetupPasswordView: View {
                                                                 .foregroundStyle(.secondary)
                                                         }
                                                         .padding(10)
-                                                        .background(
-                                                            RoundedRectangle(cornerRadius: 10).fill(
-                                                                selectedPasswordIndex == idx
-                                                                    ? Color.blue.opacity(0.12)
-                                                                    : Color.gray.opacity(0.06))
-                                                        )
-                                                        .overlay(
-                                                            RoundedRectangle(cornerRadius: 10).stroke(
-                                                                selectedPasswordIndex == idx ? Color.blue : Color.clear,
-                                                                lineWidth: 2))
+                                                        .background(RoundedRectangle(cornerRadius: 10).fill(selectedPasswordIndex == idx ? Color.blue.opacity(0.12) : Color.gray.opacity(0.06)))
+                                                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(selectedPasswordIndex == idx ? Color.blue : Color.clear, lineWidth: 2))
                                                     }
                                                     .buttonStyle(.plain)
                                                     .frame(minWidth: 250)
@@ -521,16 +496,15 @@ struct SetupPasswordView: View {
             AppLog.debugPublic("Biometrics available: \(biometricType == .faceID ? "Face ID" : "Touch ID")")
         } else {
             biometricsAvailable = false
-            if let error = error, error.code == LAError.biometryLockout.rawValue {
+                if let error = error, error.code == LAError.biometryLockout.rawValue {
                 biometricLockout = true
-                AppLog.debugPublic("Biometrics locked out (Code: -8)")
+                    AppLog.debugPublic("Biometrics locked out (Code: -8)")
             } else {
                 biometricLockout = false
             }
 
             if let error = error {
-                AppLog.debugPrivate(
-                    "Biometrics NOT available. Error: \(error.localizedDescription) (Code: \(error.code))")
+                AppLog.debugPrivate("Biometrics NOT available. Error: \(error.localizedDescription) (Code: \(error.code))")
             } else {
                 AppLog.debugPublic("Biometrics NOT available. Unknown error.")
             }
@@ -580,9 +554,7 @@ struct SetupPasswordView: View {
             #if os(iOS)
                 // On iOS, the Keychain will prompt for Face ID when storing with .biometryAny
                 // No need to authenticate first
-                let password =
-                    generatedPasswords.indices.contains(selectedPasswordIndex)
-                    ? generatedPasswords[selectedPasswordIndex] : (generatedPasswords.first ?? "")
+                let password = generatedPasswords.indices.contains(selectedPasswordIndex) ? generatedPasswords[selectedPasswordIndex] : (generatedPasswords.first ?? "")
                 Task {
                     await completeSetup(with: password)
                 }
@@ -635,9 +607,7 @@ struct SetupPasswordView: View {
         context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, error in
             DispatchQueue.main.async {
                 if success {
-                    let password =
-                        generatedPasswords.indices.contains(selectedPasswordIndex)
-                        ? generatedPasswords[selectedPasswordIndex] : (generatedPasswords.first ?? "")
+                    let password = generatedPasswords.indices.contains(selectedPasswordIndex) ? generatedPasswords[selectedPasswordIndex] : (generatedPasswords.first ?? "")
                     Task {
                         await completeSetup(with: password)
                     }

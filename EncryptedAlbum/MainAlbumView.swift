@@ -1383,8 +1383,10 @@ struct MainAlbumView: View {
                                 .resizable()
                                 .frame(width: 28, height: 28)
                                 .cornerRadius(6)
-                        } else if UIImage(named: "AppIcon") != nil {
-                            Image("AppIcon")
+                        } else if let generated = AppIconService.generateMarketingImage(
+                            from: appIconService.selectedIconName.isEmpty ? nil : appIconService.selectedIconName)
+                        {
+                            Image(uiImage: generated)
                                 .resizable()
                                 .frame(width: 28, height: 28)
                                 .cornerRadius(6)
