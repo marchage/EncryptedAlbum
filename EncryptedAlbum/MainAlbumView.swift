@@ -1256,9 +1256,13 @@ struct MainAlbumView: View {
                     }
                 #endif
             }
-            .overlay(alignment: viewerActive ? .bottomTrailing : .topTrailing) {
+            .overlay(alignment: .topLeading) {
+                // Keep-awake indicator is anchored to the top-left corner so that
+                // media viewers and other modals never visually cover it.
+                // It still switches between full chip / mini bolt based on
+                // `viewerActive`, but its corner is fixed for predictability.
                 sleepPreventionBadge
-                    .padding(viewerActive ? EdgeInsets(top: 0, leading: 0, bottom: 20, trailing: 20) : EdgeInsets(top: 12, leading: 0, bottom: 0, trailing: 16))
+                    .padding(EdgeInsets(top: 14, leading: 18, bottom: 0, trailing: 0))
             }
         #if os(macOS)
             return
