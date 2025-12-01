@@ -20,6 +20,7 @@ struct PhotoViewerSheet: View {
     @State private var showDecryptErrorAlert = false
     @State private var decryptErrorMessage: String? = nil
     @State private var isMaximized: Bool = false
+    @State private var sleepIndicatorPulse: Bool = false
 
     var body: some View {
         #if os(macOS)
@@ -123,6 +124,31 @@ struct PhotoViewerSheet: View {
                     }
                 }
 
+                // Sleep-prevention mini-bolt overlay for the viewer
+                if albumManager.isSystemSleepPrevented {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Image(systemName: "bolt.fill")
+                                .foregroundColor(.yellow)
+                                .font(.system(size: 13, weight: .bold))
+                                .scaleEffect(sleepIndicatorPulse ? 1.15 : 0.9)
+                                .animation(
+                                    .easeInOut(duration: 0.9)
+                                        .repeatForever(autoreverses: true),
+                                    value: sleepIndicatorPulse
+                                )
+                                .padding(6)
+                                .background(Circle().fill(Color.yellow.opacity(0.25)))
+                                .padding(.top, 14)
+                                .padding(.trailing, 18)
+                        }
+                        Spacer()
+                    }
+                    .allowsHitTesting(false)
+                    .onAppear { sleepIndicatorPulse = true }
+                    .onDisappear { sleepIndicatorPulse = false }
+                }
             }
             .onAppear {
                 // start viewer behavior and suspend idle timer
