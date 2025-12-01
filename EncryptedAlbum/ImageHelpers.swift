@@ -22,23 +22,44 @@ extension Image {
     /// Given a runtime image and an optional generated marketing image, pick the
     /// best one to display so we prefer high-resolution images (downscale) over
     /// upscaling small images. `visualCap` is in points.
+    /// 
+    /// ALWAYS prefers the generated image if it has more pixels, since that's our
+    /// carefully crafted 1024px marketing image from the bundle.
     static func chooseBestMarketingImage(runtime: PlatformImage?, generated: PlatformImage?, visualCap: CGFloat)
         -> PlatformImage?
     {
-        func width(of img: PlatformImage?) -> CGFloat {
+        /// Returns the actual pixel count (not points) for proper comparison
+        func pixels(of img: PlatformImage?) -> CGFloat {
             guard let img = img else { return 0 }
-            return img.size.width
+            #if os(macOS)
+                // For NSImage, try to get the actual pixel dimensions from the best representation
+                if let rep = img.representations.max(by: { $0.pixelsWide < $1.pixelsWide }) {
+                    return CGFloat(max(rep.pixelsWide, rep.pixelsHigh))
+                }
+                return max(img.size.width, img.size.height)
+            #else
+                // For UIImage, multiply by scale to get actual pixels
+                return max(img.size.width * img.scale, img.size.height * img.scale)
+            #endif
         }
 
-        // If there's no runtime image, prefer generated candidate
-        if runtime == nil { return generated }
-
-        let runtimeWidth = width(of: runtime)
-        if runtimeWidth >= visualCap { return runtime }
-
-        if let gen = generated, width(of: gen) > runtimeWidth { return gen }
-
-        return runtime
+        let runtimePixels = pixels(of: runtime)
+        let generatedPixels = pixels(of: generated)
+        
+        // If generated has more pixels, ALWAYS prefer it - it's our high-res marketing image
+        if let gen = generated, generatedPixels > runtimePixels {
+            AppLog.debugPrivate("chooseBestMarketingImage: preferring generated (\(Int(generatedPixels))px) over runtime (\(Int(runtimePixels))px)")
+            return gen
+        }
+        
+        // If runtime has same or more pixels, use runtime
+        if let rt = runtime {
+            AppLog.debugPrivate("chooseBestMarketingImage: using runtime (\(Int(runtimePixels))px)")
+            return rt
+        }
+        
+        // Fall back to generated if runtime is nil
+        return generated
     }
 
     init(platformImage: PlatformImage) {
