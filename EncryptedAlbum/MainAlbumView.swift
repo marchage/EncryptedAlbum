@@ -641,13 +641,6 @@ struct MainAlbumView: View {
 
         #if os(macOS)
             Button {
-                showingFilePicker = true
-            } label: {
-                Label("Import Files", systemImage: "doc.badge.plus")
-            }
-            .disabled(directImportProgress.isImporting || albumManager.exportProgress.isExporting)
-
-            Button {
                 showingCamera = true
             } label: {
                 Image(systemName: "camera.fill")
@@ -664,15 +657,6 @@ struct MainAlbumView: View {
                 Image(systemName: "camera.fill")
             }
             .accessibilityLabel("Capture Photo or Video")
-        #endif
-
-        #if os(macOS)
-            Button {
-                showingFilePicker = true
-            } label: {
-                Label("Import Files", systemImage: "doc.badge.plus")
-            }
-            .disabled(directImportProgress.isImporting || albumManager.exportProgress.isExporting)
         #endif
 
         Menu {
@@ -713,37 +697,64 @@ struct MainAlbumView: View {
     }
 
     /// Badge showing when the app is intentionally keeping the device awake.
+    ///
+    /// When no viewer is active, we show a labeled chip in the top-right corner.
+    /// When a photo/video viewer is active, we switch to a compact "mini bolt"
+    /// pinned to the bottom-right so it doesn't visually compete with the
+    /// content while still indicating that viewports are being kept awake.
     @ViewBuilder
     private var sleepPreventionBadge: some View {
         if albumManager.isSystemSleepPrevented {
-            HStack(spacing: 8) {
-                Image(systemName: "bolt.fill")
-                    .foregroundColor(.yellow)
-                    .font(.system(size: 14, weight: .bold))
-                    .scaleEffect(sleepIndicatorPulse ? 1.12 : 0.9)
-                    .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: sleepIndicatorPulse)
-                    .padding(6)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.yellow.opacity(0.2)))
+            let viewerActive = (selectedPhoto != nil)
 
-                if let label = albumManager.sleepPreventionReasonLabel {
-                    Text(label)
-                        .font(.caption)
-                        .foregroundStyle(.primary)
+            Group {
+                if viewerActive {
+                    // Compact mini-bolt for viewer overlays
+                    Image(systemName: "bolt.fill")
+                        .foregroundColor(.yellow)
+                        .font(.system(size: 13, weight: .bold))
+                        .scaleEffect(sleepIndicatorPulse ? 1.15 : 0.9)
+                        .animation(
+                            .easeInOut(duration: 0.9)
+                                .repeatForever(autoreverses: true),
+                            value: sleepIndicatorPulse
+                        )
+                        .padding(6)
+                        .background(Circle().fill(Color.yellow.opacity(0.25)))
                 } else {
-                    Text("Awake")
-                        .font(.caption)
-                        .foregroundStyle(.primary)
+                    // Full chip with status label for the main grid view
+                    HStack(spacing: 8) {
+                        Image(systemName: "bolt.fill")
+                            .foregroundColor(.yellow)
+                            .font(.system(size: 14, weight: .bold))
+                            .scaleEffect(sleepIndicatorPulse ? 1.12 : 0.9)
+                            .animation(
+                                .easeInOut(duration: 0.9)
+                                    .repeatForever(autoreverses: true),
+                                value: sleepIndicatorPulse
+                            )
+
+                        if let label = albumManager.sleepPreventionReasonLabel {
+                            Text(label)
+                                .font(.caption)
+                                .foregroundStyle(.primary)
+                        } else {
+                            Text("Awake")
+                                .font(.caption)
+                                .foregroundStyle(.primary)
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        .ultraThinMaterial,
+                        in: Capsule()
+                    )
+                    .shadow(radius: 6, x: 0, y: 2)
                 }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(
-                .ultraThinMaterial,
-                in: Capsule()
-            )
-            .shadow(radius: 6, x: 0, y: 2)
-            .padding(.top, 12)
-            .padding(.trailing, 16)
             .accessibilityIdentifier("sleepPreventionChip")
             .accessibilityLabel("Preventing system sleep")
             .allowsHitTesting(false)
@@ -1212,6 +1223,7 @@ struct MainAlbumView: View {
             directImportProgress.isImporting
             && (directImportProgress.itemsTotal > 0 || directImportProgress.bytesProcessed > 0
                 || directImportProgress.bytesTotal > 0 || directImportProgress.cancelRequested)
+        let viewerActive = (selectedPhoto != nil)
         let viewWithOverlays =
             viewWithInitialModifiers
             .overlay {
@@ -1244,8 +1256,9 @@ struct MainAlbumView: View {
                     }
                 #endif
             }
-            .overlay(alignment: .topTrailing) {
+            .overlay(alignment: viewerActive ? .bottomTrailing : .topTrailing) {
                 sleepPreventionBadge
+                    .padding(viewerActive ? EdgeInsets(top: 0, leading: 0, bottom: 20, trailing: 20) : EdgeInsets(top: 12, leading: 0, bottom: 0, trailing: 16))
             }
         #if os(macOS)
             return
