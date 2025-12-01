@@ -104,14 +104,17 @@ struct SetupPasswordView: View {
                             )
                     }
                 #elseif os(iOS)
-                    // Prefer runtimeMarketingImage (reflects selected alternate icon), fall back to bundle asset
-                    if let runtime = appIconService.runtimeMarketingImage {
-                        Image(uiImage: runtime)
+                    let iconCap = min(CGFloat(150), UIScreen.main.bounds.width * 0.32)
+                    let selectedIcon = appIconService.selectedIconName.isEmpty ? nil : appIconService.selectedIconName
+                    let runtimeIcon = appIconService.runtimeMarketingImage
+                    let generatedIcon = AppIconService.generateMarketingImage(from: selectedIcon)
+                    if let marketingIcon = Image.chooseBestMarketingImage(runtime: runtimeIcon, generated: generatedIcon, visualCap: iconCap) {
+                        Image(platformImage: marketingIcon)
                             .resizable()
                             .renderingMode(.original)
                             .interpolation(.high)
                             .aspectRatio(1, contentMode: .fit)
-                            .frame(maxWidth: 120, maxHeight: 120)
+                            .frame(width: iconCap, height: iconCap)
                             .clipShape(RoundedRectangle(cornerRadius: 26))
                             .compositingGroup()
                             .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
@@ -121,8 +124,7 @@ struct SetupPasswordView: View {
                             .renderingMode(.original)
                             .interpolation(.high)
                             .aspectRatio(1, contentMode: .fit)
-                            .frame(maxWidth: 120, maxHeight: 120)
-                            //.padding(.top, 28)
+                            .frame(width: iconCap, height: iconCap)
                             .clipShape(RoundedRectangle(cornerRadius: 26))
                             .compositingGroup()
                             .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
