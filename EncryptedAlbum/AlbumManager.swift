@@ -1296,7 +1296,6 @@ public class AlbumManager: ObservableObject {
         } else {
             metadataLocation = nil
         }
-        
         let metadata = FileService.EmbeddedMetadata(
             filename: filename,
             dateCreated: dateTaken ?? Date(),
@@ -1809,9 +1808,9 @@ public class AlbumManager: ObservableObject {
         return formatter.string(fromByteCount: size)
     }
     
-    private func restorationDetailText(for filename: String, albumName: String?, sizeDescription: String) -> String {
+    private func restorationDetailText(for filename: String, albumName: String?, sizeDescription: String?) -> String {
         var parts: [String] = [filename]
-        if !sizeDescription.isEmpty {
+        if let sizeDescription = sizeDescription, !sizeDescription.isEmpty {
             parts.append(sizeDescription)
         }
         if let albumName {
@@ -2865,7 +2864,7 @@ extension AlbumManager {
     
     private func buildDirectImportDetailText(index: Int, total: Int, sizeDescription: String?) -> String {
         var parts: [String] = ["Item \(index) of \(total)"]
-        if let sizeDescription = sizeDescription {
+        if let sizeDescription = sizeDescription, !sizeDescription.isEmpty {
             parts.append(sizeDescription)
         }
         return parts.joined(separator: " • ")

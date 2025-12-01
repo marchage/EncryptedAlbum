@@ -543,9 +543,12 @@ struct SetupPasswordView: View {
         password += String(numbers.randomElement()!)
         password += String(symbols.randomElement()!)
 
-        // Fill the rest (total 20 chars for maximum security)
+        // Fill the rest (total 24 chars for maximum security).
+        // We deliberately generate 24 characters because the UI reveals the last 4
+        // characters in a masked preview — generating 24 ensures at least 20
+        // characters remain secret even after exposing a short hint.
         let allChars = uppercase + lowercase + numbers + symbols
-        for _ in 0..<16 {
+        for _ in 0..<20 {
             password += String(allChars.randomElement()!)
         }
 
