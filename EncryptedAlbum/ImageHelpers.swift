@@ -207,6 +207,22 @@ final class AppIconService: ObservableObject {
     /// surfacing UI feedback when the OS reports a failure.
     @Published public private(set) var lastIconApplyError: String? = nil
 
+    /// Whether the last reported icon-apply error is benign (e.g. a user/system
+    /// cancellation) and therefore should not be presented as an intrusive modal
+    /// alert. This centralizes cancellation filtering so UI code can decide when
+    /// to present a visible alert vs keep the error for retry controls.
+    public var lastIconApplyErrorIsBenignCancellation: Bool {
+        guard let raw = lastIconApplyError?.lowercased() else { return false }
+        // Match both American and British spellings and any phrasing that contains
+        // the word 'cancel' (e.g. "The operation was cancelled.")
+        return raw.contains("cancel")
+    }
+
+    /// Whether the lastIconApplyError is meaningful enough to present as an
+    /// alert to the user. Errors that are considered cancellations will be
+    /// recorded but will not automatically show a modal.
+    public var shouldPresentLastIconApplyError: Bool { lastIconApplyError != nil && !lastIconApplyErrorIsBenignCancellation }
+
     /// Clear any last reported icon apply error. Public so UI code can reset the alert.
     public func clearLastIconApplyError() { lastIconApplyError = nil }
 

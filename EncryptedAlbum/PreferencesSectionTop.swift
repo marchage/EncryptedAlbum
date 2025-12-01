@@ -252,7 +252,10 @@ struct PreferencesSectionTop: View {
                 .foregroundStyle(.secondary)
             #endif
         }
-        .alert(isPresented: Binding(get: { appIconService.lastIconApplyError != nil }, set: { if !$0 { appIconService.clearLastIconApplyError() } })) {
+        // Only present a modal alert for non-benign errors. User / system cancellations
+        // are considered benign and will not show a modal alert (they remain available
+        // in `lastIconApplyError` for diagnostic / retry purposes).
+        .alert(isPresented: Binding(get: { appIconService.shouldPresentLastIconApplyError }, set: { if !$0 { appIconService.clearLastIconApplyError() } })) {
             Alert(title: Text("App Icon"), message: Text(appIconService.lastIconApplyError ?? ""), dismissButton: .default(Text("OK")))
         }
         .onAppear {
