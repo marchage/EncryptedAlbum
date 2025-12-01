@@ -382,7 +382,13 @@ final class AppIconService: ObservableObject {
             // Try explicit bundle PNGs first (these are exact files in the bundle resources)
             for suffix in suffixes {
                 let candidateName = base + suffix
-                if let url = Bundle.main.url(forResource: candidateName, withExtension: "png") {
+                // First try to find the resource anywhere in the bundle (recursively).
+                var url: URL? = bundleResourceURL(matching: candidateName + ".png")
+                // If not found recursively, fall back to the top-level resource lookup.
+                if url == nil {
+                    url = Bundle.main.url(forResource: candidateName, withExtension: "png")
+                }
+                if let url = url {
                     if let data = try? Data(contentsOf: url), let img = UIImage(data: data, scale: UIScreen.main.scale) {
                         let px = max(img.size.width * img.scale, img.size.height * img.scale)
                         if px > bestPixels {
@@ -415,22 +421,19 @@ final class AppIconService: ObservableObject {
         if bestImage == nil {
             let fallbackNames = ["AppIcon-1024", "AppIcon1024", "AppIcon-512@2x", "AppIcon_marketing", "AppIcon"]
             for name in fallbackNames {
-                if let img = UIImage(named: name) {
-                    let px = max(img.size.width * img.scale, img.size.height * img.scale)
-                    if px > bestPixels {
-                        bestPixels = px
-                        bestImage = img
-                    }
-                    if bestPixels >= 1024 { break }
+                // try recursive lookup first
+                var url: URL? = bundleResourceURL(matching: name + ".png")
+                if url == nil {
+                    url = Bundle.main.url(forResource: name, withExtension: "png")
                 }
-                if let url = Bundle.main.url(forResource: name, withExtension: "png"), let data = try? Data(contentsOf: url), let img = UIImage(data: data, scale: UIScreen.main.scale) {
-                    let px = max(img.size.width * img.scale, img.size.height * img.scale)
-                    if px > bestPixels {
-                        bestPixels = px
-                        bestImage = img
-                    }
-                    if bestPixels >= 1024 { break }
-                }
+                if let url = url, let data = try? Data(contentsOf: url), let img = UIImage(data: data, scale: UIScreen.main.scale) {
+                     let px = max(img.size.width * img.scale, img.size.height * img.scale)
+                     if px > bestPixels {
+                         bestPixels = px
+                         bestImage = img
+                     }
+                     if bestPixels >= 1024 { break }
+                 }
             }
         }
 
