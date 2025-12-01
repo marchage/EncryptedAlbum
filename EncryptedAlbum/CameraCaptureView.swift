@@ -5,219 +5,495 @@ import SwiftUI
     import UIKit
     import Photos
 
-    struct CameraCaptureView: UIViewControllerRepresentable {
+    /// Custom camera view using AVFoundation for proper landscape support.
+    /// UIImagePickerController has known issues with landscape orientation on iOS,
+    /// so we use AVCaptureSession directly for reliable camera preview in all orientations.
+    struct CameraCaptureView: View {
         @Environment(\.dismiss) var dismiss
         @EnvironmentObject var albumManager: AlbumManager
-
-        func makeUIViewController(context: Context) -> UIImagePickerController {
-            let picker = UIImagePickerController()
-            picker.delegate = context.coordinator
-            picker.sourceType = .camera
-            // Give the system camera UI a reasonable default flash behavior.
-            // UIImagePickerController.CameraFlashMode doesn't have an `.unknown` case
-            // so set a sensible default directly.
-            picker.cameraFlashMode = .auto
-            picker.mediaTypes = ["public.image", "public.movie"]
-            picker.allowsEditing = false
-            picker.modalPresentationStyle = .fullScreen
-
-            return picker
-        }
-
-        func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {
-            // No updates needed
-        }
-
-        func makeCoordinator() -> Coordinator {
-            // Capture albumManager strongly in the coordinator so the async
-            // save call can rely on it even after the picker / parent view is
-            // dismissed. Avoids lost writes when the modal closes immediately.
-            Coordinator(self, albumManager: albumManager)
-        }
-
-        class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-            let parent: CameraCaptureView
-            // Strong reference to the environment object so async work can
-            // continue after the parent view is dismissed
-            let albumManagerRef: AlbumManager
-
-            init(_ parent: CameraCaptureView, albumManager: AlbumManager) {
-                self.parent = parent
-                self.albumManagerRef = albumManager
-            }
-
-            func imagePickerController(
-                _ picker: UIImagePickerController,
-                didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
-            ) {
-                // Handle the common case of file-backed media URLs synchronously so we
-                // copy them to an app-owned temp file before dismissal. The picker may
-                // remove its temporary files once dismissed, so we must materialize
-                // a stable copy if we're handed a file URL.
-                if let mediaURL = info[.mediaURL] as? URL {
-                    let ext = mediaURL.pathExtension.isEmpty ? "mov" : mediaURL.pathExtension
-                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-                        .appendingPathExtension(ext)
-                    do {
-                        try FileManager.default.copyItem(at: mediaURL, to: tempURL)
-                        // Proceed to process the copy asynchronously but only after we've
-                        // made our own stable copy.
-                        parent.dismiss()
-                        Task.detached(priority: .userInitiated) {
-                            do {
-                                let mediaSource: MediaSource = .fileURL(tempURL)
-                                let filename = "Video_\(Date().timeIntervalSince1970).\(ext)"
-                                let asset = AVAsset(url: tempURL)
-                                var duration: TimeInterval? = nil
-                                if #available(iOS 16.0, *) {
-                                    if let loaded = try? await asset.load(.duration) { duration = loaded.seconds }
-                                } else {
-                                    duration = asset.duration.seconds
+        @StateObject private var model = iOSCameraModel()
+        
+        var body: some View {
+            GeometryReader { geometry in
+                ZStack {
+                    Color.black.ignoresSafeArea()
+                    
+                    if model.isAuthorized, let session = model.session {
+                        iOSCameraPreview(session: session)
+                            .ignoresSafeArea()
+                    } else if !model.isAuthorized && model.authorizationChecked {
+                        VStack(spacing: 16) {
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 48))
+                                .foregroundStyle(.gray)
+                            Text("Camera access required")
+                                .foregroundStyle(.white)
+                            Text("Please enable camera access in Settings")
+                                .font(.caption)
+                                .foregroundStyle(.gray)
+                        }
+                    }
+                    
+                    // Camera controls overlay
+                    VStack {
+                        // Top bar with close button
+                        HStack {
+                            Spacer()
+                            
+                            // Flash toggle
+                            if model.flashAvailable {
+                                Button {
+                                    model.cycleFlashMode()
+                                } label: {
+                                    Image(systemName: model.flashIconName)
+                                        .font(.title2)
+                                        .foregroundStyle(.white)
+                                        .padding(12)
                                 }
-
-                                try await self.albumManagerRef.handleCapturedMedia(
-                                    mediaSource: mediaSource,
-                                    filename: filename,
-                                    dateTaken: Date(),
-                                    sourceAlbum: "Captured to Album",
-                                    assetIdentifier: nil,
-                                    mediaType: .video,
-                                    duration: duration,
-                                    location: nil,
-                                    isFavorite: nil
-                                )
-                                AppLog.debugPublic("Handled captured media: \(filename)")
-                                AppLog.debugPrivate(
-                                    "CameraCoordinator: Determined mediaSource=\(mediaSource) filename=\(filename) mediaType=video duration=\(String(describing: duration))"
-                                )
-                            } catch {
-                                AppLog.error("Failed to handle captured media: \(error.localizedDescription)")
-                                AppLog.debugPrivate(
-                                    "CameraCoordinator: Error handling captured video file at temp URL: \(tempURL.path)"
-                                )
+                            }
+                            
+                            Button {
+                                model.stopSession()
+                                dismiss()
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.title)
+                                    .foregroundStyle(.white)
+                                    .padding()
                             }
                         }
-                    } catch {
-                        AppLog.error("Failed to copy captured media to temp file: \(error.localizedDescription)")
-                        parent.dismiss()
+                        .padding(.top, geometry.safeAreaInsets.top > 0 ? 0 : 8)
+                        
+                        Spacer()
+                        
+                        // Bottom controls
+                        HStack(alignment: .center, spacing: 40) {
+                            // Camera flip button
+                            Button {
+                                model.switchCamera()
+                            } label: {
+                                Image(systemName: "camera.rotate.fill")
+                                    .font(.title)
+                                    .foregroundStyle(.white)
+                                    .frame(width: 50, height: 50)
+                            }
+                            
+                            // Capture button
+                            if model.captureMode == .video {
+                                Button {
+                                    if model.isRecording {
+                                        model.stopRecording(albumManager: albumManager)
+                                    } else {
+                                        model.startRecording()
+                                    }
+                                } label: {
+                                    ZStack {
+                                        Circle()
+                                            .fill(model.isRecording ? .red : .white)
+                                            .frame(width: 64, height: 64)
+                                        Circle()
+                                            .stroke(Color.white, lineWidth: 4)
+                                            .frame(width: 72, height: 72)
+                                        if model.isRecording {
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .fill(.white)
+                                                .frame(width: 24, height: 24)
+                                        }
+                                    }
+                                }
+                            } else {
+                                Button {
+                                    model.capturePhoto(albumManager: albumManager)
+                                } label: {
+                                    ZStack {
+                                        Circle()
+                                            .fill(.white)
+                                            .frame(width: 64, height: 64)
+                                        Circle()
+                                            .stroke(Color.white, lineWidth: 4)
+                                            .frame(width: 72, height: 72)
+                                    }
+                                }
+                            }
+                            
+                            // Mode toggle (photo/video)
+                            Button {
+                                model.captureMode = model.captureMode == .photo ? .video : .photo
+                            } label: {
+                                Image(systemName: model.captureMode == .photo ? "video.fill" : "camera.fill")
+                                    .font(.title)
+                                    .foregroundStyle(.white)
+                                    .frame(width: 50, height: 50)
+                            }
+                        }
+                        .padding(.bottom, 30)
+                        
+                        // Recording duration indicator
+                        if model.isRecording, let duration = model.recordingDuration {
+                            Text(String(format: "%02d:%02d", Int(duration) / 60, Int(duration) % 60))
+                                .font(.system(.headline, design: .monospaced))
+                                .foregroundStyle(.red)
+                                .padding(.bottom, 8)
+                        }
                     }
+                }
+            }
+            .statusBarHidden(true)
+            .onAppear {
+                model.checkPermissions()
+            }
+            .onDisappear {
+                model.stopSession()
+            }
+        }
+    }
+    
+    // MARK: - iOS Camera Model
+    
+    enum iOSCaptureMode {
+        case photo
+        case video
+    }
+    
+    class iOSCameraModel: NSObject, ObservableObject {
+        @Published var isAuthorized = false
+        @Published var authorizationChecked = false
+        @Published var captureMode: iOSCaptureMode = .photo
+        @Published var isRecording = false
+        @Published var recordingDuration: TimeInterval?
+        @Published var flashAvailable = false
+        @Published var flashMode: AVCaptureDevice.FlashMode = .auto
+        
+        var session: AVCaptureSession?
+        private let photoOutput = AVCapturePhotoOutput()
+        private let movieOutput = AVCaptureMovieFileOutput()
+        private let sessionQueue = DispatchQueue(label: "biz.front-end.encryptedalbum.ios.camera")
+        private var currentDevice: AVCaptureDevice?
+        private var currentPosition: AVCaptureDevice.Position = .back
+        
+        private var recordingTimer: Timer?
+        private var recordingStartTime: Date?
+        private var albumManager: AlbumManager?
+        
+        var flashIconName: String {
+            switch flashMode {
+            case .auto: return "bolt.badge.automatic.fill"
+            case .on: return "bolt.fill"
+            case .off: return "bolt.slash.fill"
+            @unknown default: return "bolt.fill"
+            }
+        }
+        
+        func checkPermissions() {
+            switch AVCaptureDevice.authorizationStatus(for: .video) {
+            case .authorized:
+                DispatchQueue.main.async {
+                    self.isAuthorized = true
+                    self.authorizationChecked = true
+                }
+                setupSession()
+            case .notDetermined:
+                AVCaptureDevice.requestAccess(for: .video) { granted in
+                    DispatchQueue.main.async {
+                        self.isAuthorized = granted
+                        self.authorizationChecked = true
+                        if granted { self.setupSession() }
+                    }
+                }
+            default:
+                DispatchQueue.main.async {
+                    self.isAuthorized = false
+                    self.authorizationChecked = true
+                }
+            }
+            
+            // Also request microphone for video
+            if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+                AVCaptureDevice.requestAccess(for: .audio) { _ in }
+            }
+        }
+        
+        func setupSession() {
+            sessionQueue.async { [weak self] in
+                guard let self = self else { return }
+                
+                let session = AVCaptureSession()
+                session.beginConfiguration()
+                session.sessionPreset = .photo
+                
+                // Add video input
+                guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+                      let videoInput = try? AVCaptureDeviceInput(device: videoDevice) else {
+                    session.commitConfiguration()
                     return
                 }
-
-                parent.dismiss()
-
-                Task.detached(priority: .userInitiated) {
-                    do {
-                        AppLog.debugPrivate("CameraCoordinator: Received media info keys: \(info.keys)")
-                        let (mediaSource, filename, mediaType, duration) = try await Self.makeMediaFromPickerInfo(info)
-
-                        if let mediaSource = mediaSource {
-                            do {
-                                // Forward capture handling to AlbumManager helper which centralises
-                                // the save-to-album vs save-to-photos behaviour and is testable.
-                                try await self.albumManagerRef.handleCapturedMedia(
-                                    mediaSource: mediaSource,
-                                    filename: filename,
-                                    dateTaken: Date(),
-                                    sourceAlbum: "Captured to Album",
-                                    assetIdentifier: nil,
-                                    mediaType: mediaType,
-                                    duration: duration,
-                                    location: nil,
-                                    isFavorite: nil
-                                )
-                                AppLog.debugPublic("Handled captured media: \(filename)")
-                                AppLog.debugPrivate(
-                                    "CameraCoordinator: Determined mediaSource=\(mediaSource) filename=\(filename) mediaType=\(mediaType) duration=\(String(describing: duration))"
-                                )
-                            } catch {
-                                AppLog.error("Failed to handle captured media: \(error.localizedDescription)")
-                                // Record more context for debugging on-device
-                                AppLog.debugPrivate(
-                                    "CameraCoordinator: Error handling captured media for filename=\(filename) mediaType=\(mediaType) duration=\(String(describing: duration))"
-                                )
-                            }
-                        }
-                    } catch {
-                        AppLog.error("Failed to extract captured media: \(error.localizedDescription)")
+                
+                if session.canAddInput(videoInput) {
+                    session.addInput(videoInput)
+                    self.currentDevice = videoDevice
+                }
+                
+                // Add photo output
+                if session.canAddOutput(self.photoOutput) {
+                    session.addOutput(self.photoOutput)
+                }
+                
+                // Add movie output
+                if session.canAddOutput(self.movieOutput) {
+                    session.addOutput(self.movieOutput)
+                }
+                
+                // Add audio input for video recording
+                if AVCaptureDevice.authorizationStatus(for: .audio) == .authorized,
+                   let audioDevice = AVCaptureDevice.default(for: .audio),
+                   let audioInput = try? AVCaptureDeviceInput(device: audioDevice) {
+                    if session.canAddInput(audioInput) {
+                        session.addInput(audioInput)
                     }
                 }
+                
+                session.commitConfiguration()
+                session.startRunning()
+                
+                self.session = session
+                
+                DispatchQueue.main.async {
+                    self.flashAvailable = videoDevice.hasFlash
+                }
             }
-
-            func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-                parent.dismiss()
+        }
+        
+        func stopSession() {
+            recordingTimer?.invalidate()
+            recordingTimer = nil
+            
+            sessionQueue.async { [weak self] in
+                self?.session?.stopRunning()
             }
-
-            /// Extract a usable MediaSource / meta info from the UIImagePicker info dictionary.
-            /// Returns a tuple containing mediaSource, filename, type and optional duration.
-            static func makeMediaFromPickerInfo(_ info: [UIImagePickerController.InfoKey: Any]) async throws -> (
-                MediaSource?, String, MediaType, TimeInterval?
-            ) {
-                var mediaSource: MediaSource?
-                var filename = "Capture_\(Date().timeIntervalSince1970).jpg"
-                var mediaType: MediaType = .photo
+        }
+        
+        func switchCamera() {
+            sessionQueue.async { [weak self] in
+                guard let self = self, let session = self.session else { return }
+                
+                session.beginConfiguration()
+                
+                // Remove current video input
+                if let currentInput = session.inputs.first(where: { ($0 as? AVCaptureDeviceInput)?.device.hasMediaType(.video) == true }) {
+                    session.removeInput(currentInput)
+                }
+                
+                // Switch position
+                let newPosition: AVCaptureDevice.Position = self.currentPosition == .back ? .front : .back
+                
+                guard let newDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: newPosition),
+                      let newInput = try? AVCaptureDeviceInput(device: newDevice) else {
+                    session.commitConfiguration()
+                    return
+                }
+                
+                if session.canAddInput(newInput) {
+                    session.addInput(newInput)
+                    self.currentDevice = newDevice
+                    self.currentPosition = newPosition
+                    
+                    DispatchQueue.main.async {
+                        self.flashAvailable = newDevice.hasFlash
+                    }
+                }
+                
+                session.commitConfiguration()
+            }
+        }
+        
+        func cycleFlashMode() {
+            switch flashMode {
+            case .auto:
+                flashMode = .on
+            case .on:
+                flashMode = .off
+            case .off:
+                flashMode = .auto
+            @unknown default:
+                flashMode = .auto
+            }
+        }
+        
+        func capturePhoto(albumManager: AlbumManager) {
+            self.albumManager = albumManager
+            
+            let settings = AVCapturePhotoSettings()
+            if flashAvailable {
+                settings.flashMode = flashMode
+            }
+            
+            photoOutput.capturePhoto(with: settings, delegate: self)
+        }
+        
+        func startRecording() {
+            guard !movieOutput.isRecording else { return }
+            
+            let tempURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("video_\(Date().timeIntervalSince1970).mov")
+            
+            movieOutput.startRecording(to: tempURL, recordingDelegate: self)
+            
+            recordingStartTime = Date()
+            DispatchQueue.main.async {
+                self.isRecording = true
+                self.recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+                    guard let self = self, let start = self.recordingStartTime else { return }
+                    self.recordingDuration = Date().timeIntervalSince(start)
+                }
+            }
+        }
+        
+        func stopRecording(albumManager: AlbumManager) {
+            self.albumManager = albumManager
+            movieOutput.stopRecording()
+            
+            recordingTimer?.invalidate()
+            recordingTimer = nil
+            
+            DispatchQueue.main.async {
+                self.isRecording = false
+                self.recordingDuration = nil
+            }
+        }
+    }
+    
+    // MARK: - Photo Capture Delegate
+    
+    extension iOSCameraModel: AVCapturePhotoCaptureDelegate {
+        func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+            guard let data = photo.fileDataRepresentation(),
+                  let albumManager = albumManager else {
+                AppLog.error("iOSCameraModel: Failed to get photo data")
+                return
+            }
+            
+            let filename = "Capture_\(Date().timeIntervalSince1970).jpg"
+            
+            Task {
+                do {
+                    try await albumManager.handleCapturedMedia(
+                        mediaSource: .data(data),
+                        filename: filename,
+                        dateTaken: Date(),
+                        sourceAlbum: "Captured to Album",
+                        assetIdentifier: nil,
+                        mediaType: .photo,
+                        duration: nil,
+                        location: nil,
+                        isFavorite: nil
+                    )
+                    AppLog.debugPublic("Captured photo saved: \(filename)")
+                } catch {
+                    AppLog.error("Failed to save captured photo: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    // MARK: - Video Recording Delegate
+    
+    extension iOSCameraModel: AVCaptureFileOutputRecordingDelegate {
+        func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL, from connections: [AVCaptureConnection], error: Error?) {
+            if let error = error {
+                AppLog.error("Video recording error: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let albumManager = albumManager else { return }
+            
+            let filename = "Video_\(Date().timeIntervalSince1970).mov"
+            
+            Task {
+                let asset = AVAsset(url: outputFileURL)
                 var duration: TimeInterval?
-
-                if let image = info[.originalImage] as? UIImage {
-                    var imageData: Data? = image.jpegData(compressionQuality: 0.9)
-                    if imageData == nil {
-                        AppLog.debugPrivate("JPEG conversion failed for captured image; falling back to PNG")
-                        imageData = image.pngData()
+                if #available(iOS 16.0, *) {
+                    if let loaded = try? await asset.load(.duration) {
+                        duration = loaded.seconds
                     }
-                    if let imageData = imageData {
-                        mediaSource = .data(imageData)
-                        filename = "Capture_\(Date().timeIntervalSince1970).jpg"
-                        mediaType = .photo
-                    } else {
-                        AppLog.error("Captured image had no usable data")
-                    }
-
-                } else if let videoURL = info[.mediaURL] as? URL {
-                    mediaSource = .fileURL(videoURL)
-                    filename = "Video_\(Date().timeIntervalSince1970).mov"
-                    mediaType = .video
-
-                    let asset = AVAsset(url: videoURL)
-                    if #available(iOS 16.0, macOS 13.0, *) {
-                        if let loadedDuration = try? await asset.load(.duration) {
-                            duration = loadedDuration.seconds
-                        }
-                    } else {
-                        duration = asset.duration.seconds
-                    }
-
-                } else if let imageURL = info[.imageURL] as? URL {
-                    mediaSource = .fileURL(imageURL)
-                    filename = "Capture_\(Date().timeIntervalSince1970).jpg"
-                    mediaType = .photo
-
-                } else if let phAsset = info[.phAsset] as? PHAsset {
-                    let dataFromAsset: Data? = await withCheckedContinuation {
-                        (cont: CheckedContinuation<Data?, Never>) in
-                        let options = PHImageRequestOptions()
-                        options.isSynchronous = false
-                        options.deliveryMode = .highQualityFormat
-                        options.isNetworkAccessAllowed = true
-
-                        PHImageManager.default().requestImageDataAndOrientation(for: phAsset, options: options) {
-                            data, _, _, _ in
-                            cont.resume(returning: data)
-                        }
-                    }
-
-                    if let assetData = dataFromAsset {
-                        mediaSource = .data(assetData)
-                        filename = "Capture_\(Date().timeIntervalSince1970).jpg"
-                        mediaType = .photo
-                    } else {
-                        AppLog.error("PHAsset returned no image data")
-                    }
-
                 } else {
-                    AppLog.error("Captured media had no usable data")
+                    duration = asset.duration.seconds
                 }
-
-                return (mediaSource, filename, mediaType, duration)
+                
+                do {
+                    try await albumManager.handleCapturedMedia(
+                        mediaSource: .fileURL(outputFileURL),
+                        filename: filename,
+                        dateTaken: Date(),
+                        sourceAlbum: "Captured to Album",
+                        assetIdentifier: nil,
+                        mediaType: .video,
+                        duration: duration,
+                        location: nil,
+                        isFavorite: nil
+                    )
+                    AppLog.debugPublic("Captured video saved: \(filename)")
+                } catch {
+                    AppLog.error("Failed to save captured video: \(error.localizedDescription)")
+                }
+                
+                // Clean up temp file
+                try? FileManager.default.removeItem(at: outputFileURL)
+            }
+        }
+    }
+    
+    // MARK: - iOS Camera Preview (AVCaptureSession based)
+    
+    struct iOSCameraPreview: UIViewRepresentable {
+        let session: AVCaptureSession
+        
+        func makeUIView(context: Context) -> iOSPreviewView {
+            let view = iOSPreviewView()
+            view.session = session
+            return view
+        }
+        
+        func updateUIView(_ uiView: iOSPreviewView, context: Context) {
+            // Preview layer updates automatically with device orientation
+        }
+    }
+    
+    class iOSPreviewView: UIView {
+        override class var layerClass: AnyClass {
+            AVCaptureVideoPreviewLayer.self
+        }
+        
+        var previewLayer: AVCaptureVideoPreviewLayer {
+            layer as! AVCaptureVideoPreviewLayer
+        }
+        
+        var session: AVCaptureSession? {
+            get { previewLayer.session }
+            set {
+                previewLayer.session = newValue
+                previewLayer.videoGravity = .resizeAspectFill
+            }
+        }
+        
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            
+            // Update video orientation based on device orientation
+            if let connection = previewLayer.connection, connection.isVideoOrientationSupported {
+                let orientation = UIDevice.current.orientation
+                switch orientation {
+                case .portrait:
+                    connection.videoOrientation = .portrait
+                case .portraitUpsideDown:
+                    connection.videoOrientation = .portraitUpsideDown
+                case .landscapeLeft:
+                    connection.videoOrientation = .landscapeRight
+                case .landscapeRight:
+                    connection.videoOrientation = .landscapeLeft
+                default:
+                    // Keep current orientation for face up/down/unknown
+                    break
+                }
             }
         }
     }
