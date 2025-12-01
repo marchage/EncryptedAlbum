@@ -138,6 +138,14 @@ final class AppIconService: ObservableObject {
     // AppStorage does not support optional types directly, so store as a non-optional
     // string and treat the empty string as "no selection".
     @AppStorage("selectedAppIconName") public var selectedIconName: String = "" {
+        willSet {
+            guard newValue != selectedIconName else { return }
+            if Thread.isMainThread {
+                objectWillChange.send()
+            } else {
+                DispatchQueue.main.async { [weak self] in self?.objectWillChange.send() }
+            }
+        }
         didSet { applySelectedIcon() }
     }
 
