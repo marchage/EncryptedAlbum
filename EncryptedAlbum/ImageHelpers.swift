@@ -96,21 +96,21 @@ final class AppIconService: ObservableObject {
         // On macOS keep the same known list for previews
         return [
             "AppIcon", // default
-            "AppIcon 1",
-            "AppIcon 2",
-            "AppIcon 3",
-            "AppIcon 4",
-            "AppIcon 5",
-            "AppIcon 6",
-            "AppIcon 7",
-            "AppIcon 8",
-            "AppIcon 9",
-            "AppIcon 10",
-            "AppIcon 11",
-            "AppIcon 12",
-            "AppIcon 13",
-            "AppIcon 14",
-            "AppIcon 15"
+            "AppIcon1",
+            "AppIcon2",
+            "AppIcon3",
+            "AppIcon4",
+            "AppIcon5",
+            "AppIcon6",
+            "AppIcon7",
+            "AppIcon8",
+            "AppIcon9",
+            "AppIcon10",
+            "AppIcon11",
+            "AppIcon12",
+            "AppIcon13",
+            "AppIcon14",
+            "AppIcon15"
         ]
         #endif
     }

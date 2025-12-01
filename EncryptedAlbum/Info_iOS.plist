@@ -15,137 +15,137 @@
 		</dict>
 		<key>CFBundleAlternateIcons</key>
 		<dict>
-			<key>AppIcon 1</key>
+			<key>AppIcon1</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 1</string>
+					<string>AppIcon1</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon 2</key>
+			<key>AppIcon2</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 2</string>
+					<string>AppIcon2</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon 3</key>
+			<key>AppIcon3</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 3</string>
+					<string>AppIcon3</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon 4</key>
+			<key>AppIcon4</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 4</string>
+					<string>AppIcon4</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon 5</key>
+			<key>AppIcon5</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 5</string>
+					<string>AppIcon5</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon 6</key>
+			<key>AppIcon6</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 6</string>
+					<string>AppIcon6</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon 7</key>
+			<key>AppIcon7</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 7</string>
+					<string>AppIcon7</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon 8</key>
+			<key>AppIcon8</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 8</string>
+					<string>AppIcon8</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon 9</key>
+			<key>AppIcon9</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 9</string>
+					<string>AppIcon9</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon 10</key>
+			<key>AppIcon10</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 10</string>
+					<string>AppIcon10</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-            <key>AppIcon 11</key>
+            <key>AppIcon11</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 11</string>
+					<string>AppIcon11</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-            <key>AppIcon 12</key>
+            <key>AppIcon12</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 12</string>
+					<string>AppIcon12</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-            <key>AppIcon 13</key>
+            <key>AppIcon13</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 13</string>
+					<string>AppIcon13</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-            <key>AppIcon 14</key>
+            <key>AppIcon14</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 14</string>
+					<string>AppIcon14</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-            <key>AppIcon 15</key>
+            <key>AppIcon15</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon 15</string>
+					<string>AppIcon15</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>

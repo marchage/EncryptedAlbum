@@ -6,7 +6,7 @@ final class AppIconServiceBehaviorTests: XCTestCase {
         let svc = AppIconService.shared
         XCTAssertTrue(svc.availableIcons.contains("AppIcon"))
         // At least one alternate should be present when building from the bundle
-        XCTAssertTrue(svc.availableIcons.contains("AppIcon 1"))
+        XCTAssertTrue(svc.availableIcons.contains("AppIcon1"))
         XCTAssertGreaterThanOrEqual(svc.availableIcons.count, 1)
     }
 
