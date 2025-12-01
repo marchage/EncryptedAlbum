@@ -152,15 +152,12 @@ struct UnlockView: View {
                             .frame(width: maxVisual, height: maxVisual)
                             .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
                 }
-                // FORCE generation of a fresh high-res marketing image every time to ensure we get 1024px
-                // Do NOT use cached runtimeMarketingImage as it may be lower-res.
-                // let maxVisual = min(CGFloat(256), UIScreen.main.bounds.width * 0.35)
-
-                // Generate a fresh marketing image - this will search for mac1024.png and high-res bundles
-                if let generated = AppIconService.generateMarketingImage(from: nil) {
+                // Fallback: generate a fresh high-res marketing image using the selected icon
+                let fallbackIconName = appIconService.selectedIconName.isEmpty ? nil : appIconService.selectedIconName
+                if let generated = AppIconService.generateMarketingImage(from: fallbackIconName) {
                     // Log the actual size for debugging
                     let pixels = max(generated.size.width * generated.scale, generated.size.height * generated.scale)
-                    AppLog.debugPublic("UnlockView: using marketing image with \(Int(pixels))px")
+                    AppLog.debugPublic("UnlockView: using fallback marketing image with \(Int(pixels))px for icon \(fallbackIconName ?? "default")")
 
                     return AnyView(
                         Image(platformImage: generated)
@@ -173,6 +170,7 @@ struct UnlockView: View {
                 }
 
             #else
+                let selectedIconName = AppIconService.shared.selectedIconName.isEmpty ? nil : AppIconService.shared.selectedIconName
                 if let runtime = AppIconService.shared.runtimeMarketingImage {
                     return AnyView(
                         Image(platformImage: runtime)
@@ -184,7 +182,7 @@ struct UnlockView: View {
                             .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
                 }
 
-                if let generated = AppIconService.generateMarketingImage(from: nil) {
+                if let generated = AppIconService.generateMarketingImage(from: selectedIconName) {
                     return AnyView(
                         Image(platformImage: generated)
                             .resizable()
