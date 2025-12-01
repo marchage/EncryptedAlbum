@@ -177,7 +177,7 @@
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			\<key>AppIcon19</key>
+			<key>AppIcon19</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>

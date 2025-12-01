@@ -6,6 +6,24 @@
 //
 
 import Cocoa
+import os
+
+// If AppLog isn't available to the extension target (some targets don't link the
+// host app sources), provide a tiny local shim so we can log consistently.
+// This mirrors the subset of helpers used by the extension (debugPrivate & error).
+fileprivate struct AppLog {
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "EncryptedAlbum", category: "ShareExtensionMac")
+
+    static func debugPrivate(_ message: @autoclosure @escaping () -> String) {
+        #if DEBUG
+        logger.debug("\(message(), privacy: .private)")
+        #endif
+    }
+
+    static func error(_ message: String) {
+        logger.error("\(message, privacy: .public)")
+    }
+}
 
 final class ShareViewController: NSViewController {
 
