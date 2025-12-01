@@ -404,8 +404,23 @@ final class AppIconService: ObservableObject {
 
         return target
         #else
-        // Prefer the dedicated 512@2x runtime marketing asset when requested.
-        // Prefer a bundled mac1024.png wherever present (this is the canonical app-store image)
+        // iOS path: ALWAYS try the dedicated mac1024 imageset FIRST (highest priority)
+        // This ensures we get the 1024px image we explicitly created in the asset catalog
+        if let mac1024 = UIImage(named: "mac1024") {
+            AppLog.debugPublic("AppIconService: found mac1024 imageset, pixels=\(max(mac1024.size.width * mac1024.scale, mac1024.size.height * mac1024.scale))")
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 1.0
+            let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
+            return renderer.image { ctx in
+                let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
+                let corner = CGFloat(0.15 * 1024)
+                let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
+                path.addClip()
+                mac1024.draw(in: rect)
+            }
+        }
+        
+        // Second priority: bundled mac1024.png file (recursive search)
         if let macURL = bundleResourceURL(matching: "mac1024.png"), let data = try? Data(contentsOf: macURL), let macImg = UIImage(data: data, scale: 1.0) {
              AppLog.debugPublic("AppIconService: found mac1024.png at runtime: \(macURL.path)")
               // Render to 1024x1024 marketing canvas for consistency
