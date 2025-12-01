@@ -842,6 +842,20 @@ public class AlbumManager: ObservableObject {
         }
     }
 
+    /// Verifies if the provided password matches the stored password.
+    /// - Parameter password: The password to verify
+    /// - Returns: `true` if the password is correct, `false` otherwise
+    func verifyPassword(_ password: String) async -> Bool {
+        do {
+            guard let (storedHash, storedSalt) = try await passwordService.retrievePasswordCredentials() else {
+                return false
+            }
+            return try await passwordService.verifyPassword(password, against: storedHash, salt: storedSalt)
+        } catch {
+            return false
+        }
+    }
+    
     /// Changes the album password and re-encrypts all data.
     /// - Parameters:
     ///   - currentPassword: Current password for verification

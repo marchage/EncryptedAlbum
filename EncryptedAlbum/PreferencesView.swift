@@ -18,6 +18,7 @@ struct PreferencesView: View {
     @State private var decoyPasswordError: String?
 
     @State private var showChangePasswordSheet = false
+    @State private var changePasswordStep: Int = 1  // Step 1: verify current, Step 2: enter new
     @State private var currentPasswordInput = ""
     @State private var newPasswordInput = ""
     @State private var confirmPasswordInput = ""
@@ -82,7 +83,9 @@ struct PreferencesView: View {
 
     var body: some View {
         #if os(iOS)
-            content
+            SecureWrapper {
+                content
+            }
         #else
             content
         #endif
@@ -340,93 +343,158 @@ struct PreferencesView: View {
         }
         .sheet(isPresented: $showChangePasswordSheet) {
             VStack(spacing: 20) {
-                Text("Change Album Password")
-                    .font(.headline)
-
-                SecureField("Current Password", text: $currentPasswordInput)
-                    .textFieldStyle(.roundedBorder)
-                    .textContentType(.password)
-                    .frame(maxWidth: 300)
-
-                SecureField("New Password", text: $newPasswordInput)
-                    .textFieldStyle(.roundedBorder)
-                    #if os(iOS)
-                        .textContentType(.newPassword)
-                    #endif
-                    .frame(maxWidth: 300)
-
-                SecureField("Confirm New Password", text: $confirmPasswordInput)
-                    .textFieldStyle(.roundedBorder)
-                    #if os(iOS)
-                        .textContentType(.newPassword)
-                    #endif
-                    .frame(maxWidth: 300)
-
-                if let error = changePasswordError {
-                    Text(error).foregroundStyle(.red).font(.caption)
-                }
-
-                if let progress = changePasswordProgress {
-                    Text(progress)
+                // Two-step password change to prevent accidents
+                if changePasswordStep == 1 {
+                    // Step 1: Verify current password
+                    Text("Change Album Password")
+                        .font(.headline)
+                    
+                    Text("Step 1 of 2: Verify your identity")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    Text("Enter your current password to proceed with changing it.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                }
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 280)
 
-                HStack(spacing: 20) {
-                    Button("Cancel") {
-                        showChangePasswordSheet = false
-                        currentPasswordInput = ""
-                        newPasswordInput = ""
-                        confirmPasswordInput = ""
-                        changePasswordError = nil
-                        changePasswordProgress = nil
+                    SecureField("Current Password", text: $currentPasswordInput)
+                        .textFieldStyle(.roundedBorder)
+                        .textContentType(.password)
+                        .frame(maxWidth: 300)
+
+                    if let error = changePasswordError {
+                        Text(error).foregroundStyle(.red).font(.caption)
                     }
-                    .buttonStyle(.bordered)
 
-                    Button("Change") {
-                        if newPasswordInput.isEmpty {
-                            changePasswordError = "New password cannot be empty"
-                        } else if newPasswordInput != confirmPasswordInput {
-                            changePasswordError = "New passwords do not match"
-                        } else {
-                            isChangingPassword = true
+                    HStack(spacing: 20) {
+                        Button("Cancel") {
+                            showChangePasswordSheet = false
+                            changePasswordStep = 1
+                            currentPasswordInput = ""
+                            newPasswordInput = ""
+                            confirmPasswordInput = ""
                             changePasswordError = nil
-                            changePasswordProgress = nil
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button("Continue") {
+                            // Verify current password before proceeding
                             Task {
-                                do {
-                                    try await albumManager.changePassword(
-                                        currentPassword: currentPasswordInput,
-                                        newPassword: newPasswordInput
-                                    ) { progress in
-                                        Task { @MainActor in
-                                            changePasswordProgress = progress
-                                        }
-                                    }
-                                    await MainActor.run {
-                                        showChangePasswordSheet = false
-                                        currentPasswordInput = ""
-                                        newPasswordInput = ""
-                                        confirmPasswordInput = ""
-                                        isChangingPassword = false
-                                        changePasswordProgress = nil
-                                    }
-                                } catch {
-                                    await MainActor.run {
-                                        changePasswordError = error.localizedDescription
-                                        isChangingPassword = false
-                                        changePasswordProgress = nil
+                                let isValid = await albumManager.verifyPassword(currentPasswordInput)
+                                await MainActor.run {
+                                    if isValid {
+                                        changePasswordError = nil
+                                        changePasswordStep = 2
+                                    } else {
+                                        changePasswordError = "Current password is incorrect"
                                     }
                                 }
                             }
                         }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(currentPasswordInput.isEmpty)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isChangingPassword)
+                    .padding(.top, 10)
+                } else {
+                    // Step 2: Enter new password
+                    Text("Change Album Password")
+                        .font(.headline)
+                    
+                    Text("Step 2 of 2: Set new password")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    Text("Choose a strong, memorable password. You won't be able to recover your data if you forget it.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 280)
+
+                    SecureField("New Password", text: $newPasswordInput)
+                        .textFieldStyle(.roundedBorder)
+                        #if os(iOS)
+                            .textContentType(.newPassword)
+                        #endif
+                        .frame(maxWidth: 300)
+
+                    SecureField("Confirm New Password", text: $confirmPasswordInput)
+                        .textFieldStyle(.roundedBorder)
+                        #if os(iOS)
+                            .textContentType(.newPassword)
+                        #endif
+                        .frame(maxWidth: 300)
+
+                    if let error = changePasswordError {
+                        Text(error).foregroundStyle(.red).font(.caption)
+                    }
+
+                    if let progress = changePasswordProgress {
+                        Text(progress)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    HStack(spacing: 20) {
+                        Button("Back") {
+                            changePasswordStep = 1
+                            newPasswordInput = ""
+                            confirmPasswordInput = ""
+                            changePasswordError = nil
+                            changePasswordProgress = nil
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isChangingPassword)
+
+                        Button("Change Password") {
+                            if newPasswordInput.isEmpty {
+                                changePasswordError = "New password cannot be empty"
+                            } else if newPasswordInput.count < 6 {
+                                changePasswordError = "Password must be at least 6 characters"
+                            } else if newPasswordInput != confirmPasswordInput {
+                                changePasswordError = "New passwords do not match"
+                            } else {
+                                isChangingPassword = true
+                                changePasswordError = nil
+                                changePasswordProgress = nil
+                                Task {
+                                    do {
+                                        try await albumManager.changePassword(
+                                            currentPassword: currentPasswordInput,
+                                            newPassword: newPasswordInput
+                                        ) { progress in
+                                            Task { @MainActor in
+                                                changePasswordProgress = progress
+                                            }
+                                        }
+                                        await MainActor.run {
+                                            showChangePasswordSheet = false
+                                            changePasswordStep = 1
+                                            currentPasswordInput = ""
+                                            newPasswordInput = ""
+                                            confirmPasswordInput = ""
+                                            isChangingPassword = false
+                                            changePasswordProgress = nil
+                                        }
+                                    } catch {
+                                        await MainActor.run {
+                                            changePasswordError = error.localizedDescription
+                                            isChangingPassword = false
+                                            changePasswordProgress = nil
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isChangingPassword)
+                    }
+                    .padding(.top, 10)
                 }
-                .padding(.top, 10)
             }
             .padding()
-            .presentationDetents([.height(400)])
+            .presentationDetents([.height(420)])
         }
         .preferredColorScheme(colorScheme)
     }

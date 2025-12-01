@@ -124,11 +124,10 @@ struct PhotoViewerSheet: View {
                     }
                 }
 
-                // Sleep-prevention mini-bolt overlay for the viewer
+                // Sleep-prevention mini-bolt overlay for the viewer (top-left so it doesn't cover the close button)
                 if albumManager.isSystemSleepPrevented {
                     VStack {
                         HStack {
-                            Spacer()
                             Image(systemName: "bolt.fill")
                                 .foregroundColor(.yellow)
                                 .font(.system(size: 13, weight: .bold))
@@ -141,7 +140,8 @@ struct PhotoViewerSheet: View {
                                 .padding(6)
                                 .background(Circle().fill(Color.yellow.opacity(0.25)))
                                 .padding(.top, 14)
-                                .padding(.trailing, 18)
+                                .padding(.leading, 18)
+                            Spacer()
                         }
                         Spacer()
                     }

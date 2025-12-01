@@ -76,9 +76,9 @@ struct PreferencesSectionTop: View {
                 Text("Biometric Policy")
                 Spacer()
                 Picker("", selection: $storedBiometricPolicy) {
-                    Text("Prefer Biometrics").tag("biometrics_preferred")
-                    Text("Require Biometrics").tag("biometrics_required")
-                    Text("Disable Biometrics").tag("biometrics_disabled")
+                    Text("Prefer (try biometrics first, fall back to password)").tag("biometrics_preferred")
+                    Text("Require (biometrics only, no password fallback)").tag("biometrics_required")
+                    Text("Disabled (password only, never use biometrics)").tag("biometrics_disabled")
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
@@ -88,12 +88,23 @@ struct PreferencesSectionTop: View {
                 albumManager.saveSettings()
             }
 
-            Toggle("Require Re-authentication", isOn: $requireForegroundReauthentication)
-                .disabled(false)
+            Text(storedBiometricPolicy == "biometrics_preferred"
+                 ? "The app will try Face ID / Touch ID first; if unavailable or cancelled, you can enter your password."
+                 : storedBiometricPolicy == "biometrics_required"
+                 ? "Only biometrics can unlock the album. If biometrics fail or are unavailable, you cannot unlock."
+                 : "Biometrics are disabled. You must always enter your password to unlock.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Toggle("Require Re-authentication on Return", isOn: $requireForegroundReauthentication)
+
+            Text("When enabled, switching away from the app (e.g., pressing Home or switching apps) will lock the album. You'll need to authenticate again when you return.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             // Auto-wipe & recovery key
             Toggle(
-                "Auto-wipe on repeated failed unlocks",
+                "Auto-wipe after failed unlock attempts",
                 isOn: Binding(
                     get: { albumManager.autoWipeOnFailedAttemptsEnabled },
                     set: {
@@ -104,19 +115,27 @@ struct PreferencesSectionTop: View {
 
             if albumManager.autoWipeOnFailedAttemptsEnabled {
                 HStack {
-                    Text("Wipe threshold")
+                    Text("Failed attempts before wipe")
                     Spacer()
                     Stepper(
-                        "\(albumManager.autoWipeFailedAttemptsThreshold)",
+                        "\(albumManager.autoWipeFailedAttemptsThreshold) attempts",
                         value: Binding(
                             get: { albumManager.autoWipeFailedAttemptsThreshold },
                             set: {
                                 albumManager.autoWipeFailedAttemptsThreshold = $0
                                 albumManager.saveSettings()
-                            }), in: 1...100
+                            }), in: 3...100
                     )
                     .labelsHidden()
                 }
+
+                Text("⚠️ DANGER: After \(albumManager.autoWipeFailedAttemptsThreshold) consecutive wrong passwords, ALL encrypted data will be permanently and irrecoverably deleted. This cannot be undone.")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            } else {
+                Text("When enabled, entering the wrong password too many times will permanently delete all album data.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Toggle(
@@ -177,11 +196,17 @@ struct PreferencesSectionTop: View {
 
             Divider()
             Text("Camera").font(.headline)
-            Toggle("Capture at max quality", isOn: $storedCameraMaxQuality)
+            Toggle("Capture at maximum quality", isOn: $storedCameraMaxQuality)
                 .onChange(of: storedCameraMaxQuality) { _ in
                     albumManager.cameraMaxQuality = storedCameraMaxQuality
                     albumManager.saveSettings()
                 }
+
+            Text(storedCameraMaxQuality
+                 ? "Photos and videos are captured at the device's highest resolution. Files will be larger but preserve maximum detail."
+                 : "Photos and videos are captured at a balanced quality. Files will be smaller but may lose some detail.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             Divider()
             Text("App Icon").font(.headline)

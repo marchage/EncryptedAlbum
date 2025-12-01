@@ -249,8 +249,8 @@
 		989ADDD72ED5BDE400994E72 /* InactiveAppOverlay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InactiveAppOverlay.swift; sourceTree = "<group>"; };
 		989ADDD82ED5BDE400994E72 /* UltraPrivacyCoordinator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UltraPrivacyCoordinator.swift; sourceTree = "<group>"; };
 		989B68D62ED8C1DB00FA9A5B /* ShareHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ShareHelper.swift; sourceTree = "<group>"; };
-		98A4C2742EDBF32100742B99 /* icon.iconset */ = {isa = PBXFileReference; lastKnownFileType = folder.iconset; name = icon.iconset; path = ../../../../Desktop/Copilot_20251129_173347/icon.iconset; sourceTree = "<group>"; };
-		98A4C2762EDBF39700742B99 /* icon.iconset */ = {isa = PBXFileReference; lastKnownFileType = folder.iconset; name = icon.iconset; path = ../../../../Desktop/Copilot_20251129_173347/icon.iconset; sourceTree = "<group>"; };
+		98A4C2742EDBF32100742B99 /* icon.iconset */ = {isa = PBXFileReference; lastKnownFileType = folder.iconset; name = icon.iconset; path = ShareExtension/icon.iconset; sourceTree = SOURCE_ROOT; };
+		98A4C2762EDBF39700742B99 /* icon.iconset */ = {isa = PBXFileReference; lastKnownFileType = folder.iconset; name = icon.iconset; path = ShareExtensionMac/icon.iconset; sourceTree = SOURCE_ROOT; };
 		98BE893A2EDCF0D200AF3A5A /* PreferencesSectionMid.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreferencesSectionMid.swift; sourceTree = "<group>"; };
 		98BE893B2EDCF0D200AF3A5A /* PreferencesSectionTop.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreferencesSectionTop.swift; sourceTree = "<group>"; };
 		98BE893C2EDCF0D200AF3A5A /* ThumbnailCache.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };

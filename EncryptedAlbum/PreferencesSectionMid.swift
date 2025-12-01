@@ -102,40 +102,66 @@ struct PreferencesSectionMid: View {
 
             Divider()
 
-            Toggle("Lockdown Mode (restrict imports/exports & iCloud)", isOn: $storedLockdownMode)
-                .accessibilityIdentifier("lockdownToggle")
-                .onChange(of: storedLockdownMode) { isOn in
-                    if isOn {
-                        // ask for confirmation and revert until confirmed
-                        showLockdownConfirm = true
-                        storedLockdownMode = false
-                    } else {
-                        albumManager.lockdownModeEnabled = false
-                        albumManager.saveSettings()
+            // Lockdown Mode section with status indicator
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Lockdown Mode")
+                            .font(.headline)
+                        if albumManager.lockdownModeEnabled {
+                            Text("ACTIVE")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color.red))
+                        }
                     }
+                    Text("Restricts imports, exports & iCloud sync")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { albumManager.lockdownModeEnabled },
+                    set: { newValue in
+                        if newValue && !albumManager.lockdownModeEnabled {
+                            // Turning ON - ask for confirmation
+                            showLockdownConfirm = true
+                        } else if !newValue && albumManager.lockdownModeEnabled {
+                            // Turning OFF - no confirmation needed
+                            albumManager.lockdownModeEnabled = false
+                            storedLockdownMode = false
+                            albumManager.saveSettings()
+                        }
+                    }
+                ))
+                .labelsHidden()
                 .toggleStyle(SwitchToggleStyle(tint: .red))
-                .padding(.vertical)
-                .alert("Enable Lockdown Mode?", isPresented: $showLockdownConfirm) {
-                    Button("Enable", role: .destructive) {
-                        storedLockdownMode = true
-                        albumManager.lockdownModeEnabled = true
-                        albumManager.saveSettings()
-                    }
-                    Button("Cancel", role: .cancel) {
-                        storedLockdownMode = false
-                    }
-                } message: {
-                    Text(
-                        "Lockdown Mode will disable iCloud sync, imports and exports. Use this when you need to minimize external connectivity and data movement."
-                    )
+            }
+            .accessibilityIdentifier("lockdownToggle")
+            .padding(.vertical, 8)
+            .alert("Enable Lockdown Mode?", isPresented: $showLockdownConfirm) {
+                Button("Enable Lockdown", role: .destructive) {
+                    albumManager.lockdownModeEnabled = true
+                    storedLockdownMode = true
+                    albumManager.saveSettings()
                 }
+                Button("Cancel", role: .cancel) {
+                    // Do nothing - toggle stays off
+                }
+            } message: {
+                Text(
+                    "Lockdown Mode will:\n\n• Block all imports (files, photos, camera)\n• Block all exports\n• Disable iCloud sync\n• Block Share Extension\n\nYou can turn this off at any time from this settings screen."
+                )
+            }
 
-            Text(
-                "While Lockdown Mode is enabled the app will refuse imports, exports, and iCloud verification. Share extensions will be blocked from depositing files into the album's inbox."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            Text(albumManager.lockdownModeEnabled
+                 ? "🔒 LOCKDOWN ACTIVE: No data can enter or leave this album until you disable Lockdown Mode above."
+                 : "When enabled, the app refuses all data movement — no imports, exports, or cloud sync. Use this for maximum isolation.")
+                .font(.caption)
+                .foregroundStyle(albumManager.lockdownModeEnabled ? .red : .secondary)
 
             Text("Import & Export").font(.headline)
 
@@ -152,7 +178,7 @@ struct PreferencesSectionMid: View {
             .disabled(albumManager.lockdownModeEnabled)
 
             HStack {
-                Text("Backup Schedule")
+                Text("Automatic Backup Schedule")
                 Spacer()
                 Picker(
                     "Backup",
@@ -163,7 +189,7 @@ struct PreferencesSectionMid: View {
                             albumManager.saveSettings()
                         })
                 ) {
-                    Text("Manual").tag("manual")
+                    Text("Manual only").tag("manual")
                     Text("Weekly").tag("weekly")
                     Text("Monthly").tag("monthly")
                 }
@@ -172,8 +198,14 @@ struct PreferencesSectionMid: View {
             }
             .disabled(albumManager.lockdownModeEnabled)
 
+            Text(albumManager.backupSchedule == "manual"
+                 ? "Backups are only created when you manually export. Use 'Export Encrypted Key Backup' below to create a backup file you can store anywhere."
+                 : "The app will automatically create encrypted backup archives (password-protected .tar.gz) to your iCloud Drive on a \(albumManager.backupSchedule) basis.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
             Toggle(
-                "Encrypted iCloud Sync",
+                "Encrypt iCloud Sync",
                 isOn: Binding(
                     get: { albumManager.encryptedCloudSyncEnabled },
                     set: {
@@ -182,6 +214,12 @@ struct PreferencesSectionMid: View {
                     })
             )
             .disabled(albumManager.lockdownModeEnabled)
+
+            Text(albumManager.encryptedCloudSyncEnabled
+                 ? "✅ Your album is synced to iCloud with client-side AES-GCM encryption. Apple cannot read your data — only devices with your password can decrypt it."
+                 : "❌ iCloud sync is disabled. Your album exists only on this device. Enable this to back up encrypted data to iCloud and sync across your devices.")
+                .font(.caption)
+                .foregroundStyle(albumManager.encryptedCloudSyncEnabled ? .green : .secondary)
 
             // Cloud sync UI (small group)
             VStack(alignment: .leading, spacing: 8) {
