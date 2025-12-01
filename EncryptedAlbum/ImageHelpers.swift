@@ -19,6 +19,26 @@ extension Image {
         #endif
     }
 
+    /// Given a runtime image and an optional generated marketing image, pick the
+    /// best one to display so we prefer high-resolution images (downscale) over
+    /// upscaling small images. `visualCap` is in points.
+    public static func chooseBestMarketingImage(runtime: PlatformImage?, generated: PlatformImage?, visualCap: CGFloat) -> PlatformImage? {
+        func width(of img: PlatformImage?) -> CGFloat {
+            guard let img = img else { return 0 }
+            return img.size.width
+        }
+
+        // If there's no runtime image, prefer generated candidate
+        if runtime == nil { return generated }
+
+        let runtimeWidth = width(of: runtime)
+        if runtimeWidth >= visualCap { return runtime }
+
+        if let gen = generated, width(of: gen) > runtimeWidth { return gen }
+
+        return runtime
+    }
+
     init(platformImage: PlatformImage) {
         #if os(macOS)
             self.init(nsImage: platformImage)
@@ -180,6 +200,17 @@ final class AppIconService: ObservableObject {
                 setSystemIcon(nil)
                 return
             }
+        } else {
+            // Validate the requested icon against the allowed set so we never pass arbitrary
+            // strings to the platform API (defense-in-depth).
+            if name.isEmpty == false {
+                let candidate = name
+                if !availableIcons.contains(candidate) {
+                    AppLog.debugPrivate("AppIconService: prevented attempt to set unknown icon name \(candidate)")
+                    DispatchQueue.main.async { self.lastIconApplyError = "Unknown icon: \(candidate)" }
+                    return
+                }
+            }
         }
 #else
         if name.isEmpty {
@@ -187,17 +218,6 @@ final class AppIconService: ObservableObject {
             return
         }
 #endif
-        // Validate the requested icon against the allowed set so we never pass arbitrary
-        // strings to the platform API (defense-in-depth).
-        if name.isEmpty == false {
-            let candidate = name
-            if !availableIcons.contains(candidate) {
-                AppLog.debugPrivate("AppIconService: prevented attempt to set unknown icon name \(candidate)")
-                DispatchQueue.main.async { self.lastIconApplyError = "Unknown icon: \(candidate)" }
-                return
-            }
-        }
-
         // Generate a runtime 1024 image and store it for preview purposes
         runtimeMarketingImage = Self.generateMarketingImage(from: name)
         setSystemIcon(name)
@@ -320,10 +340,35 @@ final class AppIconService: ObservableObject {
     static func generateMarketingImage(from iconName: String?) -> PlatformImage? {
         #if os(macOS)
         // Prefer the dedicated 512@2x runtime marketing asset when requested.
-        let marketingCandidates = [
-            "AppIcon-512@2x", "AppIcon512@2x", "AppIcon-512", "AppIcon512",
-            "AppIcon_marketing", "AppIconMarketingRuntime", "AppIcon"
-        ]
+        // If the developer included an explicit mac App Store marketing PNG named "mac1024.png"
+        // inside the app bundle (for example in an AppIcon.appiconset), prefer that image first
+        // since it is the canonical Mac App Store rounded 1024 image.
+        if let macURL = bundleResourceURL(matching: "mac1024.png"), let data = try? Data(contentsOf: macURL), let macImg = NSImage(data: data) {
+            AppLog.debugPublic("AppIconService: found mac1024.png at runtime: \(macURL.path)")
+             // Render a 1024x1024 representation using the supplied mac1024 resource as-is.
+            let size = NSSize(width: 1024, height: 1024)
+            let target = NSImage(size: size)
+            target.lockFocus()
+            defer { target.unlockFocus() }
+            if let ctx = NSGraphicsContext.current?.cgContext {
+                ctx.saveGState()
+                let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
+                let corner = CGFloat(0.15 * 1024)
+                let path = CGPath(roundedRect: rect, cornerWidth: corner, cornerHeight: corner, transform: nil)
+                ctx.addPath(path)
+                ctx.clip()
+                macImg.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1.0)
+                ctx.restoreGState()
+            } else {
+                let rect = NSRect(origin: .zero, size: size)
+                macImg.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1.0)
+            }
+            return target
+        }
+         let marketingCandidates = [
+             "AppIcon-512@2x", "AppIcon512@2x", "AppIcon-512", "AppIcon512",
+             "AppIcon_marketing", "AppIconMarketingRuntime", "AppIcon"
+         ]
 
         let nameToLoad: String
         if iconName == nil || iconName == "AppIcon" {
@@ -360,10 +405,25 @@ final class AppIconService: ObservableObject {
         return target
         #else
         // Prefer the dedicated 512@2x runtime marketing asset when requested.
+        // Prefer a bundled mac1024.png wherever present (this is the canonical app-store image)
+        if let macURL = bundleResourceURL(matching: "mac1024.png"), let data = try? Data(contentsOf: macURL), let macImg = UIImage(data: data, scale: 1.0) {
+             AppLog.debugPublic("AppIconService: found mac1024.png at runtime: \(macURL.path)")
+              // Render to 1024x1024 marketing canvas for consistency
+             let format = UIGraphicsImageRendererFormat()
+             format.scale = 1.0
+             let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
+             return renderer.image { ctx in
+                 let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
+                 let corner = CGFloat(0.15 * 1024)
+                 let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
+                 path.addClip()
+                 macImg.draw(in: rect)
+             }
+         }
         var marketingCandidates = [
-            "AppIcon-1024", "AppIcon-512@2x", "AppIcon1024", "AppIcon-512", "AppIcon512",
-            "AppIcon_marketing", "AppIconMarketingRuntime", "AppIcon"
-        ]
+             "AppIcon-1024", "AppIcon-512@2x", "AppIcon1024", "AppIcon-512", "AppIcon512",
+             "AppIcon_marketing", "AppIconMarketingRuntime", "AppIcon"
+         ]
 
         // If a specific iconName was provided (e.g. an alternate icon), prefer it as a candidate
         if let iconName = iconName, !iconName.isEmpty {
@@ -389,16 +449,17 @@ final class AppIconService: ObservableObject {
                     url = Bundle.main.url(forResource: candidateName, withExtension: "png")
                 }
                 if let url = url {
-                    if let data = try? Data(contentsOf: url), let img = UIImage(data: data, scale: UIScreen.main.scale) {
-                        let px = max(img.size.width * img.scale, img.size.height * img.scale)
-                        if px > bestPixels {
-                            bestPixels = px
-                            bestImage = img
-                        }
-                        // If we already found >=1024px, prefer immediately
-                        if bestPixels >= 1024 { break }
-                    }
-                }
+                    if let data = try? Data(contentsOf: url), let img = UIImage(data: data, scale: 1.0) {
+                         let px = max(img.size.width * img.scale, img.size.height * img.scale)
+                         if px > bestPixels {
+                             AppLog.debugPrivate("AppIconService: candidate bundle PNG \(url.lastPathComponent) pixels=\(px)")
+                             bestPixels = px
+                             bestImage = img
+                         }
+                         // If we already found >=1024px, prefer immediately
+                         if bestPixels >= 1024 { break }
+                     }
+                 }
             }
             if bestPixels >= 1024 { break }
 
@@ -408,6 +469,7 @@ final class AppIconService: ObservableObject {
                 if let img = UIImage(named: candidateAsset) {
                     let px = max(img.size.width * img.scale, img.size.height * img.scale)
                     if px > bestPixels {
+                        AppLog.debugPrivate("AppIconService: candidate asset \(candidateAsset) pixels=\(px)")
                         bestPixels = px
                         bestImage = img
                     }
@@ -426,30 +488,35 @@ final class AppIconService: ObservableObject {
                 if url == nil {
                     url = Bundle.main.url(forResource: name, withExtension: "png")
                 }
-                if let url = url, let data = try? Data(contentsOf: url), let img = UIImage(data: data, scale: UIScreen.main.scale) {
-                     let px = max(img.size.width * img.scale, img.size.height * img.scale)
-                     if px > bestPixels {
-                         bestPixels = px
-                         bestImage = img
-                     }
-                     if bestPixels >= 1024 { break }
-                 }
-            }
-        }
-
-        guard let ui = bestImage ?? UIImage(named: "AppIcon") else { return nil }
-
+                if let url = url, let data = try? Data(contentsOf: url), let img = UIImage(data: data, scale: 1.0) {
+                     AppLog.debugPrivate("AppIconService: fallback candidate bundle PNG \(url.lastPathComponent)")
+                      let px = max(img.size.width * img.scale, img.size.height * img.scale)
+                      if px > bestPixels {
+                          bestPixels = px
+                          bestImage = img
+                      }
+                      if bestPixels >= 1024 { break }
+                  }
+              }
+          }
+        guard let ui = bestImage ?? UIImage(named: "AppIcon") else {
+             AppLog.debugPublic("AppIconService: no usable PNG or asset found for marketing image")
+             return nil
+         }
+         AppLog.debugPublic("AppIconService: selected marketing image pixels=\(max(ui.size.width * ui.scale, ui.size.height * ui.scale))")
         // Always render a 1024x1024 marketing image with rounded corners for a consistent look.
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024))
-        let out = renderer.image { ctx in
-            let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
-            // Rounded corners — chosen to match marketing corner radii (approx 15% of size)
-            let corner = CGFloat(0.15 * 1024)
-            let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
-            path.addClip()
-            ui.draw(in: rect)
-        }
-        return out
-        #endif
-    }
-}
+    let outFormat = UIGraphicsImageRendererFormat()
+    outFormat.scale = 1.0
+    let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: outFormat)
+         let out = renderer.image { ctx in
+             let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
+             // Rounded corners — chosen to match marketing corner radii (approx 15% of size)
+             let corner = CGFloat(0.15 * 1024)
+             let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
+             path.addClip()
+             ui.draw(in: rect)
+         }
+         return out
+         #endif
+     }
+ }
