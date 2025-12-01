@@ -272,16 +272,320 @@ struct AlbumDetailView: View {
         }
     }
 #else
-    // macOS fallback: keep an informative placeholder so the app doesn't present a blank/black screen
+    // macOS implementation: Show albums from Photos library and let user select items
+    import AppKit
+    import PhotosUI
+    
     struct PhotosLibraryPicker: View {
+        @EnvironmentObject var albumManager: AlbumManager
+        @Environment(\.dismiss) private var dismiss
+        
+        @State private var albums: [(name: String, collection: PHAssetCollection)] = []
+        @State private var selectedAlbum: PHAssetCollection?
+        @State private var assets: [PHAsset] = []
+        @State private var selectedAssets: Set<String> = []
+        @State private var isLoading = false
+        @State private var isImporting = false
+        @State private var importProgress: Int = 0
+        @State private var importTotal: Int = 0
+        @State private var accessGranted = false
+        @State private var thumbnails: [String: NSImage] = [:]
+        
+        private let photosService = PhotosLibraryService.shared
+        
         var body: some View {
-            VStack(spacing: 16) {
-                Text("Photo library import is available on iOS only in this build.")
-                    .font(.headline)
-                    .multilineTextAlignment(.center)
-                    .padding()
-                Spacer()
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Text("Import from Photos Library")
+                        .font(.headline)
+                    Spacer()
+                    
+                    if !selectedAssets.isEmpty {
+                        Text("\(selectedAssets.count) selected")
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .keyboardShortcut(.cancelAction)
+                    
+                    Button("Import \(selectedAssets.count > 0 ? "(\(selectedAssets.count))" : "")") {
+                        Task { await importSelectedAssets() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(selectedAssets.isEmpty || isImporting)
+                    .keyboardShortcut(.defaultAction)
+                }
+                .padding()
+                
+                Divider()
+                
+                if !accessGranted {
+                    // Request access view
+                    VStack(spacing: 16) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.secondary)
+                        Text("Photos Access Required")
+                            .font(.headline)
+                        Text("Grant access to import photos from your library.")
+                            .foregroundStyle(.secondary)
+                        Button("Grant Access") {
+                            requestAccess()
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if isImporting {
+                    // Import progress view
+                    VStack(spacing: 16) {
+                        ProgressView(value: Double(importProgress), total: Double(importTotal))
+                            .progressViewStyle(.linear)
+                            .frame(width: 200)
+                        Text("Importing \(importProgress) of \(importTotal)...")
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    HSplitView {
+                        // Albums list
+                        List(albums, id: \.collection.localIdentifier, selection: Binding(
+                            get: { selectedAlbum?.localIdentifier },
+                            set: { newId in
+                                selectedAlbum = albums.first { $0.collection.localIdentifier == newId }?.collection
+                                if let album = selectedAlbum {
+                                    loadAssets(from: album)
+                                }
+                            }
+                        )) { album in
+                            HStack {
+                                Image(systemName: albumIcon(for: album.collection))
+                                    .foregroundStyle(.secondary)
+                                Text(album.name)
+                                Spacer()
+                            }
+                            .tag(album.collection.localIdentifier)
+                        }
+                        .listStyle(.sidebar)
+                        .frame(minWidth: 180, maxWidth: 250)
+                        
+                        // Assets grid
+                        if isLoading {
+                            ProgressView("Loading...")
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else if assets.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "photo.stack")
+                                    .font(.system(size: 36))
+                                    .foregroundStyle(.secondary)
+                                Text(selectedAlbum == nil ? "Select an album" : "No photos in this album")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            ScrollView {
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100, maximum: 120), spacing: 8)], spacing: 8) {
+                                    ForEach(assets, id: \.localIdentifier) { asset in
+                                        assetThumbnail(asset)
+                                            .onTapGesture {
+                                                toggleSelection(asset)
+                                            }
+                                    }
+                                }
+                                .padding()
+                            }
+                        }
+                    }
+                }
             }
+            .frame(minWidth: 700, minHeight: 500)
+            .onAppear {
+                requestAccess()
+            }
+        }
+        
+        private func albumIcon(for collection: PHAssetCollection) -> String {
+            switch collection.assetCollectionSubtype {
+            case .smartAlbumAllHidden:
+                return "eye.slash"
+            case .smartAlbumFavorites:
+                return "heart.fill"
+            case .smartAlbumVideos:
+                return "video"
+            case .smartAlbumScreenshots:
+                return "camera.viewfinder"
+            case .smartAlbumSelfPortraits:
+                return "person.crop.square"
+            case .smartAlbumRecentlyAdded:
+                return "clock"
+            case .albumCloudShared:
+                return "person.2"
+            default:
+                return "photo.on.rectangle"
+            }
+        }
+        
+        @ViewBuilder
+        private func assetThumbnail(_ asset: PHAsset) -> some View {
+            let isSelected = selectedAssets.contains(asset.localIdentifier)
+            
+            ZStack(alignment: .bottomTrailing) {
+                Group {
+                    if let thumbnail = thumbnails[asset.localIdentifier] {
+                        Image(nsImage: thumbnail)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.2))
+                            .overlay {
+                                ProgressView()
+                                    .scaleEffect(0.5)
+                            }
+                            .onAppear {
+                                loadThumbnail(for: asset)
+                            }
+                    }
+                }
+                .frame(width: 100, height: 100)
+                .clipped()
+                .cornerRadius(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
+                )
+                
+                // Selection checkmark
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.white, Color.accentColor)
+                        .font(.system(size: 20))
+                        .padding(4)
+                }
+                
+                // Video duration badge
+                if asset.mediaType == .video {
+                    HStack(spacing: 2) {
+                        Image(systemName: "video.fill")
+                            .font(.caption2)
+                        Text(formatDuration(asset.duration))
+                            .font(.caption2)
+                    }
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(4)
+                    .padding(4)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
+            }
+        }
+        
+        private func formatDuration(_ duration: TimeInterval) -> String {
+            let minutes = Int(duration) / 60
+            let seconds = Int(duration) % 60
+            return String(format: "%d:%02d", minutes, seconds)
+        }
+        
+        private func toggleSelection(_ asset: PHAsset) {
+            if selectedAssets.contains(asset.localIdentifier) {
+                selectedAssets.remove(asset.localIdentifier)
+            } else {
+                selectedAssets.insert(asset.localIdentifier)
+            }
+        }
+        
+        private func requestAccess() {
+            photosService.requestAccess { granted in
+                accessGranted = granted
+                if granted {
+                    loadAlbums()
+                }
+            }
+        }
+        
+        private func loadAlbums() {
+            albums = photosService.getAllAlbums(libraryType: .both)
+            
+            // Auto-select first album
+            if let first = albums.first {
+                selectedAlbum = first.collection
+                loadAssets(from: first.collection)
+            }
+        }
+        
+        private func loadAssets(from collection: PHAssetCollection) {
+            isLoading = true
+            selectedAssets.removeAll()
+            thumbnails.removeAll()
+            
+            DispatchQueue.global(qos: .userInitiated).async {
+                let fetchedAssets = photosService.getAssets(from: collection)
+                DispatchQueue.main.async {
+                    assets = fetchedAssets
+                    isLoading = false
+                }
+            }
+        }
+        
+        private func loadThumbnail(for asset: PHAsset) {
+            let options = PHImageRequestOptions()
+            options.deliveryMode = .opportunistic
+            options.isNetworkAccessAllowed = true
+            options.resizeMode = .fast
+            
+            PHImageManager.default().requestImage(
+                for: asset,
+                targetSize: CGSize(width: 200, height: 200),
+                contentMode: .aspectFill,
+                options: options
+            ) { image, _ in
+                if let image = image {
+                    DispatchQueue.main.async {
+                        thumbnails[asset.localIdentifier] = image
+                    }
+                }
+            }
+        }
+        
+        private func importSelectedAssets() async {
+            let assetsToImport = assets.filter { selectedAssets.contains($0.localIdentifier) }
+            guard !assetsToImport.isEmpty else { return }
+            
+            isImporting = true
+            importTotal = assetsToImport.count
+            importProgress = 0
+            
+            for asset in assetsToImport {
+                do {
+                    if let result = await photosService.getMediaDataAsync(for: asset) {
+                        if let fileURL = result.fileURL {
+                            // File-based import
+                            try await albumManager.hidePhotoSource(
+                                mediaSource: .fileURL(fileURL),
+                                filename: result.filename,
+                                assetIdentifier: asset.localIdentifier,
+                                mediaType: result.mediaType
+                            )
+                            // Clean up temp file
+                            if result.shouldDeleteFileWhenFinished {
+                                try? FileManager.default.removeItem(at: fileURL)
+                            }
+                        } else if let data = result.data {
+                            // Data-based import
+                            try await albumManager.hidePhotoData(data, filename: result.filename)
+                        }
+                    }
+                } catch {
+                    AppLog.error("Failed to import asset \(asset.localIdentifier): \(error.localizedDescription)")
+                }
+                
+                importProgress += 1
+            }
+            
+            dismiss()
         }
     }
 #endif
