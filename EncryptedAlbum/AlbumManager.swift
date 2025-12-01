@@ -1359,9 +1359,8 @@ public class AlbumManager: ObservableObject {
 
     /// High-level helper for camera capture handling. Centralises the logic that used to
     /// live in camera UI components so that the behaviour can be tested and mocked.
-    /// If `cameraSaveToAlbumDirectly` is enabled, this will encrypt into the album.
-    /// Otherwise it will attempt to save the captured media into the system Photos library
-    /// using the `PhotosLibraryService.shared` instance (which is protocol-typed for mocking).
+    /// All captures are ALWAYS saved directly to the encrypted album - no exceptions.
+    /// If the album is locked, captures are queued and processed after unlock.
     @MainActor
     func handleCapturedMedia(
         mediaSource: MediaSource,

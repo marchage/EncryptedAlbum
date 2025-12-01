@@ -12,6 +12,8 @@ import SwiftUI
         @Environment(\.dismiss) var dismiss
         @EnvironmentObject var albumManager: AlbumManager
         @StateObject private var model = iOSCameraModel()
+        @State private var showCaptureFlash = false
+        @State private var captureCount = 0
         
         var body: some View {
             GeometryReader { geometry in
@@ -32,6 +34,13 @@ import SwiftUI
                                 .font(.caption)
                                 .foregroundStyle(.gray)
                         }
+                    }
+                    
+                    // Capture flash overlay
+                    if showCaptureFlash {
+                        Color.white
+                            .ignoresSafeArea()
+                            .allowsHitTesting(false)
                     }
                     
                     // Camera controls overlay
@@ -83,6 +92,7 @@ import SwiftUI
                                 Button {
                                     if model.isRecording {
                                         model.stopRecording(albumManager: albumManager)
+                                        captureCount += 1
                                     } else {
                                         model.startRecording()
                                     }
@@ -104,6 +114,16 @@ import SwiftUI
                             } else {
                                 Button {
                                     model.capturePhoto(albumManager: albumManager)
+                                    // Visual feedback: brief flash
+                                    withAnimation(.easeOut(duration: 0.1)) {
+                                        showCaptureFlash = true
+                                    }
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                        withAnimation(.easeIn(duration: 0.15)) {
+                                            showCaptureFlash = false
+                                        }
+                                    }
+                                    captureCount += 1
                                 } label: {
                                     ZStack {
                                         Circle()
@@ -133,6 +153,19 @@ import SwiftUI
                             Text(String(format: "%02d:%02d", Int(duration) / 60, Int(duration) % 60))
                                 .font(.system(.headline, design: .monospaced))
                                 .foregroundStyle(.red)
+                                .padding(.bottom, 8)
+                        }
+                        
+                        // Capture count badge
+                        if captureCount > 0 {
+                            Text("\(captureCount) saved")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.green.opacity(0.8))
+                                .clipShape(Capsule())
                                 .padding(.bottom, 8)
                         }
                     }
@@ -509,6 +542,8 @@ import SwiftUI
         @EnvironmentObject var albumManager: AlbumManager
         @StateObject private var model = CameraModel()
         @State private var cameraErrorMessage: String?
+        @State private var showCaptureFlash = false
+        @State private var captureCount = 0
 
         var body: some View {
             ZStack {
@@ -520,6 +555,13 @@ import SwiftUI
                 } else {
                     Text("Camera access required")
                         .foregroundStyle(.white)
+                }
+                
+                // Capture flash overlay
+                if showCaptureFlash {
+                    Color.white
+                        .ignoresSafeArea()
+                        .allowsHitTesting(false)
                 }
 
                 VStack {
@@ -534,6 +576,18 @@ import SwiftUI
                         .padding(.leading)
 
                         Spacer()
+                        
+                        // Capture count badge
+                        if captureCount > 0 {
+                            Text("\\(captureCount) saved")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.green.opacity(0.8))
+                                .clipShape(Capsule())
+                        }
 
                         // Torch (flash) toggle — some cameras support a torch mode
                         // that can be toggled while previewing. Expose that control
@@ -583,6 +637,7 @@ import SwiftUI
                                         model.stopRecording(albumManager: albumManager) {
                                             // Keep camera open after recording
                                         }
+                                        captureCount += 1
                                     } else {
                                         model.startRecording()
                                     }
@@ -610,6 +665,16 @@ import SwiftUI
                                 model.capturePhoto(albumManager: albumManager) {
                                     // Keep camera open after capture
                                 }
+                                // Visual feedback: brief flash
+                                withAnimation(.easeOut(duration: 0.1)) {
+                                    showCaptureFlash = true
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    withAnimation(.easeIn(duration: 0.15)) {
+                                        showCaptureFlash = false
+                                    }
+                                }
+                                captureCount += 1
                             } label: {
                                 ZStack {
                                     Circle()
