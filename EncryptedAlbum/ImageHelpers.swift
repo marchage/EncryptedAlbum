@@ -383,7 +383,7 @@ final class AppIconService: ObservableObject {
             for suffix in suffixes {
                 let candidateName = base + suffix
                 if let url = Bundle.main.url(forResource: candidateName, withExtension: "png") {
-                    if let data = try? Data(contentsOf: url), let img = UIImage(data: data) {
+                    if let data = try? Data(contentsOf: url), let img = UIImage(data: data, scale: UIScreen.main.scale) {
                         let px = max(img.size.width * img.scale, img.size.height * img.scale)
                         if px > bestPixels {
                             bestPixels = px
@@ -423,7 +423,7 @@ final class AppIconService: ObservableObject {
                     }
                     if bestPixels >= 1024 { break }
                 }
-                if let url = Bundle.main.url(forResource: name, withExtension: "png"), let data = try? Data(contentsOf: url), let img = UIImage(data: data) {
+                if let url = Bundle.main.url(forResource: name, withExtension: "png"), let data = try? Data(contentsOf: url), let img = UIImage(data: data, scale: UIScreen.main.scale) {
                     let px = max(img.size.width * img.scale, img.size.height * img.scale)
                     if px > bestPixels {
                         bestPixels = px
