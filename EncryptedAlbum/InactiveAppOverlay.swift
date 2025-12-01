@@ -68,12 +68,12 @@ import SwiftUI
 
     struct PrivacyContentOverlay: View {
         @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .classic
+        @ObservedObject private var appIconService = AppIconService.shared
 
         var body: some View {
             VStack(spacing: 20) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(style == .light ? .black : .white)
+                appIconView
+                    .frame(width: 80, height: 80)
 
                 Text("Encrypted Album is obscured")
                     .font(.title2)
@@ -81,6 +81,33 @@ import SwiftUI
                     .foregroundStyle(style == .light ? .black : .white)
             }
             .padding(24)
+        }
+        
+        @ViewBuilder
+        private var appIconView: some View {
+            // Prefer the runtime icon from NSApplication on macOS
+            if let runtimeIcon = NSApp.applicationIconImage {
+                Image(nsImage: runtimeIcon)
+                    .resizable()
+                    .renderingMode(.original)
+                    .interpolation(.high)
+                    .aspectRatio(1, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+            } else if let generated = AppIconService.generateMarketingImage(from: appIconService.selectedIconName.isEmpty ? nil : appIconService.selectedIconName) {
+                Image(nsImage: generated)
+                    .resizable()
+                    .renderingMode(.original)
+                    .interpolation(.high)
+                    .aspectRatio(1, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+            } else {
+                // Fallback to lock icon
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(style == .light ? .black : .white)
+            }
         }
     }
 

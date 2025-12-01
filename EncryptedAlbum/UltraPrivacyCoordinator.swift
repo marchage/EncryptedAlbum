@@ -162,20 +162,43 @@
 
     private struct UltraPrivacyCoverView: View {
         @AppStorage("privacyBackgroundStyle") private var style: PrivacyBackgroundStyle = .classic
+        @ObservedObject private var appIconService = AppIconService.shared
 
         var body: some View {
             ZStack {
                 PrivacyOverlayBackground()
                 VStack(spacing: 20) {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 60))
-                        .foregroundStyle(style == .light ? .black : .white)
+                    // Show the actual app icon instead of a generic lock
+                    appIconView
+                        .frame(width: 80, height: 80)
 
                     Text("Encrypted Album Locked")
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundStyle(style == .light ? .black : .white)
                 }
+            }
+        }
+        
+        @ViewBuilder
+        private var appIconView: some View {
+            let selectedIcon = appIconService.selectedIconName.isEmpty ? nil : appIconService.selectedIconName
+            let runtimeImage = appIconService.runtimeMarketingImage
+            let generatedImage = AppIconService.generateMarketingImage(from: selectedIcon)
+            
+            if let bestImage = Image.chooseBestMarketingImage(runtime: runtimeImage, generated: generatedImage, visualCap: 80) {
+                Image(platformImage: bestImage)
+                    .resizable()
+                    .renderingMode(.original)
+                    .interpolation(.high)
+                    .aspectRatio(1, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+            } else {
+                // Fallback to lock icon if no app icon available
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(style == .light ? .black : .white)
             }
         }
     }
