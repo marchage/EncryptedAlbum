@@ -11,7 +11,8 @@ public enum SharePreviewHelper {
             for provider in attachments {
                 if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier)
                     || provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier)
-                    || provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                    || provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
+                {
                     total += 1
                 }
             }

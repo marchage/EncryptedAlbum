@@ -2,9 +2,9 @@ import Foundation
 import Photos
 
 #if canImport(EncryptedAlbum)
-@testable import EncryptedAlbum
+    @testable import EncryptedAlbum
 #else
-@testable import EncryptedAlbum_iOS
+    @testable import EncryptedAlbum_iOS
 #endif
 
 final class MockPhotosLibraryService: PhotosLibraryServiceProtocol {
@@ -22,7 +22,10 @@ final class MockPhotosLibraryService: PhotosLibraryServiceProtocol {
 
     func getMediaDataAsync(for asset: PHAsset) async -> MediaFetchResult? { return nil }
 
-    func saveMediaFileToLibrary(_ fileURL: URL, filename: String, mediaType: MediaType, toAlbum albumName: String?, creationDate: Date?, location: SecurePhoto.Location?, isFavorite: Bool?, completion: @escaping (Bool, Error?) -> Void) {
+    func saveMediaFileToLibrary(
+        _ fileURL: URL, filename: String, mediaType: MediaType, toAlbum albumName: String?, creationDate: Date?,
+        location: SecurePhoto.Location?, isFavorite: Bool?, completion: @escaping (Bool, Error?) -> Void
+    ) {
         savedFiles.append((fileURL, filename, mediaType))
         // record completion to allow tests to trigger different outcomes
         saveCompletions.append(completion)
@@ -35,7 +38,12 @@ final class MockPhotosLibraryService: PhotosLibraryServiceProtocol {
         completion(true)
     }
 
-    func batchSaveMediaToLibrary(_ mediaItems: [(data: Data, filename: String, mediaType: MediaType, creationDate: Date?, location: SecurePhoto.Location?, isFavorite: Bool?)], toAlbum albumName: String?, completion: @escaping (Int) -> Void) {
+    func batchSaveMediaToLibrary(
+        _ mediaItems: [(
+            data: Data, filename: String, mediaType: MediaType, creationDate: Date?, location: SecurePhoto.Location?,
+            isFavorite: Bool?
+        )], toAlbum albumName: String?, completion: @escaping (Int) -> Void
+    ) {
         completion(0)
     }
 }

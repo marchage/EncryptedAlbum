@@ -1,8 +1,9 @@
 import Foundation
 import os
+
 // MetricKit is available on iOS/tvOS but not macOS in the same API surface we expect here.
 #if canImport(MetricKit) && (os(iOS) || os(tvOS))
-import MetricKit
+    import MetricKit
 #endif
 
 /// Lightweight telemetry wrapper.
@@ -11,8 +12,7 @@ import MetricKit
 /// - Uses `os_signpost`/`Logger` for local instrumentation which can be uplifted to MetricKit
 ///   via post-processing in aggregation pipelines.
 /// - Strictly opt-in: nothing registers or records until `setEnabled(true)` is called.
-final class TelemetryService: NSObject
-{
+final class TelemetryService: NSObject {
     static let shared = TelemetryService()
 
     private(set) var isEnabled: Bool = false
@@ -35,18 +35,18 @@ final class TelemetryService: NSObject
     private func start() {
         logger.log("TelemetryService: starting (opt-in)")
         #if canImport(MetricKit) && (os(iOS) || os(tvOS))
-        if #available(iOS 13.0, tvOS 13.0, *) {
-            MXMetricManager.shared.add(self)
-        }
+            if #available(iOS 13.0, tvOS 13.0, *) {
+                MXMetricManager.shared.add(self)
+            }
         #endif
     }
 
     private func stop() {
         logger.log("TelemetryService: stopping")
         #if canImport(MetricKit) && (os(iOS) || os(tvOS))
-        if #available(iOS 13.0, tvOS 13.0, *) {
-            MXMetricManager.shared.remove(self)
-        }
+            if #available(iOS 13.0, tvOS 13.0, *) {
+                MXMetricManager.shared.remove(self)
+            }
         #endif
     }
 
@@ -63,15 +63,15 @@ final class TelemetryService: NSObject
 }
 
 #if canImport(MetricKit) && (os(iOS) || os(tvOS))
-@available(iOS 13.0, tvOS 13.0, *)
-extension TelemetryService: MXMetricManagerSubscriber {
-    func didReceive(_ payloads: [MXMetricPayload]) {
-        // MetricKit delivers aggregated system metrics. We intentionally do not ship
-        // them out from the device in this example. Instead we log a compact summary
-        // so developers can inspect logs when telemetry is enabled.
-        for payload in payloads {
-            logger.info("MetricKit payload received: \(String(describing: payload))")
+    @available(iOS 13.0, tvOS 13.0, *)
+    extension TelemetryService: MXMetricManagerSubscriber {
+        func didReceive(_ payloads: [MXMetricPayload]) {
+            // MetricKit delivers aggregated system metrics. We intentionally do not ship
+            // them out from the device in this example. Instead we log a compact summary
+            // so developers can inspect logs when telemetry is enabled.
+            for payload in payloads {
+                logger.info("MetricKit payload received: \(String(describing: payload))")
+            }
         }
     }
-}
 #endif

@@ -140,7 +140,9 @@ public class DirectImportProgress: ObservableObject {
         let minimumInterval: CFTimeInterval = 0.05
         let minimumByteDelta = max(bytesTotal / 200, Int64(128 * 1024))
 
-        if lastBytesUpdateTime == 0 || elapsed >= minimumInterval || byteDelta >= minimumByteDelta || clampedValue >= bytesTotal {
+        if lastBytesUpdateTime == 0 || elapsed >= minimumInterval || byteDelta >= minimumByteDelta
+            || clampedValue >= bytesTotal
+        {
             bytesProcessed = min(clampedValue, bytesTotal > 0 ? bytesTotal : clampedValue)
             lastReportedBytes = clampedValue
             lastBytesUpdateTime = now

@@ -1,8 +1,9 @@
 import XCTest
+
 #if canImport(EncryptedAlbum)
-@testable import EncryptedAlbum
+    @testable import EncryptedAlbum
 #elseif canImport(EncryptedAlbum_iOS)
-@testable import EncryptedAlbum_iOS
+    @testable import EncryptedAlbum_iOS
 #endif
 
 final class SettingsAndBackupTests: XCTestCase {
@@ -85,7 +86,9 @@ final class SettingsAndBackupTests: XCTestCase {
         let data = try Data(contentsOf: url)
         let container = try JSONDecoder().decode([String: String].self, from: data)
         XCTAssertEqual(container["version"], "1")
-        guard let saltB64 = container["salt"], let nonceB64 = container["nonce"], let encryptedB64 = container["encrypted"], let hmacB64 = container["hmac"] else {
+        guard let saltB64 = container["salt"], let nonceB64 = container["nonce"],
+            let encryptedB64 = container["encrypted"], let hmacB64 = container["hmac"]
+        else {
             XCTFail("Missing container fields")
             return
         }

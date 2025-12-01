@@ -1,8 +1,9 @@
 import XCTest
+
 #if canImport(EncryptedAlbum)
-@testable import EncryptedAlbum
+    @testable import EncryptedAlbum
 #else
-@testable import EncryptedAlbum_iOS
+    @testable import EncryptedAlbum_iOS
 #endif
 
 final class AppIconServiceRetryTests: XCTestCase {
@@ -21,7 +22,10 @@ final class AppIconServiceRetryTests: XCTestCase {
                 guard let self = self else { return }
                 if self.failuresRemaining > 0 {
                     self.failuresRemaining -= 1
-                    completion(NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "Resource temporarily unavailable"]))
+                    completion(
+                        NSError(
+                            domain: "test", code: 1,
+                            userInfo: [NSLocalizedDescriptionKey: "Resource temporarily unavailable"]))
                 } else {
                     completion(nil)
                 }

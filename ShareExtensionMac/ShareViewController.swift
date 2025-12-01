@@ -25,23 +25,27 @@ final class ShareViewController: NSViewController {
 
     override func loadView() {
         super.loadView()
-    
+
         // Insert code here to customize the view
         // Add a short hint so the macOS share UI isn't an empty sheet and matches iOS wording
         let v = self.view
-            let hintField = NSTextField(labelWithString: NSLocalizedString("Share.Placeholder", value: "Import to Encrypted Album — Save shared photos & videos to the app's ImportInbox", comment: "hint text in macOS share sheet"))
-            hintField.translatesAutoresizingMaskIntoConstraints = false
-            hintField.lineBreakMode = .byWordWrapping
-            hintField.alignment = .center
-            hintField.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
-            hintField.textColor = NSColor.secondaryLabelColor
-            v.addSubview(hintField)
-            NSLayoutConstraint.activate([
-                hintField.topAnchor.constraint(equalTo: v.topAnchor, constant: 16),
-                hintField.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 16),
-                hintField.trailingAnchor.constraint(equalTo: v.trailingAnchor, constant: -16)
-            ])
-        
+        let hintField = NSTextField(
+            labelWithString: NSLocalizedString(
+                "Share.Placeholder",
+                value: "Import to Encrypted Album — Save shared photos & videos to the app's ImportInbox",
+                comment: "hint text in macOS share sheet"))
+        hintField.translatesAutoresizingMaskIntoConstraints = false
+        hintField.lineBreakMode = .byWordWrapping
+        hintField.alignment = .center
+        hintField.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        hintField.textColor = NSColor.secondaryLabelColor
+        v.addSubview(hintField)
+        NSLayoutConstraint.activate([
+            hintField.topAnchor.constraint(equalTo: v.topAnchor, constant: 16),
+            hintField.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 16),
+            hintField.trailingAnchor.constraint(equalTo: v.trailingAnchor, constant: -16),
+        ])
+
         // Build a compact preview strip with thumbnail + label + small progress
         if let items = self.extensionContext?.inputItems as? [NSExtensionItem] {
             let stack = NSStackView()
@@ -53,7 +57,7 @@ final class ShareViewController: NSViewController {
             NSLayoutConstraint.activate([
                 stack.topAnchor.constraint(equalTo: hintField.bottomAnchor, constant: 8),
                 stack.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 16),
-                stack.trailingAnchor.constraint(lessThanOrEqualTo: v.trailingAnchor, constant: -16)
+                stack.trailingAnchor.constraint(lessThanOrEqualTo: v.trailingAnchor, constant: -16),
             ])
             self.previewStack = stack
 
@@ -78,7 +82,15 @@ final class ShareViewController: NSViewController {
                     img.widthAnchor.constraint(equalToConstant: 48).isActive = true
                     img.heightAnchor.constraint(equalToConstant: 48).isActive = true
 
-                    let label = NSTextField(labelWithString: provider.hasItemConformingToTypeIdentifier("public.image") ? NSLocalizedString("Share.Preview.ImageLabel", value: "Image", comment: "preview label for images") : provider.hasItemConformingToTypeIdentifier("public.movie") ? NSLocalizedString("Share.Preview.MovieLabel", value: "Video", comment: "preview label for video") : NSLocalizedString("Share.Preview.ItemLabel", value: "Item", comment: "preview generic item"))
+                    let label = NSTextField(
+                        labelWithString: provider.hasItemConformingToTypeIdentifier("public.image")
+                            ? NSLocalizedString(
+                                "Share.Preview.ImageLabel", value: "Image", comment: "preview label for images")
+                            : provider.hasItemConformingToTypeIdentifier("public.movie")
+                                ? NSLocalizedString(
+                                    "Share.Preview.MovieLabel", value: "Video", comment: "preview label for video")
+                                : NSLocalizedString(
+                                    "Share.Preview.ItemLabel", value: "Item", comment: "preview generic item"))
                     label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
                     label.textColor = NSColor.secondaryLabelColor
 
@@ -149,7 +161,10 @@ final class ShareViewController: NSViewController {
         for item in inputItems {
             guard let attachments = item.attachments else { continue }
             for provider in attachments {
-                if provider.hasItemConformingToTypeIdentifier("public.file-url") || provider.hasItemConformingToTypeIdentifier("public.image") || provider.hasItemConformingToTypeIdentifier("public.movie") {
+                if provider.hasItemConformingToTypeIdentifier("public.file-url")
+                    || provider.hasItemConformingToTypeIdentifier("public.image")
+                    || provider.hasItemConformingToTypeIdentifier("public.movie")
+                {
                     totalCount += 1
                 }
             }
@@ -169,7 +184,7 @@ final class ShareViewController: NSViewController {
                 NSLayoutConstraint.activate([
                     p.topAnchor.constraint(equalTo: previewStack?.bottomAnchor ?? v.topAnchor, constant: 8),
                     p.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 16),
-                    p.trailingAnchor.constraint(equalTo: v.trailingAnchor, constant: -16)
+                    p.trailingAnchor.constraint(equalTo: v.trailingAnchor, constant: -16),
                 ])
                 self.progressIndicator = p
             }
@@ -195,18 +210,29 @@ final class ShareViewController: NSViewController {
             if provider.hasItemConformingToTypeIdentifier("public.file-url") {
                 provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { item, error in
                     if let url = item as? URL {
-                        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: self.appGroupIdentifier) else { dispatchGroup.leave(); return }
-                        self.copyFileToSharedContainerWithProgress(to: containerURL, from: url, chunkSize: 64 * 1024, progress: { written, total in
-                            updateItemProgress(written, total)
-                        }, completion: { success in
-                            if success {
-                                countSyncQueue.async {
-                                    savedCount += 1
-                                    DispatchQueue.main.async { self.updateProgress(saved: savedCount, total: totalCount) }
-                                }
-                            }
+                        guard
+                            let containerURL = FileManager.default.containerURL(
+                                forSecurityApplicationGroupIdentifier: self.appGroupIdentifier)
+                        else {
                             dispatchGroup.leave()
-                        })
+                            return
+                        }
+                        self.copyFileToSharedContainerWithProgress(
+                            to: containerURL, from: url, chunkSize: 64 * 1024,
+                            progress: { written, total in
+                                updateItemProgress(written, total)
+                            },
+                            completion: { success in
+                                if success {
+                                    countSyncQueue.async {
+                                        savedCount += 1
+                                        DispatchQueue.main.async {
+                                            self.updateProgress(saved: savedCount, total: totalCount)
+                                        }
+                                    }
+                                }
+                                dispatchGroup.leave()
+                            })
                     } else {
                         dispatchGroup.leave()
                     }
@@ -214,29 +240,77 @@ final class ShareViewController: NSViewController {
             } else if provider.hasItemConformingToTypeIdentifier("public.image") {
                 provider.loadItem(forTypeIdentifier: "public.image", options: nil) { item, error in
                     if let url = item as? URL {
-                        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: self.appGroupIdentifier) else { dispatchGroup.leave(); return }
-                        self.copyFileToSharedContainerWithProgress(to: containerURL, from: url, chunkSize: 64 * 1024, progress: { written, total in
-                            updateItemProgress(written, total)
-                        }, completion: { success in
-                            if success { countSyncQueue.async { savedCount += 1; DispatchQueue.main.async { self.updateProgress(saved: savedCount, total: totalCount) } } }
+                        guard
+                            let containerURL = FileManager.default.containerURL(
+                                forSecurityApplicationGroupIdentifier: self.appGroupIdentifier)
+                        else {
                             dispatchGroup.leave()
-                        })
+                            return
+                        }
+                        self.copyFileToSharedContainerWithProgress(
+                            to: containerURL, from: url, chunkSize: 64 * 1024,
+                            progress: { written, total in
+                                updateItemProgress(written, total)
+                            },
+                            completion: { success in
+                                if success {
+                                    countSyncQueue.async {
+                                        savedCount += 1
+                                        DispatchQueue.main.async {
+                                            self.updateProgress(saved: savedCount, total: totalCount)
+                                        }
+                                    }
+                                }
+                                dispatchGroup.leave()
+                            })
                     } else if let data = item as? Data {
-                        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: self.appGroupIdentifier) else { dispatchGroup.leave(); return }
-                        self.writeDataToSharedContainerWithProgress(to: containerURL, data, chunkSize: 64 * 1024, progress: { written, total in
-                            updateItemProgress(written, total)
-                        }, completion: { success in
-                            if success { countSyncQueue.async { savedCount += 1; DispatchQueue.main.async { self.updateProgress(saved: savedCount, total: totalCount) } } }
+                        guard
+                            let containerURL = FileManager.default.containerURL(
+                                forSecurityApplicationGroupIdentifier: self.appGroupIdentifier)
+                        else {
                             dispatchGroup.leave()
-                        })
+                            return
+                        }
+                        self.writeDataToSharedContainerWithProgress(
+                            to: containerURL, data, chunkSize: 64 * 1024,
+                            progress: { written, total in
+                                updateItemProgress(written, total)
+                            },
+                            completion: { success in
+                                if success {
+                                    countSyncQueue.async {
+                                        savedCount += 1
+                                        DispatchQueue.main.async {
+                                            self.updateProgress(saved: savedCount, total: totalCount)
+                                        }
+                                    }
+                                }
+                                dispatchGroup.leave()
+                            })
                     } else if let image = item as? NSImage, let tiff = image.tiffRepresentation {
-                        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: self.appGroupIdentifier) else { dispatchGroup.leave(); return }
-                        self.writeDataToSharedContainerWithProgress(to: containerURL, tiff, chunkSize: 64 * 1024, progress: { written, total in
-                            updateItemProgress(written, total)
-                        }, completion: { success in
-                            if success { countSyncQueue.async { savedCount += 1; DispatchQueue.main.async { self.updateProgress(saved: savedCount, total: totalCount) } } }
+                        guard
+                            let containerURL = FileManager.default.containerURL(
+                                forSecurityApplicationGroupIdentifier: self.appGroupIdentifier)
+                        else {
                             dispatchGroup.leave()
-                        })
+                            return
+                        }
+                        self.writeDataToSharedContainerWithProgress(
+                            to: containerURL, tiff, chunkSize: 64 * 1024,
+                            progress: { written, total in
+                                updateItemProgress(written, total)
+                            },
+                            completion: { success in
+                                if success {
+                                    countSyncQueue.async {
+                                        savedCount += 1
+                                        DispatchQueue.main.async {
+                                            self.updateProgress(saved: savedCount, total: totalCount)
+                                        }
+                                    }
+                                }
+                                dispatchGroup.leave()
+                            })
                     } else {
                         dispatchGroup.leave()
                     }
@@ -251,12 +325,21 @@ final class ShareViewController: NSViewController {
             // Show a simple confirmation to the user so they know the import succeeded.
             let alert = NSAlert()
             if savedCount > 0 {
-                alert.messageText = String(format: NSLocalizedString("Share.ImportedTitle", value: "Imported %d item(s)", comment: "Imported title with count"), savedCount)
-                alert.informativeText = NSLocalizedString("Share.ImportedMessage", value: "Encrypted Album saved shared items to the ImportInbox. Open the app to finish importing.", comment: "Imported informative message")
+                alert.messageText = String(
+                    format: NSLocalizedString(
+                        "Share.ImportedTitle", value: "Imported %d item(s)", comment: "Imported title with count"),
+                    savedCount)
+                alert.informativeText = NSLocalizedString(
+                    "Share.ImportedMessage",
+                    value: "Encrypted Album saved shared items to the ImportInbox. Open the app to finish importing.",
+                    comment: "Imported informative message")
                 alert.addButton(withTitle: "OK")
             } else {
-                alert.messageText = NSLocalizedString("Share.NothingImportedTitle", value: "Nothing imported", comment: "Nothing imported title")
-                alert.informativeText = NSLocalizedString("Share.NothingImportedMessage", value: "No supported files were available to import.", comment: "Nothing imported message")
+                alert.messageText = NSLocalizedString(
+                    "Share.NothingImportedTitle", value: "Nothing imported", comment: "Nothing imported title")
+                alert.informativeText = NSLocalizedString(
+                    "Share.NothingImportedMessage", value: "No supported files were available to import.",
+                    comment: "Nothing imported message")
                 alert.addButton(withTitle: "OK")
             }
 
@@ -276,7 +359,10 @@ final class ShareViewController: NSViewController {
     // MARK: - Helpers
 
     private func saveFileToSharedContainer(from url: URL) -> Bool {
-        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
+        guard
+            let containerURL = FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: appGroupIdentifier)
+        else {
             NSLog("ShareExtensionMac: App group container not found for id: %@", appGroupIdentifier)
             return false
         }
@@ -304,7 +390,10 @@ final class ShareViewController: NSViewController {
     }
 
     private func saveDataToSharedContainer(_ data: Data, suggestedFilename: String?) -> Bool {
-        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
+        guard
+            let containerURL = FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: appGroupIdentifier)
+        else {
             NSLog("ShareExtensionMac: App group container not found for id: %@", appGroupIdentifier)
             return false
         }
@@ -326,7 +415,10 @@ final class ShareViewController: NSViewController {
     }
 
     // Async copy/write helpers with progress support for macOS extension
-    private func copyFileToSharedContainerWithProgress(to containerURL: URL, from url: URL, chunkSize: Int = 64 * 1024, progress: ((Int64, Int64) -> Void)?, completion: @escaping (Bool) -> Void) {
+    private func copyFileToSharedContainerWithProgress(
+        to containerURL: URL, from url: URL, chunkSize: Int = 64 * 1024, progress: ((Int64, Int64) -> Void)?,
+        completion: @escaping (Bool) -> Void
+    ) {
         DispatchQueue.global(qos: .utility).async {
             let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
             do {
@@ -338,17 +430,31 @@ final class ShareViewController: NSViewController {
                     let generated = "\(base)_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString).\(ext)"
                     destination = inboxURL.appendingPathComponent(generated)
                 }
-                if FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.removeItem(at: destination) }
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    try FileManager.default.removeItem(at: destination)
+                }
 
                 let attr = try FileManager.default.attributesOfItem(atPath: url.path)
                 let totalSize = (attr[FileAttributeKey.size] as? NSNumber)?.int64Value ?? 0
 
-                guard let input = InputStream(url: url) else { DispatchQueue.main.async { completion(false) }; return }
-                guard FileManager.default.createFile(atPath: destination.path, contents: nil) else { DispatchQueue.main.async { completion(false) }; return }
-                guard let outHandle = try? FileHandle(forWritingTo: destination) else { DispatchQueue.main.async { completion(false) }; return }
+                guard let input = InputStream(url: url) else {
+                    DispatchQueue.main.async { completion(false) }
+                    return
+                }
+                guard FileManager.default.createFile(atPath: destination.path, contents: nil) else {
+                    DispatchQueue.main.async { completion(false) }
+                    return
+                }
+                guard let outHandle = try? FileHandle(forWritingTo: destination) else {
+                    DispatchQueue.main.async { completion(false) }
+                    return
+                }
 
                 input.open()
-                defer { input.close(); try? outHandle.close() }
+                defer {
+                    input.close()
+                    try? outHandle.close()
+                }
 
                 var buffer = [UInt8](repeating: 0, count: chunkSize)
                 var totalWritten: Int64 = 0
@@ -368,21 +474,30 @@ final class ShareViewController: NSViewController {
         }
     }
 
-    private func writeDataToSharedContainerWithProgress(to containerURL: URL, _ data: Data, chunkSize: Int = 64 * 1024, progress: ((Int64, Int64) -> Void)?, completion: @escaping (Bool) -> Void) {
+    private func writeDataToSharedContainerWithProgress(
+        to containerURL: URL, _ data: Data, chunkSize: Int = 64 * 1024, progress: ((Int64, Int64) -> Void)?,
+        completion: @escaping (Bool) -> Void
+    ) {
         DispatchQueue.global(qos: .utility).async {
             let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
             do {
                 try FileManager.default.createDirectory(at: inboxURL, withIntermediateDirectories: true)
                 let base = "SharedItem_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString)"
                 let destination = inboxURL.appendingPathComponent(base)
-                guard FileManager.default.createFile(atPath: destination.path, contents: nil) else { DispatchQueue.main.async { completion(false) }; return }
-                guard let outHandle = try? FileHandle(forWritingTo: destination) else { DispatchQueue.main.async { completion(false) }; return }
+                guard FileManager.default.createFile(atPath: destination.path, contents: nil) else {
+                    DispatchQueue.main.async { completion(false) }
+                    return
+                }
+                guard let outHandle = try? FileHandle(forWritingTo: destination) else {
+                    DispatchQueue.main.async { completion(false) }
+                    return
+                }
                 defer { try? outHandle.close() }
                 let totalSize = Int64(data.count)
                 var offset = 0
                 while offset < data.count {
                     let len = min(chunkSize, data.count - offset)
-                    let chunk = data.subdata(in: offset..<offset+len)
+                    let chunk = data.subdata(in: offset..<offset + len)
                     outHandle.write(chunk)
                     offset += len
                     DispatchQueue.main.async { progress?(Int64(offset), totalSize) }

@@ -2,21 +2,21 @@ import SwiftUI
 
 struct PreferencesView: View {
     @EnvironmentObject var albumManager: AlbumManager
-    
+
     @AppStorage("privacyBackgroundStyle") private var privacyBackgroundStyle: PrivacyBackgroundStyle = .classic
     @AppStorage("requireForegroundReauthentication") private var requireForegroundReauthentication: Bool = true
     @AppStorage("stealthModeEnabled") private var stealthModeEnabled: Bool = false
     @AppStorage("decoyPasswordHash") private var decoyPasswordHash: String = ""
-    
+
     @State private var healthReport: SecurityHealthReport?
     @State private var isCheckingHealth = false
     @State private var healthCheckError: String?
-    
+
     @State private var showDecoyPasswordSheet = false
     @State private var decoyPasswordInput = ""
     @State private var decoyPasswordConfirm = ""
     @State private var decoyPasswordError: String?
-    
+
     @State private var showChangePasswordSheet = false
     @State private var currentPasswordInput = ""
     @State private var newPasswordInput = ""
@@ -24,7 +24,7 @@ struct PreferencesView: View {
     @State private var changePasswordError: String?
     @State private var isChangingPassword = false
     @State private var changePasswordProgress: String?
-    
+
     // New settings states for backup and UX
     @AppStorage("autoLockTimeoutSeconds") private var storedAutoLockTimeout: Double = CryptoConstants.idleTimeout
     @AppStorage("requirePasscodeOnLaunch") private var storedRequirePasscodeOnLaunch: Bool = false
@@ -37,15 +37,15 @@ struct PreferencesView: View {
     @AppStorage("keepScreenAwakeWhileUnlocked") private var storedKeepScreenAwakeWhileUnlocked: Bool = false
     @AppStorage("keepScreenAwakeDuringSuspensions") private var storedKeepScreenAwakeDuringSuspensions: Bool = true
     @AppStorage("lockdownModeEnabled") private var storedLockdownMode: Bool = false
-    
+
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
     // Allow user to force fallback to legacy Keychain behavior if Data Protection Keychain causes issues
     @AppStorage("security.useDataProtectionKeychain") private var useDataProtectionKeychain: Bool = true
 
     // App icon UI is now handled by `PreferencesSectionTop` subview
-    
+
     @State private var showLockdownConfirm: Bool = false
-    
+
     @State private var showBackupSheet = false
     @State private var backupPassword = ""
     @State private var backupPasswordConfirm = ""
@@ -56,42 +56,42 @@ struct PreferencesView: View {
     @State private var showShareSheet = false
     @State private var showCameraAutoRemoveConfirm = false
     @State private var pendingCameraAutoRemoveValue: Bool = false
-    
-#if os(iOS)
-    @Environment(\.dismiss) private var dismiss
-#endif
-    
-#if os(macOS)
-    @Binding var isPresented: Bool
-    private let isSheet: Bool
-#endif
-    
+
+    #if os(iOS)
+        @Environment(\.dismiss) private var dismiss
+    #endif
+
+    #if os(macOS)
+        @Binding var isPresented: Bool
+        private let isSheet: Bool
+    #endif
+
     init() {
-#if os(macOS)
-        self._isPresented = .constant(true)
-        self.isSheet = false
-#endif
+        #if os(macOS)
+            self._isPresented = .constant(true)
+            self.isSheet = false
+        #endif
     }
-    
-#if os(macOS)
-    init(isPresented: Binding<Bool>) {
-        self._isPresented = isPresented
-        self.isSheet = true
-    }
-#endif
-    
+
+    #if os(macOS)
+        init(isPresented: Binding<Bool>) {
+            self._isPresented = isPresented
+            self.isSheet = true
+        }
+    #endif
+
     var body: some View {
-#if os(iOS)
-        content
-#else
-        content
-#endif
+        #if os(iOS)
+            content
+        #else
+            content
+        #endif
     }
-    
+
     private var content: some View {
         ZStack {
             PrivacyOverlayBackground(asBackground: true)
-            
+
             if albumManager.isUnlocked {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
@@ -105,28 +105,30 @@ struct PreferencesView: View {
                             showLockdownConfirm: $showLockdownConfirm
                         )
                         PreferencesSectionBottom(showBackupSheet: $showBackupSheet)
-                        
+
                         if let error = healthCheckError {
                             Text("Check failed: \(error)")
                                 .foregroundStyle(.red)
                                 .font(.caption)
                         }
-                        
+
                         Divider()
-                        
+
                         Text("Key Management")
                             .font(.headline)
 
                         #if os(macOS)
-                        Toggle("Use Data Protection Keychain (macOS)", isOn: $useDataProtectionKeychain)
-                            .onChange(of: useDataProtectionKeychain) { _ in
-                                // No-op: SecurityService reads the UserDefaults value at runtime
-                            }
-                        Text("When enabled the app probes for and prefers the Data Protection Keychain domain (stronger protection). If this causes problems, turn it OFF to fall back to the legacy login keychain behaviour immediately.")
+                            Toggle("Use Data Protection Keychain (macOS)", isOn: $useDataProtectionKeychain)
+                                .onChange(of: useDataProtectionKeychain) { _ in
+                                    // No-op: SecurityService reads the UserDefaults value at runtime
+                                }
+                            Text(
+                                "When enabled the app probes for and prefers the Data Protection Keychain domain (stronger protection). If this causes problems, turn it OFF to fall back to the legacy login keychain behaviour immediately."
+                            )
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         #endif
-                        
+
                         HStack {
                             Button("Export Encrypted Key Backup") {
                                 backupPassword = ""
@@ -138,7 +140,7 @@ struct PreferencesView: View {
                             .buttonStyle(.bordered)
                             Spacer()
                         }
-                        
+
                         .sheet(isPresented: $showBackupSheet) {
                             VStack(spacing: 16) {
                                 Text("Export Encrypted Key Backup")
@@ -146,24 +148,24 @@ struct PreferencesView: View {
                                 Text("Enter a password to protect the exported key backup file.")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-                                
+
                                 SecureField("Backup Password", text: $backupPassword)
                                     .textFieldStyle(.roundedBorder)
                                     .frame(maxWidth: 320)
                                 SecureField("Confirm Password", text: $backupPasswordConfirm)
                                     .textFieldStyle(.roundedBorder)
                                     .frame(maxWidth: 320)
-                                
+
                                 if let error = backupError {
                                     Text(error)
                                         .foregroundStyle(.red)
                                         .font(.caption)
                                 }
-                                
+
                                 HStack(spacing: 16) {
                                     Button("Cancel") { showBackupSheet = false }
                                         .buttonStyle(.bordered)
-                                    
+
                                     Button {
                                         guard !backupPassword.isEmpty else {
                                             backupError = "Password cannot be empty"
@@ -173,13 +175,14 @@ struct PreferencesView: View {
                                             backupError = "Passwords do not match"
                                             return
                                         }
-                                        
+
                                         isBackingUp = true
                                         backupError = nil
                                         Task {
                                             let manager: AlbumManager = albumManager
                                             do {
-                                                let url = try await manager.exportMasterKeyBackup(backupPassword: backupPassword)
+                                                let url = try await manager.exportMasterKeyBackup(
+                                                    backupPassword: backupPassword)
                                                 backupResultURL = url
                                                 showBackupSheet = false
                                                 // Present share sheet on iOS; on macOS the alert will remain as fallback
@@ -190,8 +193,7 @@ struct PreferencesView: View {
                                             isBackingUp = false
                                         }
                                     } label: {
-                                        if isBackingUp { ProgressView().controlSize(.small) }
-                                        else { Text("Export") }
+                                        if isBackingUp { ProgressView().controlSize(.small) } else { Text("Export") }
                                     }
                                     .buttonStyle(.borderedProminent)
                                 }
@@ -199,12 +201,12 @@ struct PreferencesView: View {
                             .padding()
                             .presentationDetents([.height(320)])
                         }
-                        
+
                         // Share sheet for exported backup (iOS). After successful sharing we remove the temp file.
                         .sheet(isPresented: $showShareSheet) {
                             if let url = backupResultURL {
                                 ActivityView(activityItems: [url]) { completed in
-                                        if completed {
+                                    if completed {
                                         // Attempt to securely remove the temporary file after successful share
                                         _ = try? FileManager.default.removeItem(at: url)
                                     }
@@ -216,38 +218,37 @@ struct PreferencesView: View {
                                 EmptyView()
                             }
                         }
-                        
+
                         Spacer()
-                        
-#if os(iOS)
-                        Divider()
-                        
-                        HStack {
-                            Spacer()
-                            Button("Close") {
-                                dismiss()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            Spacer()
-                        }
-#endif
-                        
-#if os(macOS)
-                        if isSheet {
+
+                        #if os(iOS)
                             Divider()
-                            
+
                             HStack {
                                 Spacer()
                                 Button("Close") {
-                                    isPresented = false
+                                    dismiss()
                                 }
                                 .buttonStyle(.borderedProminent)
                                 Spacer()
                             }
-                        }
-#endif
-                        
-                        
+                        #endif
+
+                        #if os(macOS)
+                            if isSheet {
+                                Divider()
+
+                                HStack {
+                                    Spacer()
+                                    Button("Close") {
+                                        isPresented = false
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    Spacer()
+                                }
+                            }
+                        #endif
+
                     }
                     .padding(20)
                 }
@@ -266,9 +267,9 @@ struct PreferencesView: View {
             }
         }
         .frame(minWidth: 360, minHeight: 450)
-#if os(macOS)
-        .navigationTitle("Settings")
-#endif
+        #if os(macOS)
+            .navigationTitle("Settings")
+        #endif
         .onChange(of: albumManager.secureDeletionEnabled) { _ in
             albumManager.saveSettings()
         }
@@ -287,35 +288,35 @@ struct PreferencesView: View {
             VStack(spacing: 20) {
                 Text("Set Decoy Password")
                     .font(.headline)
-                
+
                 Text("Enter a password that will unlock a fake, empty album.")
                     .multilineTextAlignment(.center)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
-                
+
                 SecureField("Decoy Password", text: $decoyPasswordInput)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.password)
                     .frame(maxWidth: 300)
-                
+
                 SecureField("Confirm Password", text: $decoyPasswordConfirm)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.password)
                     .frame(maxWidth: 300)
-                
+
                 if let error = decoyPasswordError {
                     Text(error)
                         .foregroundStyle(.red)
                         .font(.caption)
                 }
-                
+
                 HStack(spacing: 20) {
                     Button("Cancel") {
                         showDecoyPasswordSheet = false
                     }
                     .buttonStyle(.bordered)
-                    
+
                     Button("Save") {
                         if decoyPasswordInput.isEmpty {
                             decoyPasswordError = "Password cannot be empty"
@@ -341,36 +342,36 @@ struct PreferencesView: View {
             VStack(spacing: 20) {
                 Text("Change Album Password")
                     .font(.headline)
-                
+
                 SecureField("Current Password", text: $currentPasswordInput)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.password)
                     .frame(maxWidth: 300)
-                
+
                 SecureField("New Password", text: $newPasswordInput)
                     .textFieldStyle(.roundedBorder)
-#if os(iOS)
-                    .textContentType(.newPassword)
-#endif
+                    #if os(iOS)
+                        .textContentType(.newPassword)
+                    #endif
                     .frame(maxWidth: 300)
-                
+
                 SecureField("Confirm New Password", text: $confirmPasswordInput)
                     .textFieldStyle(.roundedBorder)
-#if os(iOS)
-                    .textContentType(.newPassword)
-#endif
+                    #if os(iOS)
+                        .textContentType(.newPassword)
+                    #endif
                     .frame(maxWidth: 300)
-                
+
                 if let error = changePasswordError {
                     Text(error).foregroundStyle(.red).font(.caption)
                 }
-                
+
                 if let progress = changePasswordProgress {
                     Text(progress)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                
+
                 HStack(spacing: 20) {
                     Button("Cancel") {
                         showChangePasswordSheet = false
@@ -381,7 +382,7 @@ struct PreferencesView: View {
                         changePasswordProgress = nil
                     }
                     .buttonStyle(.bordered)
-                    
+
                     Button("Change") {
                         if newPasswordInput.isEmpty {
                             changePasswordError = "New password cannot be empty"
@@ -429,7 +430,7 @@ struct PreferencesView: View {
         }
         .preferredColorScheme(colorScheme)
     }
-    
+
     private var colorScheme: ColorScheme? {
         switch privacyBackgroundStyle {
         case .followSystem:
@@ -442,12 +443,12 @@ struct PreferencesView: View {
             return nil  // Follow system
         }
     }
-    
+
     private func runHealthCheck() {
         isCheckingHealth = true
         healthReport = nil
         healthCheckError = nil
-        
+
         let manager: AlbumManager = albumManager
         Task {
             do {

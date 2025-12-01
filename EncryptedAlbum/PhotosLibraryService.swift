@@ -44,9 +44,15 @@ protocol PhotosLibraryServiceProtocol: AnyObject {
     func getAllAlbums(libraryType: LibraryType) -> [(name: String, collection: PHAssetCollection)]
     func getAssets(from collection: PHAssetCollection) -> [PHAsset]
     func getMediaDataAsync(for asset: PHAsset) async -> MediaFetchResult?
-    func saveMediaFileToLibrary(_ fileURL: URL, filename: String, mediaType: MediaType, toAlbum albumName: String?, creationDate: Date?, location: SecurePhoto.Location?, isFavorite: Bool?, completion: @escaping (Bool, Error?) -> Void)
+    func saveMediaFileToLibrary(
+        _ fileURL: URL, filename: String, mediaType: MediaType, toAlbum albumName: String?, creationDate: Date?,
+        location: SecurePhoto.Location?, isFavorite: Bool?, completion: @escaping (Bool, Error?) -> Void)
     func batchDeleteAssets(_ assets: [PHAsset], completion: @escaping (Bool) -> Void)
-    func batchSaveMediaToLibrary(_ mediaItems: [(data: Data, filename: String, mediaType: MediaType, creationDate: Date?, location: SecurePhoto.Location?, isFavorite: Bool?)], toAlbum albumName: String?, completion: @escaping (Int) -> Void)
+    func batchSaveMediaToLibrary(
+        _ mediaItems: [(
+            data: Data, filename: String, mediaType: MediaType, creationDate: Date?, location: SecurePhoto.Location?,
+            isFavorite: Bool?
+        )], toAlbum albumName: String?, completion: @escaping (Int) -> Void)
 }
 
 class PhotosLibraryService: PhotosLibraryServiceProtocol {
@@ -121,7 +127,9 @@ class PhotosLibraryService: PhotosLibraryServiceProtocol {
             let isCloudSharedAlbum = collection.assetCollectionSubtype == .albumCloudShared
             let isFromSharedLibrary = isCloudSharedAlbum || self.isFromSharedLibrary(collection)
 
-            AppLog.debugPrivate("Album '\(albumName)': cloudShared=\(isCloudSharedAlbum), assetFromShared=\(self.isFromSharedLibrary(collection)), final isShared=\(isFromSharedLibrary)")
+            AppLog.debugPrivate(
+                "Album '\(albumName)': cloudShared=\(isCloudSharedAlbum), assetFromShared=\(self.isFromSharedLibrary(collection)), final isShared=\(isFromSharedLibrary)"
+            )
 
             // Apply library type filter
             if libraryType == .personal && isFromSharedLibrary {
@@ -251,7 +259,8 @@ class PhotosLibraryService: PhotosLibraryServiceProtocol {
 
     /// Retrieves media data for a Photos asset asynchronously, preferring file-backed results for streaming encryption.
     func getMediaDataAsync(for asset: PHAsset) async -> MediaFetchResult? {
-        AppLog.debugPrivate("getMediaDataAsync called for asset: \(asset.localIdentifier), mediaType: \(asset.mediaType.rawValue)")
+        AppLog.debugPrivate(
+            "getMediaDataAsync called for asset: \(asset.localIdentifier), mediaType: \(asset.mediaType.rawValue)")
 
         let result = await withTaskGroup(of: MediaFetchResult?.self) { group in
             // Add fetch task first (higher priority)
@@ -568,7 +577,8 @@ class PhotosLibraryService: PhotosLibraryServiceProtocol {
                     completion(data, filename, dateTaken, .video, duration, location, isFavorite)
                 }
             } catch {
-                AppLog.debugPrivate("Failed to load video data for \(asset.localIdentifier): \(error.localizedDescription)")
+                AppLog.debugPrivate(
+                    "Failed to load video data for \(asset.localIdentifier): \(error.localizedDescription)")
                 DispatchQueue.main.async {
                     completion(nil, "", nil, .video, nil, nil, nil)
                 }

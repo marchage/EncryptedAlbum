@@ -42,7 +42,8 @@ final class EncryptedAlbumMacUITests: XCTestCase {
             app: app,
             identifier: "addPhotosButton",
             fallbackIdentifiers: ["Add Photos", "plus", "Add"])
-        let addPhotosExists = addPhotos.waitForExistence(timeout: 5.0)
+        let addPhotosExists =
+            addPhotos.waitForExistence(timeout: 5.0)
             || app.buttons["Add Photos"].waitForExistence(timeout: 2.0)
             || app.toolbarButtons["Add Photos"].waitForExistence(timeout: 2.0)
         XCTAssertTrue(addPhotosExists, "Add Photos toolbar button should appear")
@@ -51,7 +52,8 @@ final class EncryptedAlbumMacUITests: XCTestCase {
             app: app,
             identifier: "camera.fill",
             fallbackIdentifiers: ["Camera", "camera.fill", "Camera Capture"])
-        let cameraExists = cameraButton.waitForExistence(timeout: 5.0)
+        let cameraExists =
+            cameraButton.waitForExistence(timeout: 5.0)
             || app.buttons["Camera"].waitForExistence(timeout: 2.0)
             || app.toolbarButtons["Camera"].waitForExistence(timeout: 2.0)
         XCTAssertTrue(cameraExists, "Camera capture button should appear")

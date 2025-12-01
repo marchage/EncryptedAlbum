@@ -19,7 +19,9 @@ struct SystemRandomProvider: RandomProvider {
             if result == errSecSuccess {
                 continuation.resume(returning: data)
             } else {
-                continuation.resume(throwing: AlbumError.randomGenerationFailed(reason: "SecRandomCopyBytes failed with code \(result)"))
+                continuation.resume(
+                    throwing: AlbumError.randomGenerationFailed(reason: "SecRandomCopyBytes failed with code \(result)")
+                )
             }
         }
     }
@@ -39,7 +41,8 @@ class CryptoService {
                 // We don't need a local `self` binding here; just verify presence.
                 guard self != nil else {
                     continuation.resume(
-                        throwing: AlbumError.randomGenerationFailed(reason: "CryptoService deallocated while generating random data")
+                        throwing: AlbumError.randomGenerationFailed(
+                            reason: "CryptoService deallocated while generating random data")
                     )
                     return
                 }
@@ -112,7 +115,8 @@ class CryptoService {
                 // No local binding is required since this closure doesn't use `self`.
                 guard self != nil else {
                     continuation.resume(
-                        throwing: AlbumError.randomGenerationFailed(reason: "CryptoService deallocated while generating random data")
+                        throwing: AlbumError.randomGenerationFailed(
+                            reason: "CryptoService deallocated while generating random data")
                     )
                     return
                 }
@@ -318,7 +322,8 @@ class CryptoService {
                         while !self.validateEntropy(data) {
                             if attempt >= maxAttempts {
                                 continuation.resume(
-                                    throwing: AlbumError.randomGenerationFailed(reason: "Generated data failed entropy validation"))
+                                    throwing: AlbumError.randomGenerationFailed(
+                                        reason: "Generated data failed entropy validation"))
                                 return
                             }
 
@@ -335,8 +340,8 @@ class CryptoService {
         }
     }
 
-     /// Generates a random salt for key derivation
-     func generateSalt() async throws -> Data {
-         return try await generateRandomData(length: CryptoConstants.saltSize)
-     }
- }
+    /// Generates a random salt for key derivation
+    func generateSalt() async throws -> Data {
+        return try await generateRandomData(length: CryptoConstants.saltSize)
+    }
+}

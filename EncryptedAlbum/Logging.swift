@@ -18,10 +18,10 @@ struct AppLog {
     /// evaluated and no work is done.
     static func debugPublic(_ message: @autoclosure @escaping () -> String) {
         #if DEBUG
-        defaultLogger.debug("\(message(), privacy: .public)")
+            defaultLogger.debug("\(message(), privacy: .public)")
         #else
-        // Release: no-op so debug logs don't show in Release builds. The @autoclosure
-        // ensures the message expression is not evaluated when logging is disabled.
+            // Release: no-op so debug logs don't show in Release builds. The @autoclosure
+            // ensures the message expression is not evaluated when logging is disabled.
         #endif
     }
 
@@ -29,10 +29,10 @@ struct AppLog {
     /// to avoid exposing sensitive data in system logs.
     static func debugPrivate(_ message: @autoclosure @escaping () -> String) {
         #if DEBUG
-        // Use private privacy to avoid putting secrets/paths in system logs
-        defaultLogger.debug("\(message(), privacy: .private)")
+            // Use private privacy to avoid putting secrets/paths in system logs
+            defaultLogger.debug("\(message(), privacy: .private)")
         #else
-        // Release: no-op
+            // Release: no-op
         #endif
     }
 

@@ -17,14 +17,16 @@ extension XCTestCase {
             }
         }
 
-        guard let passwordField = locateSecureField(
-            app: app,
-            preferredIdentifiers: ["Enter password", "Password"],
-            fallbackIndex: 0,
-            timeout: 10.0)
+        guard
+            let passwordField = locateSecureField(
+                app: app,
+                preferredIdentifiers: ["Enter password", "Password"],
+                fallbackIndex: 0,
+                timeout: 10.0)
         else {
             print("DEBUG: Hierarchy at failure:\n\(app.debugDescription)")
-            XCTFail("Should be on Setup Password screen (Password field not found). App might not have reset correctly.")
+            XCTFail(
+                "Should be on Setup Password screen (Password field not found). App might not have reset correctly.")
             return
         }
 
@@ -40,12 +42,13 @@ extension XCTestCase {
             app.typeText("TestPass123!")
         }
 
-        guard let confirmField = locateSecureField(
-            app: app,
-            preferredIdentifiers: ["Re-enter password", "Confirm Password"],
-            fallbackIndex: 1,
-            timeout: 2.0,
-            excluding: passwordField)
+        guard
+            let confirmField = locateSecureField(
+                app: app,
+                preferredIdentifiers: ["Re-enter password", "Confirm Password"],
+                fallbackIndex: 1,
+                timeout: 2.0,
+                excluding: passwordField)
         else {
             print("DEBUG: Hierarchy at failure (confirm field missing):\n\(app.debugDescription)")
             XCTFail("Should be able to confirm password during setup.")

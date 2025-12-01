@@ -1,8 +1,9 @@
 import XCTest
+
 #if canImport(EncryptedAlbum)
-@testable import EncryptedAlbum
+    @testable import EncryptedAlbum
 #elseif canImport(EncryptedAlbum_iOS)
-@testable import EncryptedAlbum_iOS
+    @testable import EncryptedAlbum_iOS
 #endif
 
 final class ImportSaverTests: XCTestCase {
@@ -76,20 +77,23 @@ final class ImportSaverTests: XCTestCase {
         let expectProgress = expectation(description: "progress called")
         let expectCompletion = expectation(description: "completed")
 
-        ImportSaver.copyFileWithProgress(toContainerURL: container, from: src, chunkSize: 16 * 1024, progress: { written, total in
-            // progress should be increasing up to total
-            XCTAssertTrue(written <= total)
-            // Only mark the expectation once even though progress may be reported
-            // multiple times (per-chunk). This prevents XCTest errors from multiple
-            // fulfill() calls.
-            if !sawProgress {
-                sawProgress = true
-                expectProgress.fulfill()
-            }
-        }, completion: { success in
-            XCTAssertTrue(success)
-            expectCompletion.fulfill()
-        })
+        ImportSaver.copyFileWithProgress(
+            toContainerURL: container, from: src, chunkSize: 16 * 1024,
+            progress: { written, total in
+                // progress should be increasing up to total
+                XCTAssertTrue(written <= total)
+                // Only mark the expectation once even though progress may be reported
+                // multiple times (per-chunk). This prevents XCTest errors from multiple
+                // fulfill() calls.
+                if !sawProgress {
+                    sawProgress = true
+                    expectProgress.fulfill()
+                }
+            },
+            completion: { success in
+                XCTAssertTrue(success)
+                expectCompletion.fulfill()
+            })
 
         wait(for: [expectProgress, expectCompletion], timeout: 5.0)
     }
@@ -109,16 +113,19 @@ final class ImportSaverTests: XCTestCase {
         let expectProgress = expectation(description: "progress called")
         let expectCompletion = expectation(description: "completed")
 
-        ImportSaver.writeDataWithProgress(toContainerURL: container, data, chunkSize: 16 * 1024, progress: { written, total in
-            XCTAssertTrue(written <= total)
-            if !sawProgress {
-                sawProgress = true
-                expectProgress.fulfill()
-            }
-        }, completion: { success in
-            XCTAssertTrue(success)
-            expectCompletion.fulfill()
-        })
+        ImportSaver.writeDataWithProgress(
+            toContainerURL: container, data, chunkSize: 16 * 1024,
+            progress: { written, total in
+                XCTAssertTrue(written <= total)
+                if !sawProgress {
+                    sawProgress = true
+                    expectProgress.fulfill()
+                }
+            },
+            completion: { success in
+                XCTAssertTrue(success)
+                expectCompletion.fulfill()
+            })
 
         wait(for: [expectProgress, expectCompletion], timeout: 5.0)
     }

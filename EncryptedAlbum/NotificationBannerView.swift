@@ -12,22 +12,22 @@ struct NotificationBannerView: View {
     @ViewBuilder
     private var notificationContent: some View {
         if let note = albumManager.hideNotification {
-                HStack(spacing: 12) {
-                    Image(systemName: iconName(for: note.type))
-                        .foregroundStyle(.white)
-                        .padding(6)
-                        .background(Circle().fill(iconColor(for: note.type)))
+            HStack(spacing: 12) {
+                Image(systemName: iconName(for: note.type))
+                    .foregroundStyle(.white)
+                    .padding(6)
+                    .background(Circle().fill(iconColor(for: note.type)))
 
-                    Text(note.message)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
+                Text(note.message)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
 
-                    Spacer()
+                Spacer()
 
-                    if let validPhotos = note.photos?.filter({ p in
-                        albumManager.hiddenPhotos.contains(where: { $0.id == p.id })
-                    }) {
-                        if !validPhotos.isEmpty {
+                if let validPhotos = note.photos?.filter({ p in
+                    albumManager.hiddenPhotos.contains(where: { $0.id == p.id })
+                }) {
+                    if !validPhotos.isEmpty {
                         Button("Undo") {
                             // Capture the wrapped value into a local constant to avoid property-wrapper capture issues
                             let manager: AlbumManager = albumManager
@@ -42,36 +42,36 @@ struct NotificationBannerView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
-                        }
                     }
+                }
 
-                    Button("Open Photos App") {
-                        #if os(macOS)
+                Button("Open Photos App") {
+                    #if os(macOS)
                         NSWorkspace.shared.open(URL(string: "photos://")!)
-                        #endif
-                        withAnimation { albumManager.hideNotification = nil }
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    #endif
+                    withAnimation { albumManager.hideNotification = nil }
                 }
-                .padding(.horizontal)
-                .padding(.vertical, 10)
-                .frame(maxWidth: .infinity)
-                .background(backgroundColor(for: note.type))
-                .cornerRadius(8)
-                .padding(.horizontal)
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .onAppear {
-                    // persist for user-configured duration (default to 5s)
-                        var timeout = UserDefaults.standard.double(forKey: "undoTimeoutSeconds")
-                        if timeout <= 0 { timeout = 5.0 }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + timeout) {
-                        withAnimation { albumManager.hideNotification = nil }
-                    }
-                }
-                .accessibilityElement(children: .combine)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
+            .padding(.horizontal)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background(backgroundColor(for: note.type))
+            .cornerRadius(8)
+            .padding(.horizontal)
+            .transition(.move(edge: .top).combined(with: .opacity))
+            .onAppear {
+                // persist for user-configured duration (default to 5s)
+                var timeout = UserDefaults.standard.double(forKey: "undoTimeoutSeconds")
+                if timeout <= 0 { timeout = 5.0 }
+                DispatchQueue.main.asyncAfter(deadline: .now() + timeout) {
+                    withAnimation { albumManager.hideNotification = nil }
+                }
+            }
+            .accessibilityElement(children: .combine)
         }
+    }
 
     private func iconColor(for type: HideNotificationType) -> Color {
         switch type {

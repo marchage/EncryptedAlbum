@@ -50,7 +50,8 @@ struct PrivacyOverlayBackground: View {
     var body: some View {
         Group {
             // Resolve follow-system to a concrete style based on the current color scheme
-            let effectiveStyle: PrivacyBackgroundStyle = style == .followSystem
+            let effectiveStyle: PrivacyBackgroundStyle =
+                style == .followSystem
                 ? (colorScheme == .dark ? .dark : .light)
                 : style
 

@@ -1,17 +1,18 @@
 import XCTest
+
 @testable import EncryptedAlbum
 
 final class AppIconServicePreferredImageTests: XCTestCase {
     // Helper: create a UIImage (iOS) or NSImage (macOS) with a given point width
     func makeImage(width: CGFloat) -> PlatformImage {
         #if os(macOS)
-        return NSImage(size: NSSize(width: width, height: width))
+            return NSImage(size: NSSize(width: width, height: width))
         #else
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: width, height: width))
-        return renderer.image { ctx in
-            UIColor.clear.setFill()
-            ctx.fill(CGRect(x: 0, y: 0, width: width, height: width))
-        }
+            let renderer = UIGraphicsImageRenderer(size: CGSize(width: width, height: width))
+            return renderer.image { ctx in
+                UIColor.clear.setFill()
+                ctx.fill(CGRect(x: 0, y: 0, width: width, height: width))
+            }
         #endif
     }
 

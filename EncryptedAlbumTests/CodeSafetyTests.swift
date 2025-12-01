@@ -6,12 +6,16 @@ final class CodeSafetyTests: XCTestCase {
     func test_no_raw_prints_or_unconditional_nuke() throws {
         // Locate repo root by walking up from this file
         var url = URL(fileURLWithPath: #file)
-        while !FileManager.default.fileExists(atPath: url.appendingPathComponent("EncryptedAlbum.xcodeproj").path) && url.pathComponents.count > 1 {
+        while !FileManager.default.fileExists(atPath: url.appendingPathComponent("EncryptedAlbum.xcodeproj").path)
+            && url.pathComponents.count > 1
+        {
             url.deleteLastPathComponent()
         }
 
         let repoRoot = url
-        XCTAssertTrue(FileManager.default.fileExists(atPath: repoRoot.appendingPathComponent("EncryptedAlbum.xcodeproj").path), "Repo root not found")
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: repoRoot.appendingPathComponent("EncryptedAlbum.xcodeproj").path),
+            "Repo root not found")
 
         // Walk EncryptedAlbum/ and ShareExtension/ sources
         let targets = ["EncryptedAlbum", "ShareExtension"]
@@ -26,7 +30,11 @@ final class CodeSafetyTests: XCTestCase {
                 guard item.hasSuffix(".swift") else { continue }
                 // skip tests
                 let fullPath = dir.appendingPathComponent(item).path
-                if fullPath.contains("/Tests/") || fullPath.contains("EncryptedAlbumTests") || fullPath.contains("UITests") { continue }
+                if fullPath.contains("/Tests/") || fullPath.contains("EncryptedAlbumTests")
+                    || fullPath.contains("UITests")
+                {
+                    continue
+                }
 
                 let content = try String(contentsOfFile: fullPath)
                 var debugNesting = 0
@@ -43,7 +51,9 @@ final class CodeSafetyTests: XCTestCase {
 
                     // Only flag prints if not inside DEBUG-only region
                     if debugNesting == 0 {
-                        if trimmed.contains("print(") || trimmed.contains("debugPrint(") || trimmed.contains("NSLog(") || trimmed.contains("printf(") {
+                        if trimmed.contains("print(") || trimmed.contains("debugPrint(") || trimmed.contains("NSLog(")
+                            || trimmed.contains("printf(")
+                        {
                             violations.append("\(fullPath):\(index+1): \(line.trimmingCharacters(in: .whitespaces))")
                         }
                         if trimmed.contains("nukeAllData(") {

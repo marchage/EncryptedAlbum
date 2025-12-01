@@ -14,32 +14,82 @@ struct PreferencesSectionBottom: View {
 
     var body: some View {
         Group {
-            Toggle("Strip metadata on export", isOn: Binding(get: { albumManager.stripMetadataOnExport }, set: { albumManager.stripMetadataOnExport = $0; albumManager.saveSettings() }))
-                .disabled(albumManager.lockdownModeEnabled)
+            Toggle(
+                "Strip metadata on export",
+                isOn: Binding(
+                    get: { albumManager.stripMetadataOnExport },
+                    set: {
+                        albumManager.stripMetadataOnExport = $0
+                        albumManager.saveSettings()
+                    })
+            )
+            .disabled(albumManager.lockdownModeEnabled)
 
-            Toggle("Password-protect exports", isOn: Binding(get: { albumManager.exportPasswordProtect }, set: { albumManager.exportPasswordProtect = $0; albumManager.saveSettings() }))
-                .disabled(albumManager.lockdownModeEnabled)
+            Toggle(
+                "Password-protect exports",
+                isOn: Binding(
+                    get: { albumManager.exportPasswordProtect },
+                    set: {
+                        albumManager.exportPasswordProtect = $0
+                        albumManager.saveSettings()
+                    })
+            )
+            .disabled(albumManager.lockdownModeEnabled)
 
             HStack {
                 Text("Export expiry (days)")
                 Spacer()
-                Stepper("\(albumManager.exportExpiryDays)", value: Binding(get: { albumManager.exportExpiryDays }, set: { albumManager.exportExpiryDays = $0; albumManager.saveSettings() }), in: 1...365)
-                    .labelsHidden()
+                Stepper(
+                    "\(albumManager.exportExpiryDays)",
+                    value: Binding(
+                        get: { albumManager.exportExpiryDays },
+                        set: {
+                            albumManager.exportExpiryDays = $0
+                            albumManager.saveSettings()
+                        }), in: 1...365
+                )
+                .labelsHidden()
             }
             .disabled(albumManager.lockdownModeEnabled)
 
-            Toggle("Enable verbose logging", isOn: Binding(get: { albumManager.enableVerboseLogging }, set: { albumManager.enableVerboseLogging = $0; albumManager.saveSettings() }))
+            Toggle(
+                "Enable verbose logging",
+                isOn: Binding(
+                    get: { albumManager.enableVerboseLogging },
+                    set: {
+                        albumManager.enableVerboseLogging = $0
+                        albumManager.saveSettings()
+                    }))
 
             HStack {
                 Text("Passphrase minimum length")
                 Spacer()
-                Stepper("\(albumManager.passphraseMinLength)", value: Binding(get: { albumManager.passphraseMinLength }, set: { albumManager.passphraseMinLength = $0; albumManager.saveSettings() }), in: 6...64)
-                    .labelsHidden()
+                Stepper(
+                    "\(albumManager.passphraseMinLength)",
+                    value: Binding(
+                        get: { albumManager.passphraseMinLength },
+                        set: {
+                            albumManager.passphraseMinLength = $0
+                            albumManager.saveSettings()
+                        }), in: 6...64
+                )
+                .labelsHidden()
             }
 
-            Toggle("Telemetry (opt-in)", isOn: Binding(get: { albumManager.telemetryEnabled }, set: { albumManager.telemetryEnabled = $0; albumManager.saveSettings() }))
+            Toggle(
+                "Telemetry (opt-in)",
+                isOn: Binding(
+                    get: { albumManager.telemetryEnabled },
+                    set: {
+                        albumManager.telemetryEnabled = $0
+                        albumManager.saveSettings()
+                    }))
 
-            Toggle("Auto-remove duplicates on import", isOn: Binding(get: { albumManager.autoRemoveDuplicatesOnImport }, set: { albumManager.autoRemoveDuplicatesOnImport = $0 }))
+            Toggle(
+                "Auto-remove duplicates on import",
+                isOn: Binding(
+                    get: { albumManager.autoRemoveDuplicatesOnImport },
+                    set: { albumManager.autoRemoveDuplicatesOnImport = $0 }))
 
             Divider()
 
@@ -53,7 +103,14 @@ struct PreferencesSectionBottom: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            Toggle("Enable import notifications", isOn: Binding(get: { albumManager.enableImportNotifications }, set: { albumManager.enableImportNotifications = $0; albumManager.saveSettings() }))
+            Toggle(
+                "Enable import notifications",
+                isOn: Binding(
+                    get: { albumManager.enableImportNotifications },
+                    set: {
+                        albumManager.enableImportNotifications = $0
+                        albumManager.saveSettings()
+                    }))
 
             Divider()
 
@@ -67,7 +124,9 @@ struct PreferencesSectionBottom: View {
                     .foregroundStyle(albumManager.lockdownModeEnabled ? .red : .secondary)
             }
 
-            Button { runHealthCheck() } label: {
+            Button {
+                runHealthCheck()
+            } label: {
                 if isCheckingHealth {
                     ProgressView().controlSize(.small)
                 } else {

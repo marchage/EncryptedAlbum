@@ -22,7 +22,9 @@ extension Image {
     /// Given a runtime image and an optional generated marketing image, pick the
     /// best one to display so we prefer high-resolution images (downscale) over
     /// upscaling small images. `visualCap` is in points.
-    static func chooseBestMarketingImage(runtime: PlatformImage?, generated: PlatformImage?, visualCap: CGFloat) -> PlatformImage? {
+    static func chooseBestMarketingImage(runtime: PlatformImage?, generated: PlatformImage?, visualCap: CGFloat)
+        -> PlatformImage?
+    {
         func width(of img: PlatformImage?) -> CGFloat {
             guard let img = img else { return 0 }
             return img.size.width
@@ -58,27 +60,27 @@ public protocol IconApplier: AnyObject {
 }
 
 #if os(iOS)
-/// Default production applier for iOS that calls UIApplication.setAlternateIconName
-/// Ensure this is invoked on the main thread: UIApplication APIs expect main-thread usage
-final class DefaultIconApplier: IconApplier {
-    func apply(iconName: String?, completion: @escaping (Error?) -> Void) {
-        if Thread.isMainThread {
-            UIApplication.shared.setAlternateIconName(iconName, completionHandler: completion)
-        } else {
-            DispatchQueue.main.async {
+    /// Default production applier for iOS that calls UIApplication.setAlternateIconName
+    /// Ensure this is invoked on the main thread: UIApplication APIs expect main-thread usage
+    final class DefaultIconApplier: IconApplier {
+        func apply(iconName: String?, completion: @escaping (Error?) -> Void) {
+            if Thread.isMainThread {
                 UIApplication.shared.setAlternateIconName(iconName, completionHandler: completion)
+            } else {
+                DispatchQueue.main.async {
+                    UIApplication.shared.setAlternateIconName(iconName, completionHandler: completion)
+                }
             }
         }
     }
-}
 #else
-/// Default applier stub for non-iOS platforms (macOS) — performs local behavior synchronously.
-final class DefaultIconApplier: IconApplier {
-    func apply(iconName: String?, completion: @escaping (Error?) -> Void) {
-        // macOS runtime path manages the Dock icon directly; treat as success here.
-        completion(nil)
+    /// Default applier stub for non-iOS platforms (macOS) — performs local behavior synchronously.
+    final class DefaultIconApplier: IconApplier {
+        func apply(iconName: String?, completion: @escaping (Error?) -> Void) {
+            // macOS runtime path manages the Dock icon directly; treat as success here.
+            completion(nil)
+        }
     }
-}
 #endif
 
 /// Manages runtime switching of the app icon (best-effort) and exposes available icon names
@@ -94,44 +96,45 @@ final class AppIconService: ObservableObject {
     // otherwise fail silently (or return a transient error).
     var availableIcons: [String] {
         #if os(iOS)
-        // Gather keys declared in Info.plist under CFBundleIcons->CFBundleAlternateIcons
-        var names = [String]()
-        if let plist = Bundle.main.infoDictionary,
-           let bundleIcons = plist["CFBundleIcons"] as? [String: Any],
-           let alternates = bundleIcons["CFBundleAlternateIcons"] as? [String: Any] {
-            // alternates keys are the names used with UIApplication.setAlternateIconName
-            names.append(contentsOf: alternates.keys)
-        }
+            // Gather keys declared in Info.plist under CFBundleIcons->CFBundleAlternateIcons
+            var names = [String]()
+            if let plist = Bundle.main.infoDictionary,
+                let bundleIcons = plist["CFBundleIcons"] as? [String: Any],
+                let alternates = bundleIcons["CFBundleAlternateIcons"] as? [String: Any]
+            {
+                // alternates keys are the names used with UIApplication.setAlternateIconName
+                names.append(contentsOf: alternates.keys)
+            }
 
-        // Always include the default primary name "AppIcon"
-        names.append("AppIcon")
+            // Always include the default primary name "AppIcon"
+            names.append("AppIcon")
 
-        // Deduplicate and keep a stable ordering (prefer declared order then default)
-        var unique: [String] = []
-        for n in names where !unique.contains(n) { unique.append(n) }
+            // Deduplicate and keep a stable ordering (prefer declared order then default)
+            var unique: [String] = []
+            for n in names where !unique.contains(n) { unique.append(n) }
 
-        // Filter to only those that we can reasonably render at runtime
-        return unique.filter { Self.isIconUsable(iconName: $0) }
+            // Filter to only those that we can reasonably render at runtime
+            return unique.filter { Self.isIconUsable(iconName: $0) }
         #else
-        // On macOS keep the same known list for previews
-        return [
-            "AppIcon", // default
-            "AppIcon1",
-            "AppIcon2",
-            "AppIcon3",
-            "AppIcon4",
-            "AppIcon5",
-            "AppIcon6",
-            "AppIcon7",
-            "AppIcon8",
-            "AppIcon9",
-            "AppIcon10",
-            "AppIcon11",
-            "AppIcon12",
-            "AppIcon13",
-            "AppIcon14",
-            "AppIcon15"
-        ]
+            // On macOS keep the same known list for previews
+            return [
+                "AppIcon",  // default
+                "AppIcon1",
+                "AppIcon2",
+                "AppIcon3",
+                "AppIcon4",
+                "AppIcon5",
+                "AppIcon6",
+                "AppIcon7",
+                "AppIcon8",
+                "AppIcon9",
+                "AppIcon10",
+                "AppIcon11",
+                "AppIcon12",
+                "AppIcon13",
+                "AppIcon14",
+                "AppIcon15",
+            ]
         #endif
     }
 
@@ -167,20 +170,20 @@ final class AppIconService: ObservableObject {
         // shows the icon that is actually active. Otherwise, apply the stored value.
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-#if os(iOS)
-            if UIApplication.shared.supportsAlternateIcons {
-                // If system currently has an alternate icon set and our persisted value
-                // is empty, sync to system without re-applying (avoid a reset).
-                if let current = UIApplication.shared.alternateIconName, !current.isEmpty {
-                    if self.selectedIconName.isEmpty {
-                        // Adopt the system's alternate icon into our AppStorage so UI reflects reality.
-                        self.selectedIconName = current
-                        self.runtimeMarketingImage = Self.generateMarketingImage(from: current)
-                        return
+            #if os(iOS)
+                if UIApplication.shared.supportsAlternateIcons {
+                    // If system currently has an alternate icon set and our persisted value
+                    // is empty, sync to system without re-applying (avoid a reset).
+                    if let current = UIApplication.shared.alternateIconName, !current.isEmpty {
+                        if self.selectedIconName.isEmpty {
+                            // Adopt the system's alternate icon into our AppStorage so UI reflects reality.
+                            self.selectedIconName = current
+                            self.runtimeMarketingImage = Self.generateMarketingImage(from: current)
+                            return
+                        }
                     }
                 }
-            }
-#endif
+            #endif
             self.applySelectedIcon()
         }
     }
@@ -195,37 +198,41 @@ final class AppIconService: ObservableObject {
         // If nothing was chosen by the UI, prefer the system state (e.g. alternate icon
         // set by the OS or a previous run). If the system has an alternate name and
         // we don't have a persisted one, don't overwrite it — instead reflect it.
-#if os(iOS)
-        if name.isEmpty {
-            if UIApplication.shared.supportsAlternateIcons,
-               let current = UIApplication.shared.alternateIconName,
-               !current.isEmpty {
-                // System already uses an alternate; sync runtime image and avoid calling setAlternateIconName
-                runtimeMarketingImage = Self.generateMarketingImage(from: current)
-                return
+        #if os(iOS)
+            if name.isEmpty {
+                if UIApplication.shared.supportsAlternateIcons,
+                    let current = UIApplication.shared.alternateIconName,
+                    !current.isEmpty
+                {
+                    // System already uses an alternate; sync runtime image and avoid calling setAlternateIconName
+                    runtimeMarketingImage = Self.generateMarketingImage(from: current)
+                    return
+                } else {
+                    // No selection and no system alternate -> ensure primary icon shown
+                    // Generate marketing image for primary icon so previews work
+                    runtimeMarketingImage = Self.generateMarketingImage(from: nil)
+                    setSystemIcon(nil)
+                    return
+                }
             } else {
-                // No selection and no system alternate -> ensure primary icon shown
+                // Validate the requested icon against the allowed set so we never pass arbitrary
+                // strings to the platform API (defense-in-depth).
+                if name.isEmpty == false {
+                    let candidate = name
+                    if !availableIcons.contains(candidate) {
+                        AppLog.debugPrivate("AppIconService: prevented attempt to set unknown icon name \(candidate)")
+                        DispatchQueue.main.async { self.lastIconApplyError = "Unknown icon: \(candidate)" }
+                        return
+                    }
+                }
+            }
+        #else
+            if name.isEmpty {
+                runtimeMarketingImage = Self.generateMarketingImage(from: nil)
                 setSystemIcon(nil)
                 return
             }
-        } else {
-            // Validate the requested icon against the allowed set so we never pass arbitrary
-            // strings to the platform API (defense-in-depth).
-            if name.isEmpty == false {
-                let candidate = name
-                if !availableIcons.contains(candidate) {
-                    AppLog.debugPrivate("AppIconService: prevented attempt to set unknown icon name \(candidate)")
-                    DispatchQueue.main.async { self.lastIconApplyError = "Unknown icon: \(candidate)" }
-                    return
-                }
-            }
-        }
-#else
-        if name.isEmpty {
-            setSystemIcon(nil)
-            return
-        }
-#endif
+        #endif
         // Generate a runtime 1024 image and store it for preview purposes
         runtimeMarketingImage = Self.generateMarketingImage(from: name)
         setSystemIcon(name)
@@ -249,11 +256,12 @@ final class AppIconService: ObservableObject {
     /// Whether the lastIconApplyError is meaningful enough to present as an
     /// alert to the user. Errors that are considered cancellations will be
     /// recorded but will not automatically show a modal.
-    public var shouldPresentLastIconApplyError: Bool { lastIconApplyError != nil && !lastIconApplyErrorIsBenignCancellation }
+    public var shouldPresentLastIconApplyError: Bool {
+        lastIconApplyError != nil && !lastIconApplyErrorIsBenignCancellation
+    }
 
     /// Clear any last reported icon apply error. Public so UI code can reset the alert.
     public func clearLastIconApplyError() { lastIconApplyError = nil }
-
 
     /// Return easy display names for UI
     func displayName(for iconName: String) -> String {
@@ -264,59 +272,65 @@ final class AppIconService: ObservableObject {
     // MARK: - Platform runtime icon switch
 
     private func setSystemIcon(_ name: String?) {
-#if os(iOS)
-        // UIApplication alternate icons must be declared in Info.plist (CFBundleAlternateIcons).
-        // Attempt to set alternate icon if available. If not available (no entry in Info.plist) it will fail silently.
-        guard UIApplication.shared.supportsAlternateIcons else { return }
+        #if os(iOS)
+            // UIApplication alternate icons must be declared in Info.plist (CFBundleAlternateIcons).
+            // Attempt to set alternate icon if available. If not available (no entry in Info.plist) it will fail silently.
+            guard UIApplication.shared.supportsAlternateIcons else { return }
 
-        // The default primary icon is represented by nil
-        let iconNameToSet = (name == nil || name == "AppIcon") ? nil : name
+            // The default primary icon is represented by nil
+            let iconNameToSet = (name == nil || name == "AppIcon") ? nil : name
 
-        // Directly invoke the applier once (no retry/backoff).
-        iconApplier.apply(iconName: iconNameToSet) { [weak self] error in
-            guard let self = self else { return }
-            if let error = error {
-                AppLog.debugPrivate("AppIconService: failed to set alternate icon \(iconNameToSet ?? "<primary>"): \(error.localizedDescription)")
-                DispatchQueue.main.async { self.lastIconApplyError = error.localizedDescription }
+            // Directly invoke the applier once (no retry/backoff).
+            iconApplier.apply(iconName: iconNameToSet) { [weak self] error in
+                guard let self = self else { return }
+                if let error = error {
+                    AppLog.debugPrivate(
+                        "AppIconService: failed to set alternate icon \(iconNameToSet ?? "<primary>"): \(error.localizedDescription)"
+                    )
+                    DispatchQueue.main.async { self.lastIconApplyError = error.localizedDescription }
+                } else {
+                    AppLog.debugPrivate("AppIconService: set alternate icon \(iconNameToSet ?? "<primary>")")
+                    DispatchQueue.main.async { self.lastIconApplyError = nil }
+                }
+            }
+        #elseif os(macOS)
+            // On macOS we can update the Dock icon at runtime using NSApplication
+            if let name = name, name != "AppIcon" {
+                if let image = NSImage(named: NSImage.Name(name)) {
+                    NSApplication.shared.applicationIconImage = image
+                }
             } else {
-                AppLog.debugPrivate("AppIconService: set alternate icon \(iconNameToSet ?? "<primary>")")
-                DispatchQueue.main.async { self.lastIconApplyError = nil }
+                // Reset to default image in assets
+                if let defaultImage = NSImage(named: NSImage.Name("AppIcon")) {
+                    NSApplication.shared.applicationIconImage = defaultImage
+                }
             }
-        }
-#elseif os(macOS)
-        // On macOS we can update the Dock icon at runtime using NSApplication
-        if let name = name, name != "AppIcon" {
-            if let image = NSImage(named: NSImage.Name(name)) {
-                NSApplication.shared.applicationIconImage = image
-            }
-        } else {
-            // Reset to default image in assets
-            if let defaultImage = NSImage(named: NSImage.Name("AppIcon")) {
-                NSApplication.shared.applicationIconImage = defaultImage
-            }
-        }
-#endif
+        #endif
     }
 
-#if os(iOS)
-    // No retry/backoff; single-shot apply path. Tests can inject an IconApplier to
-    // simulate platform success/failure.
-#endif
+    #if os(iOS)
+        // No retry/backoff; single-shot apply path. Tests can inject an IconApplier to
+        // simulate platform success/failure.
+    #endif
 
     /// Returns whether we can reasonably render / find an icon for preview/apply
     static func isIconUsable(iconName: String?) -> Bool {
-#if os(iOS)
-        let nameToTest = (iconName == nil || iconName == "AppIcon") ? "AppIcon" : iconName!
+        // The primary icon ("AppIcon" or nil) is always usable — it's the default
+        // app icon and UIApplication treats nil as "use primary". We must not
+        // filter it out even though UIImage(named: "AppIcon") returns nil on iOS.
+        if iconName == nil || iconName == "AppIcon" || iconName?.isEmpty == true {
+            return true
+        }
 
-        // Try common methods: UIImage(named:) and our marketing renderer
-        if UIImage(named: nameToTest) != nil { return true }
-        if generateMarketingImage(from: nameToTest) != nil { return true }
-        return false
-#else
-        // On macOS prefer to check NSImage(named:)
-        let nameToTest = (iconName == nil || iconName == "AppIcon") ? "AppIcon" : iconName!
-        return NSImage(named: NSImage.Name(nameToTest)) != nil
-#endif
+        #if os(iOS)
+            // Try common methods: UIImage(named:) and our marketing renderer
+            if UIImage(named: iconName!) != nil { return true }
+            if generateMarketingImage(from: iconName!) != nil { return true }
+            return false
+        #else
+            // On macOS prefer to check NSImage(named:)
+            return NSImage(named: NSImage.Name(iconName!)) != nil
+        #endif
     }
 
     /// Programmatic helper to set icon from UI controls
@@ -333,7 +347,9 @@ final class AppIconService: ObservableObject {
         guard let resourceRoot = Bundle.main.resourceURL else { return nil }
         let fm = FileManager.default
         let options: FileManager.DirectoryEnumerationOptions = [.skipsHiddenFiles]
-        if let enumerator = fm.enumerator(at: resourceRoot, includingPropertiesForKeys: [.isRegularFileKey], options: options) {
+        if let enumerator = fm.enumerator(
+            at: resourceRoot, includingPropertiesForKeys: [.isRegularFileKey], options: options)
+        {
             for case let url as URL in enumerator {
                 if url.lastPathComponent.lowercased() == filename.lowercased() {
                     return url
@@ -347,17 +363,56 @@ final class AppIconService: ObservableObject {
     /// This is used for previews and the macOS dock image — it does not alter the app bundle.
     static func generateMarketingImage(from iconName: String?) -> PlatformImage? {
         #if os(macOS)
-        // Prefer the dedicated 512@2x runtime marketing asset when requested.
-        // If the developer included an explicit mac App Store marketing PNG named "mac1024.png"
-        // inside the app bundle (for example in an AppIcon.appiconset), prefer that image first
-        // since it is the canonical Mac App Store rounded 1024 image.
-        if let macURL = bundleResourceURL(matching: "mac1024.png"), let data = try? Data(contentsOf: macURL), let macImg = NSImage(data: data) {
-            AppLog.debugPublic("AppIconService: found mac1024.png at runtime: \(macURL.path)")
-             // Render a 1024x1024 representation using the supplied mac1024 resource as-is.
+            // Prefer the dedicated 512@2x runtime marketing asset when requested.
+            // If the developer included an explicit mac App Store marketing PNG named "mac1024.png"
+            // inside the app bundle (for example in an AppIcon.appiconset), prefer that image first
+            // since it is the canonical Mac App Store rounded 1024 image.
+            if let macURL = bundleResourceURL(matching: "mac1024.png"), let data = try? Data(contentsOf: macURL),
+                let macImg = NSImage(data: data)
+            {
+                AppLog.debugPublic("AppIconService: found mac1024.png at runtime: \(macURL.path)")
+                // Render a 1024x1024 representation using the supplied mac1024 resource as-is.
+                let size = NSSize(width: 1024, height: 1024)
+                let target = NSImage(size: size)
+                target.lockFocus()
+                defer { target.unlockFocus() }
+                if let ctx = NSGraphicsContext.current?.cgContext {
+                    ctx.saveGState()
+                    let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
+                    let corner = CGFloat(0.15 * 1024)
+                    let path = CGPath(roundedRect: rect, cornerWidth: corner, cornerHeight: corner, transform: nil)
+                    ctx.addPath(path)
+                    ctx.clip()
+                    macImg.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1.0)
+                    ctx.restoreGState()
+                } else {
+                    let rect = NSRect(origin: .zero, size: size)
+                    macImg.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1.0)
+                }
+                return target
+            }
+            let marketingCandidates = [
+                "AppIcon-512@2x", "AppIcon512@2x", "AppIcon-512", "AppIcon512",
+                "AppIcon_marketing", "AppIconMarketingRuntime", "AppIcon",
+            ]
+
+            let nameToLoad: String
+            if iconName == nil || iconName == "AppIcon" {
+                nameToLoad = "AppIcon"
+            } else if iconName == "AppIconMarketingRuntime" {
+                nameToLoad = marketingCandidates.first(where: { NSImage(named: NSImage.Name($0)) != nil }) ?? iconName!
+            } else {
+                nameToLoad = iconName!
+            }
+
+            guard let img = NSImage(named: NSImage.Name(nameToLoad)) else { return nil }
+
+            // Render a 1024x1024 representation with rounded corners
             let size = NSSize(width: 1024, height: 1024)
             let target = NSImage(size: size)
             target.lockFocus()
             defer { target.unlockFocus() }
+
             if let ctx = NSGraphicsContext.current?.cgContext {
                 ctx.saveGState()
                 let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
@@ -365,181 +420,151 @@ final class AppIconService: ObservableObject {
                 let path = CGPath(roundedRect: rect, cornerWidth: corner, cornerHeight: corner, transform: nil)
                 ctx.addPath(path)
                 ctx.clip()
-                macImg.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1.0)
+                img.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1.0)
                 ctx.restoreGState()
             } else {
+                // Fallback: draw normally
                 let rect = NSRect(origin: .zero, size: size)
-                macImg.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1.0)
+                img.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1.0)
             }
+
             return target
-        }
-         let marketingCandidates = [
-             "AppIcon-512@2x", "AppIcon512@2x", "AppIcon-512", "AppIcon512",
-             "AppIcon_marketing", "AppIconMarketingRuntime", "AppIcon"
-         ]
-
-        let nameToLoad: String
-        if iconName == nil || iconName == "AppIcon" {
-            nameToLoad = "AppIcon"
-        } else if iconName == "AppIconMarketingRuntime" {
-            nameToLoad = marketingCandidates.first(where: { NSImage(named: NSImage.Name($0)) != nil }) ?? iconName!
-        } else {
-            nameToLoad = iconName!
-        }
-
-        guard let img = NSImage(named: NSImage.Name(nameToLoad)) else { return nil }
-
-        // Render a 1024x1024 representation with rounded corners
-        let size = NSSize(width: 1024, height: 1024)
-        let target = NSImage(size: size)
-        target.lockFocus()
-        defer { target.unlockFocus() }
-
-        if let ctx = NSGraphicsContext.current?.cgContext {
-            ctx.saveGState()
-            let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
-            let corner = CGFloat(0.15 * 1024)
-            let path = CGPath(roundedRect: rect, cornerWidth: corner, cornerHeight: corner, transform: nil)
-            ctx.addPath(path)
-            ctx.clip()
-            img.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1.0)
-            ctx.restoreGState()
-        } else {
-            // Fallback: draw normally
-            let rect = NSRect(origin: .zero, size: size)
-            img.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1.0)
-        }
-
-        return target
         #else
-        // iOS path: ALWAYS try the dedicated mac1024 imageset FIRST (highest priority)
-        // This ensures we get the 1024px image we explicitly created in the asset catalog
-        if let mac1024 = UIImage(named: "mac1024") {
-            AppLog.debugPublic("AppIconService: found mac1024 imageset, pixels=\(max(mac1024.size.width * mac1024.scale, mac1024.size.height * mac1024.scale))")
-            let format = UIGraphicsImageRendererFormat()
-            format.scale = 1.0
-            let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
-            return renderer.image { ctx in
+            // iOS path: ALWAYS try the dedicated mac1024 imageset FIRST (highest priority)
+            // This ensures we get the 1024px image we explicitly created in the asset catalog
+            if let mac1024 = UIImage(named: "mac1024") {
+                AppLog.debugPublic(
+                    "AppIconService: found mac1024 imageset, pixels=\(max(mac1024.size.width * mac1024.scale, mac1024.size.height * mac1024.scale))"
+                )
+                let format = UIGraphicsImageRendererFormat()
+                format.scale = 1.0
+                let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
+                return renderer.image { ctx in
+                    let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
+                    let corner = CGFloat(0.15 * 1024)
+                    let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
+                    path.addClip()
+                    mac1024.draw(in: rect)
+                }
+            }
+
+            // Second priority: bundled mac1024.png file (recursive search)
+            if let macURL = bundleResourceURL(matching: "mac1024.png"), let data = try? Data(contentsOf: macURL),
+                let macImg = UIImage(data: data, scale: 1.0)
+            {
+                AppLog.debugPublic("AppIconService: found mac1024.png at runtime: \(macURL.path)")
+                // Render to 1024x1024 marketing canvas for consistency
+                let format = UIGraphicsImageRendererFormat()
+                format.scale = 1.0
+                let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
+                return renderer.image { ctx in
+                    let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
+                    let corner = CGFloat(0.15 * 1024)
+                    let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
+                    path.addClip()
+                    macImg.draw(in: rect)
+                }
+            }
+            var marketingCandidates = [
+                "AppIcon-1024", "AppIcon-512@2x", "AppIcon1024", "AppIcon-512", "AppIcon512",
+                "AppIcon_marketing", "AppIconMarketingRuntime", "AppIcon",
+            ]
+
+            // If a specific iconName was provided (e.g. an alternate icon), prefer it as a candidate
+            if let iconName = iconName, !iconName.isEmpty {
+                // Put the explicit name first so explicit alternates are preferred
+                marketingCandidates.insert(iconName, at: 0)
+            }
+
+            // Helper: try bundle PNGs and asset-named images, picking the one with the largest pixel dimension
+            var bestImage: UIImage? = nil
+            var bestPixels: CGFloat = 0
+
+            // Common suffixes and variants used by designers / Xcode exports
+            let suffixes = ["-1024", "1024", "-512@2x", "512@2x", "-512", "512", "_marketing", "MarketingRuntime", ""]
+
+            for base in marketingCandidates {
+                // Try explicit bundle PNGs first (these are exact files in the bundle resources)
+                for suffix in suffixes {
+                    let candidateName = base + suffix
+                    // First try to find the resource anywhere in the bundle (recursively).
+                    var url: URL? = bundleResourceURL(matching: candidateName + ".png")
+                    // If not found recursively, fall back to the top-level resource lookup.
+                    if url == nil {
+                        url = Bundle.main.url(forResource: candidateName, withExtension: "png")
+                    }
+                    if let url = url {
+                        if let data = try? Data(contentsOf: url), let img = UIImage(data: data, scale: 1.0) {
+                            let px = max(img.size.width * img.scale, img.size.height * img.scale)
+                            if px > bestPixels {
+                                AppLog.debugPrivate(
+                                    "AppIconService: candidate bundle PNG \(url.lastPathComponent) pixels=\(px)")
+                                bestPixels = px
+                                bestImage = img
+                            }
+                            // If we already found >=1024px, prefer immediately
+                            if bestPixels >= 1024 { break }
+                        }
+                    }
+                }
+                if bestPixels >= 1024 { break }
+
+                // Next try asset catalog lookup (UIImage(named:)) which may provide higher-res variants
+                for suffix in ["", "@2x", "@3x"] {
+                    let candidateAsset = base + suffix
+                    if let img = UIImage(named: candidateAsset) {
+                        let px = max(img.size.width * img.scale, img.size.height * img.scale)
+                        if px > bestPixels {
+                            AppLog.debugPrivate("AppIconService: candidate asset \(candidateAsset) pixels=\(px)")
+                            bestPixels = px
+                            bestImage = img
+                        }
+                        if bestPixels >= 1024 { break }
+                    }
+                }
+                if bestPixels >= 1024 { break }
+            }
+
+            // As a final fallback, try bare UIImage(named: nameToLoad) where nameToLoad defaults to AppIcon
+            if bestImage == nil {
+                let fallbackNames = ["AppIcon-1024", "AppIcon1024", "AppIcon-512@2x", "AppIcon_marketing", "AppIcon"]
+                for name in fallbackNames {
+                    // try recursive lookup first
+                    var url: URL? = bundleResourceURL(matching: name + ".png")
+                    if url == nil {
+                        url = Bundle.main.url(forResource: name, withExtension: "png")
+                    }
+                    if let url = url, let data = try? Data(contentsOf: url), let img = UIImage(data: data, scale: 1.0) {
+                        AppLog.debugPrivate("AppIconService: fallback candidate bundle PNG \(url.lastPathComponent)")
+                        let px = max(img.size.width * img.scale, img.size.height * img.scale)
+                        if px > bestPixels {
+                            bestPixels = px
+                            bestImage = img
+                        }
+                        if bestPixels >= 1024 { break }
+                    }
+                }
+            }
+            guard let ui = bestImage ?? UIImage(named: "AppIcon") else {
+                AppLog.debugPublic("AppIconService: no usable PNG or asset found for marketing image")
+                return nil
+            }
+            AppLog.debugPublic(
+                "AppIconService: selected marketing image pixels=\(max(ui.size.width * ui.scale, ui.size.height * ui.scale))"
+            )
+            // Always render a 1024x1024 marketing image with rounded corners for a consistent look.
+            let outFormat = UIGraphicsImageRendererFormat()
+            outFormat.scale = 1.0
+            let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: outFormat)
+            let out = renderer.image { ctx in
                 let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
+                // Rounded corners — chosen to match marketing corner radii (approx 15% of size)
                 let corner = CGFloat(0.15 * 1024)
                 let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
                 path.addClip()
-                mac1024.draw(in: rect)
+                ui.draw(in: rect)
             }
-        }
-        
-        // Second priority: bundled mac1024.png file (recursive search)
-        if let macURL = bundleResourceURL(matching: "mac1024.png"), let data = try? Data(contentsOf: macURL), let macImg = UIImage(data: data, scale: 1.0) {
-             AppLog.debugPublic("AppIconService: found mac1024.png at runtime: \(macURL.path)")
-              // Render to 1024x1024 marketing canvas for consistency
-             let format = UIGraphicsImageRendererFormat()
-             format.scale = 1.0
-             let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: format)
-             return renderer.image { ctx in
-                 let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
-                 let corner = CGFloat(0.15 * 1024)
-                 let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
-                 path.addClip()
-                 macImg.draw(in: rect)
-             }
-         }
-        var marketingCandidates = [
-             "AppIcon-1024", "AppIcon-512@2x", "AppIcon1024", "AppIcon-512", "AppIcon512",
-             "AppIcon_marketing", "AppIconMarketingRuntime", "AppIcon"
-         ]
-
-        // If a specific iconName was provided (e.g. an alternate icon), prefer it as a candidate
-        if let iconName = iconName, !iconName.isEmpty {
-            // Put the explicit name first so explicit alternates are preferred
-            marketingCandidates.insert(iconName, at: 0)
-        }
-
-        // Helper: try bundle PNGs and asset-named images, picking the one with the largest pixel dimension
-        var bestImage: UIImage? = nil
-        var bestPixels: CGFloat = 0
-
-        // Common suffixes and variants used by designers / Xcode exports
-        let suffixes = ["-1024", "1024", "-512@2x", "512@2x", "-512", "512", "_marketing", "MarketingRuntime", ""]
-
-        for base in marketingCandidates {
-            // Try explicit bundle PNGs first (these are exact files in the bundle resources)
-            for suffix in suffixes {
-                let candidateName = base + suffix
-                // First try to find the resource anywhere in the bundle (recursively).
-                var url: URL? = bundleResourceURL(matching: candidateName + ".png")
-                // If not found recursively, fall back to the top-level resource lookup.
-                if url == nil {
-                    url = Bundle.main.url(forResource: candidateName, withExtension: "png")
-                }
-                if let url = url {
-                    if let data = try? Data(contentsOf: url), let img = UIImage(data: data, scale: 1.0) {
-                         let px = max(img.size.width * img.scale, img.size.height * img.scale)
-                         if px > bestPixels {
-                             AppLog.debugPrivate("AppIconService: candidate bundle PNG \(url.lastPathComponent) pixels=\(px)")
-                             bestPixels = px
-                             bestImage = img
-                         }
-                         // If we already found >=1024px, prefer immediately
-                         if bestPixels >= 1024 { break }
-                     }
-                 }
-            }
-            if bestPixels >= 1024 { break }
-
-            // Next try asset catalog lookup (UIImage(named:)) which may provide higher-res variants
-            for suffix in ["", "@2x", "@3x"] {
-                let candidateAsset = base + suffix
-                if let img = UIImage(named: candidateAsset) {
-                    let px = max(img.size.width * img.scale, img.size.height * img.scale)
-                    if px > bestPixels {
-                        AppLog.debugPrivate("AppIconService: candidate asset \(candidateAsset) pixels=\(px)")
-                        bestPixels = px
-                        bestImage = img
-                    }
-                    if bestPixels >= 1024 { break }
-                }
-            }
-            if bestPixels >= 1024 { break }
-        }
-
-        // As a final fallback, try bare UIImage(named: nameToLoad) where nameToLoad defaults to AppIcon
-        if bestImage == nil {
-            let fallbackNames = ["AppIcon-1024", "AppIcon1024", "AppIcon-512@2x", "AppIcon_marketing", "AppIcon"]
-            for name in fallbackNames {
-                // try recursive lookup first
-                var url: URL? = bundleResourceURL(matching: name + ".png")
-                if url == nil {
-                    url = Bundle.main.url(forResource: name, withExtension: "png")
-                }
-                if let url = url, let data = try? Data(contentsOf: url), let img = UIImage(data: data, scale: 1.0) {
-                     AppLog.debugPrivate("AppIconService: fallback candidate bundle PNG \(url.lastPathComponent)")
-                      let px = max(img.size.width * img.scale, img.size.height * img.scale)
-                      if px > bestPixels {
-                          bestPixels = px
-                          bestImage = img
-                      }
-                      if bestPixels >= 1024 { break }
-                  }
-              }
-          }
-        guard let ui = bestImage ?? UIImage(named: "AppIcon") else {
-             AppLog.debugPublic("AppIconService: no usable PNG or asset found for marketing image")
-             return nil
-         }
-         AppLog.debugPublic("AppIconService: selected marketing image pixels=\(max(ui.size.width * ui.scale, ui.size.height * ui.scale))")
-        // Always render a 1024x1024 marketing image with rounded corners for a consistent look.
-    let outFormat = UIGraphicsImageRendererFormat()
-    outFormat.scale = 1.0
-    let renderer = UIGraphicsImageRenderer(size: CGSize(width: 1024, height: 1024), format: outFormat)
-         let out = renderer.image { ctx in
-             let rect = CGRect(origin: .zero, size: CGSize(width: 1024, height: 1024))
-             // Rounded corners — chosen to match marketing corner radii (approx 15% of size)
-             let corner = CGFloat(0.15 * 1024)
-             let path = UIBezierPath(roundedRect: rect, cornerRadius: corner)
-             path.addClip()
-             ui.draw(in: rect)
-         }
-         return out
-         #endif
-     }
- }
+            return out
+        #endif
+    }
+}

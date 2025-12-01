@@ -21,32 +21,33 @@ struct EncryptedAlbumApp: App {
                         }
 
                     // macOS: enforce passcode-on-launch by showing UnlockView when configured
-                    if albumManager.requirePasscodeOnLaunch && albumManager.showUnlockPrompt && !albumManager.isUnlocked {
+                    if albumManager.requirePasscodeOnLaunch && albumManager.showUnlockPrompt && !albumManager.isUnlocked
+                    {
                         UnlockView()
                             .environmentObject(albumManager)
                             .zIndex(1000)
                             .transition(.opacity)
                     }
                 }
-                    // Apply the user's chosen accent color at the app level
-                    .accentColor(albumManager.accentColorResolved)
+                // Apply the user's chosen accent color at the app level
+                .accentColor(albumManager.accentColorResolved)
 
-                    .onChange(of: albumManager.isBusy) { isBusy in
-                        if !isBusy {
-                            hasNotifiedBackgroundActivity = false
-                        }
+                .onChange(of: albumManager.isBusy) { isBusy in
+                    if !isBusy {
+                        hasNotifiedBackgroundActivity = false
                     }
-                    .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) {
-                        _ in
-                        if albumManager.isBusy {
-                            if !hasNotifiedBackgroundActivity {
-                                sendBackgroundActivityNotification()
-                                hasNotifiedBackgroundActivity = true
-                            }
-                        } else {
-                            albumManager.lock()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) {
+                    _ in
+                    if albumManager.isBusy {
+                        if !hasNotifiedBackgroundActivity {
+                            sendBackgroundActivityNotification()
+                            hasNotifiedBackgroundActivity = true
                         }
+                    } else {
+                        albumManager.lock()
                     }
+                }
             }
             Settings {
                 PreferencesView()

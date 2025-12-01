@@ -1,10 +1,11 @@
-import XCTest
 import CryptoKit
 import Photos
+import XCTest
+
 #if canImport(EncryptedAlbum)
-@testable import EncryptedAlbum
+    @testable import EncryptedAlbum
 #else
-@testable import EncryptedAlbum_iOS
+    @testable import EncryptedAlbum_iOS
 #endif
 
 @MainActor
@@ -36,9 +37,11 @@ final class CameraCaptureTests: XCTestCase {
         let data = "fakeimage".data(using: .utf8)!
         XCTAssertEqual(sut.hiddenPhotos.count, 0)
 
-        try await sut.handleCapturedMedia(mediaSource: .data(data), filename: "capture.jpg", dateTaken: Date(), mediaType: .photo)
+        try await sut.handleCapturedMedia(
+            mediaSource: .data(data), filename: "capture.jpg", dateTaken: Date(), mediaType: .photo)
 
-        XCTAssertEqual(sut.hiddenPhotos.count, 1, "Expected captured media to be saved into the album when preference enabled.")
+        XCTAssertEqual(
+            sut.hiddenPhotos.count, 1, "Expected captured media to be saved into the album when preference enabled.")
     }
 
     // The app no longer saves captures to the system Photos library automatically.
@@ -50,7 +53,8 @@ final class CameraCaptureTests: XCTestCase {
 
         let info: [UIImagePickerController.InfoKey: Any] = [.imageURL: tmp]
 
-        let (mediaSource, filename, mediaType, duration) = try await CameraCaptureView.Coordinator.makeMediaFromPickerInfo(info)
+        let (mediaSource, filename, mediaType, duration) = try await CameraCaptureView.Coordinator
+            .makeMediaFromPickerInfo(info)
 
         switch mediaSource {
         case .fileURL(let url):
@@ -74,7 +78,8 @@ final class CameraCaptureTests: XCTestCase {
 
         let info: [UIImagePickerController.InfoKey: Any] = [.originalImage: image]
 
-        let (mediaSource, filename, mediaType, duration) = try await CameraCaptureView.Coordinator.makeMediaFromPickerInfo(info)
+        let (mediaSource, filename, mediaType, duration) = try await CameraCaptureView.Coordinator
+            .makeMediaFromPickerInfo(info)
 
         switch mediaSource {
         case .data(let data):
@@ -96,7 +101,8 @@ final class CameraCaptureTests: XCTestCase {
         let data = "queuedimage".data(using: .utf8)!
 
         // Should return normally and not throw - it will queue for later
-        try await sut.handleCapturedMedia(mediaSource: .data(data), filename: "queued.jpg", dateTaken: Date(), mediaType: .photo)
+        try await sut.handleCapturedMedia(
+            mediaSource: .data(data), filename: "queued.jpg", dateTaken: Date(), mediaType: .photo)
 
         // Nothing saved yet
         XCTAssertEqual(sut.hiddenPhotos.count, 0)
@@ -110,7 +116,7 @@ final class CameraCaptureTests: XCTestCase {
         let timeout: TimeInterval = 3
         let start = Date()
         while sut.hiddenPhotos.count == 0 && Date().timeIntervalSince(start) < timeout {
-            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
         }
 
         XCTAssertEqual(sut.hiddenPhotos.count, 1, "Expected queued captured media to be processed after album unlock")

@@ -11,8 +11,8 @@ final class ShareExtensionInfoPlistTests: XCTestCase {
             let data = try Data(contentsOf: plistURL)
             let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
             guard let dict = plist as? [String: Any],
-                  let ext = dict["NSExtension"] as? [String: Any],
-                  let attrs = ext["NSExtensionAttributes"] as? [String: Any]
+                let ext = dict["NSExtension"] as? [String: Any],
+                let attrs = ext["NSExtensionAttributes"] as? [String: Any]
             else {
                 XCTFail("Malformed plist at \(plistURL.path)")
                 return
@@ -21,7 +21,9 @@ final class ShareExtensionInfoPlistTests: XCTestCase {
             let hasImageKey = attrs.keys.contains("NSExtensionActivationSupportsImageWithMaxCount")
             let hasMovieKey = attrs.keys.contains("NSExtensionActivationSupportsMovieWithMaxCount")
 
-            XCTAssertTrue(hasImageKey || hasMovieKey, "Share extension Info.plist must contain activation keys for images or movies: \(plistURL.path)")
+            XCTAssertTrue(
+                hasImageKey || hasMovieKey,
+                "Share extension Info.plist must contain activation keys for images or movies: \(plistURL.path)")
         }
 
         try check(plistURL: sharePlist)

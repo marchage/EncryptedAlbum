@@ -12,15 +12,23 @@ public enum ImportSaver {
     /// Save a file URL into a container specified by an app group identifier.
     /// Returns true on success.
     public static func saveFile(toAppGroupIdentifier appGroupIdentifier: String, from url: URL) -> Bool {
-        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
+        guard
+            let containerURL = FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: appGroupIdentifier)
+        else {
             return false
         }
         return saveFile(toContainerURL: containerURL, from: url)
     }
 
     /// Save provided data into a container by building a unique filename.
-    public static func saveData(toAppGroupIdentifier appGroupIdentifier: String, _ data: Data, suggestedFilename: String? = nil) -> Bool {
-        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
+    public static func saveData(
+        toAppGroupIdentifier appGroupIdentifier: String, _ data: Data, suggestedFilename: String? = nil
+    ) -> Bool {
+        guard
+            let containerURL = FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: appGroupIdentifier)
+        else {
             return false
         }
         return saveData(toContainerURL: containerURL, data, suggestedFilename: suggestedFilename)
@@ -58,7 +66,10 @@ public enum ImportSaver {
     ///   - chunkSize: size of read chunks (default 64KB)
     ///   - progress: closure called with (bytesWritten, totalBytes) on progress updates
     ///   - completion: completion handler called with success boolean
-    public static func copyFileWithProgress(toContainerURL containerURL: URL, from url: URL, chunkSize: Int = 64 * 1024, progress: ((Int64, Int64) -> Void)? = nil, completion: @escaping (Bool) -> Void) {
+    public static func copyFileWithProgress(
+        toContainerURL containerURL: URL, from url: URL, chunkSize: Int = 64 * 1024,
+        progress: ((Int64, Int64) -> Void)? = nil, completion: @escaping (Bool) -> Void
+    ) {
         DispatchQueue.global(qos: .utility).async {
             let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
             do {
@@ -92,7 +103,10 @@ public enum ImportSaver {
                 }
 
                 input.open()
-                defer { input.close(); try? outHandle.close() }
+                defer {
+                    input.close()
+                    try? outHandle.close()
+                }
 
                 var buffer = [UInt8](repeating: 0, count: chunkSize)
                 var totalWritten: Int64 = 0
@@ -115,7 +129,9 @@ public enum ImportSaver {
     }
 
     /// Save Data into a container (testable).
-    public static func saveData(toContainerURL containerURL: URL, _ data: Data, suggestedFilename: String? = nil) -> Bool {
+    public static func saveData(toContainerURL containerURL: URL, _ data: Data, suggestedFilename: String? = nil)
+        -> Bool
+    {
         let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: inboxURL, withIntermediateDirectories: true)
@@ -130,7 +146,10 @@ public enum ImportSaver {
     }
 
     /// Write data to destination with progress callbacks.
-    public static func writeDataWithProgress(toContainerURL containerURL: URL, _ data: Data, suggestedFilename: String? = nil, chunkSize: Int = 64 * 1024, progress: ((Int64, Int64) -> Void)? = nil, completion: @escaping (Bool) -> Void) {
+    public static func writeDataWithProgress(
+        toContainerURL containerURL: URL, _ data: Data, suggestedFilename: String? = nil, chunkSize: Int = 64 * 1024,
+        progress: ((Int64, Int64) -> Void)? = nil, completion: @escaping (Bool) -> Void
+    ) {
         DispatchQueue.global(qos: .utility).async {
             let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
             do {
@@ -155,7 +174,7 @@ public enum ImportSaver {
                 var offset = 0
                 while offset < data.count {
                     let len = min(chunkSize, data.count - offset)
-                    let chunk = data.subdata(in: offset..<offset+len)
+                    let chunk = data.subdata(in: offset..<offset + len)
                     outHandle.write(chunk)
                     offset += len
                     DispatchQueue.main.async { progress?(Int64(offset), totalSize) }

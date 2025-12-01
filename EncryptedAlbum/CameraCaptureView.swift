@@ -56,7 +56,8 @@ import SwiftUI
                 // a stable copy if we're handed a file URL.
                 if let mediaURL = info[.mediaURL] as? URL {
                     let ext = mediaURL.pathExtension.isEmpty ? "mov" : mediaURL.pathExtension
-                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
+                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+                        .appendingPathExtension(ext)
                     do {
                         try FileManager.default.copyItem(at: mediaURL, to: tempURL)
                         // Proceed to process the copy asynchronously but only after we've
@@ -86,10 +87,14 @@ import SwiftUI
                                     isFavorite: nil
                                 )
                                 AppLog.debugPublic("Handled captured media: \(filename)")
-                                AppLog.debugPrivate("CameraCoordinator: Determined mediaSource=\(mediaSource) filename=\(filename) mediaType=video duration=\(String(describing: duration))")
+                                AppLog.debugPrivate(
+                                    "CameraCoordinator: Determined mediaSource=\(mediaSource) filename=\(filename) mediaType=video duration=\(String(describing: duration))"
+                                )
                             } catch {
                                 AppLog.error("Failed to handle captured media: \(error.localizedDescription)")
-                                AppLog.debugPrivate("CameraCoordinator: Error handling captured video file at temp URL: \(tempURL.path)")
+                                AppLog.debugPrivate(
+                                    "CameraCoordinator: Error handling captured video file at temp URL: \(tempURL.path)"
+                                )
                             }
                         }
                     } catch {
@@ -103,7 +108,7 @@ import SwiftUI
 
                 Task.detached(priority: .userInitiated) {
                     do {
-                            AppLog.debugPrivate("CameraCoordinator: Received media info keys: \(info.keys)")
+                        AppLog.debugPrivate("CameraCoordinator: Received media info keys: \(info.keys)")
                         let (mediaSource, filename, mediaType, duration) = try await Self.makeMediaFromPickerInfo(info)
 
                         if let mediaSource = mediaSource {
@@ -122,11 +127,15 @@ import SwiftUI
                                     isFavorite: nil
                                 )
                                 AppLog.debugPublic("Handled captured media: \(filename)")
-                                    AppLog.debugPrivate("CameraCoordinator: Determined mediaSource=\(mediaSource) filename=\(filename) mediaType=\(mediaType) duration=\(String(describing: duration))")
+                                AppLog.debugPrivate(
+                                    "CameraCoordinator: Determined mediaSource=\(mediaSource) filename=\(filename) mediaType=\(mediaType) duration=\(String(describing: duration))"
+                                )
                             } catch {
-                                    AppLog.error("Failed to handle captured media: \(error.localizedDescription)")
-                                    // Record more context for debugging on-device
-                                    AppLog.debugPrivate("CameraCoordinator: Error handling captured media for filename=\(filename) mediaType=\(mediaType) duration=\(String(describing: duration))")
+                                AppLog.error("Failed to handle captured media: \(error.localizedDescription)")
+                                // Record more context for debugging on-device
+                                AppLog.debugPrivate(
+                                    "CameraCoordinator: Error handling captured media for filename=\(filename) mediaType=\(mediaType) duration=\(String(describing: duration))"
+                                )
                             }
                         }
                     } catch {
@@ -141,7 +150,9 @@ import SwiftUI
 
             /// Extract a usable MediaSource / meta info from the UIImagePicker info dictionary.
             /// Returns a tuple containing mediaSource, filename, type and optional duration.
-            static func makeMediaFromPickerInfo(_ info: [UIImagePickerController.InfoKey: Any]) async throws -> (MediaSource?, String, MediaType, TimeInterval?) {
+            static func makeMediaFromPickerInfo(_ info: [UIImagePickerController.InfoKey: Any]) async throws -> (
+                MediaSource?, String, MediaType, TimeInterval?
+            ) {
                 var mediaSource: MediaSource?
                 var filename = "Capture_\(Date().timeIntervalSince1970).jpg"
                 var mediaType: MediaType = .photo
@@ -181,13 +192,15 @@ import SwiftUI
                     mediaType = .photo
 
                 } else if let phAsset = info[.phAsset] as? PHAsset {
-                    let dataFromAsset: Data? = await withCheckedContinuation { (cont: CheckedContinuation<Data?, Never>) in
+                    let dataFromAsset: Data? = await withCheckedContinuation {
+                        (cont: CheckedContinuation<Data?, Never>) in
                         let options = PHImageRequestOptions()
                         options.isSynchronous = false
                         options.deliveryMode = .highQualityFormat
                         options.isNetworkAccessAllowed = true
 
-                        PHImageManager.default().requestImageDataAndOrientation(for: phAsset, options: options) { data, _, _, _ in
+                        PHImageManager.default().requestImageDataAndOrientation(for: phAsset, options: options) {
+                            data, _, _, _ in
                             cont.resume(returning: data)
                         }
                     }
@@ -515,12 +528,14 @@ import SwiftUI
                         if let audioInput = try? AVCaptureDeviceInput(device: audioDevice) {
                             if session.canAddInput(audioInput) {
                                 session.addInput(audioInput)
-                                AppLog.debugPrivate("CameraModel: added audio input \(audioDevice.localizedName) to session")
+                                AppLog.debugPrivate(
+                                    "CameraModel: added audio input \(audioDevice.localizedName) to session")
                             } else {
                                 AppLog.debugPrivate("CameraModel: cannot add audio input to session")
                             }
                         } else {
-                            AppLog.debugPrivate("CameraModel: failed to create audio input for device \(audioDevice.localizedName)")
+                            AppLog.debugPrivate(
+                                "CameraModel: failed to create audio input for device \(audioDevice.localizedName)")
                         }
                     } else {
                         AppLog.debugPrivate("CameraModel: no default audio device available to add")
@@ -710,28 +725,28 @@ import SwiftUI
 
             let filename = "Capture_\(Date().timeIntervalSince1970).jpg"
 
-                    Task {
-                        do {
-                            guard let albumManager = albumManager else {
-                                AppLog.error("No albumManager available to handle captured photo")
-                                return
-                            }
-                            AppLog.debugPrivate("CameraModel: saving captured photo via albumManager")
-                                try await albumManager.handleCapturedMedia(
-                                mediaSource: .data(data),
-                                filename: filename,
-                                dateTaken: Date(),
-                                sourceAlbum: "Captured to Album",
-                                assetIdentifier: nil,
-                                mediaType: .photo,
-                                duration: nil,
-                                location: nil,
-                                    isFavorite: nil
-                            )
-                        } catch {
-                            AppLog.error("Failed to handle captured photo: \(error.localizedDescription)")
-                        }
+            Task {
+                do {
+                    guard let albumManager = albumManager else {
+                        AppLog.error("No albumManager available to handle captured photo")
+                        return
                     }
+                    AppLog.debugPrivate("CameraModel: saving captured photo via albumManager")
+                    try await albumManager.handleCapturedMedia(
+                        mediaSource: .data(data),
+                        filename: filename,
+                        dateTaken: Date(),
+                        sourceAlbum: "Captured to Album",
+                        assetIdentifier: nil,
+                        mediaType: .photo,
+                        duration: nil,
+                        location: nil,
+                        isFavorite: nil
+                    )
+                } catch {
+                    AppLog.error("Failed to handle captured photo: \(error.localizedDescription)")
+                }
+            }
         }
     }
 
@@ -748,13 +763,20 @@ import SwiftUI
 
             if let error = error {
                 let nsErr = error as NSError
-                AppLog.error("Video recording error: \(nsErr.domain) code=\(nsErr.code) desc=\(nsErr.localizedDescription) userInfo=\(nsErr.userInfo)")
+                AppLog.error(
+                    "Video recording error: \(nsErr.domain) code=\(nsErr.code) desc=\(nsErr.localizedDescription) userInfo=\(nsErr.userInfo)"
+                )
 
                 if FileManager.default.fileExists(atPath: outputFileURL.path) {
-                    if let attr = try? FileManager.default.attributesOfItem(atPath: outputFileURL.path), let size = attr[.size] {
-                        AppLog.debugPrivate("CameraModel: recorded file present despite error — size=\(size) path=\(outputFileURL.path)")
+                    if let attr = try? FileManager.default.attributesOfItem(atPath: outputFileURL.path),
+                        let size = attr[.size]
+                    {
+                        AppLog.debugPrivate(
+                            "CameraModel: recorded file present despite error — size=\(size) path=\(outputFileURL.path)"
+                        )
                     } else {
-                        AppLog.debugPrivate("CameraModel: recorded file present despite error — path=\(outputFileURL.path)")
+                        AppLog.debugPrivate(
+                            "CameraModel: recorded file present despite error — path=\(outputFileURL.path)")
                     }
                 } else {
                     AppLog.debugPrivate("CameraModel: no recorded file exists at path \(outputFileURL.path)")
@@ -769,45 +791,46 @@ import SwiftUI
 
             let filename = "Video_\(Date().timeIntervalSince1970).mov"
 
-                    Task {
-                    guard let albumManager = albumManager else {
-                        AppLog.error("No albumManager available to handle captured video")
-                        return
+            Task {
+                guard let albumManager = albumManager else {
+                    AppLog.error("No albumManager available to handle captured video")
+                    return
+                }
+                AppLog.debugPrivate("CameraModel: saving recorded video via albumManager")
+                let asset = AVAsset(url: outputFileURL)
+                var duration: TimeInterval?
+                if #available(macOS 13.0, *) {
+                    if let loadedDuration = try? await asset.load(.duration) {
+                        duration = loadedDuration.seconds
                     }
-                    AppLog.debugPrivate("CameraModel: saving recorded video via albumManager")
-                    let asset = AVAsset(url: outputFileURL)
-                    var duration: TimeInterval?
-                    if #available(macOS 13.0, *) {
-                        if let loadedDuration = try? await asset.load(.duration) {
-                            duration = loadedDuration.seconds
-                        }
-                    } else {
-                        duration = asset.duration.seconds
-                    }
+                } else {
+                    duration = asset.duration.seconds
+                }
 
-                    do {
-                                try await albumManager.handleCapturedMedia(
-                            mediaSource: .fileURL(outputFileURL),
-                            filename: filename,
-                            dateTaken: Date(),
-                            sourceAlbum: "Captured to Album",
-                            assetIdentifier: nil,
-                            mediaType: .video,
-                            duration: duration,
-                            location: nil,
-                                    isFavorite: nil
-                        )
-                    } catch {
-                        AppLog.error("Failed to handle captured video: \(error.localizedDescription)")
-                    }
-                    // Always attempt to remove the temporary file
-                    do {
-                        try FileManager.default.removeItem(at: outputFileURL)
-                        AppLog.debugPrivate("CameraModel: removed temporary recorded file at \(outputFileURL.path)")
-                    } catch {
-                        AppLog.debugPrivate("CameraModel: failed to remove temp recorded file: \(error.localizedDescription)")
-                    }
-                    // No outer error handler needed; inner do/catch blocks handle failures.
+                do {
+                    try await albumManager.handleCapturedMedia(
+                        mediaSource: .fileURL(outputFileURL),
+                        filename: filename,
+                        dateTaken: Date(),
+                        sourceAlbum: "Captured to Album",
+                        assetIdentifier: nil,
+                        mediaType: .video,
+                        duration: duration,
+                        location: nil,
+                        isFavorite: nil
+                    )
+                } catch {
+                    AppLog.error("Failed to handle captured video: \(error.localizedDescription)")
+                }
+                // Always attempt to remove the temporary file
+                do {
+                    try FileManager.default.removeItem(at: outputFileURL)
+                    AppLog.debugPrivate("CameraModel: removed temporary recorded file at \(outputFileURL.path)")
+                } catch {
+                    AppLog.debugPrivate(
+                        "CameraModel: failed to remove temp recorded file: \(error.localizedDescription)")
+                }
+                // No outer error handler needed; inner do/catch blocks handle failures.
             }
         }
 
@@ -823,12 +846,15 @@ import SwiftUI
             // detect early failures due to file permissions or audio device issues.
             if FileManager.default.fileExists(atPath: fileURL.path) {
                 if let attr = try? FileManager.default.attributesOfItem(atPath: fileURL.path), let size = attr[.size] {
-                    AppLog.debugPrivate("CameraModel: recording file exists at start — size=\(size) path=\(fileURL.path)")
+                    AppLog.debugPrivate(
+                        "CameraModel: recording file exists at start — size=\(size) path=\(fileURL.path)")
                 } else {
                     AppLog.debugPrivate("CameraModel: recording file exists at start — path=\(fileURL.path)")
                 }
             } else {
-                AppLog.debugPrivate("CameraModel: recording file did not exist immediately at start (this can be normal) — path=\(fileURL.path)")
+                AppLog.debugPrivate(
+                    "CameraModel: recording file did not exist immediately at start (this can be normal) — path=\(fileURL.path)"
+                )
             }
 
             // Log connection ports available (helpful to see audio/video presence)
@@ -846,22 +872,22 @@ import SwiftUI
             // Setting bounds and position avoids partial clipping when window changes size
             // (fixes issue where only the top half was visible when rotated/resized).
             // Ensure the preview sublayer (if present) always matches view bounds.
-                if let previewLayer = self.layer?.sublayers?.first as? AVCaptureVideoPreviewLayer {
+            if let previewLayer = self.layer?.sublayers?.first as? AVCaptureVideoPreviewLayer {
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
                 previewLayer.frame = self.bounds
                 previewLayer.position = CGPoint(x: self.bounds.midX, y: self.bounds.midY)
                 previewLayer.contentsScale = NSScreen.main?.backingScaleFactor ?? 1.0
                 previewLayer.needsDisplayOnBoundsChange = true
-                    // Ensure video orientation follows view aspect (portrait vs. landscape)
-                    if let connection = previewLayer.connection, connection.isVideoOrientationSupported {
-                        let bounds = self.bounds
-                        if bounds.width >= bounds.height {
-                            connection.videoOrientation = .landscapeRight
-                        } else {
-                            connection.videoOrientation = .portrait
-                        }
+                // Ensure video orientation follows view aspect (portrait vs. landscape)
+                if let connection = previewLayer.connection, connection.isVideoOrientationSupported {
+                    let bounds = self.bounds
+                    if bounds.width >= bounds.height {
+                        connection.videoOrientation = .landscapeRight
+                    } else {
+                        connection.videoOrientation = .portrait
                     }
+                }
                 CATransaction.commit()
             }
         }

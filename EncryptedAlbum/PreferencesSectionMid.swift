@@ -18,19 +18,22 @@ struct PreferencesSectionMid: View {
 
     var body: some View {
         Group {
-            Toggle("Auto-remove from Photos after import", isOn: Binding(
-                get: { UserDefaults.standard.bool(forKey: "cameraAutoRemoveFromPhotos") },
-                set: { newValue in
-                    if newValue {
-                        pendingCameraAutoRemoveValue = true
-                        showCameraAutoRemoveConfirm = true
-                    } else {
-                        UserDefaults.standard.set(false, forKey: "cameraAutoRemoveFromPhotos")
-                        albumManager.cameraAutoRemoveFromPhotos = false
-                        albumManager.saveSettings()
+            Toggle(
+                "Auto-remove from Photos after import",
+                isOn: Binding(
+                    get: { UserDefaults.standard.bool(forKey: "cameraAutoRemoveFromPhotos") },
+                    set: { newValue in
+                        if newValue {
+                            pendingCameraAutoRemoveValue = true
+                            showCameraAutoRemoveConfirm = true
+                        } else {
+                            UserDefaults.standard.set(false, forKey: "cameraAutoRemoveFromPhotos")
+                            albumManager.cameraAutoRemoveFromPhotos = false
+                            albumManager.saveSettings()
+                        }
                     }
-                }
-            ))
+                )
+            )
             .alert("Enable Auto-remove from Photos?", isPresented: $showCameraAutoRemoveConfirm) {
                 Button("Enable", role: .destructive) {
                     UserDefaults.standard.set(true, forKey: "cameraAutoRemoveFromPhotos")
@@ -41,12 +44,16 @@ struct PreferencesSectionMid: View {
                     pendingCameraAutoRemoveValue = false
                 }
             } message: {
-                Text("Enabling this will automatically remove photos from the Photos app after they are securely imported into Encrypted Album. This is potentially destructive — make sure you have backups and understand the behaviour.")
+                Text(
+                    "Enabling this will automatically remove photos from the Photos app after they are securely imported into Encrypted Album. This is potentially destructive — make sure you have backups and understand the behaviour."
+                )
             }
 
-            Text("Note: this operation requires Photos permission and will permanently remove items from the system Photos library (it moves items to the Recently Deleted album). You may be prompted to grant access when first used.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Text(
+                "Note: this operation requires Photos permission and will permanently remove items from the system Photos library (it moves items to the Recently Deleted album). You may be prompted to grant access when first used."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
 
             Button("Change Album Password") {
                 showChangePasswordSheet = true
@@ -59,9 +66,11 @@ struct PreferencesSectionMid: View {
 
             Text("Stealth Features").font(.headline)
             Toggle("Stealth Mode (Fake Crash)", isOn: $stealthModeEnabled)
-            Text("When enabled, the app will appear to crash or freeze on launch. Long press the screen for 1.5 seconds to unlock.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Text(
+                "When enabled, the app will appear to crash or freeze on launch. Long press the screen for 1.5 seconds to unlock."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
 
             HStack {
                 Text("Decoy Password")
@@ -117,25 +126,43 @@ struct PreferencesSectionMid: View {
                         storedLockdownMode = false
                     }
                 } message: {
-                    Text("Lockdown Mode will disable iCloud sync, imports and exports. Use this when you need to minimize external connectivity and data movement.")
+                    Text(
+                        "Lockdown Mode will disable iCloud sync, imports and exports. Use this when you need to minimize external connectivity and data movement."
+                    )
                 }
 
-            Text("While Lockdown Mode is enabled the app will refuse imports, exports, and iCloud verification. Share extensions will be blocked from depositing files into the album's inbox.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Text(
+                "While Lockdown Mode is enabled the app will refuse imports, exports, and iCloud verification. Share extensions will be blocked from depositing files into the album's inbox."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
 
             Text("Import & Export").font(.headline)
 
-            Toggle("Require re-auth for exports", isOn: Binding(
-                get: { albumManager.requireReauthForExports },
-                set: { albumManager.requireReauthForExports = $0; albumManager.saveSettings() }
-            ))
+            Toggle(
+                "Require re-auth for exports",
+                isOn: Binding(
+                    get: { albumManager.requireReauthForExports },
+                    set: {
+                        albumManager.requireReauthForExports = $0
+                        albumManager.saveSettings()
+                    }
+                )
+            )
             .disabled(albumManager.lockdownModeEnabled)
 
             HStack {
                 Text("Backup Schedule")
                 Spacer()
-                Picker("Backup", selection: Binding(get: { albumManager.backupSchedule }, set: { albumManager.backupSchedule = $0; albumManager.saveSettings() })) {
+                Picker(
+                    "Backup",
+                    selection: Binding(
+                        get: { albumManager.backupSchedule },
+                        set: {
+                            albumManager.backupSchedule = $0
+                            albumManager.saveSettings()
+                        })
+                ) {
                     Text("Manual").tag("manual")
                     Text("Weekly").tag("weekly")
                     Text("Monthly").tag("monthly")
@@ -145,8 +172,16 @@ struct PreferencesSectionMid: View {
             }
             .disabled(albumManager.lockdownModeEnabled)
 
-            Toggle("Encrypted iCloud Sync", isOn: Binding(get: { albumManager.encryptedCloudSyncEnabled }, set: { albumManager.encryptedCloudSyncEnabled = $0; albumManager.saveSettings() }))
-                .disabled(albumManager.lockdownModeEnabled)
+            Toggle(
+                "Encrypted iCloud Sync",
+                isOn: Binding(
+                    get: { albumManager.encryptedCloudSyncEnabled },
+                    set: {
+                        albumManager.encryptedCloudSyncEnabled = $0
+                        albumManager.saveSettings()
+                    })
+            )
+            .disabled(albumManager.lockdownModeEnabled)
 
             // Cloud sync UI (small group)
             VStack(alignment: .leading, spacing: 8) {
@@ -160,9 +195,11 @@ struct PreferencesSectionMid: View {
 
                 HStack(spacing: 12) {
                     if let last = albumManager.lastCloudSync {
-                        Text("Last sync: \(DateFormatter.localizedString(from: last, dateStyle: .short, timeStyle: .short))")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                        Text(
+                            "Last sync: \(DateFormatter.localizedString(from: last, dateStyle: .short, timeStyle: .short))"
+                        )
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                     } else {
                         Text("Last sync: —")
                             .font(.caption2)
@@ -177,7 +214,9 @@ struct PreferencesSectionMid: View {
                         Text("Sync now")
                     }
                     .buttonStyle(.bordered)
-                    .disabled(albumManager.lockdownModeEnabled || !albumManager.encryptedCloudSyncEnabled || albumManager.cloudSyncStatus == .syncing)
+                    .disabled(
+                        albumManager.lockdownModeEnabled || !albumManager.encryptedCloudSyncEnabled
+                            || albumManager.cloudSyncStatus == .syncing)
                 }
 
                 HStack {
@@ -187,7 +226,9 @@ struct PreferencesSectionMid: View {
                         Text("Verify encryption")
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(albumManager.lockdownModeEnabled || !albumManager.encryptedCloudSyncEnabled || albumManager.cloudSyncStatus == .syncing)
+                    .disabled(
+                        albumManager.lockdownModeEnabled || !albumManager.encryptedCloudSyncEnabled
+                            || albumManager.cloudSyncStatus == .syncing)
 
                     Spacer()
 
@@ -215,7 +256,15 @@ struct PreferencesSectionMid: View {
             HStack {
                 Text("Thumbnail Privacy")
                 Spacer()
-                Picker("Thumbnail", selection: Binding(get: { albumManager.thumbnailPrivacy }, set: { albumManager.thumbnailPrivacy = $0; albumManager.saveSettings() })) {
+                Picker(
+                    "Thumbnail",
+                    selection: Binding(
+                        get: { albumManager.thumbnailPrivacy },
+                        set: {
+                            albumManager.thumbnailPrivacy = $0
+                            albumManager.saveSettings()
+                        })
+                ) {
                     Text("Blur").tag("blur")
                     Text("Hide").tag("hide")
                     Text("None").tag("none")

@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import EncryptedAlbum
 
 final class ThumbnailCacheTests: XCTestCase {

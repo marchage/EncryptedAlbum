@@ -2,9 +2,9 @@ import Foundation
 import Photos
 
 #if canImport(EncryptedAlbum)
-@testable import EncryptedAlbum
+    @testable import EncryptedAlbum
 #else
-@testable import EncryptedAlbum_iOS
+    @testable import EncryptedAlbum_iOS
 #endif
 
 final class MockImportService: ImportService {

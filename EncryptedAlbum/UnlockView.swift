@@ -24,168 +24,186 @@ struct UnlockView: View {
     private func appIconView() -> some View {
         // Prefer runtime image if AppIconService has one; otherwise fall back to bundle files
         #if os(macOS)
-        // Prefer the running application's icon first (it reflects the
-        // actual icon macOS is using at runtime). Fall back to named AppIcon
-        // resources if for some reason the runtime icon is not available.
-        if let runtimeIcon = NSApp.applicationIconImage ?? NSImage(named: "AppIcon") {
-            // Prefer the highest-resolution representation available (ideally 1024px)
-            // so the icon renders crisply at larger sizes, but avoid forcing a
-            // small rounded corner at 26px which makes the asset look baked-in.
-            if let bestRep = runtimeIcon.representations
-                .compactMap({ $0 as? NSBitmapImageRep })
-                .sorted(by: { $0.pixelsWide > $1.pixelsWide })
-                .first
-            {
-                let px = bestRep.pixelsWide
+            // Prefer the running application's icon first (it reflects the
+            // actual icon macOS is using at runtime). Fall back to named AppIcon
+            // resources if for some reason the runtime icon is not available.
+            if let runtimeIcon = NSApp.applicationIconImage ?? NSImage(named: "AppIcon") {
+                // Prefer the highest-resolution representation available (ideally 1024px)
+                // so the icon renders crisply at larger sizes, but avoid forcing a
+                // small rounded corner at 26px which makes the asset look baked-in.
+                if let bestRep = runtimeIcon.representations
+                    .compactMap({ $0 as? NSBitmapImageRep })
+                    .sorted(by: { $0.pixelsWide > $1.pixelsWide })
+                    .first
+                {
+                    let px = bestRep.pixelsWide
 
-                // Convert pixel width to point width using the main screen backing scale
-                // factor so we avoid upscaling small representations when displaying.
-                let scale = NSScreen.main?.backingScaleFactor ?? 1.0
-                let nativePoints = CGFloat(px) / scale
-                var displaySize = min(CGFloat(256), nativePoints)
+                    // Convert pixel width to point width using the main screen backing scale
+                    // factor so we avoid upscaling small representations when displaying.
+                    let scale = NSScreen.main?.backingScaleFactor ?? 1.0
+                    let nativePoints = CGFloat(px) / scale
+                    var displaySize = min(CGFloat(256), nativePoints)
 
-                // If the best representation is smaller than our visual cap, try to
-                // generate a higher-resolution marketing image (1024) from bundle
-                // assets — prefer the explicitly selected icon name when set.
-                if displaySize < 256 {
-                    let explicitName = AppIconService.shared.selectedIconName.isEmpty ? nil : AppIconService.shared.selectedIconName
-                    if let generated = AppIconService.generateMarketingImage(from: explicitName) {
-                        let generatedPoints = generated.size.width
-                        if generatedPoints > displaySize {
-                            let genDisplay = min(CGFloat(256), generatedPoints)
-                            return AnyView(Image(nsImage: generated)
-                                .resizable()
-                                .renderingMode(.original)
-                                .interpolation(.high)
-                                .aspectRatio(1, contentMode: .fit)
-                                .frame(maxWidth: genDisplay, maxHeight: genDisplay)
-                                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+                    // If the best representation is smaller than our visual cap, try to
+                    // generate a higher-resolution marketing image (1024) from bundle
+                    // assets — prefer the explicitly selected icon name when set.
+                    if displaySize < 256 {
+                        let explicitName =
+                            AppIconService.shared.selectedIconName.isEmpty
+                            ? nil : AppIconService.shared.selectedIconName
+                        if let generated = AppIconService.generateMarketingImage(from: explicitName) {
+                            let generatedPoints = generated.size.width
+                            if generatedPoints > displaySize {
+                                let genDisplay = min(CGFloat(256), generatedPoints)
+                                return AnyView(
+                                    Image(nsImage: generated)
+                                        .resizable()
+                                        .renderingMode(.original)
+                                        .interpolation(.high)
+                                        .aspectRatio(1, contentMode: .fit)
+                                        .frame(maxWidth: genDisplay, maxHeight: genDisplay)
+                                        .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+                            }
                         }
                     }
-                }
 
-                // Create an image at its native point dimensions so we display at
-                // the correct resolution and avoid magnifying small representations.
-                let size = NSSize(width: nativePoints, height: nativePoints)
-                let highResImage = NSImage(size: size)
-                highResImage.addRepresentation(bestRep)
-                return AnyView(Image(nsImage: highResImage)
-                    .resizable()
-                    .renderingMode(.original)
-                    .interpolation(.high)
-                    .aspectRatio(1, contentMode: .fit)
-                    .frame(maxWidth: displaySize, maxHeight: displaySize)
-                    // Do not force a large corner radius here — prefer the icon
-                    // to render as bundled. If the asset is pre-rounded, showing
-                    // it as-is avoids the repeated rounded look.
-                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
-            } else {
-                let nativePoints = runtimeIcon.size.width
-                var displaySize = min(CGFloat(256), nativePoints)
+                    // Create an image at its native point dimensions so we display at
+                    // the correct resolution and avoid magnifying small representations.
+                    let size = NSSize(width: nativePoints, height: nativePoints)
+                    let highResImage = NSImage(size: size)
+                    highResImage.addRepresentation(bestRep)
+                    return AnyView(
+                        Image(nsImage: highResImage)
+                            .resizable()
+                            .renderingMode(.original)
+                            .interpolation(.high)
+                            .aspectRatio(1, contentMode: .fit)
+                            .frame(maxWidth: displaySize, maxHeight: displaySize)
+                            // Do not force a large corner radius here — prefer the icon
+                            // to render as bundled. If the asset is pre-rounded, showing
+                            // it as-is avoids the repeated rounded look.
+                            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+                } else {
+                    let nativePoints = runtimeIcon.size.width
+                    var displaySize = min(CGFloat(256), nativePoints)
 
-                // Try generated marketing image if runtime icon is low-res.
-                if displaySize < 256 {
-                    let explicitName = AppIconService.shared.selectedIconName.isEmpty ? nil : AppIconService.shared.selectedIconName
-                    if let generated = AppIconService.generateMarketingImage(from: explicitName) {
-                        let genPoints = generated.size.width
-                        if genPoints > displaySize {
-                            let genDisplay = min(CGFloat(256), genPoints)
-                            return AnyView(Image(nsImage: generated)
-                                .resizable()
-                                .renderingMode(.original)
-                                .interpolation(.high)
-                                .aspectRatio(1, contentMode: .fit)
-                                .frame(maxWidth: genDisplay, maxHeight: genDisplay)
-                                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+                    // Try generated marketing image if runtime icon is low-res.
+                    if displaySize < 256 {
+                        let explicitName =
+                            AppIconService.shared.selectedIconName.isEmpty
+                            ? nil : AppIconService.shared.selectedIconName
+                        if let generated = AppIconService.generateMarketingImage(from: explicitName) {
+                            let genPoints = generated.size.width
+                            if genPoints > displaySize {
+                                let genDisplay = min(CGFloat(256), genPoints)
+                                return AnyView(
+                                    Image(nsImage: generated)
+                                        .resizable()
+                                        .renderingMode(.original)
+                                        .interpolation(.high)
+                                        .aspectRatio(1, contentMode: .fit)
+                                        .frame(maxWidth: genDisplay, maxHeight: genDisplay)
+                                        .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+                            }
                         }
                     }
-                }
 
-                return AnyView(Image(nsImage: runtimeIcon)
-                    .resizable()
-                    .renderingMode(.original)
-                    .interpolation(.high)
-                    .aspectRatio(1, contentMode: .fit)
-                    .frame(maxWidth: displaySize, maxHeight: displaySize)
-                    // Show runtime icon as-is (no forced corner radius)
-                    .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+                    return AnyView(
+                        Image(nsImage: runtimeIcon)
+                            .resizable()
+                            .renderingMode(.original)
+                            .interpolation(.high)
+                            .aspectRatio(1, contentMode: .fit)
+                            .frame(maxWidth: displaySize, maxHeight: displaySize)
+                            // Show runtime icon as-is (no forced corner radius)
+                            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+                }
             }
-        }
-        // If we couldn't load an app icon, fall back to a friendly lock symbol
-        return AnyView(
-            Image(systemName: "lock.fill")
-                .font(.system(size: 72))
-                .foregroundStyle(
-                    LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
-        )
+            // If we couldn't load an app icon, fall back to a friendly lock symbol
+            return AnyView(
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 72))
+                    .foregroundStyle(
+                        LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+            )
         #else
-        // Prefer the runtime marketing image generated by `AppIconService` (reflects currently selected icon)
-        #if os(iOS)
-        let maxVisual = min(CGFloat(256), UIScreen.main.bounds.width * 0.35)
-        let selectedIcon = appIconService.selectedIconName.isEmpty ? nil : appIconService.selectedIconName
-        let runtimeImage = appIconService.runtimeMarketingImage
-        let generatedImage = AppIconService.generateMarketingImage(from: selectedIcon)
-        if let bestImage = Image.chooseBestMarketingImage(runtime: runtimeImage, generated: generatedImage, visualCap: maxVisual) {
-            let pixels = Int(max(bestImage.size.width * bestImage.scale, bestImage.size.height * bestImage.scale))
-            AppLog.debugPublic("UnlockView: displaying marketing icon (\(pixels)px, runtime:\(runtimeImage != nil), generated:\(generatedImage != nil))")
+            // Prefer the runtime marketing image generated by `AppIconService` (reflects currently selected icon)
+            #if os(iOS)
+                let maxVisual = min(CGFloat(256), UIScreen.main.bounds.width * 0.35)
+                let selectedIcon = appIconService.selectedIconName.isEmpty ? nil : appIconService.selectedIconName
+                let runtimeImage = appIconService.runtimeMarketingImage
+                let generatedImage = AppIconService.generateMarketingImage(from: selectedIcon)
+                if let bestImage = Image.chooseBestMarketingImage(
+                    runtime: runtimeImage, generated: generatedImage, visualCap: maxVisual)
+                {
+                    let pixels = Int(
+                        max(bestImage.size.width * bestImage.scale, bestImage.size.height * bestImage.scale))
+                    AppLog.debugPublic(
+                        "UnlockView: displaying marketing icon (\(pixels)px, runtime:\(runtimeImage != nil), generated:\(generatedImage != nil))"
+                    )
 
-            return AnyView(Image(platformImage: bestImage)
-                .resizable()
-                .renderingMode(.original)
-                .interpolation(.high)
-                .aspectRatio(1, contentMode: .fit)
-                .frame(width: maxVisual, height: maxVisual)
-                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
-        }
-        // FORCE generation of a fresh high-res marketing image every time to ensure we get 1024px
-        // Do NOT use cached runtimeMarketingImage as it may be lower-res.
-        // let maxVisual = min(CGFloat(256), UIScreen.main.bounds.width * 0.35)
-        
-        // Generate a fresh marketing image - this will search for mac1024.png and high-res bundles
-        if let generated = AppIconService.generateMarketingImage(from: nil) {
-            // Log the actual size for debugging
-            let pixels = max(generated.size.width * generated.scale, generated.size.height * generated.scale)
-            AppLog.debugPublic("UnlockView: using marketing image with \(Int(pixels))px")
-            
-            return AnyView(Image(platformImage: generated)
-                .resizable()
-                .renderingMode(.original)
-                .interpolation(.high)
-                .aspectRatio(1, contentMode: .fit)
-                .frame(width: maxVisual, height: maxVisual)
-                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
-        }
-        
-        #else
-        if let runtime = AppIconService.shared.runtimeMarketingImage {
-            return AnyView(Image(platformImage: runtime)
-                .resizable()
-                .renderingMode(.original)
-                .interpolation(.high)
-                .aspectRatio(1, contentMode: .fit)
-                .frame(maxWidth: 256, maxHeight: 256)
-                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
-        }
+                    return AnyView(
+                        Image(platformImage: bestImage)
+                            .resizable()
+                            .renderingMode(.original)
+                            .interpolation(.high)
+                            .aspectRatio(1, contentMode: .fit)
+                            .frame(width: maxVisual, height: maxVisual)
+                            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+                }
+                // FORCE generation of a fresh high-res marketing image every time to ensure we get 1024px
+                // Do NOT use cached runtimeMarketingImage as it may be lower-res.
+                // let maxVisual = min(CGFloat(256), UIScreen.main.bounds.width * 0.35)
 
-        if let generated = AppIconService.generateMarketingImage(from: nil) {
-            return AnyView(Image(platformImage: generated)
-                .resizable()
-                .renderingMode(.original)
-                .interpolation(.high)
-                .aspectRatio(1, contentMode: .fit)
-                .frame(maxWidth: 256, maxHeight: 256)
-                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
-        }
-        #endif
-        // If no app icon could be loaded, show a neutral lock symbol instead of an empty view
-        return AnyView(
-            Image(systemName: "lock.fill")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(maxWidth: 120, maxHeight: 120)
-                .foregroundStyle(LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
-        )
+                // Generate a fresh marketing image - this will search for mac1024.png and high-res bundles
+                if let generated = AppIconService.generateMarketingImage(from: nil) {
+                    // Log the actual size for debugging
+                    let pixels = max(generated.size.width * generated.scale, generated.size.height * generated.scale)
+                    AppLog.debugPublic("UnlockView: using marketing image with \(Int(pixels))px")
+
+                    return AnyView(
+                        Image(platformImage: generated)
+                            .resizable()
+                            .renderingMode(.original)
+                            .interpolation(.high)
+                            .aspectRatio(1, contentMode: .fit)
+                            .frame(width: maxVisual, height: maxVisual)
+                            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+                }
+
+            #else
+                if let runtime = AppIconService.shared.runtimeMarketingImage {
+                    return AnyView(
+                        Image(platformImage: runtime)
+                            .resizable()
+                            .renderingMode(.original)
+                            .interpolation(.high)
+                            .aspectRatio(1, contentMode: .fit)
+                            .frame(maxWidth: 256, maxHeight: 256)
+                            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+                }
+
+                if let generated = AppIconService.generateMarketingImage(from: nil) {
+                    return AnyView(
+                        Image(platformImage: generated)
+                            .resizable()
+                            .renderingMode(.original)
+                            .interpolation(.high)
+                            .aspectRatio(1, contentMode: .fit)
+                            .frame(maxWidth: 256, maxHeight: 256)
+                            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
+                }
+            #endif
+            // If no app icon could be loaded, show a neutral lock symbol instead of an empty view
+            return AnyView(
+                Image(systemName: "lock.fill")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: 120, maxHeight: 120)
+                    .foregroundStyle(
+                        LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
+            )
         #endif
     }
 
@@ -250,12 +268,12 @@ struct UnlockView: View {
                             }
 
                             HStack(spacing: 12) {
-                                    // Choose sensible button sizing for compact layout vs roomy layout.
-                                    // On compact layout we reduce controlSize and slightly reduce button widths.
-                                    let compact = albumManager.compactLayoutEnabled
+                                // Choose sensible button sizing for compact layout vs roomy layout.
+                                // On compact layout we reduce controlSize and slightly reduce button widths.
+                                let compact = albumManager.compactLayoutEnabled
 
-                                    if biometricType != .none {
-                                        Button {
+                                if biometricType != .none {
+                                    Button {
                                         cancelAutoBiometricScheduling()
                                         authenticateWithBiometrics()
                                     } label: {
@@ -274,8 +292,10 @@ struct UnlockView: View {
                                         await unlock()
                                     }
                                 } label: {
-                                        Text("Unlock")
-                                        .frame(width: biometricType != .none ? (compact ? 130 : 140) : (compact ? 150 : 180))
+                                    Text("Unlock")
+                                        .frame(
+                                            width: biometricType != .none
+                                                ? (compact ? 130 : 140) : (compact ? 150 : 180))
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .controlSize(compact ? .regular : .large)
@@ -438,7 +458,8 @@ struct UnlockView: View {
         // Avoid scheduling automatic biometric if the user manually locked the album and we
         // intentionally suppressed auto-biometrics to avoid surprising prompts.
         guard isReady, scenePhase == .active, !hasAutoBiometricAttempted, autoBiometricWorkItem == nil,
-              !albumManager.suppressAutoBiometricAfterManualLock else { return }
+            !albumManager.suppressAutoBiometricAfterManualLock
+        else { return }
         hasAutoBiometricAttempted = true
 
         let workItem = DispatchWorkItem {

@@ -1,9 +1,10 @@
-import XCTest
 import Photos
+import XCTest
+
 #if canImport(EncryptedAlbum)
-@testable import EncryptedAlbum
+    @testable import EncryptedAlbum
 #else
-@testable import EncryptedAlbum_iOS
+    @testable import EncryptedAlbum_iOS
 #endif
 
 @MainActor
@@ -48,7 +49,9 @@ final class ImportAutoRemoveTests: XCTestCase {
         let input = [makePHAsset()]
         await sut.importAssets(input)
 
-        XCTAssertEqual(mockPhotos.batchDeletedAssets.count, 1, "Expected batchDeleteAssets to be called when auto-remove is enabled")
+        XCTAssertEqual(
+            mockPhotos.batchDeletedAssets.count, 1,
+            "Expected batchDeleteAssets to be called when auto-remove is enabled")
     }
 
     func testImportAssets_respectsAutoRemove_disabled() async throws {
@@ -69,6 +72,8 @@ final class ImportAutoRemoveTests: XCTestCase {
         let input = [makePHAsset()]
         await sut.importAssets(input)
 
-        XCTAssertEqual(mockPhotos.batchDeletedAssets.count, 0, "Expected batchDeleteAssets NOT to be called when auto-remove is disabled")
+        XCTAssertEqual(
+            mockPhotos.batchDeletedAssets.count, 0,
+            "Expected batchDeleteAssets NOT to be called when auto-remove is disabled")
     }
 }

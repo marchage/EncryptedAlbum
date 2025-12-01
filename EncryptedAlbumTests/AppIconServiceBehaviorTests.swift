@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import EncryptedAlbum
 
 final class AppIconServiceBehaviorTests: XCTestCase {
@@ -12,10 +13,10 @@ final class AppIconServiceBehaviorTests: XCTestCase {
 
     func testGenerateMarketingImage_Default() {
         // Ensure the marketing generator returns an image for the common default
-#if os(macOS)
-        XCTAssertNotNil(AppIconService.generateMarketingImage(from: "AppIcon"))
-#else
-        XCTAssertNotNil(AppIconService.generateMarketingImage(from: "AppIcon"))
-#endif
+        #if os(macOS)
+            XCTAssertNotNil(AppIconService.generateMarketingImage(from: "AppIcon"))
+        #else
+            XCTAssertNotNil(AppIconService.generateMarketingImage(from: "AppIcon"))
+        #endif
     }
 }

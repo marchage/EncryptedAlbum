@@ -1,15 +1,17 @@
 import XCTest
+
 #if canImport(EncryptedAlbum)
-@testable import EncryptedAlbum
+    @testable import EncryptedAlbum
 #elseif canImport(EncryptedAlbum_iOS)
-@testable import EncryptedAlbum_iOS
+    @testable import EncryptedAlbum_iOS
 #endif
 
 final class SharePreviewHelperTests: XCTestCase {
 
     func testCountSupportedAttachments_withFileURL() throws {
         let fm = FileManager.default
-        let dir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).appendingPathComponent(UUID().uuidString)
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).appendingPathComponent(
+            UUID().uuidString)
         try fm.createDirectory(at: dir, withIntermediateDirectories: true)
 
         let f1 = dir.appendingPathComponent("a.jpg")

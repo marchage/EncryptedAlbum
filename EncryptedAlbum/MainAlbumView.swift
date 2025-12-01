@@ -40,7 +40,9 @@ struct MainAlbumView: View {
             if index >= maxShow { break }
             let url = albumManager.urlForStoredPath(photo.encryptedDataPath)
             var sizeStr = "(missing)"
-            if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path), let size = attrs[FileAttributeKey.size] as? Int64 {
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+                let size = attrs[FileAttributeKey.size] as? Int64
+            {
                 sizeStr = ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
             }
             lines.append("• \(photo.filename) — \(sizeStr)")
@@ -400,7 +402,7 @@ struct MainAlbumView: View {
 
         // Check the selected photos for large files that exceed secure delete cap.
         var foundLarge = false
-            for photo in photos {
+        for photo in photos {
             let url = albumManager.urlForStoredPath(photo.encryptedDataPath)
             if FileManager.default.fileExists(atPath: url.path) {
                 if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
@@ -608,7 +610,9 @@ struct MainAlbumView: View {
             .accessibilityLabel("Lockdown Mode enabled — tap to open Preferences")
             .accessibilityHint("Imports, exports and iCloud sync are disabled while Lockdown is active")
             #if os(macOS)
-            .help("Lockdown Mode active — imports, exports and cloud operations are disabled. Click to open Preferences.")
+                .help(
+                    "Lockdown Mode active — imports, exports and cloud operations are disabled. Click to open Preferences."
+                )
             #endif
             // transient tooltip overlay (for iOS & macOS) shown once when Lockdown first enabled
             if showLockdownTooltip {
@@ -647,12 +651,15 @@ struct MainAlbumView: View {
             .padding(.vertical, 3)
             .padding(.horizontal, 6)
             #if os(iOS)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color(uiColor: .systemBackground).opacity(0.0001)))
-            .accessibilityLabel("Preventing system sleep")
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color(uiColor: .systemBackground).opacity(0.0001)))
+                .accessibilityLabel("Preventing system sleep")
             #else
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: NSColor.windowBackgroundColor).opacity(0.0001)))
-            .accessibilityLabel("Preventing system sleep")
-            .help("Device will remain awake")
+                .background(
+                    RoundedRectangle(cornerRadius: 8).fill(
+                        Color(nsColor: NSColor.windowBackgroundColor).opacity(0.0001))
+                )
+                .accessibilityLabel("Preventing system sleep")
+                .help("Device will remain awake")
             #endif
         }
         Button {
@@ -692,7 +699,7 @@ struct MainAlbumView: View {
                 Image(systemName: "camera.fill")
             }
             .accessibilityLabel("Capture Photo or Video")
-          #endif
+        #endif
 
         #if os(macOS)
             Button {
@@ -913,9 +920,9 @@ struct MainAlbumView: View {
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 6) {
                         Text("Encrypted Album")
-                            .font(.headline)
-                            .lineLimit(1)
-                            .foregroundStyle(.primary)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .foregroundStyle(.primary)
                     }
                 }
                 ToolbarItemGroup(placement: .navigationBarLeading) {
@@ -924,8 +931,28 @@ struct MainAlbumView: View {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     // Progress chip (import / decrypt / restore) — shown when any long operation is active
                     toolbarProgressChip(
-                        isActive: albumManager.viewerProgress.isDecrypting || directImportProgress.isImporting || albumManager.exportProgress.isExporting || albumManager.restorationProgress.isRestoring,
-                        message: albumManager.viewerProgress.isDecrypting ? (albumManager.viewerProgress.statusMessage.isEmpty ? (albumManager.viewerProgress.bytesTotal > 0 ? String(format: "Decrypting… %d%%", Int(albumManager.viewerProgress.percentComplete * 100)) : "Decrypting…") : (albumManager.viewerProgress.bytesTotal > 0 ? String(format: "%@ — %d%%", albumManager.viewerProgress.statusMessage, Int(albumManager.viewerProgress.percentComplete * 100)) : albumManager.viewerProgress.statusMessage)) : (directImportProgress.isImporting ? (directImportProgress.statusMessage.isEmpty ? "Importing…" : directImportProgress.statusMessage) : (albumManager.exportProgress.isExporting ? (albumManager.exportProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.exportProgress.statusMessage) : (albumManager.restorationProgress.isRestoring ? (albumManager.restorationProgress.statusMessage.isEmpty ? "Restoring…" : albumManager.restorationProgress.statusMessage) : "")))
+                        isActive: albumManager.viewerProgress.isDecrypting || directImportProgress.isImporting
+                            || albumManager.exportProgress.isExporting || albumManager.restorationProgress.isRestoring,
+                        message: albumManager.viewerProgress.isDecrypting
+                            ? (albumManager.viewerProgress.statusMessage.isEmpty
+                                ? (albumManager.viewerProgress.bytesTotal > 0
+                                    ? String(
+                                        format: "Decrypting… %d%%",
+                                        Int(albumManager.viewerProgress.percentComplete * 100)) : "Decrypting…")
+                                : (albumManager.viewerProgress.bytesTotal > 0
+                                    ? String(
+                                        format: "%@ — %d%%", albumManager.viewerProgress.statusMessage,
+                                        Int(albumManager.viewerProgress.percentComplete * 100))
+                                    : albumManager.viewerProgress.statusMessage))
+                            : (directImportProgress.isImporting
+                                ? (directImportProgress.statusMessage.isEmpty
+                                    ? "Importing…" : directImportProgress.statusMessage)
+                                : (albumManager.exportProgress.isExporting
+                                    ? (albumManager.exportProgress.statusMessage.isEmpty
+                                        ? "Decrypting…" : albumManager.exportProgress.statusMessage)
+                                    : (albumManager.restorationProgress.isRestoring
+                                        ? (albumManager.restorationProgress.statusMessage.isEmpty
+                                            ? "Restoring…" : albumManager.restorationProgress.statusMessage) : "")))
                     )
                     toolbarActions
                 }
@@ -951,15 +978,15 @@ struct MainAlbumView: View {
                         #if os(macOS)
                             if let nsIcon = NSApp.applicationIconImage {
                                 Image(nsImage: nsIcon)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 18, height: 18)
-                                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 18, height: 18)
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
                             }
                         #endif
                         Text("Encrypted Album")
-                            .font(.headline)
-                            .lineLimit(1)
+                        .font(.headline)
+                        .lineLimit(1)
                     }
                     .padding(.horizontal, 2)
                 }
@@ -968,8 +995,28 @@ struct MainAlbumView: View {
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
                     toolbarProgressChip(
-                        isActive: albumManager.viewerProgress.isDecrypting || directImportProgress.isImporting || albumManager.exportProgress.isExporting || albumManager.restorationProgress.isRestoring,
-                        message: albumManager.viewerProgress.isDecrypting ? (albumManager.viewerProgress.statusMessage.isEmpty ? (albumManager.viewerProgress.bytesTotal > 0 ? String(format: "Decrypting… %d%%", Int(albumManager.viewerProgress.percentComplete * 100)) : "Decrypting…") : (albumManager.viewerProgress.bytesTotal > 0 ? String(format: "%@ — %d%%", albumManager.viewerProgress.statusMessage, Int(albumManager.viewerProgress.percentComplete * 100)) : albumManager.viewerProgress.statusMessage)) : (directImportProgress.isImporting ? (directImportProgress.statusMessage.isEmpty ? "Importing…" : directImportProgress.statusMessage) : (albumManager.exportProgress.isExporting ? (albumManager.exportProgress.statusMessage.isEmpty ? "Decrypting…" : albumManager.exportProgress.statusMessage) : (albumManager.restorationProgress.isRestoring ? (albumManager.restorationProgress.statusMessage.isEmpty ? "Restoring…" : albumManager.restorationProgress.statusMessage) : "")))
+                        isActive: albumManager.viewerProgress.isDecrypting || directImportProgress.isImporting
+                            || albumManager.exportProgress.isExporting || albumManager.restorationProgress.isRestoring,
+                        message: albumManager.viewerProgress.isDecrypting
+                            ? (albumManager.viewerProgress.statusMessage.isEmpty
+                                ? (albumManager.viewerProgress.bytesTotal > 0
+                                    ? String(
+                                        format: "Decrypting… %d%%",
+                                        Int(albumManager.viewerProgress.percentComplete * 100)) : "Decrypting…")
+                                : (albumManager.viewerProgress.bytesTotal > 0
+                                    ? String(
+                                        format: "%@ — %d%%", albumManager.viewerProgress.statusMessage,
+                                        Int(albumManager.viewerProgress.percentComplete * 100))
+                                    : albumManager.viewerProgress.statusMessage))
+                            : (directImportProgress.isImporting
+                                ? (directImportProgress.statusMessage.isEmpty
+                                    ? "Importing…" : directImportProgress.statusMessage)
+                                : (albumManager.exportProgress.isExporting
+                                    ? (albumManager.exportProgress.statusMessage.isEmpty
+                                        ? "Decrypting…" : albumManager.exportProgress.statusMessage)
+                                    : (albumManager.restorationProgress.isRestoring
+                                        ? (albumManager.restorationProgress.statusMessage.isEmpty
+                                            ? "Restoring…" : albumManager.restorationProgress.statusMessage) : "")))
                     )
                     // Ensure macOS toolbar button order mirrors the toolbar visible
                     // in the content area (Photos, Files, Camera) for consistent UX.
@@ -989,7 +1036,8 @@ struct MainAlbumView: View {
         // Apply Winamp theme modifier if selected — small accent tweak
         .modifier(applyWinampThemeIfNeeded())
 
-        let viewWithInitialModifiers = baseView
+        let viewWithInitialModifiers =
+            baseView
             .onAppear {
                 // Keep onAppear minimal — avoid view-builder items inside this closure
                 if !didForcePrivacyModeThisSession {
@@ -1031,7 +1079,7 @@ struct MainAlbumView: View {
                 .fullScreenCover(isPresented: $showingPreferences) {
                     ZStack(alignment: .top) {
                         PreferencesView()
-                            .environmentObject(albumManager)
+                        .environmentObject(albumManager)
                         NotificationBannerView().environmentObject(albumManager)
                     }
                 }
@@ -1039,7 +1087,7 @@ struct MainAlbumView: View {
                 .sheet(isPresented: $showingPreferences) {
                     ZStack(alignment: .top) {
                         PreferencesView(isPresented: $showingPreferences)
-                            .environmentObject(albumManager)
+                        .environmentObject(albumManager)
                         NotificationBannerView().environmentObject(albumManager)
                     }
                 }
@@ -1048,7 +1096,7 @@ struct MainAlbumView: View {
                 .fullScreenCover(isPresented: $showingPhotosLibrary) {
                     ZStack(alignment: .top) {
                         PhotosLibraryPicker()
-                            .environmentObject(albumManager)
+                        .environmentObject(albumManager)
                         NotificationBannerView().environmentObject(albumManager)
                     }
                 }
@@ -1056,7 +1104,7 @@ struct MainAlbumView: View {
                 .sheet(isPresented: $showingPhotosLibrary) {
                     ZStack(alignment: .top) {
                         PhotosLibraryPicker()
-                            .environmentObject(albumManager)
+                        .environmentObject(albumManager)
                         NotificationBannerView().environmentObject(albumManager)
                     }
                 }
@@ -1106,7 +1154,9 @@ struct MainAlbumView: View {
                 }
             } message: {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("One or more selected items are larger than \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)). Secure deletion will only overwrite the first \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)) (3 passes). On modern APFS/SSD devices this may not physically erase the file — confirm you want to permanently delete these items.")
+                    Text(
+                        "One or more selected items are larger than \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)). Secure deletion will only overwrite the first \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)) (3 passes). On modern APFS/SSD devices this may not physically erase the file — confirm you want to permanently delete these items."
+                    )
                     if !pendingLargeItemsSummary.isEmpty {
                         Divider()
                         Text(pendingLargeItemsSummary)
@@ -1146,8 +1196,12 @@ struct MainAlbumView: View {
                 }
                 return true
             }
-        let showDirectImportProgress = directImportProgress.isImporting && (directImportProgress.itemsTotal > 0 || directImportProgress.bytesProcessed > 0 || directImportProgress.bytesTotal > 0 || directImportProgress.cancelRequested)
-        let viewWithOverlays = viewWithInitialModifiers
+        let showDirectImportProgress =
+            directImportProgress.isImporting
+            && (directImportProgress.itemsTotal > 0 || directImportProgress.bytesProcessed > 0
+                || directImportProgress.bytesTotal > 0 || directImportProgress.cancelRequested)
+        let viewWithOverlays =
+            viewWithInitialModifiers
             .overlay {
                 if showDirectImportProgress {
                     captureProgressOverlay
@@ -1166,82 +1220,84 @@ struct MainAlbumView: View {
             .overlay {
                 // When the search UI is active, allow taps on the content area to dismiss it.
                 #if os(iOS)
-                if isSearchActive {
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            withAnimation {
-                                isSearchActive = false
-                                dismissKeyboard()
+                    if isSearchActive {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation {
+                                    isSearchActive = false
+                                    dismissKeyboard()
+                                }
                             }
-                        }
-                }
+                    }
                 #endif
             }
         #if os(macOS)
-        return viewWithOverlays
-            .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in
-                guard requireForegroundReauthentication else { return }
-                guard !shouldSuppressForegroundLock else {
-                    cancelScheduledForegroundLock()
-                    return
-                }
-                scheduleForegroundAutoLock()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                cancelScheduledForegroundLock()
-            }
-            .onDisappear {
-                cancelScheduledForegroundLock()
-            }
-            .onChange(of: showingPhotosLibrary) { isPresented in
-                if isPresented {
-                    cancelScheduledForegroundLock()
-                }
-            }
-            .onChange(of: showingFilePicker) { isPresented in
-                if isPresented {
-                    cancelScheduledForegroundLock()
-                }
-            }
-            .onChange(of: showingCamera) { isPresented in
-                if isPresented {
-                    cancelScheduledForegroundLock()
-                }
-            }
-            .onChange(of: albumManager.importProgress.isImporting) { importing in
-                if importing {
-                    cancelScheduledForegroundLock()
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
-                isAppActive = false
-            }
-            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                isAppActive = true
-            }
-            .onAppear {
-                isAppActive = NSApplication.shared.isActive
-            }
-        #else
-        return viewWithOverlays
-            .onChange(of: scenePhase) { newPhase in
-                if newPhase == .active {
-                    isAppActive = true
-                } else if newPhase == .background {
-                    isAppActive = false
-                    if requireForegroundReauthentication {
-                        let shouldSuppress =
-                            showingPhotosLibrary || showingCamera || albumManager.importProgress.isImporting
-                            || directImportProgress.isImporting || albumManager.exportProgress.isExporting
-                        if !shouldSuppress {
-                            albumManager.lock()
-                        }
+            return
+                viewWithOverlays
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willResignActiveNotification)) { _ in
+                    guard requireForegroundReauthentication else { return }
+                    guard !shouldSuppressForegroundLock else {
+                        cancelScheduledForegroundLock()
+                        return
                     }
-                } else if newPhase == .inactive {
+                    scheduleForegroundAutoLock()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                    cancelScheduledForegroundLock()
+                }
+                .onDisappear {
+                    cancelScheduledForegroundLock()
+                }
+                .onChange(of: showingPhotosLibrary) { isPresented in
+                    if isPresented {
+                        cancelScheduledForegroundLock()
+                    }
+                }
+                .onChange(of: showingFilePicker) { isPresented in
+                    if isPresented {
+                        cancelScheduledForegroundLock()
+                    }
+                }
+                .onChange(of: showingCamera) { isPresented in
+                    if isPresented {
+                        cancelScheduledForegroundLock()
+                    }
+                }
+                .onChange(of: albumManager.importProgress.isImporting) { importing in
+                    if importing {
+                        cancelScheduledForegroundLock()
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
                     isAppActive = false
                 }
-            }
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                    isAppActive = true
+                }
+                .onAppear {
+                    isAppActive = NSApplication.shared.isActive
+                }
+        #else
+            return
+                viewWithOverlays
+                .onChange(of: scenePhase) { newPhase in
+                    if newPhase == .active {
+                        isAppActive = true
+                    } else if newPhase == .background {
+                        isAppActive = false
+                        if requireForegroundReauthentication {
+                            let shouldSuppress =
+                                showingPhotosLibrary || showingCamera || albumManager.importProgress.isImporting
+                                || directImportProgress.isImporting || albumManager.exportProgress.isExporting
+                            if !shouldSuppress {
+                                albumManager.lock()
+                            }
+                        }
+                    } else if newPhase == .inactive {
+                        isAppActive = false
+                    }
+                }
         #endif
     }
 
@@ -1322,17 +1378,17 @@ struct MainAlbumView: View {
                 HStack(spacing: 8) {
                     // Small app icon in the privacy bar (helps identify the app in portrait mode)
                     #if os(iOS)
-                    if let runtime = appIconService.runtimeMarketingImage {
-                        Image(uiImage: runtime)
-                            .resizable()
-                            .frame(width: 28, height: 28)
-                            .cornerRadius(6)
-                    } else if UIImage(named: "AppIcon") != nil {
-                        Image("AppIcon")
-                            .resizable()
-                            .frame(width: 28, height: 28)
-                            .cornerRadius(6)
-                    }
+                        if let runtime = appIconService.runtimeMarketingImage {
+                            Image(uiImage: runtime)
+                                .resizable()
+                                .frame(width: 28, height: 28)
+                                .cornerRadius(6)
+                        } else if UIImage(named: "AppIcon") != nil {
+                            Image("AppIcon")
+                                .resizable()
+                                .frame(width: 28, height: 28)
+                                .cornerRadius(6)
+                        }
                     #endif
 
                     Label(
@@ -1550,13 +1606,13 @@ struct MainAlbumView: View {
 
         @MainActor
         private func presentPhotoLibraryFlow() async {
-                let coordinator = UltraPrivacyCoordinator.shared
-                coordinator.beginTrustedModal()
+            let coordinator = UltraPrivacyCoordinator.shared
+            coordinator.beginTrustedModal()
 
-                let granted = await MediaPermissionHelper.ensurePhotoLibraryAccess()
+            let granted = await MediaPermissionHelper.ensurePhotoLibraryAccess()
             guard granted else {
-                    coordinator.endTrustedModal()
-                    showPermissionDenied(
+                coordinator.endTrustedModal()
+                showPermissionDenied(
                     "Photos access is required to import from your library.")
                 return
             }

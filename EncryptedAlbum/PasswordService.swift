@@ -47,7 +47,8 @@ class PasswordService {
                         // Use the dedicated verifier derivation
                         let normalized = PasswordService.normalizePassword(password)
                         guard let passwordData = normalized.data(using: .utf8) else {
-                            continuation.resume(throwing: AlbumError.keyDerivationFailed(reason: "Invalid password encoding"))
+                            continuation.resume(
+                                throwing: AlbumError.keyDerivationFailed(reason: "Invalid password encoding"))
                             return
                         }
                         let verifier = try await self.cryptoService.deriveVerifier(password: passwordData, salt: salt)
@@ -95,7 +96,8 @@ class PasswordService {
                             continuation.resume(returning: false)
                             return
                         }
-                        let (computedKey, _) = try await self.cryptoService.deriveKeys(password: passwordData, salt: salt)
+                        let (computedKey, _) = try await self.cryptoService.deriveKeys(
+                            password: passwordData, salt: salt)
                         let computedKeyData = computedKey.withUnsafeBytes { Data($0) }
                         continuation.resume(returning: computedKeyData == storedKey)
                     } catch {
@@ -145,8 +147,8 @@ class PasswordService {
                 Task {
                     do {
                         // Validate new password
-                            // 1. Validate new password (normalization handled inside validatePassword)
-                            try self.validatePassword(newPassword)
+                        // 1. Validate new password (normalization handled inside validatePassword)
+                        try self.validatePassword(newPassword)
 
                         // Verify old password
                         guard let (storedHash, storedSalt) = try await self.retrievePasswordCredentials() else {
@@ -162,7 +164,7 @@ class PasswordService {
                         }
 
                         // Generate new hash and salt for new password
-                            let (newHash, newSalt) = try await self.hashPassword(newPassword)
+                        let (newHash, newSalt) = try await self.hashPassword(newPassword)
 
                         // Store new credentials
                         try await self.storePasswordHash(newHash, salt: newSalt)
@@ -221,11 +223,14 @@ class PasswordService {
                         let newSalt = try await self.cryptoService.generateSalt()
                         let normalizedNew = PasswordService.normalizePassword(newPassword)
                         guard let newPassData = normalizedNew.data(using: .utf8) else {
-                            continuation.resume(throwing: AlbumError.keyDerivationFailed(reason: "Invalid password encoding"))
+                            continuation.resume(
+                                throwing: AlbumError.keyDerivationFailed(reason: "Invalid password encoding"))
                             return
                         }
-                        let newVerifier = try await self.cryptoService.deriveVerifier(password: newPassData, salt: newSalt)
-                        let (newEncryptionKey, newHMACKey) = try await self.cryptoService.deriveKeys(password: newPassData, salt: newSalt)
+                        let newVerifier = try await self.cryptoService.deriveVerifier(
+                            password: newPassData, salt: newSalt)
+                        let (newEncryptionKey, newHMACKey) = try await self.cryptoService.deriveKeys(
+                            password: newPassData, salt: newSalt)
 
                         continuation.resume(returning: (newVerifier, newSalt, newEncryptionKey, newHMACKey))
                     } catch let error as AlbumError {

@@ -67,7 +67,8 @@ class SecurityService {
 
                 // Introduce a short delay so the biometric sheet does not appear abruptly.
                 Thread.sleep(forTimeInterval: 1.0)
-                AppLog.debugPublic("SecurityService.authenticateWithBiometrics: evaluatePolicy starting (queue: \(self.queue.label))")
+                AppLog.debugPublic(
+                    "SecurityService.authenticateWithBiometrics: evaluatePolicy starting (queue: \(self.queue.label))")
 
                 context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) {
                     success, error in
@@ -78,10 +79,12 @@ class SecurityService {
                     } else if let error = error as? LAError {
                         switch error.code {
                         case .userCancel, .appCancel, .systemCancel:
-                            AppLog.debugPublic("SecurityService.authenticateWithBiometrics: evaluatePolicy CANCELLED: \(error.code)")
+                            AppLog.debugPublic(
+                                "SecurityService.authenticateWithBiometrics: evaluatePolicy CANCELLED: \(error.code)")
                             continuation.resume(throwing: AlbumError.biometricCancelled)
                         default:
-                            AppLog.debugPublic("SecurityService.authenticateWithBiometrics: evaluatePolicy FAILED: \(error.code)")
+                            AppLog.debugPublic(
+                                "SecurityService.authenticateWithBiometrics: evaluatePolicy FAILED: \(error.code)")
                             continuation.resume(throwing: AlbumError.biometricFailed)
                         }
                     } else {
@@ -483,9 +486,12 @@ class SecurityService {
                     #endif
 
                     var result: AnyObject?
-                    AppLog.debugPublic("SecurityService.retrieveBiometricPassword: SecItemCopyMatching starting (account: \(self.biometricPasswordKey))")
+                    AppLog.debugPublic(
+                        "SecurityService.retrieveBiometricPassword: SecItemCopyMatching starting (account: \(self.biometricPasswordKey))"
+                    )
                     let status = SecItemCopyMatching(query as CFDictionary, &result)
-                    AppLog.debugPublic("SecurityService.retrieveBiometricPassword: SecItemCopyMatching returned status \(status)")
+                    AppLog.debugPublic(
+                        "SecurityService.retrieveBiometricPassword: SecItemCopyMatching returned status \(status)")
 
                     if status == errSecItemNotFound {
                         continuation.resume(returning: nil)
@@ -498,7 +504,8 @@ class SecurityService {
                     }
 
                     guard status == errSecSuccess, let data = result as? Data else {
-                        AppLog.debugPublic("SecurityService.retrieveBiometricPassword: SecItemCopyMatching failed (status: \(status))")
+                        AppLog.debugPublic(
+                            "SecurityService.retrieveBiometricPassword: SecItemCopyMatching failed (status: \(status))")
                         continuation.resume(
                             throwing: AlbumError.unknownError(
                                 reason: "Keychain retrieval failed with status: \(status)"))
@@ -506,7 +513,9 @@ class SecurityService {
                     }
 
                     let s = String(data: data, encoding: .utf8)
-                    AppLog.debugPublic("SecurityService.retrieveBiometricPassword: retrieved biometric password (length: \(s?.count ?? 0))")
+                    AppLog.debugPublic(
+                        "SecurityService.retrieveBiometricPassword: retrieved biometric password (length: \(s?.count ?? 0))"
+                    )
                     continuation.resume(returning: s)
                 }
             }

@@ -5,13 +5,14 @@
 //  Created by Marc Hage on 26/11/2025.
 //
 
-import UIKit
-import os
-import Social
 import MobileCoreServices
+import Social
+import UIKit
 import UniformTypeIdentifiers
+import os
 
-private let shareLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "EncryptedAlbum.ShareExtension", category: "share")
+private let shareLogger = Logger(
+    subsystem: Bundle.main.bundleIdentifier ?? "EncryptedAlbum.ShareExtension", category: "share")
 
 class ShareViewController: SLComposeServiceViewController {
 
@@ -23,7 +24,9 @@ class ShareViewController: SLComposeServiceViewController {
         super.viewDidLoad()
         self.title = "Import to Encrypted Album"
         self.navigationController?.navigationBar.topItem?.rightBarButtonItem?.title = "Save"
-        self.placeholder = NSLocalizedString("Share.Placeholder", value: "Tap Save to import photos/videos", comment: "Placeholder text in share extension compose")
+        self.placeholder = NSLocalizedString(
+            "Share.Placeholder", value: "Tap Save to import photos/videos",
+            comment: "Placeholder text in share extension compose")
 
         setupPreviewUI()
     }
@@ -33,8 +36,9 @@ class ShareViewController: SLComposeServiceViewController {
         for item in items {
             guard let attachments = item.attachments else { continue }
             for provider in attachments {
-                if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) ||
-                   provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
+                if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier)
+                    || provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier)
+                {
                     return true
                 }
             }
@@ -45,10 +49,13 @@ class ShareViewController: SLComposeServiceViewController {
     override func didSelectPost() {
         // Check app group's lockdown flag and refuse if Lockdown Mode is enabled
         if let suite = UserDefaults(suiteName: appGroupIdentifier), suite.bool(forKey: "lockdownModeEnabled") {
-            let alert = UIAlertController(title: "Import blocked", message: "Encrypted Album is in Lockdown Mode. Imports are disabled.", preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .cancel) { _ in
-                self.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
-            })
+            let alert = UIAlertController(
+                title: "Import blocked", message: "Encrypted Album is in Lockdown Mode. Imports are disabled.",
+                preferredStyle: .alert)
+            alert.addAction(
+                UIAlertAction(title: "OK", style: .cancel) { _ in
+                    self.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+                })
             DispatchQueue.main.async { self.present(alert, animated: true, completion: nil) }
             return
         }
@@ -87,39 +94,111 @@ class ShareViewController: SLComposeServiceViewController {
 
             if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
                 provider.loadItem(forTypeIdentifier: UTType.image.identifier, options: nil) { [weak self] (item, _) in
-                    guard let self = self else { dispatchGroup.leave(); return }
+                    guard let self = self else {
+                        dispatchGroup.leave()
+                        return
+                    }
                     if let url = item as? URL {
-                        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: self.appGroupIdentifier) else { dispatchGroup.leave(); return }
-                        self.copyFileToSharedContainerWithProgress(to: containerURL, from: url, progress: { w, t in updateItemProgress(w, t) }, completion: { success in
-                            if success { countSyncQueue.async { savedCount += 1; DispatchQueue.main.async { self.updateProgress(saved: savedCount, total: totalCount) } } }
+                        guard
+                            let containerURL = FileManager.default.containerURL(
+                                forSecurityApplicationGroupIdentifier: self.appGroupIdentifier)
+                        else {
                             dispatchGroup.leave()
-                        })
+                            return
+                        }
+                        self.copyFileToSharedContainerWithProgress(
+                            to: containerURL, from: url, progress: { w, t in updateItemProgress(w, t) },
+                            completion: { success in
+                                if success {
+                                    countSyncQueue.async {
+                                        savedCount += 1
+                                        DispatchQueue.main.async {
+                                            self.updateProgress(saved: savedCount, total: totalCount)
+                                        }
+                                    }
+                                }
+                                dispatchGroup.leave()
+                            })
                     } else if let image = item as? UIImage, let data = image.jpegData(compressionQuality: 0.9) {
-                        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: self.appGroupIdentifier) else { dispatchGroup.leave(); return }
-                        self.writeDataToSharedContainerWithProgress(to: containerURL, data, chunkSize: 64 * 1024, progress: { w, t in updateItemProgress(w, t) }, completion: { success in
-                            if success { countSyncQueue.async { savedCount += 1; DispatchQueue.main.async { self.updateProgress(saved: savedCount, total: totalCount) } } }
+                        guard
+                            let containerURL = FileManager.default.containerURL(
+                                forSecurityApplicationGroupIdentifier: self.appGroupIdentifier)
+                        else {
                             dispatchGroup.leave()
-                        })
+                            return
+                        }
+                        self.writeDataToSharedContainerWithProgress(
+                            to: containerURL, data, chunkSize: 64 * 1024,
+                            progress: { w, t in updateItemProgress(w, t) },
+                            completion: { success in
+                                if success {
+                                    countSyncQueue.async {
+                                        savedCount += 1
+                                        DispatchQueue.main.async {
+                                            self.updateProgress(saved: savedCount, total: totalCount)
+                                        }
+                                    }
+                                }
+                                dispatchGroup.leave()
+                            })
                     } else {
                         dispatchGroup.leave()
                     }
                 }
-            } else if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) || provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
-                let typeId = provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) ? UTType.movie.identifier : UTType.fileURL.identifier
+            } else if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier)
+                || provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
+            {
+                let typeId =
+                    provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier)
+                    ? UTType.movie.identifier : UTType.fileURL.identifier
                 provider.loadItem(forTypeIdentifier: typeId, options: nil) { [weak self] (item, _) in
-                    guard let self = self else { dispatchGroup.leave(); return }
+                    guard let self = self else {
+                        dispatchGroup.leave()
+                        return
+                    }
                     if let url = item as? URL {
-                        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: self.appGroupIdentifier) else { dispatchGroup.leave(); return }
-                        self.copyFileToSharedContainerWithProgress(to: containerURL, from: url, progress: { w, t in updateItemProgress(w, t) }, completion: { success in
-                            if success { countSyncQueue.async { savedCount += 1; DispatchQueue.main.async { self.updateProgress(saved: savedCount, total: totalCount) } } }
+                        guard
+                            let containerURL = FileManager.default.containerURL(
+                                forSecurityApplicationGroupIdentifier: self.appGroupIdentifier)
+                        else {
                             dispatchGroup.leave()
-                        })
+                            return
+                        }
+                        self.copyFileToSharedContainerWithProgress(
+                            to: containerURL, from: url, progress: { w, t in updateItemProgress(w, t) },
+                            completion: { success in
+                                if success {
+                                    countSyncQueue.async {
+                                        savedCount += 1
+                                        DispatchQueue.main.async {
+                                            self.updateProgress(saved: savedCount, total: totalCount)
+                                        }
+                                    }
+                                }
+                                dispatchGroup.leave()
+                            })
                     } else if let data = item as? Data {
-                        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: self.appGroupIdentifier) else { dispatchGroup.leave(); return }
-                        self.writeDataToSharedContainerWithProgress(to: containerURL, data, chunkSize: 64 * 1024, progress: { w, t in updateItemProgress(w, t) }, completion: { success in
-                            if success { countSyncQueue.async { savedCount += 1; DispatchQueue.main.async { self.updateProgress(saved: savedCount, total: totalCount) } } }
+                        guard
+                            let containerURL = FileManager.default.containerURL(
+                                forSecurityApplicationGroupIdentifier: self.appGroupIdentifier)
+                        else {
                             dispatchGroup.leave()
-                        })
+                            return
+                        }
+                        self.writeDataToSharedContainerWithProgress(
+                            to: containerURL, data, chunkSize: 64 * 1024,
+                            progress: { w, t in updateItemProgress(w, t) },
+                            completion: { success in
+                                if success {
+                                    countSyncQueue.async {
+                                        savedCount += 1
+                                        DispatchQueue.main.async {
+                                            self.updateProgress(saved: savedCount, total: totalCount)
+                                        }
+                                    }
+                                }
+                                dispatchGroup.leave()
+                            })
                     } else {
                         dispatchGroup.leave()
                     }
@@ -131,21 +210,31 @@ class ShareViewController: SLComposeServiceViewController {
 
         dispatchGroup.notify(queue: .main) {
             // show a clear confirmation UI so iOS and macOS behave consistently
-            countSyncQueue.sync { /* ensure savedCount seen on main thread */ }
+            countSyncQueue.sync { /* ensure savedCount seen on main thread */  }
             let alertTitle: String
             let alertMessage: String
             if savedCount > 0 {
-                alertTitle = String(format: NSLocalizedString("Share.ImportedTitle", value: "Imported %d item(s)", comment: "Imported title with count"), savedCount)
-                alertMessage = NSLocalizedString("Share.ImportedMessage", value: "Encrypted Album saved shared items to the ImportInbox. Open the app to finish importing.", comment: "Imported informative message")
+                alertTitle = String(
+                    format: NSLocalizedString(
+                        "Share.ImportedTitle", value: "Imported %d item(s)", comment: "Imported title with count"),
+                    savedCount)
+                alertMessage = NSLocalizedString(
+                    "Share.ImportedMessage",
+                    value: "Encrypted Album saved shared items to the ImportInbox. Open the app to finish importing.",
+                    comment: "Imported informative message")
             } else {
-                alertTitle = NSLocalizedString("Share.NothingImportedTitle", value: "Nothing imported", comment: "Nothing imported title")
-                alertMessage = NSLocalizedString("Share.NothingImportedMessage", value: "No supported files were available to import.", comment: "Nothing imported message")
+                alertTitle = NSLocalizedString(
+                    "Share.NothingImportedTitle", value: "Nothing imported", comment: "Nothing imported title")
+                alertMessage = NSLocalizedString(
+                    "Share.NothingImportedMessage", value: "No supported files were available to import.",
+                    comment: "Nothing imported message")
             }
 
             let alert = UIAlertController(title: alertTitle, message: alertMessage, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
-                self.extensionContext!.completeRequest(returningItems: [], completionHandler: nil)
-            })
+            alert.addAction(
+                UIAlertAction(title: "OK", style: .default) { _ in
+                    self.extensionContext!.completeRequest(returningItems: [], completionHandler: nil)
+                })
             DispatchQueue.main.async {
                 self.present(alert, animated: true, completion: nil)
             }
@@ -153,7 +242,10 @@ class ShareViewController: SLComposeServiceViewController {
     }
 
     private func saveFileToSharedContainer(from url: URL, type: UTType) -> Bool {
-        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
+        guard
+            let containerURL = FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: appGroupIdentifier)
+        else {
             shareLogger.error("App Group not configured correctly.")
             return false
         }
@@ -174,18 +266,21 @@ class ShareViewController: SLComposeServiceViewController {
             return false
         }
     }
-    
+
     private func saveDataToSharedContainer(_ data: Data, type: UTType) -> Bool {
-        guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
+        guard
+            let containerURL = FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: appGroupIdentifier)
+        else {
             return false
         }
-        
+
         let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
         try? FileManager.default.createDirectory(at: inboxURL, withIntermediateDirectories: true)
-        
+
         let filename = "SharedImage_\(Date().timeIntervalSince1970).jpg"
         let destinationURL = inboxURL.appendingPathComponent(filename)
-        
+
         do {
             try data.write(to: destinationURL)
             return true
@@ -196,7 +291,10 @@ class ShareViewController: SLComposeServiceViewController {
     }
 
     // Async copy with progress for extension (per-item)
-    private func copyFileToSharedContainerWithProgress(to containerURL: URL, from url: URL, chunkSize: Int = 64 * 1024, progress: ((Int64, Int64) -> Void)?, completion: @escaping (Bool) -> Void) {
+    private func copyFileToSharedContainerWithProgress(
+        to containerURL: URL, from url: URL, chunkSize: Int = 64 * 1024, progress: ((Int64, Int64) -> Void)?,
+        completion: @escaping (Bool) -> Void
+    ) {
         DispatchQueue.global(qos: .utility).async {
             let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
             do {
@@ -208,17 +306,31 @@ class ShareViewController: SLComposeServiceViewController {
                     let generated = "\(base)_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString).\(ext)"
                     destination = inboxURL.appendingPathComponent(generated)
                 }
-                if FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.removeItem(at: destination) }
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    try FileManager.default.removeItem(at: destination)
+                }
 
                 let attr = try FileManager.default.attributesOfItem(atPath: url.path)
                 let totalSize = (attr[FileAttributeKey.size] as? NSNumber)?.int64Value ?? 0
 
-                guard let input = InputStream(url: url) else { DispatchQueue.main.async { completion(false) }; return }
-                guard FileManager.default.createFile(atPath: destination.path, contents: nil) else { DispatchQueue.main.async { completion(false) }; return }
-                guard let outHandle = try? FileHandle(forWritingTo: destination) else { DispatchQueue.main.async { completion(false) }; return }
+                guard let input = InputStream(url: url) else {
+                    DispatchQueue.main.async { completion(false) }
+                    return
+                }
+                guard FileManager.default.createFile(atPath: destination.path, contents: nil) else {
+                    DispatchQueue.main.async { completion(false) }
+                    return
+                }
+                guard let outHandle = try? FileHandle(forWritingTo: destination) else {
+                    DispatchQueue.main.async { completion(false) }
+                    return
+                }
 
                 input.open()
-                defer { input.close(); try? outHandle.close() }
+                defer {
+                    input.close()
+                    try? outHandle.close()
+                }
 
                 var buffer = [UInt8](repeating: 0, count: chunkSize)
                 var totalWritten: Int64 = 0
@@ -237,21 +349,30 @@ class ShareViewController: SLComposeServiceViewController {
         }
     }
 
-    private func writeDataToSharedContainerWithProgress(to containerURL: URL, _ data: Data, chunkSize: Int = 64 * 1024, progress: ((Int64, Int64) -> Void)?, completion: @escaping (Bool) -> Void) {
+    private func writeDataToSharedContainerWithProgress(
+        to containerURL: URL, _ data: Data, chunkSize: Int = 64 * 1024, progress: ((Int64, Int64) -> Void)?,
+        completion: @escaping (Bool) -> Void
+    ) {
         DispatchQueue.global(qos: .utility).async {
             let inboxURL = containerURL.appendingPathComponent("ImportInbox", isDirectory: true)
             do {
                 try FileManager.default.createDirectory(at: inboxURL, withIntermediateDirectories: true)
                 let base = "SharedItem_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString)"
                 let destination = inboxURL.appendingPathComponent(base)
-                guard FileManager.default.createFile(atPath: destination.path, contents: nil) else { DispatchQueue.main.async { completion(false) }; return }
-                guard let outHandle = try? FileHandle(forWritingTo: destination) else { DispatchQueue.main.async { completion(false) }; return }
+                guard FileManager.default.createFile(atPath: destination.path, contents: nil) else {
+                    DispatchQueue.main.async { completion(false) }
+                    return
+                }
+                guard let outHandle = try? FileHandle(forWritingTo: destination) else {
+                    DispatchQueue.main.async { completion(false) }
+                    return
+                }
                 defer { try? outHandle.close() }
                 let totalSize = Int64(data.count)
                 var offset = 0
                 while offset < data.count {
                     let len = min(chunkSize, data.count - offset)
-                    let chunk = data.subdata(in: offset..<offset+len)
+                    let chunk = data.subdata(in: offset..<offset + len)
                     outHandle.write(chunk)
                     offset += len
                     DispatchQueue.main.async { progress?(Int64(offset), totalSize) }
@@ -283,7 +404,7 @@ class ShareViewController: SLComposeServiceViewController {
         NSLayoutConstraint.activate([
             container.leadingAnchor.constraint(equalTo: root.safeAreaLayoutGuide.leadingAnchor, constant: 10),
             container.trailingAnchor.constraint(equalTo: root.safeAreaLayoutGuide.trailingAnchor, constant: -10),
-            container.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor, constant: 8)
+            container.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor, constant: 8),
         ])
 
         let stack = UIStackView()
@@ -296,7 +417,7 @@ class ShareViewController: SLComposeServiceViewController {
             stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             stack.topAnchor.constraint(equalTo: container.topAnchor),
-            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
 
         self.previewContainerView = container
@@ -328,11 +449,14 @@ class ShareViewController: SLComposeServiceViewController {
                     label.font = UIFont.preferredFont(forTextStyle: .footnote)
                     label.textColor = .secondaryLabel
                     if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
-                        label.text = NSLocalizedString("Share.Preview.ImageLabel", value: "Image", comment: "preview label for images")
+                        label.text = NSLocalizedString(
+                            "Share.Preview.ImageLabel", value: "Image", comment: "preview label for images")
                     } else if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
-                        label.text = NSLocalizedString("Share.Preview.MovieLabel", value: "Video", comment: "preview label for video")
+                        label.text = NSLocalizedString(
+                            "Share.Preview.MovieLabel", value: "Video", comment: "preview label for video")
                     } else {
-                        label.text = NSLocalizedString("Share.Preview.ItemLabel", value: "Item", comment: "preview generic item")
+                        label.text = NSLocalizedString(
+                            "Share.Preview.ItemLabel", value: "Item", comment: "preview generic item")
                     }
 
                     // per-item progress
@@ -363,7 +487,9 @@ class ShareViewController: SLComposeServiceViewController {
                     } else if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
                         // try to load file URL and generate a thumbnail if it's an image
                         provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, err in
-                            if let url = item as? URL, let data = try? Data(contentsOf: url), let image = UIImage(data: data) {
+                            if let url = item as? URL, let data = try? Data(contentsOf: url),
+                                let image = UIImage(data: data)
+                            {
                                 DispatchQueue.main.async { img.image = image }
                             }
                         }
@@ -382,7 +508,8 @@ class ShareViewController: SLComposeServiceViewController {
             NSLayoutConstraint.activate([
                 p.leadingAnchor.constraint(equalTo: root.safeAreaLayoutGuide.leadingAnchor, constant: 10),
                 p.trailingAnchor.constraint(equalTo: root.safeAreaLayoutGuide.trailingAnchor, constant: -10),
-                p.topAnchor.constraint(equalTo: previewContainerView?.bottomAnchor ?? root.safeAreaLayoutGuide.topAnchor, constant: 8)
+                p.topAnchor.constraint(
+                    equalTo: previewContainerView?.bottomAnchor ?? root.safeAreaLayoutGuide.topAnchor, constant: 8),
             ])
             self.progressView = p
         }

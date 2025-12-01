@@ -92,37 +92,61 @@ struct PreferencesSectionTop: View {
                 .disabled(false)
 
             // Auto-wipe & recovery key
-            Toggle("Auto-wipe on repeated failed unlocks", isOn: Binding(
-                get: { albumManager.autoWipeOnFailedAttemptsEnabled },
-                set: { albumManager.autoWipeOnFailedAttemptsEnabled = $0; albumManager.saveSettings() }
-            ))
+            Toggle(
+                "Auto-wipe on repeated failed unlocks",
+                isOn: Binding(
+                    get: { albumManager.autoWipeOnFailedAttemptsEnabled },
+                    set: {
+                        albumManager.autoWipeOnFailedAttemptsEnabled = $0
+                        albumManager.saveSettings()
+                    }
+                ))
 
             if albumManager.autoWipeOnFailedAttemptsEnabled {
                 HStack {
                     Text("Wipe threshold")
                     Spacer()
-                    Stepper("\(albumManager.autoWipeFailedAttemptsThreshold)", value: Binding(get: { albumManager.autoWipeFailedAttemptsThreshold }, set: { albumManager.autoWipeFailedAttemptsThreshold = $0; albumManager.saveSettings() }), in: 1...100)
-                        .labelsHidden()
+                    Stepper(
+                        "\(albumManager.autoWipeFailedAttemptsThreshold)",
+                        value: Binding(
+                            get: { albumManager.autoWipeFailedAttemptsThreshold },
+                            set: {
+                                albumManager.autoWipeFailedAttemptsThreshold = $0
+                                albumManager.saveSettings()
+                            }), in: 1...100
+                    )
+                    .labelsHidden()
                 }
             }
 
-            Toggle("Enable Recovery Key", isOn: Binding(
-                get: { albumManager.enableRecoveryKey },
-                set: { albumManager.enableRecoveryKey = $0; albumManager.saveSettings() }
-            ))
+            Toggle(
+                "Enable Recovery Key",
+                isOn: Binding(
+                    get: { albumManager.enableRecoveryKey },
+                    set: {
+                        albumManager.enableRecoveryKey = $0
+                        albumManager.saveSettings()
+                    }
+                ))
 
-            Text("When enabled, the app keeps an encrypted recovery key to help recover an interrupted password-change operation. This is internal and does not display a recovery code in the menus — it is used only during password-change recovery.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Text(
+                "When enabled, the app keeps an encrypted recovery key to help recover an interrupted password-change operation. This is internal and does not display a recovery code in the menus — it is used only during password-change recovery."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
 
-            Toggle("Secure Deletion (Overwrite)", isOn: Binding(
-                get: { albumManager.secureDeletionEnabled },
-                set: { albumManager.secureDeletionEnabled = $0 }
-            ))
+            Toggle(
+                "Secure Deletion (Overwrite)",
+                isOn: Binding(
+                    get: { albumManager.secureDeletionEnabled },
+                    set: { albumManager.secureDeletionEnabled = $0 }
+                ))
 
-            Text("When enabled, deleted files are overwritten 3 times. This is slower but more secure. Note: on modern devices (APFS / SSD) overwrites may not always guarantee physical erasure — see app documentation for details. Secure overwrite is limited to the first \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)) of each file; larger files will be removed but only the first chunk will be overwritten.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Text(
+                "When enabled, deleted files are overwritten 3 times. This is slower but more secure. Note: on modern devices (APFS / SSD) overwrites may not always guarantee physical erasure — see app documentation for details. Secure overwrite is limited to the first \(ByteCountFormatter.string(fromByteCount: CryptoConstants.maxSecureDeleteSize, countStyle: .file)) of each file; larger files will be removed but only the first chunk will be overwritten."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
 
             Divider()
             Text("Appearance").font(.headline)
@@ -189,22 +213,24 @@ struct PreferencesSectionTop: View {
                 }
 
                 #if os(iOS)
-                Button("Set") {
-                    let selected = (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
-                    // Let the service drive the apply+retry behavior so failures are surfaced
-                    // via appIconService.lastIconApplyError.
-                    appIconService.select(iconName: selected)
-                }
-                .disabled(!UIApplication.shared.supportsAlternateIcons)
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+                    Button("Set") {
+                        let selected =
+                            (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
+                        // Let the service drive the apply+retry behavior so failures are surfaced
+                        // via appIconService.lastIconApplyError.
+                        appIconService.select(iconName: selected)
+                    }
+                    .disabled(!UIApplication.shared.supportsAlternateIcons)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 #else
-                Button("Set") {
-                    let selected = (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
-                    appIconService.select(iconName: selected)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+                    Button("Set") {
+                        let selected =
+                            (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
+                        appIconService.select(iconName: selected)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 #endif
             }
 
@@ -216,24 +242,26 @@ struct PreferencesSectionTop: View {
                     .foregroundStyle(.secondary)
 
                 #if os(iOS)
-                Button("Force apply") {
-                    // Use the central AppIconService for force-apply so the retry/backoff and
-                    // last-error publishing behavior is consistent with the regular Set flow.
-                    let selected = (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
-                    // Clear previous error so user receives fresh status
-                    appIconService.clearLastIconApplyError()
+                    Button("Force apply") {
+                        // Use the central AppIconService for force-apply so the retry/backoff and
+                        // last-error publishing behavior is consistent with the regular Set flow.
+                        let selected =
+                            (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
+                        // Clear previous error so user receives fresh status
+                        appIconService.clearLastIconApplyError()
 
-                    // Calling select will drive the same apply+retry logic already used by the Set button
-                    appIconService.select(iconName: selected)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+                        // Calling select will drive the same apply+retry logic already used by the Set button
+                        appIconService.select(iconName: selected)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 #endif
                 // If we have a last apply error, expose an explicit Try again control
                 if appIconService.lastIconApplyError != nil {
                     Button("Try again") {
                         // Re-attempt the same selection
-                        let selected = (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
+                        let selected =
+                            (uiSelectedAppIcon == "AppIcon" || uiSelectedAppIcon.isEmpty) ? nil : uiSelectedAppIcon
                         appIconService.clearLastIconApplyError()
                         appIconService.select(iconName: selected)
                     }
@@ -243,20 +271,28 @@ struct PreferencesSectionTop: View {
             }
 
             #if os(iOS)
-            Text("Note: iOS will only change the Home screen icon if alternate icons are declared in Info.plist (CFBundleAlternateIcons). If you don't see a system change, the app is using the default icon.")
+                Text(
+                    "Note: iOS will only change the Home screen icon if alternate icons are declared in Info.plist (CFBundleAlternateIcons). If you don't see a system change, the app is using the default icon."
+                )
                 .font(.caption)
                 .foregroundStyle(.secondary)
             #else
-            Text("On macOS this will update the Dock/window icon immediately for the chosen set.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Text("On macOS this will update the Dock/window icon immediately for the chosen set.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             #endif
         }
         // Only present a modal alert for non-benign errors. User / system cancellations
         // are considered benign and will not show a modal alert (they remain available
         // in `lastIconApplyError` for diagnostic / retry purposes).
-        .alert(isPresented: Binding(get: { appIconService.shouldPresentLastIconApplyError }, set: { if !$0 { appIconService.clearLastIconApplyError() } })) {
-            Alert(title: Text("App Icon"), message: Text(appIconService.lastIconApplyError ?? ""), dismissButton: .default(Text("OK")))
+        .alert(
+            isPresented: Binding(
+                get: { appIconService.shouldPresentLastIconApplyError },
+                set: { if !$0 { appIconService.clearLastIconApplyError() } })
+        ) {
+            Alert(
+                title: Text("App Icon"), message: Text(appIconService.lastIconApplyError ?? ""),
+                dismissButton: .default(Text("OK")))
         }
         .onAppear {
             uiSelectedAppIcon = appIconService.selectedIconName.isEmpty ? "AppIcon" : appIconService.selectedIconName
@@ -265,9 +301,11 @@ struct PreferencesSectionTop: View {
             // log a helpful message once on appear (avoid returning Void inside the view builder).
             if appIconService.runtimeMarketingImage == nil {
                 #if os(iOS)
-                if UIImage(named: "AppIcon") == nil {
-                    AppLog.debugPublic("PreferencesSectionTop: No image named 'AppIcon' found in asset catalog. Consider adding a preview image (e.g., AppIconPreview or AppIcon-1024) or rely on runtimeMarketingImage.")
-                }
+                    if UIImage(named: "AppIcon") == nil {
+                        AppLog.debugPublic(
+                            "PreferencesSectionTop: No image named 'AppIcon' found in asset catalog. Consider adding a preview image (e.g., AppIconPreview or AppIcon-1024) or rely on runtimeMarketingImage."
+                        )
+                    }
                 #endif
             }
         }

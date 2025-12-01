@@ -31,7 +31,9 @@ extension AlbumManager {
     /// Public wrapper for the internal batch restore routine.
     /// Some compilation units have shown inconsistent visibility for internal
     /// helpers, so offer a stable public API surface for UI code to call.
-    public func restorePhotos(_ photos: [SecurePhoto], restoreToSourceAlbum: Bool = false, toNewAlbum: String? = nil) async throws {
+    public func restorePhotos(_ photos: [SecurePhoto], restoreToSourceAlbum: Bool = false, toNewAlbum: String? = nil)
+        async throws
+    {
         try await batchRestorePhotos(photos, restoreToSourceAlbum: restoreToSourceAlbum, toNewAlbum: toNewAlbum)
     }
 
@@ -51,13 +53,27 @@ extension AlbumManager {
     }
 
     /// Public wrapper for the imageData-based hidePhoto helper
-    public func hidePhotoData(_ imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil) async throws {
-        try await self.hidePhoto(mediaSource: .data(imageData), filename: filename, dateTaken: dateTaken, sourceAlbum: sourceAlbum, assetIdentifier: assetIdentifier, mediaType: mediaType, duration: duration, location: location, isFavorite: isFavorite)
+    public func hidePhotoData(
+        _ imageData: Data, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil,
+        assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil,
+        location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil
+    ) async throws {
+        try await self.hidePhoto(
+            mediaSource: .data(imageData), filename: filename, dateTaken: dateTaken, sourceAlbum: sourceAlbum,
+            assetIdentifier: assetIdentifier, mediaType: mediaType, duration: duration, location: location,
+            isFavorite: isFavorite)
     }
 
     /// Public wrapper for the mediaSource-based hidePhoto helper (file URL or data)
-    public func hidePhotoSource(mediaSource: MediaSource, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil, assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil, location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil) async throws {
-        try await self.hidePhoto(mediaSource: mediaSource, filename: filename, dateTaken: dateTaken, sourceAlbum: sourceAlbum, assetIdentifier: assetIdentifier, mediaType: mediaType, duration: duration, location: location, isFavorite: isFavorite)
+    public func hidePhotoSource(
+        mediaSource: MediaSource, filename: String, dateTaken: Date? = nil, sourceAlbum: String? = nil,
+        assetIdentifier: String? = nil, mediaType: MediaType = .photo, duration: TimeInterval? = nil,
+        location: SecurePhoto.Location? = nil, isFavorite: Bool? = nil
+    ) async throws {
+        try await self.hidePhoto(
+            mediaSource: mediaSource, filename: filename, dateTaken: dateTaken, sourceAlbum: sourceAlbum,
+            assetIdentifier: assetIdentifier, mediaType: mediaType, duration: duration, location: location,
+            isFavorite: isFavorite)
     }
 
     func cancelExport() {
