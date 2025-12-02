@@ -217,9 +217,9 @@ public enum SleepPreventionReason: String, Hashable {
     var displayName: String {
         switch self {
         case .importing: return "Importing"
-        case .viewing: return "Viewing"
+        case .viewing: return "Keep Awake"
         case .prompt: return "Prompt"
-        case .other: return "Active task"
+        case .other: return "Active"
         }
     }
 }

@@ -66,6 +66,8 @@ struct MainAlbumView: View {
     @State private var showLockdownTooltip: Bool = false
     @State private var animateLockdownPulse: Bool = false
     @State private var sleepIndicatorPulse: Bool = false
+    @State private var iCloudSyncRotation: Double = 0
+    @State private var iCloudErrorPulse: Bool = false
     #if os(iOS)
         @Environment(\.verticalSizeClass) private var verticalSizeClass
     #else
@@ -705,65 +707,151 @@ struct MainAlbumView: View {
     @ViewBuilder
     private var sleepPreventionBadge: some View {
         if albumManager.isSystemSleepPrevented {
-            let viewerActive = (selectedPhoto != nil)
+            // Icon-only badge - accessibility label provides context for screen readers
+            Image(systemName: "bolt.fill")
+                .foregroundColor(.yellow)
+                .font(.system(size: 14, weight: .bold))
+                .scaleEffect(sleepIndicatorPulse ? 1.12 : 0.95)
+                .animation(
+                    .easeInOut(duration: 0.9)
+                        .repeatForever(autoreverses: true),
+                    value: sleepIndicatorPulse
+                )
+                .padding(8)
+                .background(Circle().fill(Color.yellow.opacity(0.2)))
+                .accessibilityIdentifier("sleepPreventionChip")
+                .accessibilityLabel(sleepPreventionAccessibilityLabel)
+                .allowsHitTesting(false)
+                .onAppear { sleepIndicatorPulse = true }
+                .onDisappear { sleepIndicatorPulse = false }
+                #if os(macOS)
+                    .help("Keeping device awake")
+                #endif
+        }
+    }
 
+    private var sleepPreventionAccessibilityLabel: String {
+        if let reason = albumManager.sleepPreventionReasonLabel {
+            return "Keeping device awake: \(reason)"
+        }
+        return "Keeping device awake"
+    }
+
+    /// iCloud sync status badge showing sync state with contextual SF Symbols.
+    /// - Syncing: spinning arrow.triangle.2.circlepath
+    /// - Error: red pulsing xmark.icloud.fill
+    /// - Idle/OK: very subtle checkmark.icloud (almost invisible)
+    /// - Disabled: extremely transparent icloud.slash
+    @ViewBuilder
+    private var iCloudSyncBadge: some View {
+        let isEnabled = albumManager.encryptedCloudSyncEnabled
+        let status = albumManager.cloudSyncStatus
+        let inLockdown = albumManager.lockdownModeEnabled
+
+        // Don't show anything if cloud sync is disabled and not in lockdown
+        // (lockdown overrides sync and shows as "blocked")
+        let shouldShow = isEnabled || inLockdown
+
+        if shouldShow {
             Group {
-                if viewerActive {
-                    // Compact mini-bolt for viewer overlays
-                    Image(systemName: "bolt.fill")
-                        .foregroundColor(.yellow)
-                        .font(.system(size: 13, weight: .bold))
-                        .scaleEffect(sleepIndicatorPulse ? 1.15 : 0.9)
-                        .animation(
-                            .easeInOut(duration: 0.9)
-                                .repeatForever(autoreverses: true),
-                            value: sleepIndicatorPulse
-                        )
-                        .padding(6)
-                        .background(Circle().fill(Color.yellow.opacity(0.25)))
-                } else {
-                    // Full chip with status label for the main grid view
-                    HStack(spacing: 8) {
-                        Image(systemName: "bolt.fill")
-                            .foregroundColor(.yellow)
-                            .font(.system(size: 14, weight: .bold))
-                            .scaleEffect(sleepIndicatorPulse ? 1.12 : 0.9)
-                            .animation(
-                                .easeInOut(duration: 0.9)
-                                    .repeatForever(autoreverses: true),
-                                value: sleepIndicatorPulse
-                            )
-
-                        if let label = albumManager.sleepPreventionReasonLabel {
-                            Text(label)
-                                .font(.caption)
-                                .foregroundStyle(.primary)
-                        } else {
-                            Text("Awake")
-                                .font(.caption)
-                                .foregroundStyle(.primary)
+                switch status {
+                case .syncing:
+                    // Active sync - spinning icon only
+                    Image(systemName: "arrow.triangle.2.circlepath.icloud")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.blue)
+                        .rotationEffect(.degrees(iCloudSyncRotation))
+                        .padding(8)
+                        .background(Circle().fill(Color.blue.opacity(0.15)))
+                        .onAppear {
+                            withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                                iCloudSyncRotation = 360
+                            }
                         }
+                        .onDisappear { iCloudSyncRotation = 0 }
+
+                case .failed:
+                    // Error state - red pulsing icon only
+                    Image(systemName: "xmark.icloud.fill")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.red)
+                        .scaleEffect(iCloudErrorPulse ? 1.15 : 1.0)
+                        .animation(
+                            .easeInOut(duration: 0.6).repeatForever(autoreverses: true),
+                            value: iCloudErrorPulse
+                        )
+                        .padding(8)
+                        .background(Circle().fill(Color.red.opacity(0.15)))
+                        .overlay(Circle().stroke(Color.red.opacity(0.3), lineWidth: 1))
+                        .onAppear { iCloudErrorPulse = true }
+                        .onDisappear { iCloudErrorPulse = false }
+                        .onTapGesture { showingPreferences = true }
+
+                case .notAvailable:
+                    // iCloud not available (e.g., not signed in)
+                    Image(systemName: "icloud.slash")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary.opacity(0.4))
+                        .padding(8)
+
+                case .idle:
+                    // Idle/OK - very subtle, almost invisible
+                    if inLockdown {
+                        // Lockdown blocks sync - show blocked state
+                        Image(systemName: "lock.icloud")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.secondary.opacity(0.35))
+                            .padding(8)
+                    } else {
+                        // Normal idle - checkmark, extremely subtle
+                        Image(systemName: "checkmark.icloud")
+                            .font(.system(size: 14, weight: .light))
+                            .foregroundColor(.secondary.opacity(0.25))
+                            .padding(8)
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        .ultraThinMaterial,
-                        in: Capsule()
-                    )
-                    .shadow(radius: 6, x: 0, y: 2)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .accessibilityIdentifier("sleepPreventionChip")
-            .accessibilityLabel("Preventing system sleep")
-            .allowsHitTesting(false)
-            .zIndex(50)
-            .onAppear { sleepIndicatorPulse = true }
-            .onDisappear { sleepIndicatorPulse = false }
+            .accessibilityIdentifier("iCloudSyncBadge")
+            .accessibilityLabel(iCloudSyncAccessibilityLabel)
             #if os(macOS)
-                .help("Encrypted Album is keeping the device awake")
+                .help(iCloudSyncHelpText)
             #endif
+        } else {
+            // Sync disabled - show very faint slash icon
+            Image(systemName: "icloud.slash")
+                .font(.system(size: 13, weight: .light))
+                .foregroundColor(.secondary.opacity(0.15))
+                .padding(8)
+                .accessibilityIdentifier("iCloudSyncBadge")
+                .accessibilityLabel("iCloud sync disabled")
+        }
+    }
+
+    private var iCloudSyncAccessibilityLabel: String {
+        let status = albumManager.cloudSyncStatus
+        switch status {
+        case .syncing: return "iCloud sync in progress"
+        case .failed: return "iCloud sync error - tap to view details"
+        case .notAvailable: return "iCloud not available"
+        case .idle:
+            if albumManager.lockdownModeEnabled {
+                return "iCloud sync blocked by Lockdown Mode"
+            }
+            return "iCloud sync idle"
+        }
+    }
+
+    private var iCloudSyncHelpText: String {
+        let status = albumManager.cloudSyncStatus
+        switch status {
+        case .syncing: return "Syncing encrypted album with iCloud..."
+        case .failed: return "iCloud sync encountered an error. Click to open Preferences."
+        case .notAvailable: return "iCloud is not available. Sign in to iCloud to enable sync."
+        case .idle:
+            if albumManager.lockdownModeEnabled {
+                return "iCloud sync is blocked while Lockdown Mode is active."
+            }
+            return "iCloud sync is idle. Your album is up to date."
         }
     }
 
@@ -1257,12 +1345,13 @@ struct MainAlbumView: View {
                 #endif
             }
             .overlay(alignment: .topLeading) {
-                // Keep-awake indicator is anchored to the top-left corner so that
-                // media viewers and other modals never visually cover it.
-                // It still switches between full chip / mini bolt based on
-                // `viewerActive`, but its corner is fixed for predictability.
-                sleepPreventionBadge
-                    .padding(EdgeInsets(top: 14, leading: 18, bottom: 0, trailing: 0))
+                // Status chips anchored to the top-left corner in a neat vertical stack.
+                // This keeps them visible and predictable regardless of content below.
+                VStack(alignment: .leading, spacing: 4) {
+                    sleepPreventionBadge
+                    iCloudSyncBadge
+                }
+                .padding(EdgeInsets(top: 14, leading: 18, bottom: 0, trailing: 0))
             }
         #if os(macOS)
             return
