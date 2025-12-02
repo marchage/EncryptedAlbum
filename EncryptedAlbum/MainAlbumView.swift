@@ -72,6 +72,9 @@ struct MainAlbumView: View {
     @State private var showingStatusTooltip: Bool = false
     @State private var importingVisualState: Bool = false  // Stays true for minimum display duration
     @State private var importingDebounceTask: Task<Void, Never>? = nil
+    #if DEBUG
+    @State private var debugForceSyncingState: Bool = false  // Toggle to see the blue syncing icon
+    #endif
     #if os(iOS)
         @Environment(\.verticalSizeClass) private var verticalSizeClass
     #else
@@ -719,8 +722,14 @@ struct MainAlbumView: View {
     private var smartStatusPill: some View {
         let isSleepPrevented = albumManager.isSystemSleepPrevented
         let syncEnabled = albumManager.encryptedCloudSyncEnabled
-        let syncStatus = albumManager.cloudSyncStatus
         let inLockdown = albumManager.lockdownModeEnabled
+        
+        // DEBUG: Force syncing state to see the beautiful blue spinning icon
+        #if DEBUG
+        let syncStatus: AlbumManager.CloudSyncStatus = debugForceSyncingState ? .syncing : albumManager.cloudSyncStatus
+        #else
+        let syncStatus = albumManager.cloudSyncStatus
+        #endif
         
         // Use visual state that has minimum display duration
         let isImporting = importingVisualState
@@ -945,6 +954,14 @@ struct MainAlbumView: View {
         } label: {
             Label("Open Settings", systemImage: "gear")
         }
+        #if DEBUG
+        Divider()
+        Button {
+            debugForceSyncingState.toggle()
+        } label: {
+            Label(debugForceSyncingState ? "Stop Fake Sync" : "Simulate Syncing ✨", systemImage: "sparkles")
+        }
+        #endif
     }
     
     private func statusAccessibilityLabel(statusItems: [StatusItem]) -> String {
