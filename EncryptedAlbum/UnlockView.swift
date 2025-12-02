@@ -20,6 +20,10 @@ struct UnlockView: View {
     @AppStorage("stealthModeEnabled") private var stealthModeEnabled = false
     @State private var showFakeCrash = false
     @ObservedObject private var appIconService = AppIconService.shared
+    
+    // Status pill animation states
+    @State private var iCloudSyncRotation: Double = 0
+    @State private var iCloudErrorPulse: Bool = false
 
     private func appIconView() -> some View {
         // Prefer runtime image if AppIconService has one; otherwise fall back to bundle files
@@ -336,6 +340,13 @@ struct UnlockView: View {
                     .zIndex(999)
             }
         }
+        .overlay(alignment: .bottomLeading) {
+            // Status pill on lock screen (only if enabled in settings)
+            if albumManager.showStatusOnLockScreen {
+                lockScreenStatusPill
+                    .padding(EdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 0))
+            }
+        }
         .background(Color.clear)
         .onAppear {
             if stealthModeEnabled {
@@ -538,4 +549,176 @@ struct UnlockView: View {
             #endif
         }
     #endif
+    
+    // MARK: - Lock Screen Status Pill
+    
+    private struct LockScreenStatusItem: Identifiable {
+        let id: String
+        let icon: String
+        let color: Color
+        let pulse: Bool
+        let spin: Bool
+        let label: String
+    }
+    
+    @ViewBuilder
+    private var lockScreenStatusPill: some View {
+        let syncEnabled = albumManager.encryptedCloudSyncEnabled
+        let syncStatus = albumManager.cloudSyncStatus
+        let inLockdown = albumManager.lockdownModeEnabled
+        let isSleepPrevented = albumManager.isSystemSleepPrevented
+        let isImporting = albumManager.importProgress.isImporting
+        
+        let statusItems = buildLockScreenStatusItems(
+            isImporting: isImporting,
+            isSleepPrevented: isSleepPrevented,
+            syncEnabled: syncEnabled,
+            syncStatus: syncStatus,
+            inLockdown: inLockdown
+        )
+        
+        if !statusItems.isEmpty {
+            HStack(spacing: 6) {
+                ForEach(statusItems) { item in
+                    lockScreenStatusIcon(for: item)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(Capsule().stroke(Color.primary.opacity(0.1), lineWidth: 0.5))
+            #if os(macOS)
+            .help(statusItems.map { $0.label }.joined(separator: " • "))
+            #endif
+        }
+    }
+    
+    private func buildLockScreenStatusItems(
+        isImporting: Bool,
+        isSleepPrevented: Bool,
+        syncEnabled: Bool,
+        syncStatus: AlbumManager.CloudSyncStatus,
+        inLockdown: Bool
+    ) -> [LockScreenStatusItem] {
+        var items: [LockScreenStatusItem] = []
+        
+        // 1. Sync error
+        if syncEnabled && syncStatus == .failed {
+            items.append(LockScreenStatusItem(
+                id: "sync-error",
+                icon: "xmark.icloud.fill",
+                color: .red,
+                pulse: true,
+                spin: false,
+                label: "Sync error"
+            ))
+        }
+        
+        // 2. Actively syncing
+        if syncEnabled && syncStatus == .syncing {
+            items.append(LockScreenStatusItem(
+                id: "sync-active",
+                icon: "icloud.and.arrow.up",
+                color: .blue,
+                pulse: false,
+                spin: true,
+                label: "Syncing"
+            ))
+        }
+        
+        // 3. Importing
+        if isImporting {
+            items.append(LockScreenStatusItem(
+                id: "importing",
+                icon: "arrow.down.circle.fill",
+                color: .blue,
+                pulse: true,
+                spin: false,
+                label: "Importing"
+            ))
+        }
+        
+        // 4. Sleep prevention (keep awake)
+        if isSleepPrevented {
+            items.append(LockScreenStatusItem(
+                id: "awake",
+                icon: "bolt.fill",
+                color: .yellow,
+                pulse: true,
+                spin: false,
+                label: albumManager.sleepPreventionReasonLabel ?? "Awake"
+            ))
+        }
+        
+        // 5. Lockdown blocking sync
+        if inLockdown && syncEnabled {
+            items.append(LockScreenStatusItem(
+                id: "sync-locked",
+                icon: "lock.icloud",
+                color: .orange,
+                pulse: false,
+                spin: false,
+                label: "Sync blocked"
+            ))
+        }
+        
+        // 6. Sync idle/OK
+        if syncEnabled && syncStatus == .idle && !inLockdown && items.allSatisfy({ !$0.id.hasPrefix("sync") }) {
+            items.append(LockScreenStatusItem(
+                id: "sync-ok",
+                icon: "checkmark.icloud",
+                color: .green,
+                pulse: false,
+                spin: false,
+                label: "Synced"
+            ))
+        }
+        
+        // 7. Sync not available (but not if lockdown is showing)
+        if syncEnabled && syncStatus == .notAvailable && !inLockdown {
+            items.append(LockScreenStatusItem(
+                id: "sync-unavailable",
+                icon: "icloud.slash",
+                color: .secondary,
+                pulse: false,
+                spin: false,
+                label: "iCloud unavailable"
+            ))
+        }
+        
+        // 8. Sync disabled
+        if !syncEnabled && !inLockdown {
+            items.append(LockScreenStatusItem(
+                id: "sync-off",
+                icon: "icloud.slash",
+                color: .secondary.opacity(0.5),
+                pulse: false,
+                spin: false,
+                label: "Sync off"
+            ))
+        }
+        
+        return items
+    }
+    
+    @ViewBuilder
+    private func lockScreenStatusIcon(for item: LockScreenStatusItem) -> some View {
+        Image(systemName: item.icon)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundColor(item.color)
+            .scaleEffect(item.pulse && iCloudErrorPulse ? 1.1 : 1.0)
+            .rotationEffect(item.spin ? .degrees(iCloudSyncRotation) : .degrees(0))
+            .animation(
+                item.pulse ? .easeInOut(duration: 0.6).repeatForever(autoreverses: true) : .default,
+                value: iCloudErrorPulse
+            )
+            .onAppear {
+                if item.pulse { iCloudErrorPulse = true }
+                if item.spin {
+                    withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                        iCloudSyncRotation = 360
+                    }
+                }
+            }
+    }
 }

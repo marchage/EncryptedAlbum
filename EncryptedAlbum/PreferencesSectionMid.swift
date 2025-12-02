@@ -168,6 +168,21 @@ struct PreferencesSectionMid: View {
             .font(.caption)
             .foregroundStyle(albumManager.lockdownModeEnabled ? .red : .secondary)
 
+            Toggle(
+                "Show status on lock screen",
+                isOn: Binding(
+                    get: { albumManager.showStatusOnLockScreen },
+                    set: {
+                        albumManager.showStatusOnLockScreen = $0
+                        albumManager.saveSettings()
+                    }
+                )
+            )
+            
+            Text("Shows sync status, importing, and other indicators on the unlock screen. Disabled by default for privacy — revealing this info could tell an attacker about your setup.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
             Text("Import & Export").font(.headline)
 
             Toggle(

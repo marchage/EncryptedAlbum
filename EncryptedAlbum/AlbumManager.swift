@@ -371,6 +371,8 @@ public class AlbumManager: ObservableObject {
     /// When enabled, 'Lockdown Mode' restricts network, import/export and other risky operations
     /// to minimize attack surface and data leakage.
     @Published var lockdownModeEnabled: Bool = false
+    /// Show status indicators (sync, importing, etc.) on the lock screen. Off by default for privacy.
+    @Published var showStatusOnLockScreen: Bool = false
     @Published var passphraseMinLength: Int = 24
     @Published var enableRecoveryKey: Bool = false
 
@@ -2263,6 +2265,7 @@ public class AlbumManager: ObservableObject {
                 "passphraseMinLength": String(passphraseMinLength),
                 "enableRecoveryKey": String(enableRecoveryKey),
                 "lockdownModeEnabled": String(lockdownModeEnabled),
+                "showStatusOnLockScreen": String(showStatusOnLockScreen),
             ]
 
             do {
@@ -2478,6 +2481,12 @@ public class AlbumManager: ObservableObject {
                 lockdownModeEnabled = lockdown
             } else {
                 lockdownModeEnabled = false
+            }
+
+            if let showStatusString = settings["showStatusOnLockScreen"], let showStatus = Bool(showStatusString) {
+                showStatusOnLockScreen = showStatus
+            } else {
+                showStatusOnLockScreen = false
             }
 
             if !passwordHash.isEmpty {
