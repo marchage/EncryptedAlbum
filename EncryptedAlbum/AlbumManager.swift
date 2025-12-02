@@ -3187,6 +3187,24 @@ extension AlbumManager {
 
     }
 
+    /// Returns a user-friendly error message for a CloudKit account status
+    private func cloudKitStatusMessage(_ status: CKAccountStatus) -> String {
+        switch status {
+        case .available:
+            return "iCloud is available"
+        case .noAccount:
+            return "Not signed into iCloud. Sign in via System Settings → Apple ID."
+        case .restricted:
+            return "iCloud is restricted on this device (parental controls or MDM)."
+        case .couldNotDetermine:
+            return "Could not verify iCloud status. Ensure iCloud Drive is enabled in System Settings → Apple ID → iCloud."
+        case .temporarilyUnavailable:
+            return "iCloud is temporarily unavailable. Please try again later."
+        @unknown default:
+            return "Unknown iCloud status. Check your iCloud settings."
+        }
+    }
+
     /// Performs a minimal manual iCloud/CloudKit check.
     /// Verifies that the user's iCloud account is available and that CloudKit
     /// can be accessed for the app's private container. This is a lightweight
@@ -3211,14 +3229,13 @@ extension AlbumManager {
             let status = try await ckContainer.accountStatus()
             guard status == .available else {
                 cloudSyncStatus = .notAvailable
-                cloudSyncErrorMessage =
-                    "iCloud account not available: \(status) — ensure user is signed into iCloud and CloudKit is permitted."
+                cloudSyncErrorMessage = cloudKitStatusMessage(status)
                 lastCloudSync = Date()
                 return false
             }
         } catch {
             cloudSyncStatus = .notAvailable
-            cloudSyncErrorMessage = "iCloud / CloudKit check failed: \(error.localizedDescription)"
+            cloudSyncErrorMessage = "iCloud check failed: \(error.localizedDescription)"
             lastCloudSync = Date()
             return false
         }
@@ -3258,14 +3275,13 @@ extension AlbumManager {
             let status = try await ckContainer.accountStatus()
             if status != .available {
                 cloudVerificationStatus = .notAvailable
-                cloudSyncErrorMessage =
-                    "iCloud account not available: \(status) — ensure user is signed into iCloud and CloudKit is permitted."
+                cloudSyncErrorMessage = cloudKitStatusMessage(status)
                 lastCloudVerification = Date()
                 return false
             }
         } catch {
             cloudVerificationStatus = .notAvailable
-            cloudSyncErrorMessage = "iCloud / CloudKit check failed: \(error.localizedDescription)"
+            cloudSyncErrorMessage = "iCloud check failed: \(error.localizedDescription)"
             lastCloudVerification = Date()
             return false
         }

@@ -830,7 +830,7 @@ struct MainAlbumView: View {
         if syncEnabled && syncStatus == .syncing {
             items.append(StatusItem(
                 id: "sync-active",
-                icon: "arrow.triangle.2.circlepath.icloud",
+                icon: "icloud.and.arrow.up",
                 color: .blue,
                 pulse: false,
                 spin: true,
@@ -886,8 +886,8 @@ struct MainAlbumView: View {
             ))
         }
         
-        // 7. Sync not available
-        if syncEnabled && syncStatus == .notAvailable {
+        // 7. Sync not available (but not if lockdown is showing)
+        if syncEnabled && syncStatus == .notAvailable && !inLockdown {
             items.append(StatusItem(
                 id: "sync-unavailable",
                 icon: "icloud.slash",
@@ -1632,6 +1632,10 @@ struct MainAlbumView: View {
                 Spacer()
                 Toggle("", isOn: $privacyModeEnabled)
                     .labelsHidden()
+                    #if os(macOS)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    #endif
             }
 
             #if os(macOS)
