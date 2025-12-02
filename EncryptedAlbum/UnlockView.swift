@@ -583,10 +583,10 @@ struct UnlockView: View {
                     lockScreenStatusIcon(for: item)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().stroke(Color.primary.opacity(0.1), lineWidth: 0.5))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(.regularMaterial, in: Capsule())
+            .overlay(Capsule().stroke(Color.primary.opacity(0.15), lineWidth: 1))
             #if os(macOS)
             .help(statusItems.map { $0.label }.joined(separator: " • "))
             #endif
@@ -620,8 +620,8 @@ struct UnlockView: View {
                 id: "sync-active",
                 icon: "icloud.and.arrow.up",
                 color: .blue,
-                pulse: false,
-                spin: true,
+                pulse: true,
+                spin: false,
                 label: "Syncing"
             ))
         }
@@ -704,9 +704,9 @@ struct UnlockView: View {
     @ViewBuilder
     private func lockScreenStatusIcon(for item: LockScreenStatusItem) -> some View {
         Image(systemName: item.icon)
-            .font(.system(size: 13, weight: .medium))
+            .font(.system(size: 16, weight: .semibold))
             .foregroundColor(item.color)
-            .scaleEffect(item.pulse && iCloudErrorPulse ? 1.1 : 1.0)
+            .scaleEffect(item.pulse && iCloudErrorPulse ? 1.15 : 1.0)
             .rotationEffect(item.spin ? .degrees(iCloudSyncRotation) : .degrees(0))
             .animation(
                 item.pulse ? .easeInOut(duration: 0.6).repeatForever(autoreverses: true) : .default,
