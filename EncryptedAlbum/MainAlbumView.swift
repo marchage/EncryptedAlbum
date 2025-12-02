@@ -740,20 +740,17 @@ struct MainAlbumView: View {
     /// iCloud sync status badge showing sync state with contextual SF Symbols.
     /// - Syncing: spinning arrow.triangle.2.circlepath
     /// - Error: red pulsing xmark.icloud.fill
-    /// - Idle/OK: very subtle checkmark.icloud (almost invisible)
-    /// - Disabled: extremely transparent icloud.slash
+    /// - Idle/OK: visible checkmark.icloud
+    /// - Disabled: visible icloud.slash
     @ViewBuilder
     private var iCloudSyncBadge: some View {
+        // Access @Published properties directly to ensure SwiftUI observes changes
         let isEnabled = albumManager.encryptedCloudSyncEnabled
         let status = albumManager.cloudSyncStatus
         let inLockdown = albumManager.lockdownModeEnabled
 
-        // Don't show anything if cloud sync is disabled and not in lockdown
-        // (lockdown overrides sync and shows as "blocked")
-        let shouldShow = isEnabled || inLockdown
-
-        if shouldShow {
-            Group {
+        Group {
+            if isEnabled || inLockdown {
                 switch status {
                 case .syncing:
                     // Active sync - spinning icon only
@@ -791,40 +788,44 @@ struct MainAlbumView: View {
                     // iCloud not available (e.g., not signed in)
                     Image(systemName: "icloud.slash")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary.opacity(0.4))
+                        .foregroundColor(.secondary.opacity(0.5))
                         .padding(8)
+                        .background(Circle().fill(Color.secondary.opacity(0.1)))
 
                 case .idle:
-                    // Idle/OK - very subtle, almost invisible
+                    // Idle/OK - visible but calm
                     if inLockdown {
                         // Lockdown blocks sync - show blocked state
                         Image(systemName: "lock.icloud")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary.opacity(0.35))
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.orange.opacity(0.7))
                             .padding(8)
+                            .background(Circle().fill(Color.orange.opacity(0.1)))
                     } else {
-                        // Normal idle - checkmark, extremely subtle
+                        // Normal idle - checkmark, visible green tint
                         Image(systemName: "checkmark.icloud")
-                            .font(.system(size: 14, weight: .light))
-                            .foregroundColor(.secondary.opacity(0.25))
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.green.opacity(0.6))
                             .padding(8)
+                            .background(Circle().fill(Color.green.opacity(0.1)))
                     }
                 }
+            } else {
+                // Sync disabled - clearly visible slash icon
+                Image(systemName: "icloud.slash")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.secondary.opacity(0.6))
+                    .padding(8)
+                    .background(Circle().fill(Color.secondary.opacity(0.1)))
             }
-            .accessibilityIdentifier("iCloudSyncBadge")
-            .accessibilityLabel(iCloudSyncAccessibilityLabel)
-            #if os(macOS)
-                .help(iCloudSyncHelpText)
-            #endif
-        } else {
-            // Sync disabled - show very faint slash icon
-            Image(systemName: "icloud.slash")
-                .font(.system(size: 13, weight: .light))
-                .foregroundColor(.secondary.opacity(0.15))
-                .padding(8)
-                .accessibilityIdentifier("iCloudSyncBadge")
-                .accessibilityLabel("iCloud sync disabled")
         }
+        // Force view identity to change when state changes, ensuring SwiftUI rebuilds
+        .id("icloud-\(isEnabled)-\(status.rawValue)-\(inLockdown)")
+        .accessibilityIdentifier("iCloudSyncBadge")
+        .accessibilityLabel(iCloudSyncAccessibilityLabel)
+        #if os(macOS)
+            .help(iCloudSyncHelpText)
+        #endif
     }
 
     private var iCloudSyncAccessibilityLabel: String {
