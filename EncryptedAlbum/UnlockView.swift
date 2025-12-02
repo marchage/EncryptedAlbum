@@ -247,11 +247,10 @@ struct UnlockView: View {
                                 Button(action: {
                                     password = ProcessInfo.processInfo.environment["UI_TEST_PASSWORD"] ?? "TestPass123!"
                                 }) {
-                                    Text("")
+                                    Color.clear
                                 }
                                 .accessibilityIdentifier("test.fillUnlockPassword")
-                                .frame(width: 1, height: 1)
-                                .opacity(0.001)
+                                .frame(width: 44, height: 44)
                             }
 
                             if showError {

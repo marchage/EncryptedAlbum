@@ -497,7 +497,9 @@ public class AlbumManager: ObservableObject {
             let confirmEnv = ProcessInfo.processInfo.environment["ALLOW_DESTRUCTIVE_RESET"]
             if CommandLine.arguments.contains("--reset-state") && confirmEnv == "1" {
                 AppLog.warning("Destructive reset requested … Proceeding to nuke all data.")
-                self.nukeAllData()
+                // For UI tests, perform the nuke synchronously to ensure clean state
+                // before the app continues initialization.
+                self.nukeAllDataSync()
             }
         #endif
 
@@ -3005,29 +3007,39 @@ extension AlbumManager {
             // Perform destructive IO/keychain operations off the main thread so UI
             // doesn't freeze if this helper is invoked while running the app.
             Task.detached(priority: .background) {
-                try? FileManager.default.removeItem(at: self.storage.baseURL)
-
-                // Reset defaults
-                if let bundleID = Bundle.main.bundleIdentifier {
-                    UserDefaults.standard.removePersistentDomain(forName: bundleID)
-                }
-
-                // Reset keychain (simplified)
-                let secItemClasses = [
-                    kSecClassGenericPassword, kSecClassInternetPassword, kSecClassCertificate, kSecClassKey,
-                    kSecClassIdentity,
-                ]
-                for itemClass in secItemClasses {
-                    let spec: [String: Any] = [kSecClass as String: itemClass]
-                    SecItemDelete(spec as CFDictionary)
-                }
-
-                // Re-init storage to recreate directories. Do this in the background
-                // but it's safe to create/prepare storage off-main in DEBUG helper.
-                _ = AlbumStorage()
-
-                AppLog.debugPrivate("Nuke complete (DEBUG): storage wiped and defaults/keychain cleared.")
+                Self.performNukeOperations(storage: self.storage)
             }
+        }
+
+        /// Synchronous version of nukeAllData for use during UI tests initialization.
+        /// Blocks the current thread until cleanup is complete.
+        func nukeAllDataSync() {
+            AppLog.warning("Nuking all data synchronously (UI test reset).")
+            Self.performNukeOperations(storage: self.storage)
+        }
+
+        private static func performNukeOperations(storage: AlbumStorage) {
+            try? FileManager.default.removeItem(at: storage.baseURL)
+
+            // Reset defaults
+            if let bundleID = Bundle.main.bundleIdentifier {
+                UserDefaults.standard.removePersistentDomain(forName: bundleID)
+            }
+
+            // Reset keychain (simplified)
+            let secItemClasses = [
+                kSecClassGenericPassword, kSecClassInternetPassword, kSecClassCertificate, kSecClassKey,
+                kSecClassIdentity,
+            ]
+            for itemClass in secItemClasses {
+                let spec: [String: Any] = [kSecClass as String: itemClass]
+                SecItemDelete(spec as CFDictionary)
+            }
+
+            // Re-init storage to recreate directories.
+            _ = AlbumStorage()
+
+            AppLog.debugPrivate("Nuke complete (DEBUG): storage wiped and defaults/keychain cleared.")
         }
     #endif
 }

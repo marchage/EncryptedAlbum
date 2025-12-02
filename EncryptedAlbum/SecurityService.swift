@@ -23,6 +23,11 @@ class SecurityService {
 
     /// Performs biometric authentication
     func authenticateWithBiometrics(reason: String) async throws {
+        // Skip biometrics if a trusted modal (e.g., system share sheet, photo picker) is active
+        if await isTrustedModalActive() {
+            throw AlbumError.biometricCancelled
+        }
+
         return try await withCheckedThrowingContinuation { continuation in
             queue.async {
                 // Check rate limiting
@@ -440,6 +445,11 @@ class SecurityService {
     /// Retrieves the stored biometric password
     /// This will trigger the system biometric prompt automatically due to SecAccessControl
     func retrieveBiometricPassword(prompt: String = "Authenticate to unlock Encrypted Album") async throws -> String? {
+        // Skip biometrics if a trusted modal (e.g., system share sheet, photo picker) is active
+        if await isTrustedModalActive() {
+            throw AlbumError.biometricCancelled
+        }
+
         let context = LAContext()
         context.localizedReason = prompt
 
@@ -666,6 +676,21 @@ class SecurityService {
         private func applyMacKeychainAttributes(to query: inout [String: Any], requireUISkip: Bool) {}
     #endif
 
+    // MARK: - Trusted Modal Check
+
+    /// Checks if a trusted modal (e.g., system share sheet, photo picker) is currently active.
+    /// When active, biometric prompts should be suppressed to avoid conflicting UI.
+    private func isTrustedModalActive() async -> Bool {
+        await MainActor.run {
+            #if os(iOS)
+                return UltraPrivacyCoordinator.shared.isTrustedModalActive
+            #elseif os(macOS)
+                return MacPrivacyCoordinator.shared.isTrustedModalActive
+            #else
+                return false
+            #endif
+        }
+    }
 }
 
 /// Report structure for security health checks

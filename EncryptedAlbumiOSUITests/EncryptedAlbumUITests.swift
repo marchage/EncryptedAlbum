@@ -8,7 +8,8 @@ final class EncryptedAlbumUITests: XCTestCase {
 
         let app = XCUIApplication()
         // This argument tells the app to wipe data on launch
-        app.launchArguments = ["--reset-state", "--ui-tests"]
+        // --disable-secure-wrapper prevents the secure UITextField container from interfering with UI test element detection
+        app.launchArguments = ["--reset-state", "--ui-tests", "--disable-secure-wrapper"]
         // Tests frequently need a deterministic password. Provide it via launchEnvironment
         app.launchEnvironment["UI_TEST_PASSWORD"] = "TestPass123!"
         // Allow the app to perform a destructive reset during UI tests in debug builds.
@@ -25,7 +26,7 @@ final class EncryptedAlbumUITests: XCTestCase {
         setupPasswordAndUnlock(app: app)
 
         // Verify we are inside the album
-        let navBar = app.navigationBars["Encrypted Items"]
+        let navBar = app.navigationBars["Encrypted Album"]
         XCTAssertTrue(navBar.waitForExistence(timeout: 2.0), "Should be inside the album")
     }
 
@@ -38,7 +39,7 @@ final class EncryptedAlbumUITests: XCTestCase {
         // or simply by its image name if no label is provided.
         // Based on the error, it is exposed as "More".
         let menuButton = toolbarButton(
-            app: app, identifier: "More", fallbackIdentifiers: ["More", "Lock Album", "ellipsis"])
+            app: app, identifier: "More Options", fallbackIdentifiers: ["More", "ellipsis.circle", "ellipsis"])
 
         XCTAssertTrue(menuButton.waitForExistence(timeout: 10.0), "Menu button should exist")
 
@@ -61,7 +62,7 @@ final class EncryptedAlbumUITests: XCTestCase {
 
         // 1. Lock first
         let menuButton = toolbarButton(
-            app: app, identifier: "More", fallbackIdentifiers: ["More", "Lock Album", "ellipsis"])
+            app: app, identifier: "More Options", fallbackIdentifiers: ["More", "ellipsis.circle", "ellipsis"])
         XCTAssertTrue(menuButton.waitForExistence(timeout: 10.0), "Menu button should exist")
 
         // Force tap to avoid "Failed to scroll to visible" errors in toolbar
@@ -140,7 +141,7 @@ final class EncryptedAlbumUITests: XCTestCase {
         setupPasswordAndUnlock(app: app)
 
         let menuButton = toolbarButton(
-            app: app, identifier: "More", fallbackIdentifiers: ["More", "Lock Album", "ellipsis"])
+            app: app, identifier: "More Options", fallbackIdentifiers: ["More", "ellipsis.circle", "ellipsis"])
         XCTAssertTrue(menuButton.waitForExistence(timeout: 5.0), "Menu button should exist")
         menuButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
@@ -158,7 +159,8 @@ final class EncryptedAlbumUITests: XCTestCase {
         let addPhotos = toolbarButton(app: app, identifier: "addPhotosButton")
         XCTAssertTrue(addPhotos.waitForExistence(timeout: 5.0), "Add Photos toolbar button should appear")
 
-        let cameraButton = toolbarButton(app: app, identifier: "camera.fill", fallbackIdentifiers: ["camera.fill"])
+        let cameraButton = toolbarButton(
+            app: app, identifier: "Capture Photo or Video", fallbackIdentifiers: ["camera.fill"])
         XCTAssertTrue(cameraButton.waitForExistence(timeout: 5.0), "Camera capture button should appear")
     }
 
@@ -168,7 +170,7 @@ final class EncryptedAlbumUITests: XCTestCase {
 
         // Open menu and tap Settings
         let menuButton = toolbarButton(
-            app: app, identifier: "More", fallbackIdentifiers: ["More", "Lock Album", "ellipsis"])
+            app: app, identifier: "More Options", fallbackIdentifiers: ["More", "ellipsis.circle", "ellipsis"])
         XCTAssertTrue(menuButton.waitForExistence(timeout: 5.0))
         menuButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
@@ -182,7 +184,7 @@ final class EncryptedAlbumUITests: XCTestCase {
 
         // Tap the switch and confirm enabling via alert
         lockdownSwitch.tap()
-        let enableButton = app.buttons["Enable"]
+        let enableButton = app.buttons["Enable Lockdown"]
         XCTAssertTrue(enableButton.waitForExistence(timeout: 2.0))
         enableButton.tap()
 
@@ -209,7 +211,7 @@ final class EncryptedAlbumUITests: XCTestCase {
 
         // Ensure Lockdown is enabled via Preferences so the chip exists
         let menuButton = toolbarButton(
-            app: app, identifier: "More", fallbackIdentifiers: ["More", "Lock Album", "ellipsis"])
+            app: app, identifier: "More Options", fallbackIdentifiers: ["More", "ellipsis.circle", "ellipsis"])
         XCTAssertTrue(menuButton.waitForExistence(timeout: 5.0))
         menuButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
@@ -222,7 +224,7 @@ final class EncryptedAlbumUITests: XCTestCase {
 
         // Enable Lockdown (confirm dialog)
         lockdownSwitch.tap()
-        let enableButton = app.buttons["Enable"]
+        let enableButton = app.buttons["Enable Lockdown"]
         XCTAssertTrue(enableButton.waitForExistence(timeout: 2.0))
         enableButton.tap()
 
@@ -249,7 +251,7 @@ final class EncryptedAlbumUITests: XCTestCase {
 
         // Lock the album to return to the unlock screen
         let menuButton = toolbarButton(
-            app: app, identifier: "More", fallbackIdentifiers: ["More", "Lock Album", "ellipsis"])
+            app: app, identifier: "More Options", fallbackIdentifiers: ["More", "ellipsis.circle", "ellipsis"])
         XCTAssertTrue(menuButton.waitForExistence(timeout: 5.0), "Menu button should exist")
         menuButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         let lockButton = app.buttons["Lock Album"]

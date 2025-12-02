@@ -469,7 +469,7 @@ struct SetupPasswordView: View {
         // will auto-fill the manual password fields with the value provided in
         // the launch environment (UI_TEST_PASSWORD). This keeps the flow intact
         // but prevents flakiness related to synthesizing keyboard events.
-        .overlay(
+        .overlay(alignment: .topLeading) {
             Group {
                 if ProcessInfo.processInfo.arguments.contains("--ui-tests") {
                     Button(action: {
@@ -478,14 +478,13 @@ struct SetupPasswordView: View {
                         confirmPassword = value
                     }) {
                         // Keep the view tiny and nearly invisible but hittable for UI tests
-                        Text("")
+                        Color.clear
                     }
                     .accessibilityIdentifier("test.fillSetupPassword")
-                    .frame(width: 1, height: 1)
-                    .opacity(0.001)
+                    .frame(width: 44, height: 44)
                 }
             }
-        )
+        }
     }
 
     /// Return a privacy-preserving preview of a generated password.
