@@ -941,7 +941,7 @@ struct MainAlbumView: View {
             Image(systemName: systemName)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(color)
-                .scaleEffect(isPulsing ? 1.15 : 1.0)
+                .scaleEffect(isPulsing ? 1.3 : 1.0)
                 .rotationEffect(.degrees(rotation))
                 .onAppear {
                     if shouldPulse {
@@ -1489,9 +1489,12 @@ struct MainAlbumView: View {
                 // Smart status pill anchored to bottom-left corner.
                 // Combines all status indicators into one adaptive pill.
                 // Uses fixed positioning to prevent movement during viewer transitions.
-                smartStatusPill
-                    .padding(EdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 0))
-                    .ignoresSafeArea(.keyboard)
+                // Can be hidden via Settings if user doesn't want to see it.
+                if albumManager.showStatusIndicators {
+                    smartStatusPill
+                        .padding(EdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 0))
+                        .ignoresSafeArea(.keyboard)
+                }
             }
         #if os(macOS)
             return

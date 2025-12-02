@@ -373,6 +373,8 @@ public class AlbumManager: ObservableObject {
     @Published var lockdownModeEnabled: Bool = false
     /// Show status indicators (sync, importing, etc.) on the lock screen. Off by default for privacy.
     @Published var showStatusOnLockScreen: Bool = false
+    /// Show the status pill (sync, importing, awake, etc.) in the main album view. On by default.
+    @Published var showStatusIndicators: Bool = true
     @Published var passphraseMinLength: Int = 24
     @Published var enableRecoveryKey: Bool = false
 
@@ -2266,6 +2268,7 @@ public class AlbumManager: ObservableObject {
                 "enableRecoveryKey": String(enableRecoveryKey),
                 "lockdownModeEnabled": String(lockdownModeEnabled),
                 "showStatusOnLockScreen": String(showStatusOnLockScreen),
+                "showStatusIndicators": String(showStatusIndicators),
             ]
 
             do {
@@ -2487,6 +2490,12 @@ public class AlbumManager: ObservableObject {
                 showStatusOnLockScreen = showStatus
             } else {
                 showStatusOnLockScreen = false
+            }
+
+            if let showIndicatorsString = settings["showStatusIndicators"], let showIndicators = Bool(showIndicatorsString) {
+                showStatusIndicators = showIndicators
+            } else {
+                showStatusIndicators = true  // Default to ON
             }
 
             if !passwordHash.isEmpty {

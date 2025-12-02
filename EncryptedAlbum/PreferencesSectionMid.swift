@@ -169,6 +169,21 @@ struct PreferencesSectionMid: View {
             .foregroundStyle(albumManager.lockdownModeEnabled ? .red : .secondary)
 
             Toggle(
+                "Show status indicators",
+                isOn: Binding(
+                    get: { albumManager.showStatusIndicators },
+                    set: {
+                        albumManager.showStatusIndicators = $0
+                        albumManager.saveSettings()
+                    }
+                )
+            )
+            
+            Text("Shows the status pill (sync, importing, keep awake) in the bottom-left corner. Turn off if you don't want to know what's happening.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Toggle(
                 "Show status on lock screen",
                 isOn: Binding(
                     get: { albumManager.showStatusOnLockScreen },
@@ -178,6 +193,7 @@ struct PreferencesSectionMid: View {
                     }
                 )
             )
+            .disabled(!albumManager.showStatusIndicators)
             
             Text("Shows sync status, importing, and other indicators on the unlock screen. Disabled by default for privacy — revealing this info could tell an attacker about your setup.")
                 .font(.caption)

@@ -720,7 +720,7 @@ struct UnlockView: View {
             Image(systemName: systemName)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(color)
-                .scaleEffect(isPulsing ? 1.15 : 1.0)
+                .scaleEffect(isPulsing ? 1.3 : 1.0)
                 .rotationEffect(.degrees(rotation))
                 .onAppear {
                     if shouldPulse {
