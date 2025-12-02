@@ -924,18 +924,38 @@ struct MainAlbumView: View {
     
     @ViewBuilder
     private func statusIcon(for item: StatusItem) -> some View {
-        Image(systemName: item.icon)
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundColor(item.color)
-            .symbolEffect(.pulse, options: .repeating, isActive: item.pulse)
-            .rotationEffect(item.spin ? .degrees(iCloudSyncRotation) : .degrees(0))
-            .onAppear {
-                if item.spin {
-                    withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
-                        iCloudSyncRotation = 360
+        PulsingIcon(systemName: item.icon, color: item.color, shouldPulse: item.pulse, shouldSpin: item.spin)
+    }
+    
+    // Separate view struct to properly handle continuous animations
+    private struct PulsingIcon: View {
+        let systemName: String
+        let color: Color
+        let shouldPulse: Bool
+        let shouldSpin: Bool
+        
+        @State private var isPulsing = false
+        @State private var rotation: Double = 0
+        
+        var body: some View {
+            Image(systemName: systemName)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(color)
+                .scaleEffect(isPulsing ? 1.15 : 1.0)
+                .rotationEffect(.degrees(rotation))
+                .onAppear {
+                    if shouldPulse {
+                        withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                            isPulsing = true
+                        }
+                    }
+                    if shouldSpin {
+                        withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                            rotation = 360
+                        }
                     }
                 }
-            }
+        }
     }
     
     @ViewBuilder
