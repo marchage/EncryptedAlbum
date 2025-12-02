@@ -706,14 +706,9 @@ struct UnlockView: View {
         Image(systemName: item.icon)
             .font(.system(size: 16, weight: .semibold))
             .foregroundColor(item.color)
-            .scaleEffect(item.pulse && iCloudErrorPulse ? 1.15 : 1.0)
+            .symbolEffect(.pulse, options: .repeating, isActive: item.pulse)
             .rotationEffect(item.spin ? .degrees(iCloudSyncRotation) : .degrees(0))
-            .animation(
-                item.pulse ? .easeInOut(duration: 0.6).repeatForever(autoreverses: true) : .default,
-                value: iCloudErrorPulse
-            )
             .onAppear {
-                if item.pulse { iCloudErrorPulse = true }
                 if item.spin {
                     withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
                         iCloudSyncRotation = 360
