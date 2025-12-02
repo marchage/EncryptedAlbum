@@ -118,8 +118,9 @@ final class EncryptedAlbumUITests: XCTestCase {
 
         openPhotosPicker(app: app)
 
-        let pickerTitle = app.staticTexts["Select Items to Hide"]
-        XCTAssertTrue(pickerTitle.waitForExistence(timeout: 5.0), "Picker title should be visible")
+        // The system PHPickerViewController shows a Cancel button by default
+        let cancelButton = app.buttons["Cancel"]
+        XCTAssertTrue(cancelButton.waitForExistence(timeout: 5.0), "System photos picker should be visible with Cancel button")
     }
 
     func testPhotosPickerCancelDismissesSheet() throws {
@@ -128,12 +129,14 @@ final class EncryptedAlbumUITests: XCTestCase {
 
         openPhotosPicker(app: app)
 
-        let cancelButton = app.buttons["photosPickerCancelButton"]
-        XCTAssertTrue(cancelButton.waitForExistence(timeout: 5.0), "Cancel button should appear on picker")
+        // System PHPickerViewController has a standard "Cancel" button
+        let cancelButton = app.buttons["Cancel"]
+        XCTAssertTrue(cancelButton.waitForExistence(timeout: 5.0), "Cancel button should appear on system picker")
         cancelButton.tap()
 
-        XCTAssertFalse(cancelButton.waitForExistence(timeout: 2.0), "Picker should dismiss after tapping Cancel")
-        XCTAssertFalse(app.staticTexts["Select Items to Hide"].exists, "Picker title should disappear")
+        // Verify the picker has dismissed by checking that the main album UI is visible again
+        let navBar = app.navigationBars["Encrypted Album"]
+        XCTAssertTrue(navBar.waitForExistence(timeout: 3.0), "Should return to main album after dismissing picker")
     }
 
     func testMenuContainsExpectedActions() throws {
