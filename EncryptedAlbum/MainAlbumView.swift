@@ -70,6 +70,8 @@ struct MainAlbumView: View {
     @State private var iCloudErrorPulse: Bool = false
     @State private var statusPillScale: CGFloat = 1.0
     @State private var showingStatusTooltip: Bool = false
+    @State private var importingVisualState: Bool = false  // Stays true for minimum display duration
+    @State private var importingDebounceTask: Task<Void, Never>? = nil
     #if os(iOS)
         @Environment(\.verticalSizeClass) private var verticalSizeClass
     #else
@@ -702,16 +704,26 @@ struct MainAlbumView: View {
 
     // MARK: - Unified Smart Status Pill
     
+    /// Minimum time (seconds) to display the "importing" status so users can actually see it
+    private let importingMinDisplayDuration: TimeInterval = 2.0
+    
+    /// Computed property to check if importing is happening right now
+    private var isCurrentlyImporting: Bool {
+        albumManager.importProgress.isImporting || directImportProgress.isImporting
+    }
+    
     /// A single adaptive status indicator that shows the most important current status.
     /// Combines sleep prevention, iCloud sync, and import activity into one elegant pill.
     /// Priority: Error > Syncing > Importing > Sleep Prevention > Idle
     @ViewBuilder
     private var smartStatusPill: some View {
-        let isImporting = albumManager.importProgress.isImporting || directImportProgress.isImporting
         let isSleepPrevented = albumManager.isSystemSleepPrevented
         let syncEnabled = albumManager.encryptedCloudSyncEnabled
         let syncStatus = albumManager.cloudSyncStatus
         let inLockdown = albumManager.lockdownModeEnabled
+        
+        // Use visual state that has minimum display duration
+        let isImporting = importingVisualState
         
         // Build array of status icons to show
         let statusItems = buildStatusItems(
@@ -722,37 +734,62 @@ struct MainAlbumView: View {
             inLockdown: inLockdown
         )
         
-        if !statusItems.isEmpty {
-            HStack(spacing: 6) {
-                ForEach(statusItems, id: \.id) { item in
-                    statusIcon(for: item)
+        Group {
+            if !statusItems.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(statusItems, id: \.id) { item in
+                        statusIcon(for: item)
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().stroke(Color.primary.opacity(0.1), lineWidth: 0.5))
+                .scaleEffect(statusPillScale)
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: statusPillScale)
+                .onTapGesture {
+                    showingPreferences = true
+                }
+                .contextMenu {
+                    statusContextMenu(statusItems: statusItems)
+                }
+                .accessibilityIdentifier("smartStatusPill")
+                .accessibilityLabel(statusAccessibilityLabel(statusItems: statusItems))
+                #if os(macOS)
+                    .help(statusHelpText(statusItems: statusItems))
+                #endif
+                // Animate scale on state changes
+                .onChange(of: statusItems.map { $0.id }.joined()) { _ in
+                    withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                        statusPillScale = 1.1
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                            statusPillScale = 1.0
+                        }
+                    }
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().stroke(Color.primary.opacity(0.1), lineWidth: 0.5))
-            .scaleEffect(statusPillScale)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: statusPillScale)
-            .onTapGesture {
-                showingPreferences = true
-            }
-            .contextMenu {
-                statusContextMenu(statusItems: statusItems)
-            }
-            .accessibilityIdentifier("smartStatusPill")
-            .accessibilityLabel(statusAccessibilityLabel(statusItems: statusItems))
-            #if os(macOS)
-                .help(statusHelpText(statusItems: statusItems))
-            #endif
-            // Animate scale on state changes
-            .onChange(of: statusItems.map { $0.id }.joined()) { _ in
-                withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
-                    statusPillScale = 1.1
+        }
+        // Track importing state OUTSIDE the conditional so it always fires
+        .onChange(of: isCurrentlyImporting) { nowImporting in
+            if nowImporting {
+                // Start importing - show immediately
+                importingDebounceTask?.cancel()
+                withAnimation(.easeIn(duration: 0.2)) {
+                    importingVisualState = true
                 }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                        statusPillScale = 1.0
+            } else {
+                // Stopped importing - keep showing for minimum duration
+                importingDebounceTask?.cancel()
+                importingDebounceTask = Task {
+                    try? await Task.sleep(nanoseconds: UInt64(importingMinDisplayDuration * 1_000_000_000))
+                    if !Task.isCancelled {
+                        await MainActor.run {
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                importingVisualState = false
+                            }
+                        }
                     }
                 }
             }
@@ -1412,8 +1449,10 @@ struct MainAlbumView: View {
             .overlay(alignment: .bottomLeading) {
                 // Smart status pill anchored to bottom-left corner.
                 // Combines all status indicators into one adaptive pill.
+                // Uses fixed positioning to prevent movement during viewer transitions.
                 smartStatusPill
                     .padding(EdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 0))
+                    .ignoresSafeArea(.keyboard)
             }
         #if os(macOS)
             return

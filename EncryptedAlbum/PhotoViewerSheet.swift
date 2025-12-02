@@ -124,9 +124,10 @@ struct PhotoViewerSheet: View {
                     }
                 }
 
-                // Sleep-prevention mini-bolt overlay for the viewer (top-left so it doesn't cover the close button)
+                // Sleep-prevention mini-bolt overlay for the viewer (bottom-left, consistent with main view)
                 if albumManager.isSystemSleepPrevented {
                     VStack {
+                        Spacer()
                         HStack {
                             Image(systemName: "bolt.fill")
                                 .foregroundColor(.yellow)
@@ -137,13 +138,12 @@ struct PhotoViewerSheet: View {
                                         .repeatForever(autoreverses: true),
                                     value: sleepIndicatorPulse
                                 )
-                                .padding(6)
+                                .padding(8)
                                 .background(Circle().fill(Color.yellow.opacity(0.25)))
-                                .padding(.top, 14)
-                                .padding(.leading, 18)
+                                .padding(.bottom, 16)
+                                .padding(.leading, 16)
                             Spacer()
                         }
-                        Spacer()
                     }
                     .allowsHitTesting(false)
                     .onAppear { sleepIndicatorPulse = true }
