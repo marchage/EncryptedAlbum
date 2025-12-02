@@ -3194,6 +3194,10 @@ extension AlbumManager {
     @MainActor public func performManualCloudSync() async throws -> Bool {
         #if os(iOS)
             cloudSyncStatus = .syncing
+            
+            // Small delay so the syncing status is visible in the UI
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            
             // Respect Lockdown Mode first — deny network/cloud operations while lockdown is active
             if lockdownModeEnabled {
                 cloudSyncStatus = .failed
@@ -3209,11 +3213,13 @@ extension AlbumManager {
                     cloudSyncStatus = .notAvailable
                     cloudSyncErrorMessage =
                         "iCloud account not available: \(status) — ensure user is signed into iCloud and CloudKit is permitted."
+                    lastCloudSync = Date()
                     return false
                 }
             } catch {
                 cloudSyncStatus = .notAvailable
                 cloudSyncErrorMessage = "iCloud / CloudKit check failed: \(error.localizedDescription)"
+                lastCloudSync = Date()
                 return false
             }
 

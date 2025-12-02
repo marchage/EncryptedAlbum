@@ -1257,6 +1257,13 @@ struct MainAlbumView: View {
                     // No automatic toolbar additions here; keep life-cycle work only
                     didForcePrivacyModeThisSession = true
                 }
+                
+                // Trigger iCloud sync verification if enabled (updates status indicator)
+                if albumManager.encryptedCloudSyncEnabled && !albumManager.lockdownModeEnabled {
+                    Task {
+                        _ = try? await albumManager.performManualCloudSync()
+                    }
+                }
             }
             .confirmationDialog(
                 "How would you like to restore \(photosToRestore.count) item(s)?",
