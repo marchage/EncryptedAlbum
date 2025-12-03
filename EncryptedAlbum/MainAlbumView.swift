@@ -1719,6 +1719,7 @@ struct MainAlbumView: View {
                         systemImage: privacyModeEnabled ? "eye.slash.fill" : "eye.fill"
                     )
                     .font(.subheadline)
+                    .imageScale(.large)
                     .foregroundStyle(.secondary)
                 }
                 Spacer()
