@@ -998,7 +998,7 @@ struct MainAlbumView: View {
     
     @ViewBuilder
     private func statusIcon(for item: StatusItem) -> some View {
-        PulsingIcon(systemName: item.icon, color: item.color, shouldPulse: item.pulse, shouldSpin: item.spin)
+        PulsingIcon(systemName: item.icon, color: item.color, shouldPulse: item.pulse, shouldSpin: item.spin, compact: albumManager.compactLayoutEnabled)
     }
     
     // Separate view struct to properly handle continuous animations
@@ -1007,15 +1007,19 @@ struct MainAlbumView: View {
         let color: Color
         let shouldPulse: Bool
         let shouldSpin: Bool
+        let compact: Bool
         
         @State private var isPulsing = false
         @State private var rotation: Double = 0
         
+        private var iconSize: CGFloat { compact ? 11 : 16 }
+        private var pulseScale: CGFloat { compact ? 1.15 : 1.3 }
+        
         var body: some View {
             Image(systemName: systemName)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: iconSize, weight: .semibold))
                 .foregroundColor(color)
-                .scaleEffect(isPulsing ? 1.3 : 1.0)
+                .scaleEffect(isPulsing ? pulseScale : 1.0)
                 .rotationEffect(.degrees(rotation))
                 .onAppear {
                     if shouldPulse {
@@ -1719,7 +1723,7 @@ struct MainAlbumView: View {
                         systemImage: privacyModeEnabled ? "eye.slash.fill" : "eye.fill"
                     )
                     .font(.subheadline)
-                    .imageScale(.large)
+                    .imageScale(albumManager.compactLayoutEnabled ? .medium : .large)
                     .foregroundStyle(.secondary)
                 }
                 Spacer()

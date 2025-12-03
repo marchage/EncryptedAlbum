@@ -23,7 +23,7 @@ struct PhotoThumbnailView: View {
                             .fill(Color.gray.opacity(0.2))
                             .overlay {
                                 Image(systemName: "eye.slash.fill")
-                                    .font(.largeTitle)
+                                    .font(albumManager.compactLayoutEnabled ? .title2 : .largeTitle)
                                     .foregroundStyle(.secondary)
                             }
                     } else if let image = thumbnailImage {

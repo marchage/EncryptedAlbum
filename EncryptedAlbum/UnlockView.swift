@@ -703,7 +703,7 @@ struct UnlockView: View {
     
     @ViewBuilder
     private func lockScreenStatusIcon(for item: LockScreenStatusItem) -> some View {
-        LockScreenPulsingIcon(systemName: item.icon, color: item.color, shouldPulse: item.pulse, shouldSpin: item.spin)
+        LockScreenPulsingIcon(systemName: item.icon, color: item.color, shouldPulse: item.pulse, shouldSpin: item.spin, compact: albumManager.compactLayoutEnabled)
     }
     
     // Separate view struct to properly handle continuous animations
@@ -712,15 +712,19 @@ struct UnlockView: View {
         let color: Color
         let shouldPulse: Bool
         let shouldSpin: Bool
+        let compact: Bool
         
         @State private var isPulsing = false
         @State private var rotation: Double = 0
         
+        private var iconSize: CGFloat { compact ? 11 : 16 }
+        private var pulseScale: CGFloat { compact ? 1.15 : 1.3 }
+        
         var body: some View {
             Image(systemName: systemName)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: iconSize, weight: .semibold))
                 .foregroundColor(color)
-                .scaleEffect(isPulsing ? 1.3 : 1.0)
+                .scaleEffect(isPulsing ? pulseScale : 1.0)
                 .rotationEffect(.degrees(rotation))
                 .onAppear {
                     if shouldPulse {
