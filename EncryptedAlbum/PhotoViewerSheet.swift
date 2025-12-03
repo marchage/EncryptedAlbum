@@ -21,6 +21,7 @@ struct PhotoViewerSheet: View {
     @State private var decryptErrorMessage: String? = nil
     @State private var isMaximized: Bool = false
     @State private var sleepIndicatorPulse: Bool = false
+    @State private var syncPulse: Bool = false
 
     var body: some View {
         #if os(macOS)
@@ -124,30 +125,13 @@ struct PhotoViewerSheet: View {
                     }
                 }
 
-                // Sleep-prevention mini-bolt overlay for the viewer (bottom-left, consistent with main view)
-                if albumManager.isSystemSleepPrevented {
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Image(systemName: "bolt.fill")
-                                .foregroundColor(.yellow)
-                                .font(.system(size: 13, weight: .bold))
-                                .scaleEffect(sleepIndicatorPulse ? 1.15 : 0.9)
-                                .animation(
-                                    .easeInOut(duration: 0.9)
-                                        .repeatForever(autoreverses: true),
-                                    value: sleepIndicatorPulse
-                                )
-                                .padding(8)
-                                .background(Circle().fill(Color.yellow.opacity(0.25)))
-                                .padding(.bottom, 16)
-                                .padding(.leading, 16)
-                            Spacer()
-                        }
-                    }
-                    .allowsHitTesting(false)
-                    .onAppear { sleepIndicatorPulse = true }
-                    .onDisappear { sleepIndicatorPulse = false }
+                // Status pill overlay for the viewer (bottom-left, consistent with main view)
+                // Shows sync status and sleep prevention
+                if albumManager.showStatusIndicators {
+                    viewerStatusPill
+                        .padding(.bottom, 16)
+                        .padding(.leading, 16)
+                        .allowsHitTesting(false)
                 }
             }
             .onAppear {
@@ -346,6 +330,100 @@ struct PhotoViewerSheet: View {
         let seconds = Int(duration) % 60
         return String(format: "%d:%02d", minutes, seconds)
     }
+    
+    // MARK: - Viewer Status Pill
+    
+    @ViewBuilder
+    private var viewerStatusPill: some View {
+        let compact = albumManager.compactLayoutEnabled
+        let iconSize: CGFloat = compact ? 11 : 14
+        
+        VStack {
+            Spacer()
+            HStack {
+                HStack(spacing: 6) {
+                    // Lockdown mode indicator
+                    if albumManager.lockdownModeEnabled {
+                        Image(systemName: "shield.fill")
+                            .font(.system(size: iconSize, weight: .semibold))
+                            .foregroundColor(.red)
+                    }
+                    
+                    // iCloud sync status (only if not in lockdown)
+                    if albumManager.encryptedCloudSyncEnabled && !albumManager.lockdownModeEnabled {
+                        switch albumManager.cloudSyncStatus {
+                        case .syncing:
+                            Image(systemName: "icloud.and.arrow.up")
+                                .font(.system(size: iconSize, weight: .semibold))
+                                .foregroundColor(.blue)
+                                .scaleEffect(syncPulse ? 1.2 : 1.0)
+                                .onAppear {
+                                    withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                                        syncPulse = true
+                                    }
+                                }
+                        case .failed:
+                            Image(systemName: "xmark.icloud.fill")
+                                .font(.system(size: iconSize, weight: .semibold))
+                                .foregroundColor(.red)
+                        case .idle:
+                            Image(systemName: "checkmark.icloud")
+                                .font(.system(size: iconSize, weight: .semibold))
+                                .foregroundColor(.green)
+                        case .notAvailable:
+                            Image(systemName: "icloud.slash")
+                                .font(.system(size: iconSize, weight: .semibold))
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    
+                    // Import in progress
+                    if albumManager.importProgress.isImporting {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: iconSize, weight: .semibold))
+                            .foregroundColor(.blue)
+                    }
+                    
+                    // Export in progress
+                    if albumManager.exportProgress.isExporting {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: iconSize, weight: .semibold))
+                            .foregroundColor(.purple)
+                    }
+                    
+                    // Media type indicator
+                    Image(systemName: photo.mediaType == .video ? "video.fill" : "photo.fill")
+                        .font(.system(size: iconSize, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    
+                    // Encryption badge (AES-256)
+                    HStack(spacing: 2) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: iconSize * 0.8, weight: .bold))
+                        Text("AES")
+                            .font(.system(size: iconSize * 0.7, weight: .heavy))
+                    }
+                    .foregroundColor(.green)
+                    
+                    // Sleep prevention
+                    if albumManager.isSystemSleepPrevented {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: iconSize, weight: .semibold))
+                            .foregroundColor(.yellow)
+                            .scaleEffect(sleepIndicatorPulse ? 1.2 : 1.0)
+                            .onAppear {
+                                withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                                    sleepIndicatorPulse = true
+                                }
+                            }
+                    }
+                }
+                .padding(.horizontal, compact ? 8 : 10)
+                .padding(.vertical, compact ? 5 : 7)
+                .background(.regularMaterial, in: Capsule())
+                
+                Spacer()
+            }
+        }
+    }
 }
-
-// decryptingPlaceholder removed — replaced by PhotoViewerSheet.decryptingView

@@ -936,6 +936,18 @@ struct MainAlbumView: View {
             ))
         }
         
+        // 3b. Exporting
+        if albumManager.exportProgress.isExporting {
+            items.append(StatusItem(
+                id: "exporting",
+                icon: "arrow.up.circle.fill",
+                color: .purple,
+                pulse: true,
+                spin: false,
+                label: "Exporting"
+            ))
+        }
+        
         // 4. Sleep prevention (keep awake)
         if isSleepPrevented {
             items.append(StatusItem(
@@ -996,12 +1008,43 @@ struct MainAlbumView: View {
             ))
         }
         
+        // 9. AES encryption badge (always show - everything is encrypted!)
+        items.append(StatusItem(
+            id: "aes-encrypted",
+            icon: "lock.fill",
+            color: .green,
+            pulse: false,
+            spin: false,
+            label: "AES-256 encrypted"
+        ))
+        
         return items
     }
     
     @ViewBuilder
     private func statusIcon(for item: StatusItem) -> some View {
-        PulsingIcon(systemName: item.icon, color: item.color, shouldPulse: item.pulse, shouldSpin: item.spin, compact: albumManager.compactLayoutEnabled)
+        if item.id == "aes-encrypted" {
+            // Special AES badge with text
+            AESBadge(compact: albumManager.compactLayoutEnabled)
+        } else {
+            PulsingIcon(systemName: item.icon, color: item.color, shouldPulse: item.pulse, shouldSpin: item.spin, compact: albumManager.compactLayoutEnabled)
+        }
+    }
+    
+    // AES encryption badge view
+    private struct AESBadge: View {
+        let compact: Bool
+        private var iconSize: CGFloat { compact ? 11 : 16 }
+        
+        var body: some View {
+            HStack(spacing: 2) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: iconSize * 0.8, weight: .bold))
+                Text("AES")
+                    .font(.system(size: iconSize * 0.7, weight: .heavy))
+            }
+            .foregroundColor(.green)
+        }
     }
     
     // Separate view struct to properly handle continuous animations
