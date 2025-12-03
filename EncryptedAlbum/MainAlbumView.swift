@@ -141,15 +141,89 @@ struct MainAlbumView: View {
 
     func setupKeyboardShortcuts() {
         #if os(macOS)
-            NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-                // If the Photos picker sheet is shown, let it receive Cmd+A instead of handling it globally
-                if showingPhotosLibrary {
+            NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [self] event in
+                // If the Photos picker sheet is shown, let it handle its own shortcuts
+                if showingPhotosLibrary || showingFilePicker {
                     return event
+                }
+
+                let keyCode = event.keyCode
+                
+                // Escape key (keyCode 53)
+                if keyCode == 53 {
+                    // Close photo viewer if open
+                    if selectedPhoto != nil {
+                        withAnimation {
+                            selectedPhoto = nil
+                        }
+                        return nil
+                    }
+                    // Clear selection if any
+                    if !selectedPhotos.isEmpty {
+                        clearSelection()
+                        return nil
+                    }
+                    // Close search if active
+                    if isSearchActive {
+                        withAnimation {
+                            isSearchActive = false
+                            searchQuery = ""
+                        }
+                        return nil
+                    }
+                }
+                
+                // Delete/Backspace key (keyCode 51)
+                if keyCode == 51 && !selectedPhotos.isEmpty {
+                    let photosToDelete = albumManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
+                    requestDeletion(for: photosToDelete)
+                    return nil
+                }
+                
+                // Space bar (keyCode 49) - Open first selected photo
+                if keyCode == 49 && !selectedPhotos.isEmpty && selectedPhoto == nil {
+                    if let firstSelectedId = selectedPhotos.first,
+                       let photo = albumManager.hiddenPhotos.first(where: { $0.id == firstSelectedId }) {
+                        selectedPhoto = photo
+                    }
+                    return nil
+                }
+                
+                // Enter/Return key (keyCode 36) - Open first selected photo
+                if keyCode == 36 && !selectedPhotos.isEmpty && selectedPhoto == nil {
+                    if let firstSelectedId = selectedPhotos.first,
+                       let photo = albumManager.hiddenPhotos.first(where: { $0.id == firstSelectedId }) {
+                        selectedPhoto = photo
+                    }
+                    return nil
                 }
 
                 if event.modifierFlags.contains(.command) {
                     if event.charactersIgnoringModifiers == "a" {
+                        // ⌘A - Select all
                         selectAll()
+                        return nil
+                    }
+                    if event.charactersIgnoringModifiers == "d" {
+                        // ⌘D - Deselect all
+                        clearSelection()
+                        return nil
+                    }
+                    if event.charactersIgnoringModifiers == "f" {
+                        // ⌘F - Focus search
+                        withAnimation {
+                            isSearchActive = true
+                        }
+                        return nil
+                    }
+                    if event.charactersIgnoringModifiers == "," {
+                        // ⌘, - Open preferences (standard macOS)
+                        showingPreferences = true
+                        return nil
+                    }
+                    if event.charactersIgnoringModifiers == "e" && !selectedPhotos.isEmpty {
+                        // ⌘E - Export selected
+                        exportSelectedPhotos()
                         return nil
                     }
                 }
@@ -1640,23 +1714,6 @@ struct MainAlbumView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 12) {
                 HStack(spacing: 8) {
-                    // Small app icon in the privacy bar (helps identify the app in portrait mode)
-                    #if os(iOS)
-                        if let runtime = appIconService.runtimeMarketingImage {
-                            Image(uiImage: runtime)
-                                .resizable()
-                                .frame(width: 28, height: 28)
-                                .cornerRadius(6)
-                        } else if let generated = AppIconService.generateMarketingImage(
-                            from: appIconService.selectedIconName.isEmpty ? nil : appIconService.selectedIconName)
-                        {
-                            Image(uiImage: generated)
-                                .resizable()
-                                .frame(width: 28, height: 28)
-                                .cornerRadius(6)
-                        }
-                    #endif
-
                     Label(
                         privacyModeEnabled ? "Privacy Mode On" : "Privacy Mode Off",
                         systemImage: privacyModeEnabled ? "eye.slash.fill" : "eye.fill"
