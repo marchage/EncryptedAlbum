@@ -2310,13 +2310,39 @@ public class AlbumManager: ObservableObject {
 
         AppLog.debugPrivate("Attempting to load settings from: \(settingsFileURL.path)")
 
+        // Check if settings file exists BEFORE loading Keychain credentials.
+        // This detects the "orphaned Keychain" state that occurs after app reinstall:
+        // iOS Keychain persists across app deletion/reinstall, but app data (settings file) is wiped.
+        // If we have Keychain credentials but no settings file, clear the orphaned credentials
+        // to allow the user to set up a fresh album instead of being stuck in an unlock loop.
+        let settingsFileExists = FileManager.default.fileExists(atPath: settingsFileURL.path)
+
         // Load credentials from Keychain
         if let credentials = try? await passwordService.retrievePasswordCredentials() {
-            await MainActor.run {
-                passwordHash = credentials.hash.map { String(format: "%02x", $0) }.joined()
-                passwordSalt = credentials.salt.base64EncodedString()
+            if settingsFileExists {
+                await MainActor.run {
+                    passwordHash = credentials.hash.map { String(format: "%02x", $0) }.joined()
+                    passwordSalt = credentials.salt.base64EncodedString()
+                }
+                AppLog.debugPublic("Loaded credentials from Keychain")
+            } else {
+                // Orphaned Keychain state detected: credentials exist but no settings file.
+                // This typically happens after app reinstall. Clear the stale credentials
+                // so the user can set up a new album.
+                AppLog.warning("Orphaned Keychain credentials detected (no settings file). Clearing stale credentials for fresh setup.")
+                do {
+                    try await passwordService.clearPasswordCredentials()
+                    try await securityService.clearBiometricPassword()
+                } catch {
+                    AppLog.error("Failed to clear orphaned credentials: \(error.localizedDescription)")
+                }
+                // Also clear the biometricConfigured flag since we're starting fresh
+                UserDefaults.standard.removeObject(forKey: "biometricConfigured")
+                await MainActor.run {
+                    isLoading = false
+                }
+                return
             }
-            AppLog.debugPublic("Loaded credentials from Keychain")
         } else {
             AppLog.debugPublic("No credentials found in Keychain")
         }
