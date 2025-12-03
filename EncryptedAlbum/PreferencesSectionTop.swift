@@ -61,7 +61,7 @@ struct PreferencesSectionTop: View {
                         isPresented: $showPrivacyStyleSheet,
                         onSave: { albumManager.saveSettings() }
                     )
-                    .frame(width: 220, height: 400)
+                    .frame(width: 200, height: 480)
                 }
                 #endif
             }
@@ -380,6 +380,47 @@ private struct PrivacyStylePickerSheet: View {
     private let allStyles: [PrivacyBackgroundStyle] = PrivacyBackgroundStyle.allCases.map { $0 }
     
     var body: some View {
+        #if os(macOS)
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(allStyles, id: \.rawValue) { style in
+                Button {
+                    selectedStyle = style
+                    onSave()
+                    isPresented = false
+                } label: {
+                    HStack {
+                        Text(style.displayName)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if style == selectedStyle {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.accentColor)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.primary.opacity(0.001))
+                )
+                .onHover { hovering in
+                    if hovering {
+                        NSCursor.pointingHand.push()
+                    } else {
+                        NSCursor.pop()
+                    }
+                }
+                
+                if style != allStyles.last {
+                    Divider()
+                        .padding(.horizontal, 8)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+        #else
         NavigationView {
             List {
                 ForEach(allStyles, id: \.rawValue) { style in
@@ -394,21 +435,20 @@ private struct PrivacyStylePickerSheet: View {
                             if style == selectedStyle {
                                 Image(systemName: "checkmark")
                                     .foregroundColor(.accentColor)
-                            }
+                        }
                         }
                     }
                     .buttonStyle(.plain)
                 }
             }
             .navigationTitle("Privacy Screen Style")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { isPresented = false }
                 }
             }
         }
+        #endif
     }
 }

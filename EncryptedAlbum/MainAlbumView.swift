@@ -1103,9 +1103,9 @@ struct MainAlbumView: View {
         var body: some View {
             HStack(spacing: 2) {
                 Image(systemName: "lock.fill")
-                    .font(.system(size: iconSize * 0.8, weight: .bold))
+                    .font(.system(size: iconSize * 0.8, weight: .regular))
                 Text("AES")
-                    .font(.system(size: iconSize * 0.7, weight: .heavy))
+                    .font(.system(size: iconSize * 0.7, weight: .regular))
             }
             .foregroundColor(.green)
         }
@@ -1127,7 +1127,7 @@ struct MainAlbumView: View {
         
         var body: some View {
             Image(systemName: systemName)
-                .font(.system(size: iconSize, weight: .semibold))
+                .font(.system(size: iconSize, weight: .regular))
                 .foregroundColor(color)
                 .scaleEffect(isPulsing ? pulseScale : 1.0)
                 .rotationEffect(.degrees(rotation))

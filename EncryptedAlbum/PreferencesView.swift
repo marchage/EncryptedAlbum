@@ -262,7 +262,7 @@ struct PreferencesView: View {
                 .padding()
             }
         }
-        .frame(minWidth: 360, minHeight: 450)
+        .frame(minWidth: 360, idealWidth: 520, maxWidth: 600, minHeight: 450)
         #if os(macOS)
             .navigationTitle("Settings")
         #endif
