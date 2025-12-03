@@ -1841,22 +1841,34 @@ struct MainAlbumView: View {
 
     private var emptyState: some View {
         VStack(spacing: 20) {
+            Spacer()
+                .frame(minHeight: 60)
+            
             #if os(macOS)
                 if let nsIcon = NSApp.applicationIconImage {
                     Image(nsImage: nsIcon)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 80, height: 80)
-                        .foregroundStyle(.secondary)
                 } else {
                     Image(systemName: "lock.fill")
                         .font(.system(size: 60))
                         .foregroundStyle(.secondary)
                 }
             #else
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.secondary)
+                // Use app icon on iOS for consistency with macOS and UnlockView
+                if let appIcon = AppIconService.generateMarketingImage(from: AppIconService.shared.selectedIconName.isEmpty ? nil : AppIconService.shared.selectedIconName) {
+                    Image(uiImage: appIcon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 80, height: 80)
+                        .cornerRadius(16)
+                        .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+                } else {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 60))
+                        .foregroundStyle(.secondary)
+                }
             #endif
 
             Text("No Encrypted Items")
@@ -1866,6 +1878,7 @@ struct MainAlbumView: View {
             Text("Hide photos and videos from your Photos Library")
                 .font(.body)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
 
             Button {
                 #if os(iOS)
@@ -1890,9 +1903,11 @@ struct MainAlbumView: View {
             #else
                 .controlSize(.large)
             #endif
+            
+            Spacer()
+                .frame(minHeight: 100)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
     }
 
     // Helper view to reduce type-checking complexity in MainAlbumView
