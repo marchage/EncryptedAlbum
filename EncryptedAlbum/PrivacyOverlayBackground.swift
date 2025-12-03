@@ -22,6 +22,9 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
     case sunset
     case ocean
     case noir
+    case atomic
+    case fifties
+    case retroFuture
 
     var id: String { self.rawValue }
 
@@ -42,6 +45,9 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
         case .sunset: return "Sunset"
         case .ocean: return "Ocean Deep"
         case .noir: return "Noir"
+        case .atomic: return "Atomic"
+        case .fifties: return "50s Diner"
+        case .retroFuture: return "Retro Future"
         }
     }
 }
@@ -203,6 +209,12 @@ struct PrivacyOverlayBackground: View {
                 OceanDeepView()
             case .noir:
                 NoirView()
+            case .atomic:
+                AtomicView()
+            case .fifties:
+                FiftiesDinerView()
+            case .retroFuture:
+                RetroFutureView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -805,6 +817,344 @@ private struct NoirView: View {
             Rectangle()
                 .fill(Color.white.opacity(0.02))
                 .blendMode(.overlay)
+        }
+    }
+}
+
+// MARK: - Atomic (Fallout) Theme
+private struct AtomicView: View {
+    var body: some View {
+        ZStack {
+            // Dark olive/military green background
+            Color(red: 0.08, green: 0.1, blue: 0.05)
+            
+            // CRT scan lines effect
+            GeometryReader { geo in
+                VStack(spacing: 0) {
+                    ForEach(0..<Int(geo.size.height / 2), id: \.self) { _ in
+                        Rectangle()
+                            .fill(Color.black.opacity(0.3))
+                            .frame(height: 1)
+                        Rectangle()
+                            .fill(Color.clear)
+                            .frame(height: 1)
+                    }
+                }
+            }
+            
+            // Green CRT glow
+            RadialGradient(
+                colors: [
+                    Color(red: 0.2, green: 0.8, blue: 0.2).opacity(0.15),
+                    Color(red: 0.1, green: 0.4, blue: 0.1).opacity(0.1),
+                    .clear
+                ],
+                center: .center,
+                startRadius: 50,
+                endRadius: 400
+            )
+            
+            // Vault-Tec style content
+            VStack(spacing: 20) {
+                // Radiation symbol
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 0.9, green: 0.8, blue: 0.2))
+                        .frame(width: 80, height: 80)
+                    
+                    // Trefoil radiation symbol
+                    ForEach(0..<3, id: \.self) { i in
+                        RadiationBlade()
+                            .fill(Color.black)
+                            .frame(width: 30, height: 40)
+                            .offset(y: -15)
+                            .rotationEffect(.degrees(Double(i) * 120))
+                    }
+                    
+                    Circle()
+                        .fill(Color(red: 0.9, green: 0.8, blue: 0.2))
+                        .frame(width: 20, height: 20)
+                }
+                
+                Text("VAULT-TEC")
+                    .font(.system(size: 28, weight: .bold, design: .monospaced))
+                    .foregroundColor(Color(red: 0.2, green: 0.9, blue: 0.2))
+                    .shadow(color: Color(red: 0.2, green: 0.9, blue: 0.2).opacity(0.8), radius: 10)
+                
+                Text("ENCRYPTED STORAGE")
+                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                    .foregroundColor(Color(red: 0.2, green: 0.9, blue: 0.2).opacity(0.7))
+                
+                // Status line
+                HStack {
+                    Circle()
+                        .fill(Color(red: 0.2, green: 0.9, blue: 0.2))
+                        .frame(width: 8, height: 8)
+                    Text("SECURE")
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundColor(Color(red: 0.2, green: 0.9, blue: 0.2))
+                }
+            }
+            
+            // Vignette
+            RadialGradient(
+                colors: [.clear, Color.black.opacity(0.6)],
+                center: .center,
+                startRadius: 150,
+                endRadius: 500
+            )
+        }
+    }
+}
+
+private struct RadiationBlade: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX, y: rect.maxY),
+            control: CGPoint(x: rect.maxX, y: rect.midY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.midX, y: rect.minY),
+            control: CGPoint(x: rect.minX, y: rect.midY)
+        )
+        return path
+    }
+}
+
+// MARK: - 50s Diner Theme
+private struct FiftiesDinerView: View {
+    var body: some View {
+        ZStack {
+            // Classic 50s teal/turquoise
+            Color(red: 0.4, green: 0.8, blue: 0.8)
+            
+            // Checkerboard floor pattern (bottom third)
+            GeometryReader { geo in
+                VStack {
+                    Spacer()
+                    CheckerboardPattern()
+                        .frame(height: geo.size.height * 0.3)
+                        .opacity(0.3)
+                }
+            }
+            
+            // Pink accent swoosh
+            GeometryReader { geo in
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: geo.size.height * 0.3))
+                    path.addQuadCurve(
+                        to: CGPoint(x: geo.size.width, y: geo.size.height * 0.5),
+                        control: CGPoint(x: geo.size.width * 0.5, y: geo.size.height * 0.2)
+                    )
+                    path.addLine(to: CGPoint(x: geo.size.width, y: geo.size.height * 0.55))
+                    path.addQuadCurve(
+                        to: CGPoint(x: 0, y: geo.size.height * 0.35),
+                        control: CGPoint(x: geo.size.width * 0.5, y: geo.size.height * 0.25)
+                    )
+                    path.closeSubpath()
+                }
+                .fill(Color(red: 1.0, green: 0.6, blue: 0.7).opacity(0.6))
+            }
+            
+            VStack(spacing: 16) {
+                // Chrome-style text
+                Text("★ ENCRYPTED ★")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.white, Color(red: 0.8, green: 0.8, blue: 0.9), .white],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: .black.opacity(0.3), radius: 0, x: 2, y: 2)
+                
+                Text("ALBUM")
+                    .font(.system(size: 48, weight: .heavy, design: .rounded))
+                    .foregroundColor(Color(red: 0.9, green: 0.2, blue: 0.3))
+                    .shadow(color: .white, radius: 0, x: -1, y: -1)
+                    .shadow(color: .black.opacity(0.3), radius: 0, x: 2, y: 2)
+                
+                // Retro badge
+                HStack(spacing: 8) {
+                    Image(systemName: "lock.fill")
+                    Text("PROTECTED")
+                }
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(Color(red: 0.9, green: 0.2, blue: 0.3))
+                )
+            }
+            
+            // Subtle starburst
+            GeometryReader { geo in
+                ForEach(0..<12, id: \.self) { i in
+                    Rectangle()
+                        .fill(Color.white.opacity(0.1))
+                        .frame(width: 2, height: geo.size.height)
+                        .rotationEffect(.degrees(Double(i) * 30))
+                        .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                }
+            }
+        }
+    }
+}
+
+private struct CheckerboardPattern: View {
+    var body: some View {
+        GeometryReader { geo in
+            let size: CGFloat = 30
+            let cols = Int(geo.size.width / size) + 1
+            let rows = Int(geo.size.height / size) + 1
+            
+            Canvas { context, _ in
+                for row in 0..<rows {
+                    for col in 0..<cols {
+                        if (row + col) % 2 == 0 {
+                            let rect = CGRect(
+                                x: CGFloat(col) * size,
+                                y: CGFloat(row) * size,
+                                width: size,
+                                height: size
+                            )
+                            context.fill(Path(rect), with: .color(.black))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Retro Future (80s vision of 2015)
+private struct RetroFutureView: View {
+    var body: some View {
+        ZStack {
+            // Dark purple/black gradient sky
+            LinearGradient(
+                colors: [
+                    Color(red: 0.05, green: 0.0, blue: 0.15),
+                    Color(red: 0.1, green: 0.0, blue: 0.2),
+                    Color(red: 0.2, green: 0.0, blue: 0.3),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            
+            // Neon grid floor (perspective)
+            GeometryReader { geo in
+                // Horizontal lines
+                ForEach(0..<15, id: \.self) { i in
+                    let progress = CGFloat(i) / 15.0
+                    let y = geo.size.height * 0.5 + (geo.size.height * 0.5 * progress * progress)
+                    
+                    Rectangle()
+                        .fill(Color.cyan.opacity(0.6 - progress * 0.4))
+                        .frame(height: 1)
+                        .position(x: geo.size.width / 2, y: y)
+                        .shadow(color: .cyan, radius: 2)
+                }
+                
+                // Vertical lines (converging to horizon)
+                ForEach(0..<20, id: \.self) { i in
+                    let normalizedX = CGFloat(i) / 19.0
+                    Path { path in
+                        // Start at horizon center
+                        path.move(to: CGPoint(x: geo.size.width / 2, y: geo.size.height * 0.5))
+                        // End at bottom spread out
+                        let endX = normalizedX * geo.size.width
+                        path.addLine(to: CGPoint(x: endX, y: geo.size.height))
+                    }
+                    .stroke(Color.cyan.opacity(0.4), lineWidth: 1)
+                    .shadow(color: .cyan, radius: 1)
+                }
+            }
+            
+            // Sun/horizon glow
+            GeometryReader { geo in
+                // Hot pink sun
+                Ellipse()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 1.0, green: 0.2, blue: 0.6),
+                                Color(red: 1.0, green: 0.4, blue: 0.2),
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: 200, height: 100)
+                    .position(x: geo.size.width / 2, y: geo.size.height * 0.5)
+                    .shadow(color: Color(red: 1.0, green: 0.2, blue: 0.6), radius: 40)
+                
+                // Horizon lines through sun
+                ForEach(0..<5, id: \.self) { i in
+                    Rectangle()
+                        .fill(Color(red: 0.1, green: 0.0, blue: 0.2))
+                        .frame(width: 200, height: 8 - CGFloat(i))
+                        .position(x: geo.size.width / 2, y: geo.size.height * 0.45 + CGFloat(i) * 12)
+                }
+            }
+            
+            // Chrome text
+            VStack(spacing: 8) {
+                Text("ENCRYPTED")
+                    .font(.system(size: 36, weight: .black, design: .default))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 1.0, green: 0.3, blue: 0.8),
+                                Color(red: 0.3, green: 0.8, blue: 1.0),
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .shadow(color: Color(red: 1.0, green: 0.3, blue: 0.8), radius: 10)
+                    .shadow(color: Color(red: 0.3, green: 0.8, blue: 1.0), radius: 20)
+                
+                Text("▸ ALBUM ◂")
+                    .font(.system(size: 18, weight: .bold, design: .monospaced))
+                    .foregroundColor(.cyan)
+                    .shadow(color: .cyan, radius: 5)
+                
+                // Hologram effect badge
+                HStack(spacing: 6) {
+                    Image(systemName: "lock.shield.fill")
+                    Text("SECURED • 2015")
+                }
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(Color(red: 1.0, green: 0.3, blue: 0.8).opacity(0.9))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color(red: 1.0, green: 0.3, blue: 0.8).opacity(0.6), lineWidth: 1)
+                )
+                .padding(.top, 8)
+            }
+            .offset(y: -80)
+            
+            // Scan line overlay
+            GeometryReader { geo in
+                VStack(spacing: 0) {
+                    ForEach(0..<Int(geo.size.height / 3), id: \.self) { _ in
+                        Rectangle()
+                            .fill(Color.white.opacity(0.03))
+                            .frame(height: 1)
+                        Spacer()
+                            .frame(height: 2)
+                    }
+                }
+            }
         }
     }
 }

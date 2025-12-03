@@ -503,9 +503,9 @@ struct PreferencesView: View {
         switch privacyBackgroundStyle {
         case .followSystem:
             return nil
-        case .light, .retroTV:
+        case .light, .retroTV, .fifties:
             return .light
-        case .dark, .rainbow, .mesh, .nightTown, .nineties, .webOne:
+        case .dark, .rainbow, .mesh, .nightTown, .nineties, .webOne, .matrix, .sunset, .ocean, .noir, .atomic, .retroFuture:
             return .dark
         case .classic, .glass:
             return nil  // Follow system
