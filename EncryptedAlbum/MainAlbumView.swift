@@ -1227,71 +1227,7 @@ struct MainAlbumView: View {
         .accessibilityLabel("Deselect all encrypted items")
     }
 
-    private var captureProgressOverlay: some View {
-        ProgressOverlayView(
-            title: "Encrypting items…",
-            statusMessage: directImportProgress.statusMessage,
-            detailMessage: directImportProgress.detailMessage,
-            itemsProcessed: directImportProgress.itemsProcessed,
-            totalItems: directImportProgress.itemsTotal,
-            bytesProcessed: directImportProgress.bytesProcessed,
-            totalBytes: directImportProgress.bytesTotal,
-            cancelRequested: directImportProgress.cancelRequested,
-            onCancel: {
-                #if os(macOS)
-                    albumManager.cancelDirectImport()
-                #endif
-            },
-            isAppActive: isAppActive
-        )
-    }
-
-    private var exportProgressOverlay: some View {
-        ProgressOverlayView(
-            title: "Exporting items…",
-            statusMessage: albumManager.exportProgress.statusMessage,
-            detailMessage: albumManager.exportProgress.detailMessage,
-            itemsProcessed: albumManager.exportProgress.itemsProcessed,
-            totalItems: albumManager.exportProgress.itemsTotal,
-            bytesProcessed: albumManager.exportProgress.bytesProcessed,
-            totalBytes: albumManager.exportProgress.bytesTotal,
-            cancelRequested: albumManager.exportProgress.cancelRequested,
-            onCancel: {
-                albumManager.cancelExport()
-            },
-            isAppActive: isAppActive
-        )
-    }
-
-    private var restorationProgressOverlay: some View {
-        ProgressOverlayView(
-            title: "Restoring items…",
-            statusMessage: albumManager.restorationProgress.statusMessage,
-            detailMessage: albumManager.restorationProgress.detailMessage,
-            itemsProcessed: albumManager.restorationProgress.processedItems,
-            totalItems: albumManager.restorationProgress.totalItems,
-            bytesProcessed: albumManager.restorationProgress.currentBytesProcessed,
-            totalBytes: albumManager.restorationProgress.currentBytesTotal,
-            cancelRequested: albumManager.restorationProgress.cancelRequested,
-            onCancel: {
-                Task { @MainActor in
-                    guard !albumManager.restorationProgress.cancelRequested else { return }
-                    albumManager.restorationProgress.cancelRequested = true
-                    let status = albumManager.restorationProgress.statusMessage
-                    if status.isEmpty || !status.lowercased().contains("cancel") {
-                        albumManager.restorationProgress.statusMessage = "Canceling restore…"
-                    }
-                    if albumManager.restorationProgress.detailMessage.isEmpty {
-                        albumManager.restorationProgress.detailMessage = "Finishing current item"
-                    }
-                    restorationTask?.cancel()
-                }
-            },
-            successCount: albumManager.restorationProgress.successItems,
-            failureCount: albumManager.restorationProgress.failedItems,
-            isAppActive: isAppActive
-        )
-    }
+    // Progress overlays removed - now using non-blocking ProgressBannerView
 
     #if DEBUG
         func resetAlbumForDevelopment() {
@@ -1646,27 +1582,14 @@ struct MainAlbumView: View {
                 }
                 return true
             }
-        let showDirectImportProgress =
-            directImportProgress.isImporting
-            && (directImportProgress.itemsTotal > 0 || directImportProgress.bytesProcessed > 0
-                || directImportProgress.bytesTotal > 0 || directImportProgress.cancelRequested)
         let viewerActive = (selectedPhoto != nil)
         let viewWithOverlays =
             viewWithInitialModifiers
-            .overlay {
-                if showDirectImportProgress {
-                    captureProgressOverlay
-                }
-            }
-            .overlay {
-                if albumManager.exportProgress.isExporting {
-                    exportProgressOverlay
-                }
-            }
-            .overlay {
-                if albumManager.restorationProgress.isRestoring {
-                    restorationProgressOverlay
-                }
+            .overlay(alignment: .top) {
+                // Non-blocking progress banners for long-running operations
+                ProgressBannerView(directImportProgress: directImportProgress)
+                    .environmentObject(albumManager)
+                    .padding(.top, 8)
             }
             .overlay {
                 // When the search UI is active, allow taps on the content area to dismiss it.
