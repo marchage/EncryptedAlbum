@@ -167,7 +167,7 @@ struct MainAlbumView: View {
                     if isSearchActive {
                         withAnimation {
                             isSearchActive = false
-                            searchQuery = ""
+                            searchText = ""
                         }
                         return nil
                     }
