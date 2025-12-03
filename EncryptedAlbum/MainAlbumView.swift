@@ -57,6 +57,7 @@ struct MainAlbumView: View {
     @State private var pendingDeletionPhotos: [SecurePhoto] = []
     @State private var restorationTask: Task<Void, Never>? = nil
     @State private var didForcePrivacyModeThisSession = false
+    @State private var showingDedupConfirmation = false
     @AppStorage("albumPrivacyModeEnabled") private var privacyModeEnabled: Bool = true
     @AppStorage("requireForegroundReauthentication") private var requireForegroundReauthentication: Bool = true
     @AppStorage("undoTimeoutSeconds") private var undoTimeoutSeconds: Double = 5.0
@@ -718,6 +719,7 @@ struct MainAlbumView: View {
             #endif
         } label: {
             Image(systemName: "photo.fill.on.rectangle.fill")
+                .imageScale(albumManager.compactLayoutEnabled ? .small : .large)
         }
         .accessibilityLabel("Add Photos from Library")
         .accessibilityIdentifier("addPhotosButton")
@@ -738,14 +740,14 @@ struct MainAlbumView: View {
                 #endif
             } label: {
                 Image(systemName: "camera.fill")
+                    .imageScale(albumManager.compactLayoutEnabled ? .small : .large)
             }
             .accessibilityLabel("Capture Photo or Video")
         #endif
 
         Menu {
             Button {
-                let manager: AlbumManager = albumManager
-                manager.removeDuplicatesPublic()
+                showingDedupConfirmation = true
             } label: {
                 Label("Remove Duplicates", systemImage: "trash.slash")
             }
@@ -775,6 +777,7 @@ struct MainAlbumView: View {
             #endif
         } label: {
             Image(systemName: "ellipsis.circle")
+                .imageScale(albumManager.compactLayoutEnabled ? .small : .large)
         }
         .accessibilityLabel("More Options")
     }
@@ -1240,7 +1243,7 @@ struct MainAlbumView: View {
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 6) {
                         Text("Encrypted Album")
-                        .font(.headline)
+                        .font(albumManager.compactLayoutEnabled ? .subheadline : .headline)
                         .lineLimit(1)
                         .foregroundStyle(.primary)
                     }
@@ -1470,6 +1473,16 @@ struct MainAlbumView: View {
                 }
             } message: {
                 Text("This action permanently removes the selected content from Encrypted Album.")
+            }
+
+            // Dedup confirmation dialog
+            .alert("Remove Duplicates?", isPresented: $showingDedupConfirmation) {
+                Button("Remove Duplicates", role: .destructive) {
+                    albumManager.removeDuplicatesPublic()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This will scan your album and permanently delete any duplicate photos or videos. This action cannot be undone.")
             }
 
             // Large-delete confirmation: show file names & sizes + explain the secure-delete cap and require explicit confirmation

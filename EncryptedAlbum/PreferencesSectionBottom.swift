@@ -51,21 +51,6 @@ struct PreferencesSectionBottom: View {
             .disabled(albumManager.lockdownModeEnabled)
 
             HStack {
-                Text("Verbose logging")
-                Spacer()
-                Toggle(
-                    "",
-                    isOn: Binding(
-                        get: { albumManager.enableVerboseLogging },
-                        set: {
-                            albumManager.enableVerboseLogging = $0
-                            albumManager.saveSettings()
-                        })
-                )
-                .labelsHidden()
-            }
-
-            HStack {
                 Text("Telemetry (opt-in)")
                 Spacer()
                 Toggle(
