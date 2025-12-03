@@ -1013,7 +1013,7 @@ struct MainAlbumView: View {
         @State private var rotation: Double = 0
         
         private var iconSize: CGFloat { compact ? 11 : 16 }
-        private var pulseScale: CGFloat { compact ? 1.15 : 1.3 }
+        private var pulseScale: CGFloat { compact ? 1.1 : 1.3 }
         
         var body: some View {
             Image(systemName: systemName)
@@ -1722,8 +1722,8 @@ struct MainAlbumView: View {
                         privacyModeEnabled ? "Privacy Mode On" : "Privacy Mode Off",
                         systemImage: privacyModeEnabled ? "eye.slash.fill" : "eye.fill"
                     )
-                    .font(.subheadline)
-                    .imageScale(albumManager.compactLayoutEnabled ? .medium : .large)
+                    .font(albumManager.compactLayoutEnabled ? .caption : .subheadline)
+                    .imageScale(albumManager.compactLayoutEnabled ? .small : .large)
                     .foregroundStyle(.secondary)
                 }
                 Spacer()

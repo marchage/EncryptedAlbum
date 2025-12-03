@@ -281,11 +281,16 @@ struct UnlockView: View {
                                         cancelAutoBiometricScheduling()
                                         authenticateWithBiometrics()
                                     } label: {
-                                        HStack {
+                                        if compact {
+                                            // Icon-only for compact mode to avoid text wrapping
                                             Image(systemName: biometricType == .faceID ? "faceid" : "touchid")
-                                            Text(biometricType == .faceID ? "Use Face ID" : "Use Touch ID")
+                                        } else {
+                                            HStack {
+                                                Image(systemName: biometricType == .faceID ? "faceid" : "touchid")
+                                                Text(biometricType == .faceID ? "Use Face ID" : "Use Touch ID")
+                                            }
+                                            .frame(width: 130)
                                         }
-                                        .frame(width: compact ? 110 : 130)
                                     }
                                     .buttonStyle(.bordered)
                                     .controlSize(compact ? .regular : .large)
@@ -299,7 +304,7 @@ struct UnlockView: View {
                                     Text("Unlock")
                                         .frame(
                                             width: biometricType != .none
-                                                ? (compact ? 130 : 140) : (compact ? 150 : 180))
+                                                ? (compact ? 100 : 140) : (compact ? 120 : 180))
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .controlSize(compact ? .regular : .large)
@@ -718,7 +723,7 @@ struct UnlockView: View {
         @State private var rotation: Double = 0
         
         private var iconSize: CGFloat { compact ? 11 : 16 }
-        private var pulseScale: CGFloat { compact ? 1.15 : 1.3 }
+        private var pulseScale: CGFloat { compact ? 1.1 : 1.3 }
         
         var body: some View {
             Image(systemName: systemName)

@@ -18,6 +18,10 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
     case nineties
     case webOne
     case retroTV
+    case matrix
+    case sunset
+    case ocean
+    case noir
 
     var id: String { self.rawValue }
 
@@ -34,6 +38,10 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
         case .nineties: return "90s Party"
         case .webOne: return "Web 1.0"
         case .retroTV: return "Retro TV"
+        case .matrix: return "Matrix"
+        case .sunset: return "Sunset"
+        case .ocean: return "Ocean Deep"
+        case .noir: return "Noir"
         }
     }
 }
@@ -187,6 +195,14 @@ struct PrivacyOverlayBackground: View {
                 WebOneView()
             case .retroTV:
                 RetroTVView()
+            case .matrix:
+                MatrixView()
+            case .sunset:
+                SunsetView()
+            case .ocean:
+                OceanDeepView()
+            case .noir:
+                NoirView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -559,6 +575,237 @@ struct NinetiesGifElement: View {
                     position.y += CGFloat.random(in: -20...20)
                 }
             }
+    }
+}
+
+// MARK: - Matrix Theme
+private struct MatrixView: View {
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // Deep black background
+                Color.black
+                
+                // Matrix green glow at bottom
+                LinearGradient(
+                    colors: [.clear, Color(red: 0, green: 0.3, blue: 0).opacity(0.3)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                
+                // Digital rain columns
+                ForEach(0..<30, id: \.self) { column in
+                    MatrixColumn(
+                        columnIndex: column,
+                        totalColumns: 30,
+                        screenWidth: geometry.size.width,
+                        height: geometry.size.height
+                    )
+                }
+            }
+        }
+    }
+}
+
+private struct MatrixColumn: View {
+    let columnIndex: Int
+    let totalColumns: Int
+    let screenWidth: CGFloat
+    let height: CGFloat
+    
+    @State private var offset: CGFloat = 0
+    
+    private let matrixChars = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789"
+    
+    var body: some View {
+        let columnWidth = screenWidth / CGFloat(totalColumns)
+        let xPosition = CGFloat(columnIndex) * columnWidth + columnWidth / 2
+        let speed = Double.random(in: 3...8)
+        let delay = Double.random(in: 0...2)
+        
+        VStack(spacing: 2) {
+            ForEach(0..<25, id: \.self) { row in
+                Text(String(matrixChars.randomElement()!))
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .foregroundColor(Color(red: 0, green: row == 0 ? 1.0 : 0.8 - Double(row) * 0.03, blue: 0))
+                    .opacity(row == 0 ? 1.0 : max(0.1, 1.0 - Double(row) * 0.04))
+            }
+        }
+        .position(x: xPosition, y: offset)
+        .onAppear {
+            offset = -100
+            withAnimation(
+                .linear(duration: speed)
+                .repeatForever(autoreverses: false)
+                .delay(delay)
+            ) {
+                offset = height + 200
+            }
+        }
+    }
+}
+
+// MARK: - Sunset Theme
+private struct SunsetView: View {
+    var body: some View {
+        ZStack {
+            // Sky gradient - warm sunset colors
+            LinearGradient(
+                colors: [
+                    Color(red: 0.1, green: 0.05, blue: 0.2),   // Deep purple at top
+                    Color(red: 0.4, green: 0.1, blue: 0.3),    // Purple-pink
+                    Color(red: 0.8, green: 0.3, blue: 0.2),    // Orange-red
+                    Color(red: 1.0, green: 0.6, blue: 0.2),    // Golden orange
+                    Color(red: 1.0, green: 0.8, blue: 0.4),    // Yellow-gold at horizon
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            
+            // Sun glow
+            RadialGradient(
+                colors: [
+                    Color(red: 1.0, green: 0.9, blue: 0.5).opacity(0.8),
+                    Color(red: 1.0, green: 0.6, blue: 0.2).opacity(0.4),
+                    .clear
+                ],
+                center: .init(x: 0.5, y: 0.85),
+                startRadius: 20,
+                endRadius: 200
+            )
+            
+            // Silhouette hills
+            GeometryReader { geo in
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: geo.size.height))
+                    path.addLine(to: CGPoint(x: 0, y: geo.size.height * 0.85))
+                    path.addQuadCurve(
+                        to: CGPoint(x: geo.size.width * 0.4, y: geo.size.height * 0.75),
+                        control: CGPoint(x: geo.size.width * 0.2, y: geo.size.height * 0.7)
+                    )
+                    path.addQuadCurve(
+                        to: CGPoint(x: geo.size.width, y: geo.size.height * 0.8),
+                        control: CGPoint(x: geo.size.width * 0.7, y: geo.size.height * 0.9)
+                    )
+                    path.addLine(to: CGPoint(x: geo.size.width, y: geo.size.height))
+                    path.closeSubpath()
+                }
+                .fill(Color.black.opacity(0.9))
+            }
+        }
+    }
+}
+
+// MARK: - Ocean Deep Theme
+private struct OceanDeepView: View {
+    var body: some View {
+        ZStack {
+            // Deep ocean gradient
+            LinearGradient(
+                colors: [
+                    Color(red: 0.0, green: 0.1, blue: 0.2),    // Very dark blue
+                    Color(red: 0.0, green: 0.2, blue: 0.4),    // Dark teal
+                    Color(red: 0.0, green: 0.3, blue: 0.5),    // Deep ocean blue
+                    Color(red: 0.0, green: 0.15, blue: 0.3),   // Darker at bottom
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            
+            // Light rays from above
+            GeometryReader { geo in
+                ForEach(0..<5, id: \.self) { i in
+                    let xPos = geo.size.width * (0.2 + CGFloat(i) * 0.15)
+                    Path { path in
+                        path.move(to: CGPoint(x: xPos - 20, y: 0))
+                        path.addLine(to: CGPoint(x: xPos + 40, y: 0))
+                        path.addLine(to: CGPoint(x: xPos + 80, y: geo.size.height * 0.7))
+                        path.addLine(to: CGPoint(x: xPos - 40, y: geo.size.height * 0.6))
+                        path.closeSubpath()
+                    }
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.cyan.opacity(0.15), .clear],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                }
+            }
+            
+            // Bubbles
+            GeometryReader { geo in
+                ForEach(0..<20, id: \.self) { i in
+                    Circle()
+                        .fill(Color.white.opacity(Double.random(in: 0.1...0.3)))
+                        .frame(width: Double.random(in: 4...12))
+                        .position(
+                            x: Double.random(in: 0...geo.size.width),
+                            y: Double.random(in: geo.size.height * 0.3...geo.size.height)
+                        )
+                }
+            }
+            
+            // Caustic light pattern overlay
+            RadialGradient(
+                colors: [Color.cyan.opacity(0.1), .clear],
+                center: .top,
+                startRadius: 0,
+                endRadius: 400
+            )
+        }
+    }
+}
+
+// MARK: - Noir Theme
+private struct NoirView: View {
+    var body: some View {
+        ZStack {
+            // Stark black background
+            Color.black
+            
+            // Dramatic diagonal light beam
+            GeometryReader { geo in
+                Path { path in
+                    path.move(to: CGPoint(x: geo.size.width * 0.3, y: 0))
+                    path.addLine(to: CGPoint(x: geo.size.width * 0.5, y: 0))
+                    path.addLine(to: CGPoint(x: geo.size.width * 0.8, y: geo.size.height))
+                    path.addLine(to: CGPoint(x: geo.size.width * 0.6, y: geo.size.height))
+                    path.closeSubpath()
+                }
+                .fill(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.08), Color.white.opacity(0.02)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+            }
+            
+            // Venetian blind effect
+            GeometryReader { geo in
+                VStack(spacing: 0) {
+                    ForEach(0..<20, id: \.self) { i in
+                        Rectangle()
+                            .fill(i % 2 == 0 ? Color.white.opacity(0.03) : Color.clear)
+                            .frame(height: geo.size.height / 20)
+                    }
+                }
+            }
+            
+            // Vignette
+            RadialGradient(
+                colors: [.clear, Color.black.opacity(0.7)],
+                center: .center,
+                startRadius: 100,
+                endRadius: 500
+            )
+            
+            // Film grain texture (subtle noise)
+            Rectangle()
+                .fill(Color.white.opacity(0.02))
+                .blendMode(.overlay)
+        }
     }
 }
 
