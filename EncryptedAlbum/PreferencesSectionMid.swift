@@ -15,6 +15,9 @@ struct PreferencesSectionMid: View {
     // Lockdown state (AppStorage)
     @AppStorage("lockdownModeEnabled") private var storedLockdownMode: Bool = false
     @Binding var showLockdownConfirm: Bool
+    @State private var showLockdownDisableConfirm: Bool = false
+    @State private var lockdownDisableAuthFailed: Bool = false
+    @State private var lockdownDisableAuthErrorMessage: String? = nil
 
     var body: some View {
         Group {
@@ -132,10 +135,8 @@ struct PreferencesSectionMid: View {
                                 // Turning ON - ask for confirmation
                                 showLockdownConfirm = true
                             } else if !newValue && albumManager.lockdownModeEnabled {
-                                // Turning OFF - no confirmation needed
-                                albumManager.lockdownModeEnabled = false
-                                storedLockdownMode = false
-                                albumManager.saveSettings()
+                                // Turning OFF - require re-auth to confirm disabling lockdown
+                                showLockdownDisableConfirm = true
                             }
                         }
                     )
@@ -158,6 +159,33 @@ struct PreferencesSectionMid: View {
                 Text(
                     "Lockdown Mode will:\n\n• Block all imports (files, photos, camera)\n• Block all exports\n• Disable iCloud sync\n• Block Share Extension\n\nYou can turn this off at any time from this settings screen."
                 )
+            }
+
+            // Disable flow: require authentication before disabling lockdown
+            .alert("Disable Lockdown?", isPresented: $showLockdownDisableConfirm) {
+                Button("Disable Lockdown", role: .destructive) {
+                    Task {
+                        do {
+                            // Ask AlbumManager to perform biometric/password retrieval
+                            _ = try await albumManager.authenticateAndRetrievePassword()
+                            albumManager.lockdownModeEnabled = false
+                            storedLockdownMode = false
+                            albumManager.saveSettings()
+                        } catch {
+                            lockdownDisableAuthErrorMessage = (error as? LocalizedError)?.errorDescription ?? "Authentication failed or cancelled."
+                            lockdownDisableAuthFailed = true
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    // revert toggle visually (no-op here since toggle binding does not toggle until change)
+                }
+            } message: {
+                Text("Disabling Lockdown will allow data to be imported/exported and enable cloud sync. You must re-authenticate to confirm.")
+            }
+
+            .alert(lockdownDisableAuthErrorMessage ?? "Authentication failed or cancelled.", isPresented: $lockdownDisableAuthFailed) {
+                Button("OK", role: .cancel) {}
             }
 
             Text(
