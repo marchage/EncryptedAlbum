@@ -429,7 +429,7 @@ struct PreferencesSectionMid: View {
             .foregroundStyle(.secondary)
 
             Toggle(
-                "Encrypt iCloud Sync",
+                "Sync with iCloud",
                 isOn: Binding(
                     get: { albumManager.encryptedCloudSyncEnabled },
                     set: {
@@ -441,8 +441,8 @@ struct PreferencesSectionMid: View {
 
             Text(
                 albumManager.encryptedCloudSyncEnabled
-                    ? "✅ Your album is synced to iCloud with client-side AES-GCM encryption. Apple cannot read your data — only devices with your password can decrypt it."
-                    : "❌ iCloud sync is disabled. Your album exists only on this device. Enable this to back up encrypted data to iCloud and sync across your devices."
+                    ? "✅ Syncing to iCloud with end-to-end encryption. Apple cannot read your data — only devices with your password can decrypt it."
+                    : "❌ iCloud sync is disabled. Your album exists only on this device. Enable to sync encrypted data across your devices."
             )
             .font(.caption)
             .foregroundStyle(albumManager.encryptedCloudSyncEnabled ? .green : .secondary)
@@ -536,6 +536,10 @@ struct PreferencesSectionMid: View {
                 .pickerStyle(.menu)
                 .labelsHidden()
             }
+
+            Text("Blur: thumbnails are blurred until tapped. Hide: shows a placeholder icon instead. None: thumbnails are visible normally.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 }

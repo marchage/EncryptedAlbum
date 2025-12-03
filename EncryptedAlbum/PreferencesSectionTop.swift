@@ -67,6 +67,10 @@ struct PreferencesSectionTop: View {
             }
             .padding(.top, 8)
 
+            Text("Sets the app's visual theme and the background shown when the app is locked or switching away.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
             HStack {
                 Text("Undo banner timeout")
                 Spacer()
@@ -91,6 +95,10 @@ struct PreferencesSectionTop: View {
                     albumManager.autoLockTimeoutSeconds = storedAutoLockTimeout
                     albumManager.saveSettings()
                 }
+
+            Text("The album will automatically lock after this many seconds without any taps, clicks, or interactions.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             Toggle("Require Passcode On Launch", isOn: $storedRequirePasscodeOnLaunch)
                 .onChange(of: storedRequirePasscodeOnLaunch) { _ in
@@ -208,6 +216,10 @@ struct PreferencesSectionTop: View {
                     albumManager.saveSettings()
                 }
 
+            Text("Reduces thumbnail size. Overall layout spacing remains similar.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
             HStack {
                 Text("Accent Color")
                 Spacer()
@@ -225,6 +237,10 @@ struct PreferencesSectionTop: View {
                 albumManager.accentColorName = storedAccentColorName
                 albumManager.saveSettings()
             }
+
+            Text("Changes the color of toolbar buttons and key interactive elements. Does not affect all text or links.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             Divider()
             Text("Camera").font(.headline)
@@ -244,6 +260,9 @@ struct PreferencesSectionTop: View {
 
             Divider()
             Text("App Icon").font(.headline)
+            Text("Choose from ~20 alternative icons to make the app less recognizable or match your style.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             HStack {
                 if let platformImg = appIconService.runtimeMarketingImage {
                     Image(platformImage: platformImg)

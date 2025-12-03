@@ -50,6 +50,10 @@ struct PreferencesSectionBottom: View {
             }
             .disabled(albumManager.lockdownModeEnabled)
 
+            Text("When exporting, you'll be asked to set a password. The recipient needs this password to open the files.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
             HStack {
                 Text("Telemetry (opt-in)")
                 Spacer()
@@ -118,6 +122,10 @@ struct PreferencesSectionBottom: View {
                 )
                 .labelsHidden()
             }
+
+            Text("Shows an in-app banner when photos finish importing. This is not a system notification — you need to have the app open to see it.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             Divider()
 
