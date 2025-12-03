@@ -743,6 +743,38 @@ struct MainAlbumView: View {
                 .help("Air-Gapped Mode active — network operations disabled. Click to open Preferences.")
             #endif
         }
+        // Cloud-Native Mode indicator (only shown when lockdown/air-gapped are NOT active)
+        if albumManager.cloudNativeModeEnabled && !albumManager.lockdownModeEnabled && !albumManager.airGappedModeEnabled {
+            Button(action: {
+                showingPreferences = true
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "icloud.fill")
+                        .foregroundColor(.white)
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(6)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.blue))
+
+                    Text("CLOUD")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                }
+                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color.blue.opacity(0.6), lineWidth: 0.5)
+                )
+            }
+            .accessibilityIdentifier("cloudNativeChipButton")
+            .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel("Cloud-Native Mode enabled — tap to open Preferences")
+            .accessibilityHint("Device is a viewer, data lives in iCloud")
+            #if os(macOS)
+                .help("Cloud-Native Mode active — device is a viewer, data lives in iCloud. Click to open Preferences.")
+            #endif
+        }
         Button {
             #if os(iOS)
                 startPhotoLibraryFlow()

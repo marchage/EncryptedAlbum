@@ -24,6 +24,11 @@ struct PreferencesSectionMid: View {
     @State private var showAirGappedConfirm: Bool = false
     @State private var showAirGappedDisableConfirm: Bool = false
 
+    // Cloud-Native Mode state
+    @AppStorage("cloudNativeModeEnabled") private var storedCloudNativeMode: Bool = false
+    @State private var showCloudNativeConfirm: Bool = false
+    @State private var showCloudNativeDisableConfirm: Bool = false
+
     var body: some View {
         Group {
             Toggle(
@@ -273,6 +278,81 @@ struct PreferencesSectionMid: View {
             )
             .font(.caption)
             .foregroundStyle(albumManager.airGappedModeEnabled ? .orange : .secondary)
+
+            // Cloud-Native Mode section with blue theme
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Cloud-Native Mode")
+                            .font(.headline)
+                        if albumManager.cloudNativeModeEnabled {
+                            Text("ACTIVE")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color.blue))
+                        }
+                    }
+                    Text("Device = viewer only, data lives in cloud")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { albumManager.cloudNativeModeEnabled },
+                        set: { newValue in
+                            if newValue && !albumManager.cloudNativeModeEnabled {
+                                showCloudNativeConfirm = true
+                            } else if !newValue && albumManager.cloudNativeModeEnabled {
+                                showCloudNativeDisableConfirm = true
+                            }
+                        }
+                    )
+                )
+                .labelsHidden()
+                .toggleStyle(SwitchToggleStyle(tint: .blue))
+                .disabled(albumManager.lockdownModeEnabled || albumManager.airGappedModeEnabled)
+            }
+            .accessibilityIdentifier("cloudNativeToggle")
+            .padding(.vertical, 8)
+            .alert("Enable Cloud-Native Mode?", isPresented: $showCloudNativeConfirm) {
+                Button("Enable Cloud-Native", role: .destructive) {
+                    albumManager.cloudNativeModeEnabled = true
+                    storedCloudNativeMode = true
+                    // Auto-enable iCloud sync when going cloud-native
+                    albumManager.encryptedCloudSyncEnabled = true
+                    albumManager.saveSettings()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(
+                    "Cloud-Native Mode will:\n\n• Prioritize cloud storage over local\n• Auto-enable encrypted iCloud sync\n• Treat device as a viewer/cache\n• Keep data safe even if device is wiped\n\nYour data lives in YOUR iCloud container — isolated from other devices, even with the same Apple ID."
+                )
+            }
+            .alert("Disable Cloud-Native Mode?", isPresented: $showCloudNativeDisableConfirm) {
+                Button("Disable", role: .destructive) {
+                    albumManager.cloudNativeModeEnabled = false
+                    storedCloudNativeMode = false
+                    albumManager.saveSettings()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Disabling Cloud-Native Mode will return to normal local-first storage. Your cloud data will remain but won't be prioritized.")
+            }
+
+            Text(
+                albumManager.cloudNativeModeEnabled
+                    ? "☁️ CLOUD-NATIVE: Device is a viewer. Data lives in your isolated iCloud container."
+                    : albumManager.lockdownModeEnabled || albumManager.airGappedModeEnabled
+                        ? "Cloud-Native Mode is incompatible with Lockdown/Air-Gapped."
+                        : "Device becomes a viewer/cache. Data lives in iCloud, isolated from other devices. For traveling professionals."
+            )
+            .font(.caption)
+            .foregroundStyle(albumManager.cloudNativeModeEnabled ? .blue : .secondary)
 
             Toggle(
                 "Show status indicators",

@@ -374,6 +374,9 @@ public class AlbumManager: ObservableObject {
     /// When enabled, 'Air-Gapped Mode' blocks all network operations (iCloud sync, future URL imports)
     /// but still allows local imports/exports. For military/field use where network access is a risk.
     @Published var airGappedModeEnabled: Bool = false
+    /// When enabled, 'Cloud-Native Mode' prioritizes cloud storage. Device is just a viewer/cache.
+    /// Data lives in iCloud container isolated from other devices. For traveling professionals.
+    @Published var cloudNativeModeEnabled: Bool = false
     /// Show status indicators (sync, importing, etc.) on the lock screen. Off by default for privacy.
     @Published var showStatusOnLockScreen: Bool = false
     /// Show the status pill (sync, importing, awake, etc.) in the main album view. On by default.
@@ -2271,6 +2274,7 @@ public class AlbumManager: ObservableObject {
                 "enableRecoveryKey": String(enableRecoveryKey),
                 "lockdownModeEnabled": String(lockdownModeEnabled),
                 "airGappedModeEnabled": String(airGappedModeEnabled),
+                "cloudNativeModeEnabled": String(cloudNativeModeEnabled),
                 "showStatusOnLockScreen": String(showStatusOnLockScreen),
                 "showStatusIndicators": String(showStatusIndicators),
             ]
@@ -2520,6 +2524,12 @@ public class AlbumManager: ObservableObject {
                 airGappedModeEnabled = airGapped
             } else {
                 airGappedModeEnabled = false
+            }
+
+            if let cloudNativeString = settings["cloudNativeModeEnabled"], let cloudNative = Bool(cloudNativeString) {
+                cloudNativeModeEnabled = cloudNative
+            } else {
+                cloudNativeModeEnabled = false
             }
 
             if let showStatusString = settings["showStatusOnLockScreen"], let showStatus = Bool(showStatusString) {
