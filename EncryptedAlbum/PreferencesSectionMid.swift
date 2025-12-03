@@ -195,7 +195,7 @@ struct PreferencesSectionMid: View {
             )
             .disabled(!albumManager.showStatusIndicators)
             
-            Text("Shows sync status, importing, and other indicators on the unlock screen. Disabled by default for privacy — revealing this info could tell an attacker about your setup.")
+            Text("Shows sync, importing, and encryption status on the unlock screen. Disabled by default for privacy.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -214,7 +214,7 @@ struct PreferencesSectionMid: View {
             .disabled(albumManager.lockdownModeEnabled)
 
             HStack {
-                Text("Automatic Backup Schedule")
+                Text("Backup Schedule")
                 Spacer()
                 Picker(
                     "Backup",
@@ -225,7 +225,7 @@ struct PreferencesSectionMid: View {
                             albumManager.saveSettings()
                         })
                 ) {
-                    Text("Manual only").tag("manual")
+                    Text("Manual").tag("manual")
                     Text("Weekly").tag("weekly")
                     Text("Monthly").tag("monthly")
                 }

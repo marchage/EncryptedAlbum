@@ -76,9 +76,9 @@ struct PreferencesSectionTop: View {
                 Text("Biometric Policy")
                 Spacer()
                 Picker("", selection: $storedBiometricPolicy) {
-                    Text("Prefer (try biometrics first, fall back to password)").tag("biometrics_preferred")
-                    Text("Require (biometrics only, no password fallback)").tag("biometrics_required")
-                    Text("Disabled (password only, never use biometrics)").tag("biometrics_disabled")
+                    Text("Prefer").tag("biometrics_preferred")
+                    Text("Require").tag("biometrics_required")
+                    Text("Disabled").tag("biometrics_disabled")
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
@@ -90,10 +90,10 @@ struct PreferencesSectionTop: View {
 
             Text(
                 storedBiometricPolicy == "biometrics_preferred"
-                    ? "The app will try Face ID / Touch ID first; if unavailable or cancelled, you can enter your password."
+                    ? "Try Face ID / Touch ID first; if unavailable or cancelled, fall back to password."
                     : storedBiometricPolicy == "biometrics_required"
-                        ? "Only biometrics can unlock the album. If biometrics fail or are unavailable, you cannot unlock."
-                        : "Biometrics are disabled. You must always enter your password to unlock."
+                        ? "Only biometrics can unlock. If unavailable, you cannot access the album."
+                        : "Biometrics disabled. Password only."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
