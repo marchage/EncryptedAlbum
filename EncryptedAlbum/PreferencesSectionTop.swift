@@ -24,21 +24,50 @@ struct PreferencesSectionTop: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Privacy style & Undo timeout
+            // Use an in-app sheet for the privacy style selection rather than a system menu.
+            // System menus sometimes render in a system overlay and can be positioned under
+            // the status bar or other UI, making rows hard to tap. The sheet stays within
+            // the app's view hierarchy and respects safe-area insets.
+            @State var showPrivacyStyleSheet: Bool = false
             HStack {
                 Text("Privacy Screen Style")
                 Spacer()
-                Picker("", selection: $privacyBackgroundStyle) {
-                    ForEach(PrivacyBackgroundStyle.allCases) { style in
-                        Text(style.displayName).tag(style)
+                Button(action: { showPrivacyStyleSheet = true }) {
+                    HStack(spacing: 6) {
+                        Text(privacyBackgroundStyle.displayName)
+                            .foregroundStyle(.primary)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .sheet(isPresented: $showPrivacyStyleSheet) {
+                    NavigationView {
+                        List(PrivacyBackgroundStyle.allCases) { style in
+                            Button(action: {
+                                privacyBackgroundStyle = style
+                                albumManager.saveSettings()
+                                showPrivacyStyleSheet = false
+                            }) {
+                                HStack {
+                                    Text(style.displayName)
+                                    Spacer()
+                                    if style == privacyBackgroundStyle {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(.accentColor)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .navigationTitle("Privacy Screen Style")
+                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { showPrivacyStyleSheet = false } } }
                     }
                 }
-                .pickerStyle(.menu)
-                .onChange(of: privacyBackgroundStyle) { _ in
-                    // privacyBackgroundStyle is stored via AppStorage (shared key across views).
-                    // AlbumManager doesn't own this setting; just trigger a save in case other settings changed.
-                    albumManager.saveSettings()
-                }
-                .labelsHidden()
             }
 
             HStack {
