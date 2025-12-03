@@ -591,7 +591,7 @@ import SwiftUI
 
                         // Capture count badge
                         if captureCount > 0 {
-                            Text("\\(captureCount) saved")
+                            Text("\(captureCount) saved")
                                 .font(.caption)
                                 .fontWeight(.medium)
                                 .foregroundStyle(.white)

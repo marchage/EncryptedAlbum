@@ -46,6 +46,7 @@ struct PreferencesSectionTop: View {
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
                 }
                 .buttonStyle(.plain)
+                #if os(iOS)
                 .sheet(isPresented: $showPrivacyStyleSheet) {
                     PrivacyStylePickerSheet(
                         selectedStyle: $privacyBackgroundStyle,
@@ -53,6 +54,16 @@ struct PreferencesSectionTop: View {
                         onSave: { albumManager.saveSettings() }
                     )
                 }
+                #else
+                .popover(isPresented: $showPrivacyStyleSheet, arrowEdge: .bottom) {
+                    PrivacyStylePickerSheet(
+                        selectedStyle: $privacyBackgroundStyle,
+                        isPresented: $showPrivacyStyleSheet,
+                        onSave: { albumManager.saveSettings() }
+                    )
+                    .frame(width: 220, height: 400)
+                }
+                #endif
             }
             .padding(.top, 8)
 
