@@ -87,6 +87,11 @@
             if shouldRequireReauthentication {
                 AlbumManager.shared.lock()
             }
+            // Safety reset: clear any orphaned modal state when app goes inactive.
+            // This prevents Face ID button from being stuck after backgrounding mid-modal.
+            if trustedModalDepth > 0 {
+                trustedModalDepth = 0
+            }
         }
 
         private func handleDidEnterBackground(scene: UIScene?) {
