@@ -20,6 +20,8 @@ struct PreferencesSectionTop: View {
     @ObservedObject private var appIconService = AppIconService.shared
     @State private var uiSelectedAppIcon: String = "AppIcon"
     // Use service error so we can show failures originating from setSystemIcon retries
+    
+    @State private var showPrivacyStyleSheet: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -28,7 +30,6 @@ struct PreferencesSectionTop: View {
             // System menus sometimes render in a system overlay and can be positioned under
             // the status bar or other UI, making rows hard to tap. The sheet stays within
             // the app's view hierarchy and respects safe-area insets.
-            @State var showPrivacyStyleSheet: Bool = false
             HStack {
                 Text("Privacy Screen Style")
                 Spacer()
@@ -46,29 +47,14 @@ struct PreferencesSectionTop: View {
                 }
                 .buttonStyle(.plain)
                 .sheet(isPresented: $showPrivacyStyleSheet) {
-                    NavigationView {
-                        List(PrivacyBackgroundStyle.allCases) { style in
-                            Button(action: {
-                                privacyBackgroundStyle = style
-                                albumManager.saveSettings()
-                                showPrivacyStyleSheet = false
-                            }) {
-                                HStack {
-                                    Text(style.displayName)
-                                    Spacer()
-                                    if style == privacyBackgroundStyle {
-                                        Image(systemName: "checkmark")
-                                            .foregroundStyle(.accentColor)
-                                    }
-                                }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .navigationTitle("Privacy Screen Style")
-                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { showPrivacyStyleSheet = false } } }
-                    }
+                    PrivacyStylePickerSheet(
+                        selectedStyle: $privacyBackgroundStyle,
+                        isPresented: $showPrivacyStyleSheet,
+                        onSave: { albumManager.saveSettings() }
+                    )
                 }
             }
+            .padding(.top, 8)
 
             HStack {
                 Text("Undo banner timeout")
@@ -368,6 +354,49 @@ struct PreferencesSectionTop: View {
                         )
                     }
                 #endif
+            }
+        }
+    }
+}
+
+// MARK: - Privacy Style Picker Sheet
+
+private struct PrivacyStylePickerSheet: View {
+    @Binding var selectedStyle: PrivacyBackgroundStyle
+    @Binding var isPresented: Bool
+    var onSave: () -> Void
+    
+    private let allStyles: [PrivacyBackgroundStyle] = PrivacyBackgroundStyle.allCases.map { $0 }
+    
+    var body: some View {
+        NavigationView {
+            List {
+                ForEach(allStyles, id: \.rawValue) { style in
+                    Button {
+                        selectedStyle = style
+                        onSave()
+                        isPresented = false
+                    } label: {
+                        HStack {
+                            Text(style.displayName)
+                            Spacer()
+                            if style == selectedStyle {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.accentColor)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .navigationTitle("Privacy Screen Style")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { isPresented = false }
+                }
             }
         }
     }
