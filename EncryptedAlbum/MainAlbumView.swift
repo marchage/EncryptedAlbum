@@ -711,6 +711,38 @@ struct MainAlbumView: View {
                     .zIndex(1)
             }
         }
+        // Air-Gapped Mode indicator (only shown when lockdown is NOT active)
+        if albumManager.airGappedModeEnabled && !albumManager.lockdownModeEnabled {
+            Button(action: {
+                showingPreferences = true
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "antenna.radiowaves.left.and.right.slash")
+                        .foregroundColor(.white)
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(6)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.orange))
+
+                    Text("AIR-GAPPED")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                }
+                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color.orange.opacity(0.6), lineWidth: 0.5)
+                )
+            }
+            .accessibilityIdentifier("airGappedChipButton")
+            .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel("Air-Gapped Mode enabled — tap to open Preferences")
+            .accessibilityHint("Network operations are disabled while Air-Gapped is active")
+            #if os(macOS)
+                .help("Air-Gapped Mode active — network operations disabled. Click to open Preferences.")
+            #endif
+        }
         Button {
             #if os(iOS)
                 startPhotoLibraryFlow()

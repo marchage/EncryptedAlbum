@@ -19,6 +19,11 @@ struct PreferencesSectionMid: View {
     @State private var lockdownDisableAuthFailed: Bool = false
     @State private var lockdownDisableAuthErrorMessage: String? = nil
 
+    // Air-Gapped Mode state
+    @AppStorage("airGappedModeEnabled") private var storedAirGappedMode: Bool = false
+    @State private var showAirGappedConfirm: Bool = false
+    @State private var showAirGappedDisableConfirm: Bool = false
+
     var body: some View {
         Group {
             Toggle(
@@ -196,6 +201,79 @@ struct PreferencesSectionMid: View {
             .font(.caption)
             .foregroundStyle(albumManager.lockdownModeEnabled ? .red : .secondary)
 
+            // Air-Gapped Mode section with orange theme
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Air-Gapped Mode")
+                            .font(.headline)
+                        if albumManager.airGappedModeEnabled {
+                            Text("ACTIVE")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color.orange))
+                        }
+                    }
+                    Text("Blocks all network operations")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { albumManager.airGappedModeEnabled },
+                        set: { newValue in
+                            if newValue && !albumManager.airGappedModeEnabled {
+                                showAirGappedConfirm = true
+                            } else if !newValue && albumManager.airGappedModeEnabled {
+                                showAirGappedDisableConfirm = true
+                            }
+                        }
+                    )
+                )
+                .labelsHidden()
+                .toggleStyle(SwitchToggleStyle(tint: .orange))
+                .disabled(albumManager.lockdownModeEnabled) // Lockdown supersedes Air-Gapped
+            }
+            .accessibilityIdentifier("airGappedToggle")
+            .padding(.vertical, 8)
+            .alert("Enable Air-Gapped Mode?", isPresented: $showAirGappedConfirm) {
+                Button("Enable Air-Gapped", role: .destructive) {
+                    albumManager.airGappedModeEnabled = true
+                    storedAirGappedMode = true
+                    albumManager.saveSettings()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(
+                    "Air-Gapped Mode will:\n\n• Block all iCloud sync operations\n• Block cloud verification\n• Block any future network features\n\nLocal imports and exports remain enabled. Use this for field/military scenarios where network access is a security risk."
+                )
+            }
+            .alert("Disable Air-Gapped Mode?", isPresented: $showAirGappedDisableConfirm) {
+                Button("Disable", role: .destructive) {
+                    albumManager.airGappedModeEnabled = false
+                    storedAirGappedMode = false
+                    albumManager.saveSettings()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Disabling Air-Gapped Mode will allow iCloud sync and network operations.")
+            }
+
+            Text(
+                albumManager.airGappedModeEnabled
+                    ? "📡 AIR-GAPPED: No network requests. Local imports/exports still work."
+                    : albumManager.lockdownModeEnabled
+                        ? "Air-Gapped Mode is superseded by Lockdown Mode."
+                        : "Blocks all network operations while still allowing local file transfers. For military/field use."
+            )
+            .font(.caption)
+            .foregroundStyle(albumManager.airGappedModeEnabled ? .orange : .secondary)
+
             Toggle(
                 "Show status indicators",
                 isOn: Binding(
@@ -279,7 +357,7 @@ struct PreferencesSectionMid: View {
                         albumManager.saveSettings()
                     })
             )
-            .disabled(albumManager.lockdownModeEnabled)
+            .disabled(albumManager.lockdownModeEnabled || albumManager.airGappedModeEnabled)
 
             Text(
                 albumManager.encryptedCloudSyncEnabled
@@ -321,7 +399,7 @@ struct PreferencesSectionMid: View {
                     }
                     .buttonStyle(.bordered)
                     .disabled(
-                        albumManager.lockdownModeEnabled || !albumManager.encryptedCloudSyncEnabled
+                        albumManager.lockdownModeEnabled || albumManager.airGappedModeEnabled || !albumManager.encryptedCloudSyncEnabled
                             || albumManager.cloudSyncStatus == .syncing)
                 }
 
@@ -333,7 +411,7 @@ struct PreferencesSectionMid: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(
-                        albumManager.lockdownModeEnabled || !albumManager.encryptedCloudSyncEnabled
+                        albumManager.lockdownModeEnabled || albumManager.airGappedModeEnabled || !albumManager.encryptedCloudSyncEnabled
                             || albumManager.cloudSyncStatus == .syncing)
 
                     Spacer()

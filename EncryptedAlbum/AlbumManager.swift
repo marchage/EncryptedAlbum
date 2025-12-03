@@ -371,6 +371,9 @@ public class AlbumManager: ObservableObject {
     /// When enabled, 'Lockdown Mode' restricts network, import/export and other risky operations
     /// to minimize attack surface and data leakage.
     @Published var lockdownModeEnabled: Bool = false
+    /// When enabled, 'Air-Gapped Mode' blocks all network operations (iCloud sync, future URL imports)
+    /// but still allows local imports/exports. For military/field use where network access is a risk.
+    @Published var airGappedModeEnabled: Bool = false
     /// Show status indicators (sync, importing, etc.) on the lock screen. Off by default for privacy.
     @Published var showStatusOnLockScreen: Bool = false
     /// Show the status pill (sync, importing, awake, etc.) in the main album view. On by default.
@@ -2267,6 +2270,7 @@ public class AlbumManager: ObservableObject {
                 "passphraseMinLength": String(passphraseMinLength),
                 "enableRecoveryKey": String(enableRecoveryKey),
                 "lockdownModeEnabled": String(lockdownModeEnabled),
+                "airGappedModeEnabled": String(airGappedModeEnabled),
                 "showStatusOnLockScreen": String(showStatusOnLockScreen),
                 "showStatusIndicators": String(showStatusIndicators),
             ]
@@ -2510,6 +2514,12 @@ public class AlbumManager: ObservableObject {
                 lockdownModeEnabled = lockdown
             } else {
                 lockdownModeEnabled = false
+            }
+
+            if let airGappedString = settings["airGappedModeEnabled"], let airGapped = Bool(airGappedString) {
+                airGappedModeEnabled = airGapped
+            } else {
+                airGappedModeEnabled = false
             }
 
             if let showStatusString = settings["showStatusOnLockScreen"], let showStatus = Bool(showStatusString) {
@@ -3267,6 +3277,14 @@ extension AlbumManager {
             return false
         }
 
+        // Respect Air-Gapped Mode — deny all network operations
+        if airGappedModeEnabled {
+            cloudSyncStatus = .failed
+            cloudSyncErrorMessage = "Sync blocked by Air-Gapped Mode"
+            lastCloudSync = Date()
+            return false
+        }
+
         // Check CloudKit account status for the configured container
         let ckContainer = CKContainer(identifier: FileConstants.iCloudContainerIdentifier)
         do {
@@ -3306,6 +3324,13 @@ extension AlbumManager {
     @MainActor public func performQuickEncryptedCloudVerification() async throws -> Bool {
         // Respect Lockdown Mode first — deny verification while lockdown is active
         if lockdownModeEnabled {
+            cloudVerificationStatus = .failed
+            lastCloudVerification = Date()
+            return false
+        }
+
+        // Respect Air-Gapped Mode — deny all network operations
+        if airGappedModeEnabled {
             cloudVerificationStatus = .failed
             lastCloudVerification = Date()
             return false
