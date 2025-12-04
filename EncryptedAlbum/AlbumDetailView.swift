@@ -109,6 +109,9 @@ struct AlbumDetailView: View {
             isProcessing = true
             totalCount = results.count
             processedCount = 0
+            
+            // Track successfully imported PHAssets for potential deletion
+            var successfullyImportedAssets: [PHAsset] = []
 
             // Iterate through results and import each item. Use sequential
             // processing to keep resource usage predictable and maintain ordering.
@@ -116,17 +119,20 @@ struct AlbumDetailView: View {
                 // Prefer file representation (works for video and image files)
                 let provider = result.itemProvider
 
-                // Determine suggested filename if the provider gives a suggested name
+                // Determine suggested filename and get PHAsset reference if available
                 var suggestedFilename: String? = nil
+                var assetForDeletion: PHAsset? = nil
                 if let id = result.assetIdentifier,
                     let asset = PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil).firstObject
                 {
                     // Try to extract a reasonable filename from the creation date and identifier
                     let ts = Int(asset.creationDate?.timeIntervalSince1970 ?? Date().timeIntervalSince1970)
                     suggestedFilename = "photo_\(ts).jpg"
+                    assetForDeletion = asset
                 }
 
                 // Try file representation first
+                var importSucceeded = false
                 if let typeIdentifier = provider.registeredTypeIdentifiers.first {
                     do {
                         let tmpURL = try await withCheckedThrowingContinuation {
@@ -157,23 +163,46 @@ struct AlbumDetailView: View {
                             mediaSource: .fileURL(dest), filename: filename, assetIdentifier: nil, mediaType: mediaType)
                         // Clean up temporary file after hidePhotoSource completes (AlbumManager may copy into place)
                         try? fm.removeItem(at: dest)
+                        importSucceeded = true
                     } catch {
                         AppLog.error(
                             "PhotosLibraryPicker: failed to import file representation: \(error.localizedDescription)")
                         // Try fallback below
-                        await tryLoadImageFallback(provider: provider)
+                        if await tryLoadImageFallback(provider: provider) {
+                            importSucceeded = true
+                        }
                     }
                 } else {
-                    await tryLoadImageFallback(provider: provider)
+                    if await tryLoadImageFallback(provider: provider) {
+                        importSucceeded = true
+                    }
+                }
+                
+                // Track successful imports for potential deletion
+                if importSucceeded, let asset = assetForDeletion {
+                    successfullyImportedAssets.append(asset)
                 }
 
                 processedCount += 1
+            }
+            
+            // Auto-delete from Photos if enabled
+            if !successfullyImportedAssets.isEmpty && albumManager.cameraAutoRemoveFromPhotos {
+                AppLog.debugPublic("Auto-removing \(successfullyImportedAssets.count) imported items from Photos library")
+                PhotosLibraryService.shared.batchDeleteAssets(successfullyImportedAssets) { success in
+                    if success {
+                        AppLog.debugPublic("Successfully deleted \(successfullyImportedAssets.count) photos from library")
+                    } else {
+                        AppLog.error("Failed to delete some photos from library")
+                    }
+                }
             }
 
             dismiss()
         }
 
-        private func tryLoadImageFallback(provider: NSItemProvider) async {
+        /// Try to load image as fallback, returns true if successful
+        private func tryLoadImageFallback(provider: NSItemProvider) async -> Bool {
             if provider.canLoadObject(ofClass: UIImage.self) {
                 do {
                     let image = try await withCheckedThrowingContinuation {
@@ -193,11 +222,13 @@ struct AlbumDetailView: View {
                     if let jpegData = image.jpegData(compressionQuality: 0.9) {
                         let filename = "photo_\(Int(Date().timeIntervalSince1970)).jpg"
                         try await albumManager.hidePhotoData(jpegData, filename: filename)
+                        return true
                     }
                 } catch {
                     AppLog.error("PhotosLibraryPicker: image fallback failed: \(error.localizedDescription)")
                 }
             }
+            return false
         }
     }
 
