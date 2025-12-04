@@ -173,7 +173,7 @@ struct PreferencesSectionTop: View {
                 .font(.caption)
                 .foregroundStyle(.red)
             } else {
-                Text("When enabled, entering the wrong password too many times will permanently delete all album data.")
+                Text("When enabled, entering the wrong password too many times (default: \(albumManager.autoWipeFailedAttemptsThreshold) attempts) will permanently delete all album data.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

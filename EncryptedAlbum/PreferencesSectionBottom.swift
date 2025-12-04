@@ -35,26 +35,6 @@ struct PreferencesSectionBottom: View {
                 .foregroundStyle(.secondary)
 
             HStack {
-                Text("Password-protect exports")
-                Spacer()
-                Toggle(
-                    "",
-                    isOn: Binding(
-                        get: { albumManager.exportPasswordProtect },
-                        set: {
-                            albumManager.exportPasswordProtect = $0
-                            albumManager.saveSettings()
-                        })
-                )
-                .labelsHidden()
-            }
-            .disabled(albumManager.lockdownModeEnabled)
-
-            Text("When exporting, you'll be asked to set a password. The recipient needs this password to open the files.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            HStack {
                 Text("Telemetry (opt-in)")
                 Spacer()
                 Toggle(

@@ -1582,7 +1582,7 @@ struct MainAlbumView: View {
                 }
                 return true
             }
-        let viewerActive = (selectedPhoto != nil)
+        _ = (selectedPhoto != nil)
         let viewWithOverlays =
             viewWithInitialModifiers
             #if os(macOS)
