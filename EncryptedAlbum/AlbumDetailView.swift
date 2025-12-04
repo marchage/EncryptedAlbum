@@ -397,6 +397,9 @@ struct AlbumDetailView: View {
                                     .foregroundStyle(.secondary)
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .onAppear {
+                                AppLog.debugPublic("Grid showing empty state - assets.count = \(assets.count), isLoading = \(isLoading)")
+                            }
                         } else {
                             ScrollView {
                                 LazyVGrid(
@@ -410,6 +413,9 @@ struct AlbumDetailView: View {
                                     }
                                 }
                                 .padding()
+                            }
+                            .onAppear {
+                                AppLog.debugPublic("Grid showing \(assets.count) assets")
                             }
                         }
                     }
@@ -535,18 +541,29 @@ struct AlbumDetailView: View {
         }
 
         private func loadAssets(from collection: PHAssetCollection) {
+            // Capture the collection ID to check if still relevant when async completes
+            let collectionId = collection.localIdentifier
+            
             isLoading = true
             selectedAssets.removeAll()
             thumbnails.removeAll()
+            assets.removeAll()  // Clear immediately to show loading state
 
             DispatchQueue.global(qos: .userInitiated).async {
-                let fetchedAssets = photosService.getAssets(from: collection)
+                let fetchedAssets = self.photosService.getAssets(from: collection)
                 let photoCount = fetchedAssets.filter { $0.mediaType == .image }.count
                 let videoCount = fetchedAssets.filter { $0.mediaType == .video }.count
                 AppLog.debugPublic("loadAssets: fetched \(fetchedAssets.count) assets (\(photoCount) photos, \(videoCount) videos) from '\(collection.localizedTitle ?? "unknown")'")
+                
                 DispatchQueue.main.async {
-                    assets = fetchedAssets
-                    isLoading = false
+                    // Only update if this is still the selected album (avoid race conditions)
+                    guard self.selectedAlbum?.localIdentifier == collectionId else {
+                        AppLog.debugPublic("loadAssets: discarding results - album changed")
+                        return
+                    }
+                    self.assets = fetchedAssets
+                    self.isLoading = false
+                    AppLog.debugPublic("loadAssets: set \(fetchedAssets.count) assets to state")
                 }
             }
         }

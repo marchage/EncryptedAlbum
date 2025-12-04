@@ -44,10 +44,10 @@
 		986328E32ECE894300EAE9A9 /* FileServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328E02ECE894300EAE9A9 /* FileServiceTests.swift */; };
 		986328E42ECE894300EAE9A9 /* CryptoServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */; };
 		986328EC2ECE8CEF00EAE9A9 /* EncryptedAlbumUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328EB2ECE8CEF00EAE9A9 /* EncryptedAlbumUITests.swift */; };
-		98797BBD2ED7C6BF008E03C4 /* ProgressOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BBC2ED7C6BF008E03C4 /* ProgressOverlayView.swift */; };
-		98797BBA2ED7C6BF008E03C4 /* ProgressBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BBB2ED7C6BF008E03C4 /* ProgressBannerView.swift */; };
-		98797BBE2ED7C6BF008E03C4 /* ProgressOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BBC2ED7C6BF008E03C4 /* ProgressOverlayView.swift */; };
 		98797BB92ED7C6BF008E03C4 /* ProgressBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BBB2ED7C6BF008E03C4 /* ProgressBannerView.swift */; };
+		98797BBA2ED7C6BF008E03C4 /* ProgressBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BBB2ED7C6BF008E03C4 /* ProgressBannerView.swift */; };
+		98797BBD2ED7C6BF008E03C4 /* ProgressOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BBC2ED7C6BF008E03C4 /* ProgressOverlayView.swift */; };
+		98797BBE2ED7C6BF008E03C4 /* ProgressOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BBC2ED7C6BF008E03C4 /* ProgressOverlayView.swift */; };
 		98797BC42ED7C9C6008E03C4 /* ZoomableImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BBF2ED7C9C5008E03C4 /* ZoomableImageView.swift */; };
 		98797BC52ED7C9C6008E03C4 /* ZoomableImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BBF2ED7C9C5008E03C4 /* ZoomableImageView.swift */; };
 		98797BC62ED7C9C6008E03C4 /* ImageHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98797BC02ED7C9C5008E03C4 /* ImageHelpers.swift */; };
@@ -121,13 +121,13 @@
 		B7C1A2D43E8C4F6A00D10015 /* AlbumManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328DF2ECE894300EAE9A9 /* AlbumManagerTests.swift */; };
 		B7C1A2D43E8C4F6A00D10016 /* EncryptedAlbumTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986328D82ECE88F600EAE9A9 /* EncryptedAlbumTests.swift */; };
 		B7C1A2D43E8C4F6A00D10017 /* DirectImportProgressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F684593F0A4BA800D12345 /* DirectImportProgressTests.swift */; };
+		C0FFEE11C0FFEE11C0FFEE11 /* TestRandomProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE00C0FFEE00C0FFEE00 /* TestRandomProvider.swift */; };
+		C0FFEE33C0FFEE33C0FFEE33 /* AppIconServiceRetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE22C0FFEE22C0FFEE22 /* AppIconServiceRetryTests.swift */; };
 		CC33DD4455EE66FF77AA88BB /* MainAlbumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE5566FF77AA88BB99CC /* MainAlbumView.swift */; };
 		DD69BC27985C4D09BA6690A2 /* FileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ECB74A746149529B6DE078 /* FileService.swift */; };
 		DDEEFF8899AABBCCDDEEFF00 /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDEEFF001122334455667788 /* Logging.swift */; };
 		F2A3B4C56D7E8F9012345678 /* TelemetryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E2D3C4B5A6978877665544 /* TelemetryService.swift */; };
 		F9B0EAD109417F32CF3B7D50 /* UnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C068CD08B70A6DBEA00400 /* UnlockView.swift */; };
-		C0FFEE11C0FFEE11C0FFEE11 /* TestRandomProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE00C0FFEE00C0FFEE00 /* TestRandomProvider.swift */; };
-		C0FFEE33C0FFEE33C0FFEE33 /* AppIconServiceRetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFEE22C0FFEE22C0FFEE22 /* AppIconServiceRetryTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -231,15 +231,13 @@
 		985C161D2ECF1DA200EC1701 /* SecurityServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecurityServiceTests.swift; sourceTree = "<group>"; };
 		986328D62ECE88F600EAE9A9 /* EncryptedAlbumTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EncryptedAlbumTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		986328D82ECE88F600EAE9A9 /* EncryptedAlbumTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedAlbumTests.swift; sourceTree = "<group>"; };
-		C0FFEE00C0FFEE00C0FFEE00 /* TestRandomProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestRandomProvider.swift; sourceTree = "<group>"; };
-		C0FFEE22C0FFEE22C0FFEE22 /* AppIconServiceRetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconServiceRetryTests.swift; sourceTree = "<group>"; };
 		986328DF2ECE894300EAE9A9 /* AlbumManagerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlbumManagerTests.swift; sourceTree = "<group>"; };
 		986328E02ECE894300EAE9A9 /* FileServiceTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FileServiceTests.swift; sourceTree = "<group>"; };
 		986328E12ECE894300EAE9A9 /* CryptoServiceTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CryptoServiceTests.swift; sourceTree = "<group>"; };
 		986328E92ECE8CEF00EAE9A9 /* EncryptedAlbumUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EncryptedAlbumUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		986328EB2ECE8CEF00EAE9A9 /* EncryptedAlbumUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedAlbumUITests.swift; sourceTree = "<group>"; };
-		98797BBC2ED7C6BF008E03C4 /* ProgressOverlayView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProgressOverlayView.swift; sourceTree = "<group>"; };
 		98797BBB2ED7C6BF008E03C4 /* ProgressBannerView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProgressBannerView.swift; sourceTree = "<group>"; };
+		98797BBC2ED7C6BF008E03C4 /* ProgressOverlayView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProgressOverlayView.swift; sourceTree = "<group>"; };
 		98797BBF2ED7C9C5008E03C4 /* ZoomableImageView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ZoomableImageView.swift; sourceTree = "<group>"; };
 		98797BC02ED7C9C5008E03C4 /* ImageHelpers.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImageHelpers.swift; sourceTree = "<group>"; };
 		98797BC12ED7C9C6008E03C4 /* CustomVideoPlayer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CustomVideoPlayer.swift; sourceTree = "<group>"; };
@@ -275,6 +273,8 @@
 		B4FA2CB53F8D4E0FB4F74101 /* EncryptedAlbumMacUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EncryptedAlbumMacUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B7C1A2E23E8C4F6A00D10010 /* EncryptedAlbumMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EncryptedAlbumMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB22CC3344DD55EE66FF77AA /* SetupPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupPasswordView.swift; sourceTree = "<group>"; };
+		C0FFEE00C0FFEE00C0FFEE00 /* TestRandomProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestRandomProvider.swift; sourceTree = "<group>"; };
+		C0FFEE22C0FFEE22C0FFEE22 /* AppIconServiceRetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconServiceRetryTests.swift; sourceTree = "<group>"; };
 		C5C904A396A6B1968CDD78D9 /* AlbumDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumDetailView.swift; sourceTree = "<group>"; };
 		CF9ADA530C59D1A9B3039479 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		CF9ADA540C59D1A9B3039480 /* EncryptedAlbum_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EncryptedAlbum_iOS.entitlements; sourceTree = "<group>"; };
@@ -1018,7 +1018,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum.ShareExtensionMac";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "EncryptedAlbumExtMac@Developer";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "MacOS Development Enc.Album ShareExt Mac";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -1050,7 +1050,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum.ShareExtensionMac";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "EncryptedAlbumExtMac@Developer";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "MacOS Development Enc.Album ShareExt Mac";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -1352,7 +1352,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "EncryptedAlbum@Developer";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "MacOS Development Encrypted Album";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -1388,7 +1388,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "biz.front-end.EncryptedAlbum";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "EncryptedAlbum@Developer";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "MacOS Development Encrypted Album";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
