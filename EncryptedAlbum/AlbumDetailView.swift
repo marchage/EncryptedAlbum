@@ -415,40 +415,43 @@ struct AlbumDetailView: View {
                         .listStyle(.sidebar)
                         .frame(minWidth: 180, maxWidth: 250)
 
-                        // Assets grid
-                        if isLoading {
-                            ProgressView("Loading...")
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else if assets.isEmpty {
-                            VStack(spacing: 12) {
-                                Image(systemName: "photo.stack")
-                                    .font(.system(size: 36))
-                                    .foregroundStyle(.secondary)
-                                Text(selectedAlbum == nil ? "Select an album" : "No photos in this album")
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .onAppear {
-                                AppLog.debugPublic("Grid showing empty state - assets.count = \(assets.count), isLoading = \(isLoading)")
-                            }
-                        } else {
-                            ScrollView {
-                                LazyVGrid(
-                                    columns: [GridItem(.adaptive(minimum: 100, maximum: 120), spacing: 8)], spacing: 8
-                                ) {
-                                    ForEach(assets, id: \.localIdentifier) { asset in
-                                        assetThumbnail(asset)
-                                            .onTapGesture {
-                                                toggleSelection(asset)
-                                            }
-                                    }
+                        // Assets grid - wrapped in a container with minimum width
+                        Group {
+                            if isLoading {
+                                ProgressView("Loading...")
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            } else if assets.isEmpty {
+                                VStack(spacing: 12) {
+                                    Image(systemName: "photo.stack")
+                                        .font(.system(size: 36))
+                                        .foregroundStyle(.secondary)
+                                    Text(selectedAlbum == nil ? "Select an album" : "No photos in this album")
+                                        .foregroundStyle(.secondary)
                                 }
-                                .padding()
-                            }
-                            .onAppear {
-                                AppLog.debugPublic("Grid showing \(assets.count) assets")
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .onAppear {
+                                    AppLog.debugPublic("Grid showing empty state - assets.count = \(assets.count), isLoading = \(isLoading)")
+                                }
+                            } else {
+                                ScrollView {
+                                    LazyVGrid(
+                                        columns: [GridItem(.adaptive(minimum: 100, maximum: 120), spacing: 8)], spacing: 8
+                                    ) {
+                                        ForEach(assets, id: \.localIdentifier) { asset in
+                                            assetThumbnail(asset)
+                                                .onTapGesture {
+                                                    toggleSelection(asset)
+                                                }
+                                        }
+                                    }
+                                    .padding()
+                                }
+                                .onAppear {
+                                    AppLog.debugPublic("Grid showing \(assets.count) assets")
+                                }
                             }
                         }
+                        .frame(minWidth: 400, maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
             }
