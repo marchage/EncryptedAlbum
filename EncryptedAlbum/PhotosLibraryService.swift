@@ -88,121 +88,97 @@ class PhotosLibraryService: PhotosLibraryServiceProtocol {
     /// - Returns: Array of tuples containing album name and collection
     func getAllAlbums(libraryType: LibraryType = .both) -> [(name: String, collection: PHAssetCollection)] {
         var albums: [(String, PHAssetCollection)] = []
-        var seenIds = Set<String>()  // Avoid duplicates across different fetches
+        var seenIds = Set<String>()  // Avoid duplicates by localIdentifier
+        var seenNames = Set<String>()  // Also track names to avoid duplicate-named albums
 
         AppLog.debugPublic("getAllAlbums called with libraryType: \(libraryType)")
 
-        // Explicitly fetch Hidden album FIRST (most important) - always from personal library
-        if libraryType == .personal || libraryType == .both {
-            let hiddenAlbum = PHAssetCollection.fetchAssetCollections(
-                with: .smartAlbum,
-                subtype: .smartAlbumAllHidden,
-                options: nil
-            )
-
-            hiddenAlbum.enumerateObjects { collection, _, _ in
-                let countOptions = PHFetchOptions()
-                if #available(macOS 13.0, *) {
-                    countOptions.includeHiddenAssets = true
-                }
-                let assetCount = PHAsset.fetchAssets(in: collection, options: countOptions).count
-                AppLog.debugPublic("Found Hidden album with \(assetCount) items")
-
-                var name = collection.localizedTitle ?? "Hidden"
-                if libraryType == .both {
-                    name = "👤 " + name
-                }
-                albums.append((name, collection))
-            }
-        }
-
-        // Fetch user albums and filter based on library type
-        let userAlbums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: nil)
-        userAlbums.enumerateObjects { collection, _, _ in
-            let albumName = collection.localizedTitle ?? "Untitled"
-            let subtypeRaw = collection.assetCollectionSubtype.rawValue
-            AppLog.debugPublic("Album subtype raw=\(subtypeRaw) name='\(albumName)'")
-
-            // Determine if this is a "shared" album (either cloud shared album OR from shared library)
-            let isCloudSharedAlbum = collection.assetCollectionSubtype == .albumCloudShared
-            let isFromSharedLibrary = isCloudSharedAlbum || self.isFromSharedLibrary(collection)
-
-            AppLog.debugPrivate(
-                "Album '\(albumName)': cloudShared=\(isCloudSharedAlbum), assetFromShared=\(self.isFromSharedLibrary(collection)), final isShared=\(isFromSharedLibrary)"
-            )
-
-            // Apply library type filter
-            if libraryType == .personal && isFromSharedLibrary {
-                AppLog.debugPublic("Skipped (personal filter, album is shared)")
-                return  // Skip shared albums in personal view
-            }
-            if libraryType == .shared && !isFromSharedLibrary {
-                AppLog.debugPublic("Skipped (shared filter, album is personal)")
-                return  // Skip personal albums in shared view
-            }
-
-            // Add album with appropriate prefix
-            var name = albumName
-            if libraryType == .both {
-                name = (isFromSharedLibrary ? "📤 " : "👤 ") + name
-            }
-            if !seenIds.contains(collection.localIdentifier) {
-                AppLog.debugPublic("Added: \(name)")
-                albums.append((name, collection))
-                seenIds.insert(collection.localIdentifier)
-            } else {
-                AppLog.debugPrivate("Skipped duplicate id=\(collection.localIdentifier)")
-            }
-        }
-
-        // Explicit fetch of Cloud Shared Albums (albums you explicitly share with people)
-        let cloudShared = PHAssetCollection.fetchAssetCollections(
-            with: .album, subtype: .albumCloudShared, options: nil)
-        cloudShared.enumerateObjects { collection, _, _ in
-            let albumName = collection.localizedTitle ?? "Shared Album"
-            let isShared = true  // By definition
-
-            if libraryType == .personal && isShared {
-                AppLog.debugPublic("Skipped cloud shared in personal view: \(albumName)")
-                return
-            }
-            if libraryType == .shared || libraryType == .both {
-                var name = albumName
-                if libraryType == .both { name = "📤 " + name }
-                if !seenIds.contains(collection.localIdentifier) {
-                    AppLog.debugPublic("Added cloud shared: \(name)")
-                    albums.append((name, collection))
-                    seenIds.insert(collection.localIdentifier)
-                }
-            }
-        }
-
-        // Smart albums
+        // 1. Fetch Smart Albums FIRST (Recents, Videos, Screenshots, etc.)
         let smartAlbums = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .any, options: nil)
         smartAlbums.enumerateObjects { collection, _, _ in
+            guard !seenIds.contains(collection.localIdentifier) else { return }
+            
+            let albumName = collection.localizedTitle ?? "Untitled"
+            
+            // Skip if we already have an album with this name (prevents duplicate "Recents", "Videos" etc)
+            let normalizedName = albumName.lowercased()
+            guard !seenNames.contains(normalizedName) else {
+                AppLog.debugPublic("Skipped duplicate name smart album: \(albumName)")
+                return
+            }
+            
             // Check if from shared library
             let isFromSharedLibrary = self.isFromSharedLibrary(collection)
 
             // Apply library type filter
-            if libraryType == .personal && isFromSharedLibrary {
-                return
-            }
-            if libraryType == .shared && !isFromSharedLibrary {
-                return
-            }
+            if libraryType == .personal && isFromSharedLibrary { return }
+            if libraryType == .shared && !isFromSharedLibrary { return }
 
-            var name = collection.localizedTitle ?? "Untitled"
+            var name = albumName
             if libraryType == .both {
                 name = (isFromSharedLibrary ? "📤 " : "👤 ") + name
             }
-
-            // Avoid duplicating Hidden album
-            if !seenIds.contains(collection.localIdentifier) {
-                albums.append((name, collection))
-                seenIds.insert(collection.localIdentifier)
-            }
+            
+            albums.append((name, collection))
+            seenIds.insert(collection.localIdentifier)
+            seenNames.insert(normalizedName)
+            AppLog.debugPublic("Added smart album: \(name)")
         }
 
+        // 2. Fetch User Albums (albums created by the user)
+        let userAlbums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .albumRegular, options: nil)
+        userAlbums.enumerateObjects { collection, _, _ in
+            guard !seenIds.contains(collection.localIdentifier) else { return }
+            
+            let albumName = collection.localizedTitle ?? "Untitled"
+            
+            // Skip if we already have an album with this name from smart albums
+            let normalizedName = albumName.lowercased()
+            guard !seenNames.contains(normalizedName) else {
+                AppLog.debugPublic("Skipped duplicate name user album: \(albumName)")
+                return
+            }
+
+            // Determine if this is a shared album
+            let isCloudSharedAlbum = collection.assetCollectionSubtype == .albumCloudShared
+            let isFromSharedLibrary = isCloudSharedAlbum || self.isFromSharedLibrary(collection)
+
+            // Apply library type filter
+            if libraryType == .personal && isFromSharedLibrary { return }
+            if libraryType == .shared && !isFromSharedLibrary { return }
+
+            var name = albumName
+            if libraryType == .both {
+                name = (isFromSharedLibrary ? "📤 " : "👤 ") + name
+            }
+            
+            albums.append((name, collection))
+            seenIds.insert(collection.localIdentifier)
+            seenNames.insert(normalizedName)
+            AppLog.debugPublic("Added user album: \(name)")
+        }
+
+        // 3. Fetch Cloud Shared Albums
+        let cloudShared = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .albumCloudShared, options: nil)
+        cloudShared.enumerateObjects { collection, _, _ in
+            guard !seenIds.contains(collection.localIdentifier) else { return }
+            
+            let albumName = collection.localizedTitle ?? "Shared Album"
+            let normalizedName = albumName.lowercased()
+            guard !seenNames.contains(normalizedName) else { return }
+
+            if libraryType == .personal { return }  // Skip shared in personal view
+
+            var name = albumName
+            if libraryType == .both { name = "📤 " + name }
+            
+            albums.append((name, collection))
+            seenIds.insert(collection.localIdentifier)
+            seenNames.insert(normalizedName)
+            AppLog.debugPublic("Added cloud shared: \(name)")
+        }
+
+        AppLog.debugPublic("getAllAlbums returning \(albums.count) albums")
         return albums.sorted { (a, b) in a.0 < b.0 }
     }
 

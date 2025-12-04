@@ -289,6 +289,7 @@ struct AlbumDetailView: View {
         @State private var importProgress: Int = 0
         @State private var importTotal: Int = 0
         @State private var accessGranted = false
+        @State private var isCheckingAccess = true  // Start true - checking permission on appear
         @State private var thumbnails: [String: NSImage] = [:]
 
         private let photosService = PhotosLibraryService.shared
@@ -322,7 +323,16 @@ struct AlbumDetailView: View {
 
                 Divider()
 
-                if !accessGranted {
+                if isCheckingAccess {
+                    // Loading state while checking permissions
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        Text("Checking Photos access...")
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if !accessGranted {
                     // Request access view
                     VStack(spacing: 16) {
                         Image(systemName: "photo.on.rectangle.angled")
@@ -503,8 +513,10 @@ struct AlbumDetailView: View {
         }
 
         private func requestAccess() {
+            isCheckingAccess = true
             photosService.requestAccess { granted in
                 accessGranted = granted
+                isCheckingAccess = false
                 if granted {
                     loadAlbums()
                 }
@@ -513,6 +525,7 @@ struct AlbumDetailView: View {
 
         private func loadAlbums() {
             albums = photosService.getAllAlbums(libraryType: .both)
+            AppLog.debugPublic("loadAlbums: found \(albums.count) albums")
 
             // Auto-select first album
             if let first = albums.first {
@@ -528,6 +541,9 @@ struct AlbumDetailView: View {
 
             DispatchQueue.global(qos: .userInitiated).async {
                 let fetchedAssets = photosService.getAssets(from: collection)
+                let photoCount = fetchedAssets.filter { $0.mediaType == .image }.count
+                let videoCount = fetchedAssets.filter { $0.mediaType == .video }.count
+                AppLog.debugPublic("loadAssets: fetched \(fetchedAssets.count) assets (\(photoCount) photos, \(videoCount) videos) from '\(collection.localizedTitle ?? "unknown")'")
                 DispatchQueue.main.async {
                     assets = fetchedAssets
                     isLoading = false
@@ -546,11 +562,14 @@ struct AlbumDetailView: View {
                 targetSize: CGSize(width: 200, height: 200),
                 contentMode: .aspectFill,
                 options: options
-            ) { image, _ in
+            ) { image, info in
                 if let image = image {
                     DispatchQueue.main.async {
-                        thumbnails[asset.localIdentifier] = image
+                        self.thumbnails[asset.localIdentifier] = image
                     }
+                } else {
+                    let errorDesc = (info?[PHImageErrorKey] as? Error)?.localizedDescription ?? "unknown"
+                    AppLog.debugPublic("loadThumbnail: failed for asset \(asset.localIdentifier) (type=\(asset.mediaType.rawValue)): \(errorDesc)")
                 }
             }
         }
