@@ -81,20 +81,20 @@
         }
 
         private func handleWillDeactivate(scene: UIScene?) {
+            // Only show cover and lock if NOT in a trusted modal (e.g., permission dialogs, pickers)
+            guard !isTrustedModalActive else { return }
+            
             showImmediateCover(for: scene)
             enforcePrivacyMode()
             AlbumManager.shared.prepareForBackground()
             if shouldRequireReauthentication {
                 AlbumManager.shared.lock()
             }
-            // Safety reset: clear any orphaned modal state when app goes inactive.
-            // This prevents Face ID button from being stuck after backgrounding mid-modal.
-            if trustedModalDepth > 0 {
-                trustedModalDepth = 0
-            }
         }
 
         private func handleDidEnterBackground(scene: UIScene?) {
+            // Only show cover if NOT in a trusted modal
+            guard !isTrustedModalActive else { return }
             showImmediateCover(for: scene)
         }
 
