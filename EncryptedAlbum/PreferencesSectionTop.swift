@@ -13,7 +13,6 @@ struct PreferencesSectionTop: View {
     @AppStorage("requirePasscodeOnLaunch") private var storedRequirePasscodeOnLaunch: Bool = false
     @AppStorage("biometricPolicy") private var storedBiometricPolicy: String = "biometrics_preferred"
 
-    @AppStorage("compactLayoutEnabled") private var storedCompactLayoutEnabled: Bool = false
     @AppStorage("accentColorName") private var storedAccentColorName: String = "blue"
     @AppStorage("cameraMaxQuality") private var storedCameraMaxQuality: Bool = true
 
@@ -209,16 +208,6 @@ struct PreferencesSectionTop: View {
 
             Divider()
             Text("Appearance").font(.headline)
-
-            Toggle("Compact Layout", isOn: $storedCompactLayoutEnabled)
-                .onChange(of: storedCompactLayoutEnabled) { _ in
-                    albumManager.compactLayoutEnabled = storedCompactLayoutEnabled
-                    albumManager.saveSettings()
-                }
-
-            Text("Reduces thumbnail size. Overall layout spacing remains similar.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
 
             HStack {
                 Text("Accent Color")
