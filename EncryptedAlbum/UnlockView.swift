@@ -46,7 +46,7 @@ struct UnlockView: View {
                     // factor so we avoid upscaling small representations when displaying.
                     let scale = NSScreen.main?.backingScaleFactor ?? 1.0
                     let nativePoints = CGFloat(px) / scale
-                    var displaySize = min(CGFloat(256), nativePoints)
+                    let displaySize = min(CGFloat(256), nativePoints)
 
                     // If the best representation is smaller than our visual cap, try to
                     // generate a higher-resolution marketing image (1024) from bundle
@@ -89,7 +89,7 @@ struct UnlockView: View {
                             .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5))
                 } else {
                     let nativePoints = runtimeIcon.size.width
-                    var displaySize = min(CGFloat(256), nativePoints)
+                    let displaySize = min(CGFloat(256), nativePoints)
 
                     // Try generated marketing image if runtime icon is low-res.
                     if displaySize < 256 {

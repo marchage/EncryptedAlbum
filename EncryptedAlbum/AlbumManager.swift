@@ -677,7 +677,7 @@ public class AlbumManager: ObservableObject {
     /// - Returns: `true` if unlock successful, `false` otherwise
     func unlock(password: String) async throws {
         let overallStart = Date()
-        AppLog.debugPublic("unlock: starting unlock (mainThread: \(Thread.isMainThread))")
+        AppLog.debugPublic("unlock: starting unlock")
         // Rate limiting: exponential backoff on failed attempts
         if failedUnlockAttempts > 0, let lastAttempt = lastUnlockAttemptTime {
             let requiredDelay = calculateUnlockDelay()
@@ -2593,7 +2593,7 @@ public class AlbumManager: ObservableObject {
         }
 
         setPromptState(true)
-        AppLog.debugPublic("authenticateAndRetrievePassword: prompt starting (mainThread: \(Thread.isMainThread))")
+        AppLog.debugPublic("authenticateAndRetrievePassword: prompt starting")
         let promptStart = Date()
         defer {
             setPromptState(false)
