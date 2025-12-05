@@ -29,10 +29,11 @@ struct PreferencesSectionTop: View {
             // System menus sometimes render in a system overlay and can be positioned under
             // the status bar or other UI, making rows hard to tap. The sheet stays within
             // the app's view hierarchy and respects safe-area insets.
-            HStack {
-                Text("Privacy Screen Style")
-                Spacer()
-                Button(action: { showPrivacyStyleSheet = true }) {
+            Button(action: { showPrivacyStyleSheet = true }) {
+                HStack {
+                    Text("Privacy Screen Style")
+                        .foregroundStyle(.primary)
+                    Spacer()
                     HStack(spacing: 6) {
                         Text(privacyBackgroundStyle.displayName)
                             .foregroundStyle(.primary)
@@ -44,26 +45,27 @@ struct PreferencesSectionTop: View {
                     .padding(.vertical, 6)
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
                 }
-                .buttonStyle(.plain)
-                #if os(iOS)
-                .sheet(isPresented: $showPrivacyStyleSheet) {
-                    PrivacyStylePickerSheet(
-                        selectedStyle: $privacyBackgroundStyle,
-                        isPresented: $showPrivacyStyleSheet,
-                        onSave: { albumManager.saveSettings() }
-                    )
-                }
-                #else
-                .popover(isPresented: $showPrivacyStyleSheet, arrowEdge: .bottom) {
-                    PrivacyStylePickerSheet(
-                        selectedStyle: $privacyBackgroundStyle,
-                        isPresented: $showPrivacyStyleSheet,
-                        onSave: { albumManager.saveSettings() }
-                    )
-                    .frame(width: 220, height: 520)
-                }
-                #endif
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            #if os(iOS)
+            .sheet(isPresented: $showPrivacyStyleSheet) {
+                PrivacyStylePickerSheet(
+                    selectedStyle: $privacyBackgroundStyle,
+                    isPresented: $showPrivacyStyleSheet,
+                    onSave: { albumManager.saveSettings() }
+                )
+            }
+            #else
+            .popover(isPresented: $showPrivacyStyleSheet, arrowEdge: .bottom) {
+                PrivacyStylePickerSheet(
+                    selectedStyle: $privacyBackgroundStyle,
+                    isPresented: $showPrivacyStyleSheet,
+                    onSave: { albumManager.saveSettings() }
+                )
+                .frame(width: 220, height: 520)
+            }
+            #endif
             .padding(.top, 8)
 
             Text("Sets the app's visual theme and the background shown when the app is locked or switching away.")
@@ -434,21 +436,20 @@ private struct PrivacyStylePickerSheet: View {
         NavigationView {
             List {
                 ForEach(allStyles, id: \.rawValue) { style in
-                    Button {
+                    HStack {
+                        Text(style.displayName)
+                        Spacer()
+                        if style == selectedStyle {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.accentColor)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
                         selectedStyle = style
                         onSave()
                         isPresented = false
-                    } label: {
-                        HStack {
-                            Text(style.displayName)
-                            Spacer()
-                            if style == selectedStyle {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.accentColor)
-                        }
-                        }
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .navigationTitle("Privacy Screen Style")
