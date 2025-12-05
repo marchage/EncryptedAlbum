@@ -1677,30 +1677,59 @@ struct MainAlbumView: View {
     }
 
     private var mainContent: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                selectionBar
-                privacySection
-                NotificationBannerView().environmentObject(albumManager)
-                if albumManager.hiddenPhotos.isEmpty {
-                    emptyState
-                } else {
-                    PhotoGridView(
-                        photos: filteredPhotos,
-                        selectedPhotos: $selectedPhotos,
-                        privacyModeEnabled: privacyModeEnabled,
-                        gridMinimumItemWidth: gridMinimumItemWidth,
-                        gridSpacing: gridSpacing,
-                        onSelect: toggleSelection,
-                        onDoubleTap: { selectedPhoto = $0 },
-                        onRestore: { photo in startRestorationTask { await restoreSinglePhoto(photo) } },
-                        onDelete: { requestDeletion(for: [$0]) }
-                    )
+        VStack(spacing: 0) {
+            // Sticky Privacy Mode toggle header
+            privacyToggleHeader
+            
+            ScrollView {
+                VStack(spacing: 12) {
+                    selectionBar
+                    importButtonsSection
+                    NotificationBannerView().environmentObject(albumManager)
+                    if albumManager.hiddenPhotos.isEmpty {
+                        emptyState
+                    } else {
+                        PhotoGridView(
+                            photos: filteredPhotos,
+                            selectedPhotos: $selectedPhotos,
+                            privacyModeEnabled: privacyModeEnabled,
+                            gridMinimumItemWidth: gridMinimumItemWidth,
+                            gridSpacing: gridSpacing,
+                            onSelect: toggleSelection,
+                            onDoubleTap: { selectedPhoto = $0 },
+                            onRestore: { photo in startRestorationTask { await restoreSinglePhoto(photo) } },
+                            onDelete: { requestDeletion(for: [$0]) }
+                        )
+                    }
                 }
+                .padding()
+                .frame(maxWidth: .infinity)
             }
-            .padding()
-            .frame(maxWidth: .infinity)
         }
+    }
+    
+    private var privacyToggleHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            HStack(spacing: 8) {
+                Label(
+                    privacyModeEnabled ? "Privacy Mode On" : "Privacy Mode Off",
+                    systemImage: privacyModeEnabled ? "eye.slash.fill" : "eye.fill"
+                )
+                .font(albumManager.compactLayoutEnabled ? .caption : .subheadline)
+                .imageScale(albumManager.compactLayoutEnabled ? .small : .large)
+                .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Toggle("", isOn: $privacyModeEnabled)
+                .labelsHidden()
+                #if os(macOS)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                #endif
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial)
     }
 
     private var selectionBar: some View {
@@ -1747,69 +1776,45 @@ struct MainAlbumView: View {
         }
     }
 
-    private var privacySection: some View {
+    private var importButtonsSection: some View {
+        #if os(macOS)
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center, spacing: 12) {
-                HStack(spacing: 8) {
-                    Label(
-                        privacyModeEnabled ? "Privacy Mode On" : "Privacy Mode Off",
-                        systemImage: privacyModeEnabled ? "eye.slash.fill" : "eye.fill"
-                    )
-                    .font(albumManager.compactLayoutEnabled ? .caption : .subheadline)
-                    .imageScale(albumManager.compactLayoutEnabled ? .small : .large)
-                    .foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                Button {
+                    showingPhotosLibrary = true
+                } label: {
+                    Label("Photos", systemImage: "photo")
                 }
-                Spacer()
-                Toggle("", isOn: $privacyModeEnabled)
-                    .labelsHidden()
-                    #if os(macOS)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    #endif
+                .buttonStyle(.bordered)
+
+                Button {
+                    showingFilePicker = true
+                } label: {
+                    Label("Files", systemImage: "doc.badge.plus")
+                }
+                .buttonStyle(.bordered)
+                .padding(4)
+                .disabled(
+                    directImportProgress.isImporting || albumManager.exportProgress.isExporting)
+
+                Button {
+                    showingCamera = true
+                } label: {
+                    Label("Camera", systemImage: "camera.fill")
+                }
+                .buttonStyle(.bordered)
             }
-
-            #if os(macOS)
-                HStack(spacing: 12) {
-                    Button {
-                        showingPhotosLibrary = true
-                    } label: {
-                        Label("Photos", systemImage: "photo")
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button {
-                        showingFilePicker = true
-                    } label: {
-                        Label("Files", systemImage: "doc.badge.plus")
-                    }
-                    .buttonStyle(.bordered)
-                    // Give the file/photos toolbar row a subtle, translucent
-                    // background so its controls remain visible across the various
-                    // privacy/theme combinations (dark / rainbow / retro TV etc.)
-                    .padding(4)
-                    .disabled(
-                        directImportProgress.isImporting || albumManager.exportProgress.isExporting)
-
-                    Button {
-                        showingCamera = true
-                    } label: {
-                        Label("Camera", systemImage: "camera.fill")
-                    }
-                    .buttonStyle(.bordered)
-                }
-                .controlSize(.small)
-                // Add a subtle background to make these controls readable against
-                // high-contrast privacy backgrounds (e.g., Rainbow). The padding
-                // and material help ensure good contrast without locking in a
-                // heavy, opaque visual.
-                .padding(6)
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            #endif
+            .controlSize(.small)
+            .padding(6)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .padding(.horizontal)
         .padding(.vertical, privacyCardVerticalPadding)
         .privacyCardStyle()
+        #else
+        EmptyView()
+        #endif
     }
 
     // Tiny app icon helper removed (icons intentionally not shown in headers/toolbars)

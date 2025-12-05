@@ -362,7 +362,7 @@ public class AlbumManager: ObservableObject {
         case notAvailable
     }
     @Published var cloudVerificationStatus: CloudVerificationStatus = .unknown
-    @Published var thumbnailPrivacy: String = "blur"  // none | blur | hide
+    @Published var thumbnailPrivacy: String = "hide"  // none | blur | hide
     @Published var stripMetadataOnExport: Bool = true
     @Published var exportPasswordProtect: Bool = true
     @Published var exportExpiryDays: Int = 30
@@ -2466,7 +2466,7 @@ public class AlbumManager: ObservableObject {
             if let thumbPrivacy = settings["thumbnailPrivacy"] {
                 thumbnailPrivacy = thumbPrivacy
             } else {
-                thumbnailPrivacy = "blur"
+                thumbnailPrivacy = "hide"
             }
 
             if let stripMetaString = settings["stripMetadataOnExport"], let stripMeta = Bool(stripMetaString) {
