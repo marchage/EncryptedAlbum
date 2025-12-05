@@ -53,10 +53,6 @@ struct AlbumDetailView: View {
 
         // Keep picker presented immediately when this view appears
         @State private var showPicker: Bool = true
-        // Track if we're processing imports (show progress UI instead of black screen)
-        @State private var isProcessing: Bool = false
-        @State private var processedCount: Int = 0
-        @State private var totalCount: Int = 0
 
         var body: some View {
             // The PHPickerViewController will be presented immediately by the
@@ -64,26 +60,11 @@ struct AlbumDetailView: View {
             // helpful message if the picker cannot be shown for any reason.
             ZStack {
                 Color(UIColor.systemBackground).ignoresSafeArea()
-                if showPicker && !isProcessing {
+                if showPicker {
                     PHPickerWrapper { results in
-                        Task { @MainActor in
-                            await handle(results: results)
-                        }
+                        handleSelection(results: results)
                     }
                     .ignoresSafeArea()
-                } else if isProcessing {
-                    // Show progress UI while processing imports
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .scaleEffect(1.5)
-                        Text("Importing photos…")
-                            .font(.headline)
-                        if totalCount > 0 {
-                            Text("\(processedCount) of \(totalCount)")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
                 } else {
                     VStack(spacing: 12) {
                         Image(systemName: "photo.on.rectangle")
@@ -97,26 +78,38 @@ struct AlbumDetailView: View {
             .onAppear { showPicker = true }
         }
 
-        /// Process PHPicker results: for each result, attempt to import a file
-        /// representation or UIImage and hand it to AlbumManager for hiding.
-        private func handle(results: [PHPickerResult]) async {
-            guard !results.isEmpty else {
-                dismiss()
-                return
-            }
-
-            // Show progress UI while processing
-            isProcessing = true
-            totalCount = results.count
-            processedCount = 0
+        /// Handle selection: dismiss immediately, start background import with toast progress
+        private func handleSelection(results: [PHPickerResult]) {
+            // Dismiss picker immediately - progress will show as toast banner
+            dismiss()
             
-            // Track successfully imported PHAssets for potential deletion
+            guard !results.isEmpty else { return }
+            
+            // Capture albumManager reference for the detached task
+            let manager = albumManager
+            
+            // Start background import using directImportProgress for toast-style feedback
+            Task { @MainActor in
+                await processImports(results: results, manager: manager)
+            }
+        }
+
+        /// Process imports in background with toast progress feedback
+        @MainActor
+        private func processImports(results: [PHPickerResult], manager: AlbumManager) async {
+            let totalItems = results.count
+            manager.directImportProgress.reset(totalItems: totalItems)
+            
+            var successCount = 0
+            var failureCount = 0
             var successfullyImportedAssets: [PHAsset] = []
 
-            // Iterate through results and import each item. Use sequential
-            // processing to keep resource usage predictable and maintain ordering.
-            for result in results {
-                // Prefer file representation (works for video and image files)
+            for (index, result) in results.enumerated() {
+                // Check for cancellation
+                if manager.directImportProgress.cancelRequested {
+                    break
+                }
+                
                 let provider = result.itemProvider
 
                 // Determine suggested filename and get PHAsset reference if available
@@ -125,11 +118,17 @@ struct AlbumDetailView: View {
                 if let id = result.assetIdentifier,
                     let asset = PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil).firstObject
                 {
-                    // Try to extract a reasonable filename from the creation date and identifier
                     let ts = Int(asset.creationDate?.timeIntervalSince1970 ?? Date().timeIntervalSince1970)
                     suggestedFilename = "photo_\(ts).jpg"
                     assetForDeletion = asset
                 }
+
+                // Update progress
+                let filename = suggestedFilename ?? "Item \(index + 1)"
+                manager.directImportProgress.statusMessage = "Encrypting \(filename)…"
+                manager.directImportProgress.detailMessage = "\(index + 1) of \(totalItems)"
+                manager.directImportProgress.itemsProcessed = index
+                manager.directImportProgress.itemsTotal = totalItems
 
                 // Try file representation first
                 var importSucceeded = false
@@ -148,46 +147,48 @@ struct AlbumDetailView: View {
                             }
                         }
 
-                        // Copy to a temp location we control — the provider URL's lifetime is uncertain
+                        // Copy to a temp location we control
                         let fm = FileManager.default
                         let dest = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(
                             UUID().uuidString
                         ).appendingPathExtension(tmpURL.pathExtension)
                         try fm.copyItem(at: tmpURL, to: dest)
 
-                        // Map UTType to media type
                         let mediaType: MediaType = (typeIdentifier.contains("video")) ? .video : .photo
-                        let filename = suggestedFilename ?? dest.lastPathComponent
+                        let finalFilename = suggestedFilename ?? dest.lastPathComponent
 
-                        try await albumManager.hidePhotoSource(
-                            mediaSource: .fileURL(dest), filename: filename, assetIdentifier: nil, mediaType: mediaType)
-                        // Clean up temporary file after hidePhotoSource completes (AlbumManager may copy into place)
+                        try await manager.hidePhotoSource(
+                            mediaSource: .fileURL(dest), filename: finalFilename, assetIdentifier: nil, mediaType: mediaType)
                         try? fm.removeItem(at: dest)
                         importSucceeded = true
                     } catch {
                         AppLog.error(
                             "PhotosLibraryPicker: failed to import file representation: \(error.localizedDescription)")
-                        // Try fallback below
-                        if await tryLoadImageFallback(provider: provider) {
+                        if await tryLoadImageFallback(provider: provider, manager: manager) {
                             importSucceeded = true
                         }
                     }
                 } else {
-                    if await tryLoadImageFallback(provider: provider) {
+                    if await tryLoadImageFallback(provider: provider, manager: manager) {
                         importSucceeded = true
                     }
                 }
                 
-                // Track successful imports for potential deletion
-                if importSucceeded, let asset = assetForDeletion {
-                    successfullyImportedAssets.append(asset)
+                if importSucceeded {
+                    successCount += 1
+                    if let asset = assetForDeletion {
+                        successfullyImportedAssets.append(asset)
+                    }
+                } else {
+                    failureCount += 1
                 }
-
-                processedCount += 1
             }
             
+            // Finish progress
+            manager.directImportProgress.finish()
+            
             // Auto-delete from Photos if enabled
-            if !successfullyImportedAssets.isEmpty && albumManager.cameraAutoRemoveFromPhotos {
+            if !successfullyImportedAssets.isEmpty && manager.cameraAutoRemoveFromPhotos {
                 AppLog.debugPublic("Auto-removing \(successfullyImportedAssets.count) imported items from Photos library")
                 PhotosLibraryService.shared.batchDeleteAssets(successfullyImportedAssets) { success in
                     if success {
@@ -197,12 +198,31 @@ struct AlbumDetailView: View {
                     }
                 }
             }
-
-            dismiss()
+            
+            // Show completion toast
+            let canceled = manager.directImportProgress.cancelRequested
+            let message: String
+            let notificationType: HideNotificationType
+            
+            if canceled {
+                message = "Import canceled. Encrypted \(successCount) item(s)."
+                notificationType = .info
+            } else if failureCount == 0 {
+                message = "Import complete. Encrypted \(successCount) item(s)."
+                notificationType = .success
+            } else if successCount == 0 {
+                message = "Import failed. Unable to import selected files."
+                notificationType = .failure
+            } else {
+                message = "Import completed. \(successCount) imported, \(failureCount) failed."
+                notificationType = .info
+            }
+            
+            manager.hideNotification = HideNotification(message: message, type: notificationType, photos: nil)
         }
 
         /// Try to load image as fallback, returns true if successful
-        private func tryLoadImageFallback(provider: NSItemProvider) async -> Bool {
+        private func tryLoadImageFallback(provider: NSItemProvider, manager: AlbumManager) async -> Bool {
             if provider.canLoadObject(ofClass: UIImage.self) {
                 do {
                     let image = try await withCheckedThrowingContinuation {
@@ -218,10 +238,9 @@ struct AlbumDetailView: View {
                         }
                     }
 
-                    // Convert to JPEG and hand off to album manager
                     if let jpegData = image.jpegData(compressionQuality: 0.9) {
                         let filename = "photo_\(Int(Date().timeIntervalSince1970)).jpg"
-                        try await albumManager.hidePhotoData(jpegData, filename: filename)
+                        try await manager.hidePhotoData(jpegData, filename: filename)
                         return true
                     }
                 } catch {

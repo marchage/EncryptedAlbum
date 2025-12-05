@@ -93,7 +93,14 @@ struct PreferencesView: View {
 
     private var content: some View {
         ZStack {
-            PrivacyOverlayBackground(asBackground: true)
+            // Use a simple semi-transparent material background for readability
+            #if os(macOS)
+            Color(NSColor.windowBackgroundColor)
+                .ignoresSafeArea()
+            #else
+            Color(UIColor.systemBackground)
+                .ignoresSafeArea()
+            #endif
 
             if albumManager.isUnlocked {
                 ScrollView {
@@ -247,7 +254,10 @@ struct PreferencesView: View {
 
                     }
                     .padding(20)
+                    .padding(.top, 10)
+                    .padding(.bottom, 20)
                 }
+                .scrollIndicators(.visible)
             } else {
                 VStack(spacing: 20) {
                     Image(systemName: "lock.fill")

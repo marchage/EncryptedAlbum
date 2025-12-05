@@ -285,13 +285,11 @@ struct MainAlbumView: View {
     func exportSelectedPhotos() {
         #if os(macOS)
             guard !albumManager.exportProgress.isExporting else {
-                let alert = NSAlert()
-                alert.messageText = "Export Already Running"
-                alert.informativeText =
-                    "Please wait for the current export to finish or cancel it before starting another."
-                alert.alertStyle = .informational
-                alert.addButton(withTitle: "OK")
-                alert.runModal()
+                albumManager.hideNotification = HideNotification(
+                    message: "Export already running. Please wait for it to finish or cancel it.",
+                    type: .info,
+                    photos: nil
+                )
                 return
             }
             let panel = NSOpenPanel()
@@ -513,25 +511,22 @@ struct MainAlbumView: View {
         #if os(macOS)
             guard !directImportProgress.isImporting else {
                 showingFilePicker = false
-                let alert = NSAlert()
-                alert.messageText = "Import Already Running"
-                alert.informativeText =
-                    "Please wait for the current import to finish or cancel it before starting another."
-                alert.alertStyle = .informational
-                alert.addButton(withTitle: "OK")
-                alert.runModal()
+                albumManager.hideNotification = HideNotification(
+                    message: "Import already running. Please wait for it to finish or cancel it.",
+                    type: .info,
+                    photos: nil
+                )
                 return
             }
 
             // Verify album is unlocked before starting import
             guard albumManager.isUnlocked else {
                 showingFilePicker = false
-                let alert = NSAlert()
-                alert.messageText = "Album Not Unlocked"
-                alert.informativeText = "Please unlock the album before importing files."
-                alert.alertStyle = .warning
-                alert.addButton(withTitle: "OK")
-                alert.runModal()
+                albumManager.hideNotification = HideNotification(
+                    message: "Album not unlocked. Please unlock the album before importing files.",
+                    type: .failure,
+                    photos: nil
+                )
                 return
             }
 
@@ -558,17 +553,11 @@ struct MainAlbumView: View {
     @discardableResult
     private func startRestorationTask(_ operation: @escaping () async -> Void) -> Bool {
         guard !albumManager.restorationProgress.isRestoring else {
-            #if os(macOS)
-                let alert = NSAlert()
-                alert.messageText = "Restore Already Running"
-                alert.informativeText =
-                    "Please wait for the current restore to finish or cancel it before starting another."
-                alert.alertStyle = .informational
-                alert.addButton(withTitle: "OK")
-                alert.runModal()
-            #else
-                AppLog.debugPublic("Restore already in progress; ignoring additional request.")
-            #endif
+            albumManager.hideNotification = HideNotification(
+                message: "Restore already running. Please wait for it to finish or cancel it.",
+                type: .info,
+                photos: nil
+            )
             return false
         }
 
@@ -584,31 +573,32 @@ struct MainAlbumView: View {
         private func presentExportSummary(
             successCount: Int, failureCount: Int, canceled: Bool, destinationFolderName: String, error: Error?
         ) {
-            let alert = NSAlert()
+            let message: String
+            let notificationType: HideNotificationType
+            
             if canceled {
-                alert.messageText = "Export Canceled"
-                alert.informativeText = "Exported \(successCount) item(s) before canceling."
-                alert.alertStyle = .warning
+                message = "Export canceled. Exported \(successCount) item(s) before canceling."
+                notificationType = .info
             } else if failureCount == 0 {
-                alert.messageText = "Export Successful"
-                alert.informativeText = "Successfully exported \(successCount) item(s) to \(destinationFolderName)."
-                alert.alertStyle = .informational
+                message = "Export complete. \(successCount) item(s) exported to \(destinationFolderName)."
+                notificationType = .success
             } else if successCount == 0 {
-                alert.messageText = "Export Failed"
-                alert.informativeText =
-                    "Failed to export \(failureCount) item(s). \(error?.localizedDescription ?? "Unknown error")"
-                alert.alertStyle = .critical
+                message = "Export failed. \(error?.localizedDescription ?? "Unknown error")"
+                notificationType = .failure
             } else {
-                alert.messageText = "Partial Export"
-                var message = "Exported \(successCount) item(s), but \(failureCount) failed."
+                var msg = "Partial export. \(successCount) item(s) exported, \(failureCount) failed."
                 if let description = error?.localizedDescription, !description.isEmpty {
-                    message += "\n\(description)"
+                    msg += " \(description)"
                 }
-                alert.informativeText = message
-                alert.alertStyle = .warning
+                message = msg
+                notificationType = .info
             }
-            alert.addButton(withTitle: "OK")
-            alert.runModal()
+            
+            albumManager.hideNotification = HideNotification(
+                message: message,
+                type: notificationType,
+                photos: nil
+            )
         }
     #endif
 

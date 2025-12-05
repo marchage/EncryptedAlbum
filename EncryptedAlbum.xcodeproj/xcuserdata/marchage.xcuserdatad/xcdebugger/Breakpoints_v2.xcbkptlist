@@ -33,7 +33,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "501"
             endingLineNumber = "501"
-            landmarkName = "assetThumbnail(_:)"
+            landmarkName = "albumIcon(for:)"
             landmarkType = "7">
             <Locations>
                <Location
@@ -81,7 +81,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "617"
             endingLineNumber = "617"
-            landmarkName = "loadThumbnail(for:)"
+            landmarkName = "loadAssets(from:)"
             landmarkType = "7">
             <Locations>
                <Location
@@ -129,7 +129,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "605"
             endingLineNumber = "605"
-            landmarkName = "loadThumbnail(for:)"
+            landmarkName = "loadAssets(from:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
