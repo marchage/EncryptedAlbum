@@ -1677,38 +1677,34 @@ struct MainAlbumView: View {
     }
 
     private var mainContent: some View {
-        VStack(spacing: 0) {
-            // Sticky Privacy Mode toggle header
-            privacyToggleHeader
-            
-            ScrollView {
-                VStack(spacing: 12) {
-                    selectionBar
-                    importButtonsSection
-                    NotificationBannerView().environmentObject(albumManager)
-                    if albumManager.hiddenPhotos.isEmpty {
-                        emptyState
-                    } else {
-                        PhotoGridView(
-                            photos: filteredPhotos,
-                            selectedPhotos: $selectedPhotos,
-                            privacyModeEnabled: privacyModeEnabled,
-                            gridMinimumItemWidth: gridMinimumItemWidth,
-                            gridSpacing: gridSpacing,
-                            onSelect: toggleSelection,
-                            onDoubleTap: { selectedPhoto = $0 },
-                            onRestore: { photo in startRestorationTask { await restoreSinglePhoto(photo) } },
-                            onDelete: { requestDeletion(for: [$0]) }
-                        )
-                    }
+        ScrollView {
+            VStack(spacing: 12) {
+                privacyToggleContent
+                selectionBar
+                importButtonsSection
+                NotificationBannerView().environmentObject(albumManager)
+                if albumManager.hiddenPhotos.isEmpty {
+                    emptyState
+                } else {
+                    PhotoGridView(
+                        photos: filteredPhotos,
+                        selectedPhotos: $selectedPhotos,
+                        privacyModeEnabled: privacyModeEnabled,
+                        gridMinimumItemWidth: gridMinimumItemWidth,
+                        gridSpacing: gridSpacing,
+                        onSelect: toggleSelection,
+                        onDoubleTap: { selectedPhoto = $0 },
+                        onRestore: { photo in startRestorationTask { await restoreSinglePhoto(photo) } },
+                        onDelete: { requestDeletion(for: [$0]) }
+                    )
                 }
-                .padding()
-                .frame(maxWidth: .infinity)
             }
+            .padding()
+            .frame(maxWidth: .infinity)
         }
     }
     
-    private var privacyToggleHeader: some View {
+    private var privacyToggleContent: some View {
         HStack(alignment: .center, spacing: 12) {
             HStack(spacing: 8) {
                 Label(
@@ -1730,6 +1726,7 @@ struct MainAlbumView: View {
         .padding(.horizontal)
         .padding(.vertical, 10)
         .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     private var selectionBar: some View {

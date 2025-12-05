@@ -139,15 +139,18 @@ struct PhotoThumbnailView: View {
             }
         }
         .onChange(of: privacyModeEnabled) { newValue in
-            // Privacy mode toggled - reload if now visible and not loaded
-            if !shouldHide && thumbnailImage == nil {
+            // Privacy mode toggled OFF - need to load thumbnails
+            // (can't use shouldHide here as it uses the old privacyModeEnabled value)
+            let willBeHidden = newValue && albumManager.thumbnailPrivacy == "hide"
+            if !willBeHidden && thumbnailImage == nil {
                 failedToLoad = false
                 loadThumbnail()
             }
         }
         .onChange(of: albumManager.thumbnailPrivacy) { newValue in
             // When switching away from "hide", force load thumbnails
-            if newValue != "hide" && thumbnailImage == nil {
+            let willBeHidden = privacyModeEnabled && newValue == "hide"
+            if !willBeHidden && thumbnailImage == nil {
                 failedToLoad = false
                 loadThumbnail()
             }
