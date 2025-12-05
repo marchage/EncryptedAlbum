@@ -215,10 +215,27 @@ struct PreferencesSectionTop: View {
                 Text("Accent Color")
                 Spacer()
                 Picker("Accent", selection: $storedAccentColorName) {
+                    // Classic
                     Text("Blue").tag("blue")
                     Text("Green").tag("green")
                     Text("Pink").tag("pink")
+                    Text("Red").tag("red")
+                    // Modern
+                    Text("Indigo").tag("indigo")
+                    Text("Teal").tag("teal")
+                    Text("Orange").tag("orange")
+                    Text("Cyan").tag("cyan")
+                    Text("Gold").tag("gold")
+                    // Soft/Nature
+                    Text("Mint").tag("mint")
+                    Text("Coral").tag("coral")
+                    Text("Lavender").tag("lavender")
+                    // Retro/Fun
+                    Text("Cyberpunk").tag("cyberpunk")
+                    Text("Terminal").tag("terminal")
+                    Text("Sepia").tag("sepia")
                     Text("Winamp").tag("winamp")
+                    // System
                     Text("System").tag("system")
                 }
                 .pickerStyle(.menu)

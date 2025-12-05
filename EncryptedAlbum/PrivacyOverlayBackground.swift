@@ -25,6 +25,10 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
     case atomic
     case fifties
     case retroFuture
+    case cyberpunk
+    case terminal
+    case sepia
+    case winamp
 
     var id: String { self.rawValue }
 
@@ -48,6 +52,10 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
         case .atomic: return "Atomic"
         case .fifties: return "50s Diner"
         case .retroFuture: return "Retro Future"
+        case .cyberpunk: return "Cyberpunk"
+        case .terminal: return "Terminal"
+        case .sepia: return "Sepia"
+        case .winamp: return "Winamp"
         }
     }
 }
@@ -215,6 +223,14 @@ struct PrivacyOverlayBackground: View {
                 FiftiesDinerView()
             case .retroFuture:
                 RetroFutureView()
+            case .cyberpunk:
+                CyberpunkView()
+            case .terminal:
+                TerminalView()
+            case .sepia:
+                SepiaView()
+            case .winamp:
+                WinampView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1154,6 +1170,595 @@ private struct RetroFutureView: View {
                             .frame(height: 2)
                     }
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Cyberpunk Theme
+private struct CyberpunkView: View {
+    @State private var glitchOffset: CGFloat = 0
+    
+    var body: some View {
+        ZStack {
+            // Dark city background
+            LinearGradient(
+                colors: [
+                    Color(red: 0.05, green: 0.0, blue: 0.1),
+                    Color(red: 0.1, green: 0.0, blue: 0.15),
+                    Color(red: 0.05, green: 0.05, blue: 0.1),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            
+            // Neon glow backdrop
+            GeometryReader { geo in
+                // Hot pink neon glow
+                RadialGradient(
+                    colors: [
+                        Color(red: 1.0, green: 0.0, blue: 0.5).opacity(0.3),
+                        .clear
+                    ],
+                    center: .init(x: 0.2, y: 0.3),
+                    startRadius: 50,
+                    endRadius: 300
+                )
+                
+                // Cyan neon glow
+                RadialGradient(
+                    colors: [
+                        Color.cyan.opacity(0.25),
+                        .clear
+                    ],
+                    center: .init(x: 0.8, y: 0.7),
+                    startRadius: 50,
+                    endRadius: 250
+                )
+            }
+            
+            // Rain effect
+            GeometryReader { geo in
+                ForEach(0..<40, id: \.self) { i in
+                    Rectangle()
+                        .fill(Color.cyan.opacity(Double.random(in: 0.1...0.3)))
+                        .frame(width: 1, height: Double.random(in: 20...60))
+                        .position(
+                            x: Double.random(in: 0...geo.size.width),
+                            y: Double.random(in: 0...geo.size.height)
+                        )
+                }
+            }
+            
+            // City silhouette
+            GeometryReader { geo in
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: geo.size.height))
+                    // Buildings silhouette
+                    var x: CGFloat = 0
+                    while x < geo.size.width {
+                        let buildingWidth = CGFloat.random(in: 30...80)
+                        let buildingHeight = CGFloat.random(in: geo.size.height * 0.3...geo.size.height * 0.7)
+                        path.addLine(to: CGPoint(x: x, y: geo.size.height - buildingHeight))
+                        path.addLine(to: CGPoint(x: x + buildingWidth, y: geo.size.height - buildingHeight))
+                        x += buildingWidth + CGFloat.random(in: 5...20)
+                    }
+                    path.addLine(to: CGPoint(x: geo.size.width, y: geo.size.height))
+                    path.closeSubpath()
+                }
+                .fill(Color.black)
+                
+                // Building windows (lights)
+                ForEach(0..<60, id: \.self) { i in
+                    Rectangle()
+                        .fill(
+                            [Color(red: 1.0, green: 0.0, blue: 0.5), Color.cyan, Color.yellow.opacity(0.8)]
+                                .randomElement()!
+                                .opacity(Double.random(in: 0.3...0.8))
+                        )
+                        .frame(width: Double.random(in: 3...8), height: Double.random(in: 3...8))
+                        .position(
+                            x: Double.random(in: 0...geo.size.width),
+                            y: Double.random(in: geo.size.height * 0.4...geo.size.height * 0.95)
+                        )
+                }
+            }
+            
+            // Main content
+            VStack(spacing: 16) {
+                // Glitchy text effect
+                ZStack {
+                    Text("ENCRYPTED")
+                        .font(.system(size: 32, weight: .black, design: .monospaced))
+                        .foregroundColor(Color.cyan)
+                        .offset(x: -2, y: 0)
+                        .opacity(0.7)
+                    
+                    Text("ENCRYPTED")
+                        .font(.system(size: 32, weight: .black, design: .monospaced))
+                        .foregroundColor(Color(red: 1.0, green: 0.0, blue: 0.5))
+                        .offset(x: 2, y: 0)
+                        .opacity(0.7)
+                    
+                    Text("ENCRYPTED")
+                        .font(.system(size: 32, weight: .black, design: .monospaced))
+                        .foregroundColor(.white)
+                }
+                .shadow(color: Color(red: 1.0, green: 0.0, blue: 0.5), radius: 20)
+                .shadow(color: Color.cyan, radius: 10)
+                
+                Text("アルバム")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(Color(red: 1.0, green: 0.0, blue: 0.5))
+                    .shadow(color: Color(red: 1.0, green: 0.0, blue: 0.5), radius: 5)
+                
+                // Neon badge
+                HStack(spacing: 8) {
+                    Image(systemName: "lock.shield.fill")
+                    Text("SECURE")
+                }
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .foregroundColor(.cyan)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.cyan, lineWidth: 2)
+                        .shadow(color: .cyan, radius: 5)
+                )
+            }
+            
+            // Scan lines
+            GeometryReader { geo in
+                VStack(spacing: 0) {
+                    ForEach(0..<Int(geo.size.height / 2), id: \.self) { _ in
+                        Rectangle()
+                            .fill(Color.black.opacity(0.15))
+                            .frame(height: 1)
+                        Rectangle()
+                            .fill(Color.clear)
+                            .frame(height: 1)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Terminal Theme
+private struct TerminalView: View {
+    @State private var cursorVisible = true
+    @State private var textProgress: Int = 0
+    
+    private let terminalLines = [
+        "$ encrypted-album --status",
+        "Initializing secure container...",
+        "AES-256 encryption: ACTIVE",
+        "Biometric lock: ENABLED",
+        "Photos: [ENCRYPTED]",
+        "Status: PROTECTED",
+        "$ _"
+    ]
+    
+    var body: some View {
+        ZStack {
+            // Pure black background
+            Color.black
+            
+            // Subtle CRT curve effect
+            RadialGradient(
+                colors: [
+                    Color(red: 0.0, green: 0.15, blue: 0.0).opacity(0.3),
+                    .clear
+                ],
+                center: .center,
+                startRadius: 100,
+                endRadius: 600
+            )
+            
+            // Terminal content
+            VStack(alignment: .leading, spacing: 4) {
+                // Terminal header bar
+                HStack {
+                    Circle().fill(Color.red.opacity(0.8)).frame(width: 12, height: 12)
+                    Circle().fill(Color.yellow.opacity(0.8)).frame(width: 12, height: 12)
+                    Circle().fill(Color.green.opacity(0.8)).frame(width: 12, height: 12)
+                    Spacer()
+                    Text("encrypted-album — zsh")
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundColor(Color(red: 0.2, green: 0.8, blue: 0.2).opacity(0.7))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color(red: 0.1, green: 0.1, blue: 0.1))
+                
+                // Terminal output
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(Array(terminalLines.enumerated()), id: \.offset) { index, line in
+                        HStack(spacing: 0) {
+                            Text(line)
+                                .font(.system(size: 14, weight: line.hasPrefix("$") ? .bold : .regular, design: .monospaced))
+                                .foregroundColor(
+                                    line.hasPrefix("$") ? Color(red: 0.2, green: 1.0, blue: 0.2) :
+                                    line.contains("ACTIVE") || line.contains("ENABLED") || line.contains("PROTECTED") ?
+                                        Color(red: 0.2, green: 1.0, blue: 0.2) :
+                                    Color(red: 0.2, green: 0.8, blue: 0.2)
+                                )
+                            
+                            // Blinking cursor on last line
+                            if index == terminalLines.count - 1 {
+                                Rectangle()
+                                    .fill(Color(red: 0.2, green: 1.0, blue: 0.2))
+                                    .frame(width: 8, height: 16)
+                                    .opacity(cursorVisible ? 1 : 0)
+                                    .onAppear {
+                                        withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) {
+                                            cursorVisible.toggle()
+                                        }
+                                    }
+                            }
+                        }
+                    }
+                }
+                .padding(16)
+                
+                Spacer()
+            }
+            .frame(maxWidth: 400)
+            .background(Color.black.opacity(0.9))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color(red: 0.2, green: 0.5, blue: 0.2), lineWidth: 1)
+            )
+            .shadow(color: Color(red: 0.0, green: 0.5, blue: 0.0).opacity(0.5), radius: 20)
+            .padding(40)
+            
+            // Scan lines overlay
+            GeometryReader { geo in
+                VStack(spacing: 0) {
+                    ForEach(0..<Int(geo.size.height / 3), id: \.self) { _ in
+                        Rectangle()
+                            .fill(Color.black.opacity(0.1))
+                            .frame(height: 1)
+                        Spacer().frame(height: 2)
+                    }
+                }
+            }
+            
+            // CRT flicker
+            Rectangle()
+                .fill(Color(red: 0.0, green: 0.2, blue: 0.0).opacity(0.02))
+                .blendMode(.screen)
+        }
+    }
+}
+
+// MARK: - Sepia Theme
+private struct SepiaView: View {
+    var body: some View {
+        ZStack {
+            // Warm sepia base
+            Color(red: 0.96, green: 0.93, blue: 0.85)
+            
+            // Vignette effect
+            RadialGradient(
+                colors: [
+                    .clear,
+                    Color(red: 0.4, green: 0.3, blue: 0.2).opacity(0.4)
+                ],
+                center: .center,
+                startRadius: 200,
+                endRadius: 600
+            )
+            
+            // Film grain texture
+            GeometryReader { geo in
+                Canvas { context, size in
+                    for _ in 0..<500 {
+                        let x = Double.random(in: 0...size.width)
+                        let y = Double.random(in: 0...size.height)
+                        let opacity = Double.random(in: 0.02...0.08)
+                        context.fill(
+                            Path(ellipseIn: CGRect(x: x, y: y, width: 2, height: 2)),
+                            with: .color(Color.black.opacity(opacity))
+                        )
+                    }
+                }
+            }
+            
+            // Old photo scratches
+            GeometryReader { geo in
+                ForEach(0..<8, id: \.self) { i in
+                    Rectangle()
+                        .fill(Color.white.opacity(Double.random(in: 0.05...0.15)))
+                        .frame(width: 1, height: geo.size.height)
+                        .position(x: Double.random(in: 0...geo.size.width), y: geo.size.height / 2)
+                }
+            }
+            
+            // Corner wear
+            GeometryReader { geo in
+                // Top left corner
+                RadialGradient(
+                    colors: [Color(red: 0.3, green: 0.25, blue: 0.2).opacity(0.3), .clear],
+                    center: .topLeading,
+                    startRadius: 0,
+                    endRadius: 150
+                )
+                
+                // Bottom right corner
+                RadialGradient(
+                    colors: [Color(red: 0.3, green: 0.25, blue: 0.2).opacity(0.3), .clear],
+                    center: .bottomTrailing,
+                    startRadius: 0,
+                    endRadius: 150
+                )
+            }
+            
+            // Main content
+            VStack(spacing: 20) {
+                // Vintage frame
+                ZStack {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color(red: 0.9, green: 0.85, blue: 0.75))
+                        .frame(width: 200, height: 200)
+                        .shadow(color: Color(red: 0.3, green: 0.25, blue: 0.2).opacity(0.3), radius: 10)
+                    
+                    RoundedRectangle(cornerRadius: 2)
+                        .stroke(Color(red: 0.6, green: 0.5, blue: 0.4), lineWidth: 2)
+                        .frame(width: 180, height: 180)
+                    
+                    // Lock icon in vintage style
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(Color(red: 0.5, green: 0.4, blue: 0.3))
+                }
+                
+                // Vintage typography
+                VStack(spacing: 8) {
+                    Text("ENCRYPTED")
+                        .font(.system(size: 28, weight: .light, design: .serif))
+                        .tracking(8)
+                        .foregroundColor(Color(red: 0.4, green: 0.35, blue: 0.3))
+                    
+                    Text("— ALBUM —")
+                        .font(.system(size: 16, weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundColor(Color(red: 0.5, green: 0.45, blue: 0.4))
+                    
+                    Text("Est. 2024")
+                        .font(.system(size: 12, design: .serif))
+                        .foregroundColor(Color(red: 0.6, green: 0.55, blue: 0.5))
+                        .padding(.top, 8)
+                }
+            }
+            
+            // Light leak effect
+            GeometryReader { geo in
+                LinearGradient(
+                    colors: [
+                        Color(red: 1.0, green: 0.9, blue: 0.7).opacity(0.15),
+                        .clear
+                    ],
+                    startPoint: .topTrailing,
+                    endPoint: .bottomLeading
+                )
+            }
+        }
+    }
+}
+
+// MARK: - Winamp Theme
+private struct WinampView: View {
+    @State private var eqBars: [CGFloat] = Array(repeating: 0.5, count: 10)
+    @State private var marqueeOffset: CGFloat = 0
+    
+    // Classic Winamp colors
+    private let winampGreen = Color(red: 0.0, green: 0.87, blue: 0.0)
+    private let winampDarkBg = Color(red: 0.14, green: 0.14, blue: 0.14)
+    private let winampPanelBg = Color(red: 0.1, green: 0.1, blue: 0.1)
+    
+    var body: some View {
+        ZStack {
+            // Dark background
+            winampDarkBg
+            
+            VStack(spacing: 0) {
+                Spacer()
+                
+                // Main Winamp Window
+                VStack(spacing: 0) {
+                    // Title bar
+                    HStack(spacing: 4) {
+                        // Menu button
+                        Rectangle()
+                            .fill(winampPanelBg)
+                            .frame(width: 12, height: 12)
+                            .overlay(
+                                Image(systemName: "line.3.horizontal")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(winampGreen.opacity(0.7))
+                            )
+                        
+                        // Title
+                        Text("ENCRYPTED ALBUM")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(winampGreen)
+                        
+                        Spacer()
+                        
+                        // Window buttons
+                        HStack(spacing: 2) {
+                            ForEach(["minus", "square", "xmark"], id: \.self) { icon in
+                                Rectangle()
+                                    .fill(winampPanelBg)
+                                    .frame(width: 14, height: 14)
+                                    .overlay(
+                                        Image(systemName: icon)
+                                            .font(.system(size: 8, weight: .bold))
+                                            .foregroundColor(winampGreen.opacity(0.8))
+                                    )
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(red: 0.2, green: 0.2, blue: 0.25), Color(red: 0.12, green: 0.12, blue: 0.14)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    
+                    // Display area
+                    VStack(spacing: 8) {
+                        // Marquee text area
+                        HStack {
+                            Text("🦙")
+                                .font(.system(size: 14))
+                            
+                            GeometryReader { geo in
+                                Text("It really whips the llama's ass! *** ENCRYPTED ALBUM - PROTECTED ***")
+                                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                    .foregroundColor(winampGreen)
+                                    .fixedSize()
+                                    .offset(x: marqueeOffset)
+                                    .onAppear {
+                                        withAnimation(.linear(duration: 12).repeatForever(autoreverses: false)) {
+                                            marqueeOffset = -400
+                                        }
+                                    }
+                            }
+                            .frame(height: 16)
+                            .clipped()
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .background(Color.black)
+                        .cornerRadius(2)
+                        
+                        HStack(spacing: 12) {
+                            // Time display
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("00:00")
+                                    .font(.system(size: 24, weight: .bold, design: .monospaced))
+                                    .foregroundColor(winampGreen)
+                                    .shadow(color: winampGreen.opacity(0.5), radius: 2)
+                                
+                                Text("LOCKED")
+                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                    .foregroundColor(winampGreen.opacity(0.7))
+                            }
+                            
+                            Spacer()
+                            
+                            // Mini visualizer / EQ bars
+                            HStack(spacing: 3) {
+                                ForEach(0..<10, id: \.self) { i in
+                                    VStack(spacing: 1) {
+                                        ForEach(0..<8, id: \.self) { j in
+                                            Rectangle()
+                                                .fill(
+                                                    j < Int(eqBars[i] * 8)
+                                                        ? (j > 5 ? Color.red : (j > 3 ? Color.yellow : winampGreen))
+                                                        : winampGreen.opacity(0.2)
+                                                )
+                                                .frame(width: 4, height: 3)
+                                        }
+                                    }
+                                }
+                            }
+                            .onAppear {
+                                // Animate EQ bars
+                                Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { _ in
+                                    for i in 0..<eqBars.count {
+                                        eqBars[i] = CGFloat.random(in: 0.2...1.0)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 8)
+                        .background(Color.black)
+                        .cornerRadius(2)
+                        
+                        // Seek bar
+                        HStack(spacing: 4) {
+                            Rectangle()
+                                .fill(winampGreen)
+                                .frame(width: 80, height: 4)
+                            Rectangle()
+                                .fill(winampGreen.opacity(0.3))
+                                .frame(height: 4)
+                        }
+                        .padding(.horizontal, 8)
+                        
+                        // Control buttons
+                        HStack(spacing: 4) {
+                            ForEach(["backward.end.fill", "backward.fill", "play.fill", "pause.fill", "forward.fill", "forward.end.fill", "stop.fill"], id: \.self) { icon in
+                                Button(action: {}) {
+                                    Image(systemName: icon)
+                                        .font(.system(size: 10))
+                                        .foregroundColor(winampGreen)
+                                        .frame(width: 24, height: 18)
+                                        .background(
+                                            LinearGradient(
+                                                colors: [Color(red: 0.25, green: 0.25, blue: 0.28), Color(red: 0.15, green: 0.15, blue: 0.17)],
+                                                startPoint: .top,
+                                                endPoint: .bottom
+                                            )
+                                        )
+                                        .cornerRadius(2)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            
+                            Spacer()
+                            
+                            // Volume
+                            HStack(spacing: 2) {
+                                Image(systemName: "speaker.wave.2.fill")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(winampGreen.opacity(0.7))
+                                Rectangle()
+                                    .fill(winampGreen)
+                                    .frame(width: 40, height: 4)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 8)
+                    }
+                    .padding(6)
+                    .background(winampPanelBg)
+                }
+                .frame(width: 280)
+                .background(
+                    LinearGradient(
+                        colors: [Color(red: 0.22, green: 0.22, blue: 0.24), Color(red: 0.14, green: 0.14, blue: 0.16)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .cornerRadius(4)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color(red: 0.3, green: 0.3, blue: 0.32), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.5), radius: 20)
+                
+                // Llama ASCII art below
+                Text("🦙")
+                    .font(.system(size: 60))
+                    .padding(.top, 20)
+                
+                Text("It really whips the llama's ass!")
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .foregroundColor(winampGreen.opacity(0.6))
+                    .padding(.top, 8)
+                
+                Spacer()
             }
         }
     }

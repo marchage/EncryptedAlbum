@@ -303,6 +303,42 @@ public class AlbumManager: ObservableObject {
             return Color.green
         case "pink":
             return Color.pink
+        case "indigo":
+            // Modern deep purple-blue — iOS/macOS system indigo
+            return Color.indigo
+        case "teal":
+            // Fresh cyan-green — iOS/macOS system teal
+            return Color.teal
+        case "orange":
+            // Vibrant warm orange — iOS/macOS system orange
+            return Color.orange
+        case "cyberpunk":
+            // Neon magenta/hot pink — Blade Runner, synthwave vibes
+            return Color(red: 1.0, green: 0.0, blue: 0.5)
+        case "terminal":
+            // Classic green-on-black hacker aesthetic
+            return Color(red: 0.2, green: 1.0, blue: 0.2)
+        case "sepia":
+            // Warm brownish vintage film tone
+            return Color(red: 0.7, green: 0.5, blue: 0.3)
+        case "red":
+            // Classic bold accent — YouTube, Netflix energy
+            return Color.red
+        case "cyan":
+            // Electric blue-green, high energy
+            return Color.cyan
+        case "gold":
+            // Premium/luxury feel
+            return Color(red: 1.0, green: 0.84, blue: 0.0)
+        case "mint":
+            // Soft refreshing green, lighter than teal
+            return Color.mint
+        case "coral":
+            // Warm peachy-pink, very iOS-friendly
+            return Color(red: 1.0, green: 0.5, blue: 0.44)
+        case "lavender":
+            // Soft purple, calming
+            return Color(red: 0.75, green: 0.65, blue: 0.95)
         case "winamp":
             // Nostalgic Winamp-y accent tone
             return Color(red: 0.98, green: 0.6, blue: 0.07)
@@ -318,7 +354,7 @@ public class AlbumManager: ObservableObject {
     /// Machine-friendly identifier for the currently selected accent color.
     /// Useful for tests and logic that don't depend on SwiftUI `Color` equality.
     enum AccentColorId: String {
-        case blue, green, pink, winamp, system
+        case blue, green, pink, indigo, teal, orange, cyberpunk, terminal, sepia, red, cyan, gold, mint, coral, lavender, winamp, system
     }
 
     var accentColorId: AccentColorId {
