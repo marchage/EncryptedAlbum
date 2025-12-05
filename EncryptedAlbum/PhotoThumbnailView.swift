@@ -8,6 +8,17 @@ struct PhotoThumbnailView: View {
     @State private var thumbnailImage: Image?
     @State private var loadTask: Task<Void, Never>?
     @State private var failedToLoad: Bool = false
+    @State private var isBlurRevealed: Bool = false
+
+    /// Whether to blur this thumbnail based on privacy mode + setting + reveal state
+    private var shouldBlur: Bool {
+        privacyModeEnabled && albumManager.thumbnailPrivacy == "blur" && !isBlurRevealed
+    }
+    
+    /// Whether to show hidden placeholder
+    private var shouldHide: Bool {
+        privacyModeEnabled && albumManager.thumbnailPrivacy == "hide"
+    }
 
     var body: some View {
         // Use aspectRatio(1) for the image area so the grid's column width drives
@@ -18,7 +29,8 @@ struct PhotoThumbnailView: View {
         VStack(alignment: .leading, spacing: 4) {
             ZStack(alignment: .topTrailing) {
                 Group {
-                    if privacyModeEnabled {
+                    if shouldHide {
+                        // Privacy ON + Hide setting = placeholder
                         RoundedRectangle(cornerRadius: 8)
                             .fill(Color.gray.opacity(0.2))
                             .overlay {
@@ -27,13 +39,23 @@ struct PhotoThumbnailView: View {
                                     .foregroundStyle(.secondary)
                             }
                     } else if let image = thumbnailImage {
+                        // Show thumbnail (with optional blur when privacy ON + blur setting)
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
+                            .blur(radius: shouldBlur ? 20 : 0)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .shadow(radius: 2)
+                            .overlay {
+                                // Tap hint when blurred
+                                if shouldBlur {
+                                    Image(systemName: "eye.slash.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(.white.opacity(0.8))
+                                }
+                            }
                             .overlay(alignment: .bottomLeading) {
-                                if photo.mediaType == .video {
+                                if photo.mediaType == .video && !shouldBlur {
                                     HStack(spacing: 4) {
                                         Image(systemName: "play.fill")
                                             .font(.caption2)
@@ -47,6 +69,13 @@ struct PhotoThumbnailView: View {
                                     .background(.black.opacity(0.6))
                                     .cornerRadius(4)
                                     .padding(6)
+                                }
+                            }
+                            .onTapGesture {
+                                if shouldBlur {
+                                    withAnimation(.easeOut(duration: 0.2)) {
+                                        isBlurRevealed = true
+                                    }
                                 }
                             }
                     } else if failedToLoad {
@@ -112,19 +141,38 @@ struct PhotoThumbnailView: View {
 
         // note: moved label layout into the geometry-based layout above
         .onAppear {
-            if !privacyModeEnabled {
+            // Load thumbnail unless it's hidden (privacy ON + hide setting)
+            if !shouldHide {
                 loadThumbnail()
             }
         }
         .onChange(of: privacyModeEnabled) { newValue in
-            if !newValue && thumbnailImage == nil {
+            // Privacy mode toggled - reload if now visible and not loaded
+            if !shouldHide && thumbnailImage == nil {
+                failedToLoad = false
                 loadThumbnail()
+            }
+            // Reset blur reveal when entering privacy mode
+            if newValue {
+                isBlurRevealed = false
+            }
+        }
+        .onChange(of: albumManager.thumbnailPrivacy) { newValue in
+            // When switching away from "hide", force load thumbnails
+            if newValue != "hide" && thumbnailImage == nil {
+                failedToLoad = false
+                loadThumbnail()
+            }
+            // Reset blur reveal state when switching to blur mode
+            if newValue == "blur" && privacyModeEnabled {
+                isBlurRevealed = false
             }
         }
         .onChange(of: albumManager.isUnlocked) { isUnlocked in
             if !isUnlocked {
                 thumbnailImage = nil
-            } else if !privacyModeEnabled {
+                isBlurRevealed = false
+            } else if !shouldHide {
                 loadThumbnail()
             }
         }
