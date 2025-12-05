@@ -8,11 +8,10 @@ struct PhotoThumbnailView: View {
     @State private var thumbnailImage: Image?
     @State private var loadTask: Task<Void, Never>?
     @State private var failedToLoad: Bool = false
-    @State private var isBlurRevealed: Bool = false
 
-    /// Whether to blur this thumbnail based on privacy mode + setting + reveal state
+    /// Whether to blur this thumbnail based on privacy mode + setting
     private var shouldBlur: Bool {
-        privacyModeEnabled && albumManager.thumbnailPrivacy == "blur" && !isBlurRevealed
+        privacyModeEnabled && albumManager.thumbnailPrivacy == "blur"
     }
     
     /// Whether to show hidden placeholder
@@ -47,7 +46,7 @@ struct PhotoThumbnailView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .shadow(radius: 2)
                             .overlay {
-                                // Tap hint when blurred
+                                // Visual indicator when blurred
                                 if shouldBlur {
                                     Image(systemName: "eye.slash.fill")
                                         .font(.title2)
@@ -69,13 +68,6 @@ struct PhotoThumbnailView: View {
                                     .background(.black.opacity(0.6))
                                     .cornerRadius(4)
                                     .padding(6)
-                                }
-                            }
-                            .onTapGesture {
-                                if shouldBlur {
-                                    withAnimation(.easeOut(duration: 0.2)) {
-                                        isBlurRevealed = true
-                                    }
                                 }
                             }
                     } else if failedToLoad {
@@ -152,10 +144,6 @@ struct PhotoThumbnailView: View {
                 failedToLoad = false
                 loadThumbnail()
             }
-            // Reset blur reveal when entering privacy mode
-            if newValue {
-                isBlurRevealed = false
-            }
         }
         .onChange(of: albumManager.thumbnailPrivacy) { newValue in
             // When switching away from "hide", force load thumbnails
@@ -163,15 +151,10 @@ struct PhotoThumbnailView: View {
                 failedToLoad = false
                 loadThumbnail()
             }
-            // Reset blur reveal state when switching to blur mode
-            if newValue == "blur" && privacyModeEnabled {
-                isBlurRevealed = false
-            }
         }
         .onChange(of: albumManager.isUnlocked) { isUnlocked in
             if !isUnlocked {
                 thumbnailImage = nil
-                isBlurRevealed = false
             } else if !shouldHide {
                 loadThumbnail()
             }
