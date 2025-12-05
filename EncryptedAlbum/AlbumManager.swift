@@ -1808,6 +1808,7 @@ public class AlbumManager: ObservableObject {
             let summary = "\(success)/\(total) restored" + (failed > 0 ? " • \(failed) failed" : "")
             self.restorationProgress.statusMessage = restoreCancelled ? "Restore canceled" : "Restore complete"
             self.restorationProgress.detailMessage = summary
+            self.hideDockProgress()  // Hide dock progress when restoration completes
             AppLog.debugPublic(
                 "Restoration complete: \(success)/\(total) successful, \(failed) failed (successful items already removed from album)"
             )
@@ -1866,6 +1867,7 @@ public class AlbumManager: ObservableObject {
                 await MainActor.run {
                     self.restorationProgress.processedItems += 1
                     self.restorationProgress.successItems += 1
+                    self.updateDockProgress(processed: self.restorationProgress.processedItems, total: self.restorationProgress.totalItems)
                 }
 
             } catch is CancellationError {
@@ -1879,6 +1881,7 @@ public class AlbumManager: ObservableObject {
                     self.restorationProgress.detailMessage = error.localizedDescription
                     self.restorationProgress.currentBytesProcessed = 0
                     self.restorationProgress.currentBytesTotal = 0
+                    self.updateDockProgress(processed: self.restorationProgress.processedItems, total: self.restorationProgress.totalItems)
                 }
             }
         }
@@ -2812,6 +2815,36 @@ public class AlbumManager: ObservableObject {
     }
 }
 
+// MARK: - Dock Progress (macOS)
+
+extension AlbumManager {
+    /// Updates the macOS Dock icon progress bar based on current operation progress.
+    /// Only shows when unlocked and not in Lockdown Mode.
+    @MainActor
+    func updateDockProgress(processed: Int, total: Int) {
+        #if os(macOS)
+        guard isUnlocked && !lockdownModeEnabled else {
+            AppLog.debugPublic("Dock progress skipped: unlocked=\(isUnlocked), lockdown=\(lockdownModeEnabled)")
+            DockProgressService.shared.hideProgress()
+            return
+        }
+        guard total > 0 else { return }
+        let progress = Double(processed) / Double(total)
+        AppLog.debugPublic("Dock progress: \(processed)/\(total) = \(Int(progress * 100))%")
+        DockProgressService.shared.updateProgress(progress)
+        #endif
+    }
+    
+    /// Hides the macOS Dock icon progress bar.
+    @MainActor
+    func hideDockProgress() {
+        #if os(macOS)
+        AppLog.debugPublic("Dock progress: hiding")
+        DockProgressService.shared.hideProgress()
+        #endif
+    }
+}
+
 // MARK: - Direct File Import
 
 extension AlbumManager {
@@ -2936,6 +2969,7 @@ extension AlbumManager {
                     directImportProgress.itemsTotal = totalItems
                     directImportProgress.bytesTotal = sizeForProgress
                     directImportProgress.forceUpdateBytesProcessed(sizeForProgress)
+                    updateDockProgress(processed: processedCount, total: totalItems)
                 }
                 continue
             }
@@ -2949,6 +2983,7 @@ extension AlbumManager {
                 directImportProgress.itemsTotal = totalItems
                 directImportProgress.bytesTotal = sizeForProgress
                 directImportProgress.forceUpdateBytesProcessed(0)
+                updateDockProgress(processed: index, total: totalItems)
             }
 
             do {
@@ -2990,6 +3025,7 @@ extension AlbumManager {
             await MainActor.run {
                 directImportProgress.itemsProcessed = completedItems
                 directImportProgress.forceUpdateBytesProcessed(directImportProgress.bytesTotal)
+                updateDockProgress(processed: completedItems, total: urls.count)
             }
         }
 
@@ -3005,6 +3041,7 @@ extension AlbumManager {
         let cancelRequestedAtCompletion = await MainActor.run { [weak self] () -> Bool in
             guard let self else { return false }
             let cancelRequested = self.directImportProgress.cancelRequested
+            self.hideDockProgress()  // Hide dock progress when import completes
             self.publishDirectImportSummary(
                 successCount: finalSuccessCount,
                 failureCount: finalFailureCount,

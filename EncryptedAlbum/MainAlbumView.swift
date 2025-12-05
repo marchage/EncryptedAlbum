@@ -1167,27 +1167,113 @@ struct MainAlbumView: View {
         return labels.joined(separator: " • ") + " — Click to open Settings"
     }
 
-    /// Compact cross-platform toolbar chip used to show short progress messages and a tiny
-    /// activity indicator. Uses semantic colors and a translucent background so it remains
-    /// readable on different title bar / toolbar backgrounds.
+    /// Compact cross-platform toolbar chip used to show short progress messages and a real
+    /// progress bar that fills based on actual percentage. Uses semantic colors and a 
+    /// translucent background so it remains readable on different title bar / toolbar backgrounds.
     @ViewBuilder
     private func toolbarProgressChip(isActive: Bool, message: String) -> some View {
         if isActive {
+            let progress = currentOperationProgress
+            let itemsText = currentOperationItemsText
+            
             HStack(spacing: 8) {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle())
-                    .controlSize(.small)
-                    .frame(width: 16, height: 16)
-                Text(message)
+                // Progress bar (Safari-style fill)
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.primary.opacity(0.15))
+                        .frame(width: 60, height: 6)
+                    
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(currentOperationColor)
+                        .frame(width: 60 * progress, height: 6)
+                        .animation(.easeInOut(duration: 0.2), value: progress)
+                }
+                
+                // Items count (e.g., "3/10")
+                if !itemsText.isEmpty {
+                    Text(itemsText)
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+                        .monospacedDigit()
+                }
+                
+                // Short status label
+                Text(currentOperationLabel)
                     .font(.caption2)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
             .padding(.vertical, 6)
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 10)
             .background(.ultraThinMaterial)
             .cornerRadius(10)
             .shadow(radius: 2)
         }
+    }
+    
+    /// Current operation progress as a fraction (0.0 to 1.0)
+    private var currentOperationProgress: CGFloat {
+        if albumManager.viewerProgress.isDecrypting {
+            return CGFloat(albumManager.viewerProgress.percentComplete)
+        } else if directImportProgress.isImporting {
+            if directImportProgress.itemsTotal > 0 {
+                return CGFloat(directImportProgress.itemsProcessed) / CGFloat(directImportProgress.itemsTotal)
+            } else if directImportProgress.bytesTotal > 0 {
+                return CGFloat(directImportProgress.bytesProcessed) / CGFloat(directImportProgress.bytesTotal)
+            }
+        } else if albumManager.exportProgress.isExporting {
+            if albumManager.exportProgress.itemsTotal > 0 {
+                return CGFloat(albumManager.exportProgress.itemsProcessed) / CGFloat(albumManager.exportProgress.itemsTotal)
+            } else if albumManager.exportProgress.bytesTotal > 0 {
+                return CGFloat(albumManager.exportProgress.bytesProcessed) / CGFloat(albumManager.exportProgress.bytesTotal)
+            }
+        } else if albumManager.restorationProgress.isRestoring {
+            if albumManager.restorationProgress.totalItems > 0 {
+                return CGFloat(albumManager.restorationProgress.processedItems) / CGFloat(albumManager.restorationProgress.totalItems)
+            }
+        }
+        return 0
+    }
+    
+    /// Items text for current operation (e.g., "3/10")
+    private var currentOperationItemsText: String {
+        if directImportProgress.isImporting && directImportProgress.itemsTotal > 0 {
+            return "\(directImportProgress.itemsProcessed)/\(directImportProgress.itemsTotal)"
+        } else if albumManager.exportProgress.isExporting && albumManager.exportProgress.itemsTotal > 0 {
+            return "\(albumManager.exportProgress.itemsProcessed)/\(albumManager.exportProgress.itemsTotal)"
+        } else if albumManager.restorationProgress.isRestoring && albumManager.restorationProgress.totalItems > 0 {
+            return "\(albumManager.restorationProgress.processedItems)/\(albumManager.restorationProgress.totalItems)"
+        }
+        return ""
+    }
+    
+    /// Short label for current operation
+    private var currentOperationLabel: String {
+        if albumManager.viewerProgress.isDecrypting {
+            return "Decrypting"
+        } else if directImportProgress.isImporting {
+            return "Importing"
+        } else if albumManager.exportProgress.isExporting {
+            return "Exporting"
+        } else if albumManager.restorationProgress.isRestoring {
+            return "Restoring"
+        }
+        return ""
+    }
+    
+    /// Color for current operation progress bar
+    private var currentOperationColor: Color {
+        if albumManager.viewerProgress.isDecrypting {
+            return .blue
+        } else if directImportProgress.isImporting {
+            return .green
+        } else if albumManager.exportProgress.isExporting {
+            return .blue
+        } else if albumManager.restorationProgress.isRestoring {
+            return .orange
+        }
+        return .accentColor
     }
 
     @ViewBuilder
@@ -1575,12 +1661,7 @@ struct MainAlbumView: View {
         _ = (selectedPhoto != nil)
         let viewWithOverlays =
             viewWithInitialModifiers
-            .overlay(alignment: .top) {
-                // Non-blocking progress banners for long-running operations
-                ProgressBannerView(directImportProgress: directImportProgress)
-                    .environmentObject(albumManager)
-                    .padding(.top, 8)
-            }
+            // Progress indicator now in toolbar (Safari-style progress bar)
             .overlay {
                 // When the search UI is active, allow taps on the content area to dismiss it.
                 #if os(iOS)
@@ -1644,6 +1725,7 @@ struct MainAlbumView: View {
                         cancelScheduledForegroundLock()
                     }
                 }
+                // Dock progress bar updates are now handled directly in AlbumManager
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
                     isAppActive = false
                 }

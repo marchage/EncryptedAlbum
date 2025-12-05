@@ -127,6 +127,7 @@ extension AlbumManager {
                 exportProgress.itemsProcessed = index
                 exportProgress.bytesProcessed = 0
                 exportProgress.bytesTotal = expectedSize
+                updateDockProgress(processed: index, total: photos.count)
             }
 
             var destinationURL: URL?
@@ -179,6 +180,7 @@ extension AlbumManager {
             await MainActor.run {
                 exportProgress.itemsProcessed = index + 1
                 exportProgress.bytesProcessed = exportProgress.bytesTotal
+                updateDockProgress(processed: index + 1, total: photos.count)
             }
         }
 
@@ -188,6 +190,7 @@ extension AlbumManager {
 
         await MainActor.run {
             exportProgress.finish()
+            hideDockProgress()
         }
 
         return ExportResult(

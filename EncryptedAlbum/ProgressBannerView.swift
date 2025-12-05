@@ -23,7 +23,7 @@ struct ProgressBannerView: View {
                     cancelRequested: albumManager.exportProgress.cancelRequested,
                     onCancel: { albumManager.cancelExport() }
                 )
-                .transition(.move(edge: .top).combined(with: .opacity))
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
             // Direct import progress banner (file/photos picker)
@@ -41,7 +41,7 @@ struct ProgressBannerView: View {
                     cancelRequested: directImportProgress.cancelRequested,
                     onCancel: { directImportProgress.cancelRequested = true }
                 )
-                .transition(.move(edge: .top).combined(with: .opacity))
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
             // Background import progress banner (share extension)
@@ -59,7 +59,7 @@ struct ProgressBannerView: View {
                     cancelRequested: albumManager.importProgress.cancelRequested,
                     onCancel: { albumManager.importProgress.cancelRequested = true }
                 )
-                .transition(.move(edge: .top).combined(with: .opacity))
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
             // Restoration progress banner
@@ -82,7 +82,7 @@ struct ProgressBannerView: View {
                     successCount: albumManager.restorationProgress.successItems,
                     failureCount: albumManager.restorationProgress.failedItems
                 )
-                .transition(.move(edge: .top).combined(with: .opacity))
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.25), value: albumManager.exportProgress.isExporting)
@@ -188,11 +188,10 @@ private struct ProgressBanner: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: 320)  // Compact toast width for bottom-right corner
         .background(.ultraThinMaterial)
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
-        .padding(.horizontal, 12)
     }
 
     private var progressFraction: Double {

@@ -25,6 +25,8 @@
 		982404542ECF12930078B446 /* PasswordServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 982404532ECF12930078B446 /* PasswordServiceTests.swift */; };
 		9849B4552EB9893D00B17DAC /* EncryptedAlbumApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4542EB9893D00B17DAC /* EncryptedAlbumApp.swift */; };
 		9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9849B4562EB9893D00B17DAC /* ContentView.swift */; };
+		984D79E52EE354B6006E1402 /* DockProgressService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 984D79E42EE354B5006E1402 /* DockProgressService.swift */; };
+		984D79E62EE354B6006E1402 /* DockProgressService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 984D79E42EE354B5006E1402 /* DockProgressService.swift */; };
 		984EC6752ED5DDB300038F9F /* PasswordChangeJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 984EC6712ED5DDB200038F9F /* PasswordChangeJournal.swift */; };
 		984EC6762ED5DDB300038F9F /* PasswordChangeJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 984EC6712ED5DDB200038F9F /* PasswordChangeJournal.swift */; };
 		984EC6772ED5DDB300038F9F /* ImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 984EC6722ED5DDB300038F9F /* ImportService.swift */; };
@@ -225,6 +227,7 @@
 		9849B4542EB9893D00B17DAC /* EncryptedAlbumApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedAlbumApp.swift; sourceTree = "<group>"; };
 		9849B4562EB9893D00B17DAC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		9849B45D2EB9893F00B17DAC /* EncryptedAlbum.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EncryptedAlbum.entitlements; sourceTree = "<group>"; };
+		984D79E42EE354B5006E1402 /* DockProgressService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DockProgressService.swift; sourceTree = "<group>"; };
 		984EC6712ED5DDB200038F9F /* PasswordChangeJournal.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PasswordChangeJournal.swift; sourceTree = "<group>"; };
 		984EC6722ED5DDB300038F9F /* ImportService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImportService.swift; sourceTree = "<group>"; };
 		985C161B2ECF1D9C00EC1701 /* PhotosLibraryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosLibraryServiceTests.swift; sourceTree = "<group>"; };
@@ -401,6 +404,7 @@
 		9849B4532EB9893D00B17DAC /* EncryptedAlbum */ = {
 			isa = PBXGroup;
 			children = (
+				984D79E42EE354B5006E1402 /* DockProgressService.swift */,
 				98BE893D2EDCF0D200AF3A5A /* PreferencesSectionBottom.swift */,
 				98BE893A2EDCF0D200AF3A5A /* PreferencesSectionMid.swift */,
 				98BE893B2EDCF0D200AF3A5A /* PreferencesSectionTop.swift */,
@@ -817,6 +821,7 @@
 				98797BC72ED7C9C6008E03C4 /* ImageHelpers.swift in Sources */,
 				98FAA8192EDAB9F400A5C3DD /* ImportSaver.swift in Sources */,
 				986328CE2ECE882D00EAE9A9 /* SecurityService.swift in Sources */,
+				984D79E62EE354B6006E1402 /* DockProgressService.swift in Sources */,
 				986328CF2ECE882D00EAE9A9 /* AlbumError.swift in Sources */,
 				98797BBE2ED7C6BF008E03C4 /* ProgressOverlayView.swift in Sources */,
 				98797BB92ED7C6BF008E03C4 /* ProgressBannerView.swift in Sources */,
@@ -876,6 +881,7 @@
 				98FAA8182EDAB9F400A5C3DD /* ImportSaver.swift in Sources */,
 				98C835FE2EC9E6CD000997CF /* AlbumManager.swift in Sources */,
 				AB219FCE33BC4485A762BDA6 /* SecurityService.swift in Sources */,
+				984D79E52EE354B6006E1402 /* DockProgressService.swift in Sources */,
 				B60166E7D2AD4B09B005BB47 /* AlbumError.swift in Sources */,
 				98797BBD2ED7C6BF008E03C4 /* ProgressOverlayView.swift in Sources */,
 				98797BBA2ED7C6BF008E03C4 /* ProgressBannerView.swift in Sources */,
