@@ -809,7 +809,7 @@ struct MainAlbumView: View {
                     if albumManager.photosOnlyMode {
                         albumManager.hideNotification = HideNotification(
                             message: "Camera disabled in Photos-only mode.",
-                            type: .warning, photos: nil)
+                            type: .info, photos: nil)
                     } else {
                         startCameraCaptureFlow()
                     }
@@ -1976,7 +1976,7 @@ struct MainAlbumView: View {
                     if albumManager.photosOnlyMode {
                         albumManager.hideNotification = HideNotification(
                             message: "Camera disabled in Photos-only mode.",
-                            type: .warning, photos: nil)
+                            type: .info, photos: nil)
                     } else {
                         showingCamera = true
                     }
@@ -2152,7 +2152,7 @@ struct MainAlbumView: View {
             if albumManager.photosOnlyMode {
                 albumManager.hideNotification = HideNotification(
                     message: "Camera disabled in Photos-only mode.",
-                    type: .warning, photos: nil)
+                    type: .info, photos: nil)
                 return
             }
 
