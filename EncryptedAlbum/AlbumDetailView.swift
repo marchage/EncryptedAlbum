@@ -474,8 +474,10 @@ struct AlbumDetailView: View {
                 requestAccess()
             }
             // Support Cmd+A to select all items in the current album
-            .onCommand(#selector(NSResponder.selectAll(_:))) {
-                selectAllAssets()
+            .overlay { Button(action: selectAllAssets) { EmptyView() }
+                .keyboardShortcut("a", modifiers: .command)
+                .opacity(0.001)
+                .accessibilityHidden(true)
             }
         }
 

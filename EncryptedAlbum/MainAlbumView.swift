@@ -1167,6 +1167,34 @@ struct MainAlbumView: View {
         return labels.joined(separator: " • ") + " — Click to open Settings"
     }
 
+    private var isOperationProgressActive: Bool {
+        albumManager.viewerProgress.isDecrypting || directImportProgress.isImporting
+            || albumManager.exportProgress.isExporting || albumManager.restorationProgress.isRestoring
+    }
+
+    private var operationProgressMessage: String {
+        albumManager.viewerProgress.isDecrypting
+            ? (albumManager.viewerProgress.statusMessage.isEmpty
+                ? (albumManager.viewerProgress.bytesTotal > 0
+                    ? String(
+                        format: "Decrypting… %d%%",
+                        Int(albumManager.viewerProgress.percentComplete * 100)) : "Decrypting…")
+                : (albumManager.viewerProgress.bytesTotal > 0
+                    ? String(
+                        format: "%@ — %d%%", albumManager.viewerProgress.statusMessage,
+                        Int(albumManager.viewerProgress.percentComplete * 100))
+                    : albumManager.viewerProgress.statusMessage))
+            : (directImportProgress.isImporting
+                ? (directImportProgress.statusMessage.isEmpty
+                    ? "Importing…" : directImportProgress.statusMessage)
+                : (albumManager.exportProgress.isExporting
+                    ? (albumManager.exportProgress.statusMessage.isEmpty
+                        ? "Decrypting…" : albumManager.exportProgress.statusMessage)
+                    : (albumManager.restorationProgress.isRestoring
+                        ? (albumManager.restorationProgress.statusMessage.isEmpty
+                            ? "Restoring…" : albumManager.restorationProgress.statusMessage) : "")))
+    }
+
     /// Compact cross-platform toolbar chip used to show short progress messages and a real
     /// progress bar that fills based on actual percentage. Uses semantic colors and a 
     /// translucent background so it remains readable on different title bar / toolbar backgrounds.
@@ -1355,50 +1383,8 @@ struct MainAlbumView: View {
         .navigationTitle("Encrypted Album")
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
             .toolbarBackground(.hidden, for: .navigationBar)
-            .toolbar {
-                // Title-area toolbar item: show a tiny app icon next to the window title
-                // so it appears in the macOS title bar adjacent to "Encrypted Album".
-                ToolbarItem(placement: .principal) {
-                    HStack(spacing: 6) {
-                        Text("Encrypted Album")
-                        .font(albumManager.compactLayoutEnabled ? .subheadline : .headline)
-                        .lineLimit(1)
-                        .foregroundStyle(.primary)
-                    }
-                }
-                ToolbarItemGroup(placement: .navigationBarLeading) {
-                    selectionToolbarControls
-                }
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    // Progress chip (import / decrypt / restore) — shown when any long operation is active
-                    toolbarProgressChip(
-                        isActive: albumManager.viewerProgress.isDecrypting || directImportProgress.isImporting
-                            || albumManager.exportProgress.isExporting || albumManager.restorationProgress.isRestoring,
-                        message: albumManager.viewerProgress.isDecrypting
-                            ? (albumManager.viewerProgress.statusMessage.isEmpty
-                                ? (albumManager.viewerProgress.bytesTotal > 0
-                                    ? String(
-                                        format: "Decrypting… %d%%",
-                                        Int(albumManager.viewerProgress.percentComplete * 100)) : "Decrypting…")
-                                : (albumManager.viewerProgress.bytesTotal > 0
-                                    ? String(
-                                        format: "%@ — %d%%", albumManager.viewerProgress.statusMessage,
-                                        Int(albumManager.viewerProgress.percentComplete * 100))
-                                    : albumManager.viewerProgress.statusMessage))
-                            : (directImportProgress.isImporting
-                                ? (directImportProgress.statusMessage.isEmpty
-                                    ? "Importing…" : directImportProgress.statusMessage)
-                                : (albumManager.exportProgress.isExporting
-                                    ? (albumManager.exportProgress.statusMessage.isEmpty
-                                        ? "Decrypting…" : albumManager.exportProgress.statusMessage)
-                                    : (albumManager.restorationProgress.isRestoring
-                                        ? (albumManager.restorationProgress.statusMessage.isEmpty
-                                            ? "Restoring…" : albumManager.restorationProgress.statusMessage) : "")))
-                    )
-                    toolbarActions
-                }
-            }
             // Search moved to custom field inside ScrollView for iOS
             .onChange(of: isSearchActive) { newValue in
                 if !newValue {
@@ -1436,28 +1422,8 @@ struct MainAlbumView: View {
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
                     toolbarProgressChip(
-                        isActive: albumManager.viewerProgress.isDecrypting || directImportProgress.isImporting
-                            || albumManager.exportProgress.isExporting || albumManager.restorationProgress.isRestoring,
-                        message: albumManager.viewerProgress.isDecrypting
-                            ? (albumManager.viewerProgress.statusMessage.isEmpty
-                                ? (albumManager.viewerProgress.bytesTotal > 0
-                                    ? String(
-                                        format: "Decrypting… %d%%",
-                                        Int(albumManager.viewerProgress.percentComplete * 100)) : "Decrypting…")
-                                : (albumManager.viewerProgress.bytesTotal > 0
-                                    ? String(
-                                        format: "%@ — %d%%", albumManager.viewerProgress.statusMessage,
-                                        Int(albumManager.viewerProgress.percentComplete * 100))
-                                    : albumManager.viewerProgress.statusMessage))
-                            : (directImportProgress.isImporting
-                                ? (directImportProgress.statusMessage.isEmpty
-                                    ? "Importing…" : directImportProgress.statusMessage)
-                                : (albumManager.exportProgress.isExporting
-                                    ? (albumManager.exportProgress.statusMessage.isEmpty
-                                        ? "Decrypting…" : albumManager.exportProgress.statusMessage)
-                                    : (albumManager.restorationProgress.isRestoring
-                                        ? (albumManager.restorationProgress.statusMessage.isEmpty
-                                            ? "Restoring…" : albumManager.restorationProgress.statusMessage) : "")))
+                        isActive: isOperationProgressActive,
+                        message: operationProgressMessage
                     )
                     // Ensure macOS toolbar button order mirrors the toolbar visible
                     // in the content area (Photos, Files, Camera) for consistent UX.
@@ -1775,6 +1741,7 @@ struct MainAlbumView: View {
                     // Custom search field that scrolls with content
                     iOSSearchField
                     selectionBar
+                    iOSInlineToolbarRow
                     importButtonsSection
                     NotificationBannerView().environmentObject(albumManager)
                     if albumManager.hiddenPhotos.isEmpty {
@@ -1828,6 +1795,28 @@ struct MainAlbumView: View {
     }
     
     #if os(iOS)
+    /// Inline action row that scrolls away with content while the privacy toggle remains sticky.
+    private var iOSInlineToolbarRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                selectionToolbarControls
+
+                if isOperationProgressActive {
+                    toolbarProgressChip(
+                        isActive: true,
+                        message: operationProgressMessage
+                    )
+                }
+
+                toolbarActions
+            }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+
     /// Custom search field for iOS that scrolls with content (not sticky in nav bar)
     private var iOSSearchField: some View {
         HStack(spacing: 8) {
