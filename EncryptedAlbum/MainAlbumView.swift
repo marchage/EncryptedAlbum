@@ -1801,6 +1801,9 @@ struct MainAlbumView: View {
             HStack(spacing: 12) {
                 selectionToolbarControls
 
+                Divider()
+                    .frame(height: 22)
+
                 if isOperationProgressActive {
                     toolbarProgressChip(
                         isActive: true,
