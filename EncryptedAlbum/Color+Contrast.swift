@@ -4,6 +4,10 @@ import SwiftUI
 import UIKit
 #endif
 
+#if canImport(AppKit)
+import AppKit
+#endif
+
 // Utilities for computing perceived luminance and choosing a readable
 // black/white foreground color for a given background Color.
 //
@@ -24,15 +28,29 @@ extension Color {
     /// Returns the relative luminance (0..1) for this color in sRGB space.
     /// Uses the standard linearization formula from WCAG.
     func relativeLuminance() -> CGFloat? {
-        guard let ui = toUIColor() else { return nil }
-
         var r: CGFloat = 0
         var g: CGFloat = 0
         var b: CGFloat = 0
         var a: CGFloat = 0
 
-        guard ui.getRed(&r, green: &g, blue: &b, alpha: &a) else { return nil }
+        // Prefer UIKit on iOS/tvOS, fall back to AppKit on macOS.
+        #if canImport(UIKit)
+        if let ui = toUIColor(), ui.getRed(&r, green: &g, blue: &b, alpha: &a) {
+            return Self.computeLuminance(r: r, g: g, b: b)
+        }
+        #endif
 
+        #if canImport(AppKit)
+        if let converted = NSColor(self).usingColorSpace(.sRGB),
+           converted.getRed(&r, green: &g, blue: &b, alpha: &a) {
+            return Self.computeLuminance(r: r, g: g, b: b)
+        }
+        #endif
+
+        return nil
+    }
+
+    private static func computeLuminance(r: CGFloat, g: CGFloat, b: CGFloat) -> CGFloat {
         func linearize(_ c: CGFloat) -> CGFloat {
             if c <= 0.03928 { return c / 12.92 }
             return pow((c + 0.055) / 1.055, 2.4)

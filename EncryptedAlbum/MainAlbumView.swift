@@ -652,11 +652,10 @@ struct MainAlbumView: View {
         #endif
     }
 
-    // WCAG 2.1 AA contrast helper: returns .white or .black for best contrast
+    // For our filled chips/buttons, match the standard “tinted” look by using white foregrounds.
+    // This keeps the chips visually consistent and avoids unexpected black text on colored fills.
     private func contrastColor(for background: Color) -> Color {
-        // Use the more robust Color extension which computes relative luminance
-        // and chooses the best of black or white per WCAG contrast testing.
-        return background.idealTextColorAgainstBackground()
+        return .white
     }
 
     @ViewBuilder
