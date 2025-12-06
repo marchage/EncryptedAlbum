@@ -1687,6 +1687,11 @@ struct MainAlbumView: View {
                         .ignoresSafeArea(.keyboard)
                 }
             }
+            .overlay(alignment: .bottomTrailing) {
+                ProgressBannerView(directImportProgress: directImportProgress)
+                    .environmentObject(albumManager)
+                    .padding(EdgeInsets(top: 0, leading: 0, bottom: 16, trailing: 16))
+            }
         #if os(macOS)
             return
                 viewWithOverlays

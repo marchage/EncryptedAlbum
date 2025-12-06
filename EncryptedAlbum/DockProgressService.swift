@@ -17,13 +17,17 @@ class DockProgressService: ObservableObject {
     /// Show progress bar on the Dock icon
     /// - Parameter progress: Value from 0.0 to 1.0
     func showProgress(_ progress: Double) {
-        print("[DockProgress] showProgress called with \(Int(progress * 100))%")
-        isShowing = true
-        
-        // Just use badge for now to test if dock tile responds at all
-        let label = "\(Int(progress * 100))%"
-        print("[DockProgress] Setting badgeLabel to: \(label)")
-        NSApp.dockTile.badgeLabel = label
+        let clamped = max(0, min(progress, 1))
+        if !isShowing {
+            isShowing = true
+            let size = NSSize(width: 128, height: 128)
+            let view = DockProgressView(frame: NSRect(origin: .zero, size: size))
+            view.progress = clamped
+            progressView = view
+            NSApp.dockTile.contentView = view
+        } else {
+            progressView?.progress = clamped
+        }
         NSApp.dockTile.display()
     }
     
@@ -31,21 +35,19 @@ class DockProgressService: ObservableObject {
     func updateProgress(_ progress: Double) {
         if !isShowing {
             showProgress(progress)
-            return
+        } else {
+            progressView?.progress = max(0, min(progress, 1))
+            NSApp.dockTile.display()
         }
-        let label = "\(Int(progress * 100))%"
-        print("[DockProgress] Updating badgeLabel to: \(label)")
-        NSApp.dockTile.badgeLabel = label
-        NSApp.dockTile.display()
     }
     
     /// Hide the progress bar and restore normal Dock icon
     func hideProgress() {
         guard isShowing else { return }
         
-        print("[DockProgress] Hiding - clearing badgeLabel")
         isShowing = false
-        NSApp.dockTile.badgeLabel = nil
+        progressView = nil
+        NSApp.dockTile.contentView = nil
         NSApp.dockTile.display()
     }
 }
@@ -64,14 +66,10 @@ private class DockProgressView: NSView {
         // Clear background
         NSColor.clear.set()
         bounds.fill()
-        
-        print("[DockProgress] draw() called, progress=\(Int(progress * 100))%, bounds=\(bounds)")
-        
+
         // Draw the app icon first
         if let appIcon = NSApp.applicationIconImage {
             appIcon.draw(in: bounds, from: .zero, operation: .sourceOver, fraction: 1.0)
-        } else {
-            print("[DockProgress] WARNING: No app icon!")
         }
         
         // Progress bar dimensions

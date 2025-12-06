@@ -338,9 +338,6 @@ struct AlbumDetailView: View {
         @State private var assets: [PHAsset] = []
         @State private var selectedAssets: Set<String> = []
         @State private var isLoading = false
-        @State private var isImporting = false
-        @State private var importProgress: Int = 0
-        @State private var importTotal: Int = 0
         @State private var accessGranted = false
         @State private var isCheckingAccess = true  // Start true - checking permission on appear
         @State private var thumbnails: [String: NSImage] = [:]
@@ -369,7 +366,7 @@ struct AlbumDetailView: View {
                         Task { await importSelectedAssets() }
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(selectedAssets.isEmpty || isImporting)
+                    .disabled(selectedAssets.isEmpty)
                     .keyboardShortcut(.defaultAction)
                 }
                 .padding()
@@ -399,16 +396,6 @@ struct AlbumDetailView: View {
                             requestAccess()
                         }
                         .buttonStyle(.borderedProminent)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if isImporting {
-                    // Import progress view
-                    VStack(spacing: 16) {
-                        ProgressView(value: Double(importProgress), total: Double(importTotal))
-                            .progressViewStyle(.linear)
-                            .frame(width: 200)
-                        Text("Importing \(importProgress) of \(importTotal)...")
-                            .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -648,43 +635,60 @@ struct AlbumDetailView: View {
         }
 
         private func importSelectedAssets() async {
+            // Capture selection snapshot
             let assetsToImport = assets.filter { selectedAssets.contains($0.localIdentifier) }
             guard !assetsToImport.isEmpty else { return }
 
-            isImporting = true
-            importTotal = assetsToImport.count
-            importProgress = 0
-            albumManager.updateDockProgress(processed: 0, total: importTotal)
-
-            for asset in assetsToImport {
-                do {
-                    if let result = await photosService.getMediaDataAsync(for: asset) {
-                        if let fileURL = result.fileURL {
-                            // File-based import
-                            try await albumManager.hidePhotoSource(
-                                mediaSource: .fileURL(fileURL),
-                                filename: result.filename,
-                                assetIdentifier: asset.localIdentifier,
-                                mediaType: result.mediaType
-                            )
-                            // Clean up temp file
-                            if result.shouldDeleteFileWhenFinished {
-                                try? FileManager.default.removeItem(at: fileURL)
-                            }
-                        } else if let data = result.data {
-                            // Data-based import
-                            try await albumManager.hidePhotoData(data, filename: result.filename)
-                        }
-                    }
-                } catch {
-                    AppLog.error("Failed to import asset \(asset.localIdentifier): \(error.localizedDescription)")
+            // Fire-and-forget the import so dismissal doesn't cancel work
+            let manager = albumManager
+            let service = photosService
+            Task.detached {
+                let total = assetsToImport.count
+                await MainActor.run {
+                    manager.directImportProgress.reset(totalItems: total)
+                    manager.directImportProgress.statusMessage = "Preparing…"
+                    manager.directImportProgress.detailMessage = "0 of \(total)"
+                    manager.updateDockProgress(processed: 0, total: total)
                 }
 
-                importProgress += 1
-                albumManager.updateDockProgress(processed: importProgress, total: importTotal)
+                for (index, asset) in assetsToImport.enumerated() {
+                    do {
+                        if let result = await service.getMediaDataAsync(for: asset) {
+                            if let fileURL = result.fileURL {
+                                try await manager.hidePhotoSource(
+                                    mediaSource: .fileURL(fileURL),
+                                    filename: result.filename,
+                                    assetIdentifier: asset.localIdentifier,
+                                    mediaType: result.mediaType
+                                )
+                                if result.shouldDeleteFileWhenFinished {
+                                    try? FileManager.default.removeItem(at: fileURL)
+                                }
+                            } else if let data = result.data {
+                                try await manager.hidePhotoData(data, filename: result.filename)
+                            }
+                        }
+                    } catch {
+                        AppLog.error("Failed to import asset \(asset.localIdentifier): \(error.localizedDescription)")
+                    }
+
+                    let processedCount = index + 1
+                    await MainActor.run {
+                        manager.directImportProgress.statusMessage = "Encrypting…"
+                        manager.directImportProgress.detailMessage = "\(processedCount) of \(total)"
+                        manager.directImportProgress.itemsProcessed = processedCount
+                        manager.directImportProgress.itemsTotal = total
+                        manager.updateDockProgress(processed: processedCount, total: total)
+                    }
+                }
+
+                await MainActor.run {
+                    manager.hideDockProgress()
+                    manager.directImportProgress.finish()
+                }
             }
 
-            albumManager.hideDockProgress()
+            // Close picker immediately; progress continues via Dock
             dismiss()
         }
     }
