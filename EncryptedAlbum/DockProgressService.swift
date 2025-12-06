@@ -17,35 +17,25 @@ class DockProgressService: ObservableObject {
     /// Show progress bar on the Dock icon
     /// - Parameter progress: Value from 0.0 to 1.0
     func showProgress(_ progress: Double) {
-        print("[DockProgress] showProgress called with \(Int(progress * 100))%, isShowing=\(isShowing)")
-        guard !isShowing else {
-            // Already showing, just update
-            progressView?.progress = progress
-            NSApp.dockTile.display()
-            return
-        }
-        
+        print("[DockProgress] showProgress called with \(Int(progress * 100))%")
         isShowing = true
         
-        // Create the progress view
-        let view = DockProgressView(frame: NSRect(x: 0, y: 0, width: 128, height: 128))
-        view.progress = progress
-        progressView = view
-        
-        // Set as dock tile content view
-        print("[DockProgress] Setting dockTile.contentView")
-        NSApp.dockTile.contentView = view
+        // Just use badge for now to test if dock tile responds at all
+        let label = "\(Int(progress * 100))%"
+        print("[DockProgress] Setting badgeLabel to: \(label)")
+        NSApp.dockTile.badgeLabel = label
         NSApp.dockTile.display()
     }
     
     /// Update the progress value (0.0 to 1.0)
     func updateProgress(_ progress: Double) {
-        guard isShowing else {
+        if !isShowing {
             showProgress(progress)
             return
         }
-        print("[DockProgress] Updating to \(Int(progress * 100))%")
-        progressView?.progress = min(max(progress, 0), 1)
+        let label = "\(Int(progress * 100))%"
+        print("[DockProgress] Updating badgeLabel to: \(label)")
+        NSApp.dockTile.badgeLabel = label
         NSApp.dockTile.display()
     }
     
@@ -53,10 +43,9 @@ class DockProgressService: ObservableObject {
     func hideProgress() {
         guard isShowing else { return }
         
-        print("[DockProgress] Hiding")
+        print("[DockProgress] Hiding - clearing badgeLabel")
         isShowing = false
-        progressView = nil
-        NSApp.dockTile.contentView = nil
+        NSApp.dockTile.badgeLabel = nil
         NSApp.dockTile.display()
     }
 }
@@ -69,12 +58,20 @@ private class DockProgressView: NSView {
         }
     }
     
+    override var isFlipped: Bool { false }
+    
     override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
+        // Clear background
+        NSColor.clear.set()
+        bounds.fill()
+        
+        print("[DockProgress] draw() called, progress=\(Int(progress * 100))%, bounds=\(bounds)")
         
         // Draw the app icon first
         if let appIcon = NSApp.applicationIconImage {
-            appIcon.draw(in: bounds)
+            appIcon.draw(in: bounds, from: .zero, operation: .sourceOver, fraction: 1.0)
+        } else {
+            print("[DockProgress] WARNING: No app icon!")
         }
         
         // Progress bar dimensions

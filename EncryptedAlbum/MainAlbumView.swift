@@ -1399,11 +1399,7 @@ struct MainAlbumView: View {
                     toolbarActions
                 }
             }
-            .searchable(
-                text: $searchText, isPresented: $isSearchActive,
-                placement: .navigationBarDrawer(displayMode: .automatic),
-                prompt: "Search encrypted items"
-            )
+            // Search moved to custom field inside ScrollView for iOS
             .onChange(of: isSearchActive) { newValue in
                 if !newValue {
                     dismissKeyboard()
@@ -1489,6 +1485,9 @@ struct MainAlbumView: View {
                     // No automatic toolbar additions here; keep life-cycle work only
                     didForcePrivacyModeThisSession = true
                 }
+                
+                // Setup keyboard shortcuts (⌘A, ⌘D, ⌘F, etc.)
+                setupKeyboardShortcuts()
                 
                 // Trigger iCloud sync verification if enabled (updates status indicator)
                 if albumManager.encryptedCloudSyncEnabled && !albumManager.lockdownModeEnabled {
@@ -1759,6 +1758,42 @@ struct MainAlbumView: View {
     }
 
     private var mainContent: some View {
+        #if os(iOS)
+        // iOS: Privacy toggle is STICKY at top (essential!), rest scrolls
+        VStack(spacing: 0) {
+            privacyToggleContent
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+            
+            ScrollView {
+                VStack(spacing: 12) {
+                    // Custom search field that scrolls with content
+                    iOSSearchField
+                    selectionBar
+                    importButtonsSection
+                    NotificationBannerView().environmentObject(albumManager)
+                    if albumManager.hiddenPhotos.isEmpty {
+                        emptyState
+                    } else {
+                        PhotoGridView(
+                            photos: filteredPhotos,
+                            selectedPhotos: $selectedPhotos,
+                            privacyModeEnabled: privacyModeEnabled,
+                            gridMinimumItemWidth: gridMinimumItemWidth,
+                            gridSpacing: gridSpacing,
+                            onSelect: toggleSelection,
+                            onDoubleTap: { selectedPhoto = $0 },
+                            onRestore: { photo in startRestorationTask { await restoreSinglePhoto(photo) } },
+                            onDelete: { requestDeletion(for: [$0]) }
+                        )
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+            }
+        }
+        #else
+        // macOS: Everything scrolls together (more screen real estate)
         ScrollView {
             VStack(spacing: 12) {
                 privacyToggleContent
@@ -1784,7 +1819,34 @@ struct MainAlbumView: View {
             .padding()
             .frame(maxWidth: .infinity)
         }
+        #endif
     }
+    
+    #if os(iOS)
+    /// Custom search field for iOS that scrolls with content (not sticky in nav bar)
+    private var iOSSearchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Search encrypted items", text: $searchText)
+                .textFieldStyle(.plain)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+    #endif
     
     private var privacyToggleContent: some View {
         HStack(alignment: .center, spacing: 12) {

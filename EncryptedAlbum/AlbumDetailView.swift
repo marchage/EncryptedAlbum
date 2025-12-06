@@ -129,6 +129,8 @@ struct AlbumDetailView: View {
                 manager.directImportProgress.detailMessage = "\(index + 1) of \(totalItems)"
                 manager.directImportProgress.itemsProcessed = index
                 manager.directImportProgress.itemsTotal = totalItems
+                print(">>> DOCK PROGRESS: calling updateDockProgress(\(index), \(totalItems))")
+                manager.updateDockProgress(processed: index, total: totalItems)
 
                 // Try file representation first
                 var importSucceeded = false
@@ -186,6 +188,7 @@ struct AlbumDetailView: View {
             
             // Finish progress
             manager.directImportProgress.finish()
+            manager.hideDockProgress()
             
             // Auto-delete from Photos if enabled
             if !successfullyImportedAssets.isEmpty && manager.cameraAutoRemoveFromPhotos {
@@ -651,6 +654,7 @@ struct AlbumDetailView: View {
             isImporting = true
             importTotal = assetsToImport.count
             importProgress = 0
+            albumManager.updateDockProgress(processed: 0, total: importTotal)
 
             for asset in assetsToImport {
                 do {
@@ -677,8 +681,10 @@ struct AlbumDetailView: View {
                 }
 
                 importProgress += 1
+                albumManager.updateDockProgress(processed: importProgress, total: importTotal)
             }
 
+            albumManager.hideDockProgress()
             dismiss()
         }
     }
