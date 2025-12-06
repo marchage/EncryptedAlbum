@@ -103,7 +103,7 @@ struct PreferencesSectionBottom: View {
                 .labelsHidden()
             }
 
-            Text("Shows an in-app banner when photos finish importing. This is not a system notification — you need to have the app open to see it.")
+            Text("Always shows an in-app banner when imports finish. When this is on, the app also posts a system notification (if macOS/iOS allows it).")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -169,6 +169,20 @@ struct PreferencesSectionBottom: View {
                     self.isCheckingHealth = false
                 }
             }
+        }
+    }
+}
+
+fileprivate struct HealthCheckRow: View {
+    let label: String
+    let passed: Bool
+
+    var body: some View {
+        HStack {
+            Text(label)
+            Spacer()
+            Image(systemName: passed ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .foregroundStyle(passed ? .green : .red)
         }
     }
 }

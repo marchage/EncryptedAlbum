@@ -64,6 +64,7 @@ struct MainAlbumView: View {
     @State private var isSearchActive = false
     @State private var isAppActive = true
     @State private var showingPreferences = false
+    @State private var preferencesAnchor: PreferencesAnchor? = nil
     @State private var showLockdownTooltip: Bool = false
     @State private var animateLockdownPulse: Bool = false
     @State private var sleepIndicatorPulse: Bool = false
@@ -367,7 +368,9 @@ struct MainAlbumView: View {
             parts.append("Undo available")
         }
 
-        parts.append("Open Photos App button")
+        if let photos = note.photos, !photos.isEmpty {
+            parts.append("Open Photos App button")
+        }
 
         return parts.joined(separator: ", ")
     }
@@ -640,6 +643,7 @@ struct MainAlbumView: View {
             // Present a tappable / clickable chip with clearer, high-contrast styling
             Button(action: {
                 // Open preferences so users can see why Lockdown is active and change it
+                preferencesAnchor = .lockdown
                 showingPreferences = true
             }) {
                 HStack(spacing: 8) {
@@ -704,6 +708,7 @@ struct MainAlbumView: View {
         // Air-Gapped Mode indicator (only shown when lockdown is NOT active)
         if albumManager.airGappedModeEnabled && !albumManager.lockdownModeEnabled {
             Button(action: {
+                preferencesAnchor = .airGapped
                 showingPreferences = true
             }) {
                 HStack(spacing: 8) {
@@ -736,6 +741,7 @@ struct MainAlbumView: View {
         // Cloud-Native Mode indicator (only shown when lockdown/air-gapped are NOT active)
         if albumManager.cloudNativeModeEnabled && !albumManager.lockdownModeEnabled && !albumManager.airGappedModeEnabled {
             Button(action: {
+                preferencesAnchor = .cloudNative
                 showingPreferences = true
             }) {
                 HStack(spacing: 8) {
@@ -777,6 +783,17 @@ struct MainAlbumView: View {
         }
         .accessibilityLabel("Add Photos from Library")
         .accessibilityIdentifier("addPhotosButton")
+
+        #if os(macOS)
+            Button {
+                showingFilePicker = true
+            } label: {
+                Image(systemName: "doc.badge.plus")
+            }
+            .accessibilityLabel("Import Files")
+            .accessibilityIdentifier("importFilesButton")
+            .disabled(directImportProgress.isImporting || albumManager.exportProgress.isExporting)
+        #endif
 
         #if os(macOS)
             Button {
@@ -1243,25 +1260,37 @@ struct MainAlbumView: View {
     /// Current operation progress as a fraction (0.0 to 1.0)
     private var currentOperationProgress: CGFloat {
         if albumManager.viewerProgress.isDecrypting {
-            return CGFloat(albumManager.viewerProgress.percentComplete)
+            return clampedProgress(CGFloat(albumManager.viewerProgress.percentComplete))
         } else if directImportProgress.isImporting {
-            if directImportProgress.itemsTotal > 0 {
-                return CGFloat(directImportProgress.itemsProcessed) / CGFloat(directImportProgress.itemsTotal)
-            } else if directImportProgress.bytesTotal > 0 {
-                return CGFloat(directImportProgress.bytesProcessed) / CGFloat(directImportProgress.bytesTotal)
+            if directImportProgress.bytesTotal > 0 {
+                return clampedProgress(CGFloat(directImportProgress.bytesProcessed)
+                    / CGFloat(directImportProgress.bytesTotal))
+            } else if directImportProgress.itemsTotal > 0 {
+                return clampedProgress(CGFloat(directImportProgress.itemsProcessed)
+                    / CGFloat(directImportProgress.itemsTotal))
             }
         } else if albumManager.exportProgress.isExporting {
-            if albumManager.exportProgress.itemsTotal > 0 {
-                return CGFloat(albumManager.exportProgress.itemsProcessed) / CGFloat(albumManager.exportProgress.itemsTotal)
-            } else if albumManager.exportProgress.bytesTotal > 0 {
-                return CGFloat(albumManager.exportProgress.bytesProcessed) / CGFloat(albumManager.exportProgress.bytesTotal)
+            if albumManager.exportProgress.bytesTotal > 0 {
+                return clampedProgress(CGFloat(albumManager.exportProgress.bytesProcessed)
+                    / CGFloat(albumManager.exportProgress.bytesTotal))
+            } else if albumManager.exportProgress.itemsTotal > 0 {
+                return clampedProgress(CGFloat(albumManager.exportProgress.itemsProcessed)
+                    / CGFloat(albumManager.exportProgress.itemsTotal))
             }
         } else if albumManager.restorationProgress.isRestoring {
-            if albumManager.restorationProgress.totalItems > 0 {
-                return CGFloat(albumManager.restorationProgress.processedItems) / CGFloat(albumManager.restorationProgress.totalItems)
+            if albumManager.restorationProgress.currentBytesTotal > 0 {
+                return clampedProgress(CGFloat(albumManager.restorationProgress.currentBytesProcessed)
+                    / CGFloat(albumManager.restorationProgress.currentBytesTotal))
+            } else if albumManager.restorationProgress.totalItems > 0 {
+                return clampedProgress(CGFloat(albumManager.restorationProgress.processedItems)
+                    / CGFloat(albumManager.restorationProgress.totalItems))
             }
         }
         return 0
+    }
+
+    private func clampedProgress(_ value: CGFloat) -> CGFloat {
+        max(0, min(1, value))
     }
     
     /// Items text for current operation (e.g., "3/10")
@@ -1495,7 +1524,7 @@ struct MainAlbumView: View {
             #if os(iOS)
                 .fullScreenCover(isPresented: $showingPreferences) {
                     ZStack(alignment: .top) {
-                        PreferencesView()
+                        PreferencesView(anchor: preferencesAnchor)
                         .environmentObject(albumManager)
                         NotificationBannerView().environmentObject(albumManager)
                     }
@@ -1503,7 +1532,7 @@ struct MainAlbumView: View {
             #else
                 .sheet(isPresented: $showingPreferences) {
                     ZStack(alignment: .top) {
-                        PreferencesView(isPresented: $showingPreferences)
+                        PreferencesView(isPresented: $showingPreferences, anchor: preferencesAnchor)
                         .environmentObject(albumManager)
                         NotificationBannerView().environmentObject(albumManager)
                     }

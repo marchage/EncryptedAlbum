@@ -156,6 +156,7 @@ struct PreferencesSectionMid: View {
             }
             .accessibilityIdentifier("lockdownToggle")
             .padding(.vertical, 8)
+            .id(PreferencesAnchor.lockdown)
             .alert("Enable Lockdown Mode?", isPresented: $showLockdownConfirm) {
                 Button("Enable Lockdown", role: .destructive) {
                     albumManager.lockdownModeEnabled = true
@@ -246,6 +247,7 @@ struct PreferencesSectionMid: View {
             }
             .accessibilityIdentifier("airGappedToggle")
             .padding(.vertical, 8)
+            .id(PreferencesAnchor.airGapped)
             .alert("Enable Air-Gapped Mode?", isPresented: $showAirGappedConfirm) {
                 Button("Enable Air-Gapped", role: .destructive) {
                     albumManager.airGappedModeEnabled = true
@@ -319,6 +321,7 @@ struct PreferencesSectionMid: View {
             }
             .accessibilityIdentifier("cloudNativeToggle")
             .padding(.vertical, 8)
+            .id(PreferencesAnchor.cloudNative)
             .alert("Enable Cloud-Native Mode?", isPresented: $showCloudNativeConfirm) {
                 Button("Enable Cloud-Native", role: .destructive) {
                     albumManager.cloudNativeModeEnabled = true

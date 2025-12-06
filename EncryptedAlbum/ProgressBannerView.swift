@@ -1,5 +1,9 @@
 import SwiftUI
 
+#if os(iOS)
+    import UIKit
+#endif
+
 /// Non-blocking progress banner for long-running operations like exports, imports, restoration.
 /// Shows at the top of the screen and allows continued interaction with the app.
 struct ProgressBannerView: View {
@@ -188,17 +192,18 @@ private struct ProgressBanner: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .frame(maxWidth: 320)  // Compact toast width for bottom-right corner
+        .frame(maxWidth: bannerMaxWidth)  // Compact toast width for bottom-right corner
         .background(.ultraThinMaterial)
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
     }
 
     private var progressFraction: Double {
+        if totalBytes > 0 {
+            return min(1.0, Double(bytesProcessed) / Double(max(totalBytes, 1)))
+        }
         if totalItems > 0 {
-            return Double(itemsProcessed) / Double(max(totalItems, 1))
-        } else if totalBytes > 0 {
-            return Double(bytesProcessed) / Double(max(totalBytes, 1))
+            return min(1.0, Double(itemsProcessed) / Double(max(totalItems, 1)))
         }
         return 0
     }
@@ -215,4 +220,15 @@ private struct ProgressBanner: View {
         }
         return ""
     }
+
+    #if os(iOS)
+        private var bannerMaxWidth: CGFloat {
+            // Fit within the available screen width while keeping a comfortable maximum.
+            // The 0.9 factor leaves room for padding so it won't cover adjacent chips/badges.
+            let screenWidth = UIScreen.main.bounds.width
+            return min(max(screenWidth * 0.9, 220), 320)
+        }
+    #else
+        private var bannerMaxWidth: CGFloat { 320 }
+    #endif
 }

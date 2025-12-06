@@ -26,33 +26,31 @@ struct NotificationBannerView: View {
 
                 if let validPhotos = note.photos?.filter({ p in
                     albumManager.hiddenPhotos.contains(where: { $0.id == p.id })
-                }) {
-                    if !validPhotos.isEmpty {
-                        Button("Undo") {
-                            // Capture the wrapped value into a local constant to avoid property-wrapper capture issues
-                            let manager: AlbumManager = albumManager
-                            Task { @MainActor in
-                                do {
-                                    try await manager.restorePhotos(validPhotos, restoreToSourceAlbum: true)
-                                } catch {
-                                    AppLog.error("Undo restore failed: \(error.localizedDescription)")
-                                }
-                                withAnimation { manager.hideNotification = nil }
+                }), !validPhotos.isEmpty {
+                    Button("Undo") {
+                        // Capture the wrapped value into a local constant to avoid property-wrapper capture issues
+                        let manager: AlbumManager = albumManager
+                        Task { @MainActor in
+                            do {
+                                try await manager.restorePhotos(validPhotos, restoreToSourceAlbum: true)
+                            } catch {
+                                AppLog.error("Undo restore failed: \(error.localizedDescription)")
                             }
+                            withAnimation { manager.hideNotification = nil }
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
                     }
-                }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
 
-                Button("Open Photos App") {
-                    #if os(macOS)
-                        NSWorkspace.shared.open(URL(string: "photos://")!)
-                    #endif
-                    withAnimation { albumManager.hideNotification = nil }
+                    Button("Open Photos App") {
+                        #if os(macOS)
+                            NSWorkspace.shared.open(URL(string: "photos://")!)
+                        #endif
+                        withAnimation { albumManager.hideNotification = nil }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
             }
             .padding(.horizontal)
             .padding(.vertical, 10)

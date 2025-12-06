@@ -1,5 +1,12 @@
 import SwiftUI
 
+enum PreferencesAnchor: Hashable {
+    case importNotifications
+    case lockdown
+    case airGapped
+    case cloudNative
+}
+
 struct PreferencesView: View {
     @EnvironmentObject var albumManager: AlbumManager
 
@@ -67,17 +74,21 @@ struct PreferencesView: View {
         private let isSheet: Bool
     #endif
 
-    init() {
+    private let scrollTarget: PreferencesAnchor?
+
+    init(anchor: PreferencesAnchor? = nil) {
         #if os(macOS)
             self._isPresented = .constant(true)
             self.isSheet = false
         #endif
+        self.scrollTarget = anchor
     }
 
     #if os(macOS)
-        init(isPresented: Binding<Bool>) {
+        init(isPresented: Binding<Bool>, anchor: PreferencesAnchor? = nil) {
             self._isPresented = isPresented
             self.isSheet = true
+            self.scrollTarget = anchor
         }
     #endif
 
@@ -103,18 +114,20 @@ struct PreferencesView: View {
             #endif
 
             if albumManager.isUnlocked {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        // 🔮 Paste all your UI elements here
-                        PreferencesSectionTop()
-                        PreferencesSectionMid(
-                            showChangePasswordSheet: $showChangePasswordSheet,
-                            showDecoyPasswordSheet: $showDecoyPasswordSheet,
-                            showCameraAutoRemoveConfirm: $showCameraAutoRemoveConfirm,
-                            pendingCameraAutoRemoveValue: $pendingCameraAutoRemoveValue,
-                            showLockdownConfirm: $showLockdownConfirm
-                        )
-                        PreferencesSectionBottom(showBackupSheet: $showBackupSheet)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            // 🔮 Paste all your UI elements here
+                            PreferencesSectionTop()
+                            PreferencesSectionMid(
+                                showChangePasswordSheet: $showChangePasswordSheet,
+                                showDecoyPasswordSheet: $showDecoyPasswordSheet,
+                                showCameraAutoRemoveConfirm: $showCameraAutoRemoveConfirm,
+                                pendingCameraAutoRemoveValue: $pendingCameraAutoRemoveValue,
+                                showLockdownConfirm: $showLockdownConfirm
+                            )
+                            PreferencesSectionBottom(showBackupSheet: $showBackupSheet)
+                                .id(PreferencesAnchor.importNotifications)
 
                         // macOS-specific key management setting
                         #if os(macOS)
@@ -256,9 +269,19 @@ struct PreferencesView: View {
                     .padding(20)
                     .padding(.top, 10)
                     .padding(.bottom, 20)
+                    .onAppear {
+                        if let target = scrollTarget {
+                            DispatchQueue.main.async {
+                                withAnimation(.easeInOut(duration: 0.35)) {
+                                    proxy.scrollTo(target, anchor: .top)
+                                }
+                            }
+                        }
+                    }
                 }
                 .scrollIndicators(.visible)
-            } else {
+            }
+        } else {
                 VStack(spacing: 20) {
                     Image(systemName: "lock.fill")
                         .font(.system(size: 48))
@@ -544,20 +567,6 @@ struct PreferencesView: View {
         }
     }
 }
-struct HealthCheckRow: View {
-    let label: String
-    let passed: Bool
-
-    var body: some View {
-        HStack {
-            Text(label)
-            Spacer()
-            Image(systemName: passed ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .foregroundStyle(passed ? .green : .red)
-        }
-    }
-}
-
 struct PreferencesView_Previews: PreviewProvider {
     static var previews: some View {
         PreferencesView()

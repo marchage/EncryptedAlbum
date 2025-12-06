@@ -452,10 +452,13 @@ struct AlbumDetailView: View {
                                         columns: [GridItem(.adaptive(minimum: 100, maximum: 120), spacing: 8)], spacing: 8
                                     ) {
                                         ForEach(assets, id: \.localIdentifier) { asset in
-                                            assetThumbnail(asset)
-                                                .onTapGesture {
-                                                    toggleSelection(asset)
-                                                }
+                                            Button {
+                                                toggleSelection(asset)
+                                            } label: {
+                                                assetThumbnail(asset)
+                                            }
+                                            .buttonStyle(.plain)
+                                            .contentShape(Rectangle())
                                         }
                                     }
                                     .padding()
