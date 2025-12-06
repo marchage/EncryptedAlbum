@@ -344,6 +344,11 @@ struct AlbumDetailView: View {
 
         private let photosService = PhotosLibraryService.shared
 
+        // Select all assets currently loaded
+        private func selectAllAssets() {
+            selectedAssets = Set(assets.map { $0.localIdentifier })
+        }
+
         var body: some View {
             VStack(spacing: 0) {
                 // Header
@@ -467,6 +472,10 @@ struct AlbumDetailView: View {
             .frame(minWidth: 700, minHeight: 500)
             .onAppear {
                 requestAccess()
+            }
+            // Support Cmd+A to select all items in the current album
+            .onCommand(#selector(NSResponder.selectAll(_:))) {
+                selectAllAssets()
             }
         }
 
