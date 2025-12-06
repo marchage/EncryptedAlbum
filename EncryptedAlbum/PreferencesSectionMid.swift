@@ -26,11 +26,24 @@ struct PreferencesSectionMid: View {
     @AppStorage("airGappedModeEnabled") private var storedAirGappedMode: Bool = false
     @State private var showAirGappedConfirm: Bool = false
     @State private var showAirGappedDisableConfirm: Bool = false
+    @State private var airGappedDisableAuthFailed: Bool = false
+    @State private var airGappedDisableAuthErrorMessage: String? = nil
 
     // Cloud-Native Mode state
     @AppStorage("cloudNativeModeEnabled") private var storedCloudNativeMode: Bool = false
     @State private var showCloudNativeConfirm: Bool = false
     @State private var showCloudNativeDisableConfirm: Bool = false
+    @State private var cloudNativeDisableAuthFailed: Bool = false
+    @State private var cloudNativeDisableAuthErrorMessage: String? = nil
+    
+    // Photos-only / Camera-only disable auth states
+    @State private var showPhotosOnlyDisableConfirm: Bool = false
+    @State private var photosOnlyDisableAuthFailed: Bool = false
+    @State private var photosOnlyDisableAuthErrorMessage: String? = nil
+
+    @State private var showCameraOnlyDisableConfirm: Bool = false
+    @State private var cameraOnlyDisableAuthFailed: Bool = false
+    @State private var cameraOnlyDisableAuthErrorMessage: String? = nil
 
     var body: some View {
         Group {
@@ -74,11 +87,35 @@ struct PreferencesSectionMid: View {
             Toggle("Photos-only (no camera)", isOn: Binding(
                 get: { albumManager.photosOnlyMode },
                 set: { newValue in
-                    // If enabling Photos-only, disable Camera-only
+                    // Enabling Photos-only while Camera-only is active requires disabling
+                    // Camera-only. Unsetting any mode must re-authenticate per policy.
                     if newValue && albumManager.cameraOnlyMode {
-                        albumManager.cameraOnlyMode = false
-                        storedCameraOnlyMode = false
+                        // Try to authenticate then switch modes
+                        Task {
+                            do {
+                                _ = try await albumManager.authenticateAndRetrievePassword()
+                                // disable camera-only and enable photos-only
+                                albumManager.cameraOnlyMode = false
+                                storedCameraOnlyMode = false
+
+                                albumManager.photosOnlyMode = true
+                                storedPhotosOnlyMode = true
+                                albumManager.saveSettings()
+                            } catch {
+                                // Authentication failed; provide error
+                                photosOnlyDisableAuthErrorMessage = (error as? LocalizedError)?.errorDescription ?? "Authentication failed or cancelled."
+                                photosOnlyDisableAuthFailed = true
+                            }
+                        }
+                        return
                     }
+
+                    if !newValue && albumManager.photosOnlyMode {
+                        // Require re-auth to turn off Photos-only
+                        showPhotosOnlyDisableConfirm = true
+                        return
+                    }
+
                     albumManager.photosOnlyMode = newValue
                     storedPhotosOnlyMode = newValue
                     albumManager.saveSettings()
@@ -93,16 +130,81 @@ struct PreferencesSectionMid: View {
             Toggle("Camera-only (in-app capture only)", isOn: Binding(
                 get: { albumManager.cameraOnlyMode },
                 set: { newValue in
-                    // If enabling Camera-only, disable Photos-only
+                    // Enabling Camera-only while Photos-only is active requires disabling
+                    // Photos-only and that unset must be authenticated.
                     if newValue && albumManager.photosOnlyMode {
-                        albumManager.photosOnlyMode = false
-                        storedPhotosOnlyMode = false
+                        Task {
+                            do {
+                                _ = try await albumManager.authenticateAndRetrievePassword()
+                                // disable photos-only and enable camera-only
+                                albumManager.photosOnlyMode = false
+                                storedPhotosOnlyMode = false
+
+                                albumManager.cameraOnlyMode = true
+                                storedCameraOnlyMode = true
+                                albumManager.saveSettings()
+                            } catch {
+                                cameraOnlyDisableAuthErrorMessage = (error as? LocalizedError)?.errorDescription ?? "Authentication failed or cancelled."
+                                cameraOnlyDisableAuthFailed = true
+                            }
+                        }
+                        return
                     }
+
+                    if !newValue && albumManager.cameraOnlyMode {
+                        // Require re-auth to turn off camera-only
+                        showCameraOnlyDisableConfirm = true
+                        return
+                    }
+
                     albumManager.cameraOnlyMode = newValue
                     storedCameraOnlyMode = newValue
                     albumManager.saveSettings()
                 }
             ))
+
+            // When user attempts to turn OFF Photos-only, require biometric confirmation
+            .alert("Disable Photos-only?", isPresented: $showPhotosOnlyDisableConfirm) {
+                Button("Disable", role: .destructive) {
+                    Task {
+                        do {
+                            try await albumManager.authenticateWithBiometrics(reason: "Confirm to disable Photos-only Mode")
+                            albumManager.photosOnlyMode = false
+                            storedPhotosOnlyMode = false
+                            albumManager.saveSettings()
+                        } catch {
+                            photosOnlyDisableAuthErrorMessage = (error as? LocalizedError)?.errorDescription ?? "Authentication failed or cancelled."
+                            photosOnlyDisableAuthFailed = true
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            }
+
+            .alert(photosOnlyDisableAuthErrorMessage ?? "Authentication failed or cancelled.", isPresented: $photosOnlyDisableAuthFailed) {
+                Button("OK", role: .cancel) {}
+            }
+
+            .alert("Disable Camera-only?", isPresented: $showCameraOnlyDisableConfirm) {
+                Button("Disable", role: .destructive) {
+                    Task {
+                        do {
+                            try await albumManager.authenticateWithBiometrics(reason: "Confirm to disable Camera-only Mode")
+                            albumManager.cameraOnlyMode = false
+                            storedCameraOnlyMode = false
+                            albumManager.saveSettings()
+                        } catch {
+                            cameraOnlyDisableAuthErrorMessage = (error as? LocalizedError)?.errorDescription ?? "Authentication failed or cancelled."
+                            cameraOnlyDisableAuthFailed = true
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            }
+
+            .alert(cameraOnlyDisableAuthErrorMessage ?? "Authentication failed or cancelled.", isPresented: $cameraOnlyDisableAuthFailed) {
+                Button("OK", role: .cancel) {}
+            }
 
             Text("Allow capture only from the app's camera UI. Disable Photos and file imports while enabled.")
                 .font(.caption)
@@ -302,13 +404,24 @@ struct PreferencesSectionMid: View {
             }
             .alert("Disable Air-Gapped Mode?", isPresented: $showAirGappedDisableConfirm) {
                 Button("Disable", role: .destructive) {
-                    albumManager.airGappedModeEnabled = false
-                    storedAirGappedMode = false
-                    albumManager.saveSettings()
+                    Task {
+                        do {
+                            try await albumManager.authenticateWithBiometrics(reason: "Confirm to disable Air-Gapped Mode")
+                            albumManager.airGappedModeEnabled = false
+                            storedAirGappedMode = false
+                            albumManager.saveSettings()
+                        } catch {
+                            airGappedDisableAuthErrorMessage = (error as? LocalizedError)?.errorDescription ?? "Authentication failed or cancelled."
+                            airGappedDisableAuthFailed = true
+                        }
+                    }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("Disabling Air-Gapped Mode will allow iCloud sync and network operations.")
+            }
+            .alert(airGappedDisableAuthErrorMessage ?? "Authentication failed or cancelled.", isPresented: $airGappedDisableAuthFailed) {
+                Button("OK", role: .cancel) {}
             }
 
             Text(
@@ -378,13 +491,24 @@ struct PreferencesSectionMid: View {
             }
             .alert("Disable Cloud-Native Mode?", isPresented: $showCloudNativeDisableConfirm) {
                 Button("Disable", role: .destructive) {
-                    albumManager.cloudNativeModeEnabled = false
-                    storedCloudNativeMode = false
-                    albumManager.saveSettings()
+                    Task {
+                        do {
+                            try await albumManager.authenticateWithBiometrics(reason: "Confirm to disable Cloud-Native Mode")
+                            albumManager.cloudNativeModeEnabled = false
+                            storedCloudNativeMode = false
+                            albumManager.saveSettings()
+                        } catch {
+                            cloudNativeDisableAuthErrorMessage = (error as? LocalizedError)?.errorDescription ?? "Authentication failed or cancelled."
+                            cloudNativeDisableAuthFailed = true
+                        }
+                    }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("Disabling Cloud-Native Mode will return to normal local-first storage. Your cloud data will remain but won't be prioritized.")
+            }
+            .alert(cloudNativeDisableAuthErrorMessage ?? "Authentication failed or cancelled.", isPresented: $cloudNativeDisableAuthFailed) {
+                Button("OK", role: .cancel) {}
             }
 
             Text(

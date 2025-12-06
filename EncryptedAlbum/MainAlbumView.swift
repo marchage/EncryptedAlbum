@@ -917,6 +917,149 @@ struct MainAlbumView: View {
         #endif
 
         Menu {
+            // Quick mode toggles that mirror the header chips
+            Button {
+                Task {
+                    if albumManager.lockdownModeEnabled {
+                        // Require auth to disable lockdown (uses password/biometric fallback)
+                        do {
+                            _ = try await albumManager.authenticateAndRetrievePassword()
+                            albumManager.lockdownModeEnabled = false
+                            albumManager.saveSettings()
+                        } catch {
+                            albumManager.hideNotification = HideNotification(message: "Authentication required to disable Lockdown Mode.", type: .failure, photos: nil)
+                        }
+                    } else {
+                        // Enable instantly (preferences have detailed info)
+                        albumManager.lockdownModeEnabled = true
+                        albumManager.saveSettings()
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "shield.fill")
+                        .foregroundColor(contrastColor(for: .red))
+                    Text("Lockdown Mode")
+                        .foregroundColor(.primary)
+                }
+            }
+
+            Button {
+                Task {
+                    if albumManager.airGappedModeEnabled {
+                        do {
+                            try await albumManager.authenticateWithBiometrics(reason: "Confirm to disable Air-Gapped Mode")
+                            albumManager.airGappedModeEnabled = false
+                            albumManager.saveSettings()
+                        } catch {
+                            albumManager.hideNotification = HideNotification(message: "Authentication required to disable Air-Gapped Mode.", type: .failure, photos: nil)
+                        }
+                    } else {
+                        albumManager.airGappedModeEnabled = true
+                        albumManager.saveSettings()
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "antenna.radiowaves.left.and.right.slash")
+                        .foregroundColor(contrastColor(for: .orange))
+                    Text("Air-Gapped Mode")
+                        .foregroundColor(.primary)
+                }
+            }
+
+            Button {
+                Task {
+                    if albumManager.cloudNativeModeEnabled {
+                        do {
+                            try await albumManager.authenticateWithBiometrics(reason: "Confirm to disable Cloud-Native Mode")
+                            albumManager.cloudNativeModeEnabled = false
+                            albumManager.saveSettings()
+                        } catch {
+                            albumManager.hideNotification = HideNotification(message: "Authentication required to disable Cloud‑Native Mode.", type: .failure, photos: nil)
+                        }
+                    } else {
+                        albumManager.cloudNativeModeEnabled = true
+                        albumManager.encryptedCloudSyncEnabled = true // mimic preference behaviour
+                        albumManager.saveSettings()
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "icloud.fill")
+                        .foregroundColor(contrastColor(for: .blue))
+                    Text("Cloud‑Native Mode")
+                        .foregroundColor(.primary)
+                }
+            }
+
+            Button {
+                Task {
+                    if albumManager.photosOnlyMode {
+                        do {
+                            try await albumManager.authenticateWithBiometrics(reason: "Confirm to disable Photos‑only Mode")
+                            albumManager.photosOnlyMode = false
+                            albumManager.saveSettings()
+                        } catch {
+                            albumManager.hideNotification = HideNotification(message: "Authentication required to disable Photos‑only Mode.", type: .failure, photos: nil)
+                        }
+                    } else {
+                        // If camera-only is active we must authenticate to turn it off
+                        if albumManager.cameraOnlyMode {
+                            do {
+                                try await albumManager.authenticateWithBiometrics(reason: "Confirm to disable Camera‑only Mode so Photos‑only can be enabled")
+                                albumManager.cameraOnlyMode = false
+                            } catch {
+                                albumManager.hideNotification = HideNotification(message: "Authentication required to switch modes.", type: .failure, photos: nil)
+                                return
+                            }
+                        }
+                        albumManager.photosOnlyMode = true
+                        albumManager.saveSettings()
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "photo.fill")
+                        .foregroundColor(contrastColor(for: .yellow))
+                    Text("Photos‑only Mode")
+                        .foregroundColor(.primary)
+                }
+            }
+
+            Button {
+                Task {
+                    if albumManager.cameraOnlyMode {
+                        do {
+                            try await albumManager.authenticateWithBiometrics(reason: "Confirm to disable Camera‑only Mode")
+                            albumManager.cameraOnlyMode = false
+                            albumManager.saveSettings()
+                        } catch {
+                            albumManager.hideNotification = HideNotification(message: "Authentication required to disable Camera‑only Mode.", type: .failure, photos: nil)
+                        }
+                    } else {
+                        if albumManager.photosOnlyMode {
+                            do {
+                                try await albumManager.authenticateWithBiometrics(reason: "Confirm to disable Photos‑only Mode so Camera‑only can be enabled")
+                                albumManager.photosOnlyMode = false
+                            } catch {
+                                albumManager.hideNotification = HideNotification(message: "Authentication required to switch modes.", type: .failure, photos: nil)
+                                return
+                            }
+                        }
+                        albumManager.cameraOnlyMode = true
+                        albumManager.saveSettings()
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "camera.fill")
+                        .foregroundColor(contrastColor(for: .purple))
+                    Text("Camera‑only Mode")
+                        .foregroundColor(.primary)
+                }
+            }
+
             Button {
                 showingDedupConfirmation = true
             } label: {
