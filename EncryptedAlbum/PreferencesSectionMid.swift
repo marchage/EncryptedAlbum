@@ -78,6 +78,7 @@ struct PreferencesSectionMid: View {
                     albumManager.saveSettings()
                 }
             ))
+            .id(PreferencesAnchor.photosOnly)
 
             Text("Disable camera capture. Allow transfers only via Photos.")
                 .font(.caption)

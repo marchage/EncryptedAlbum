@@ -636,6 +636,16 @@ struct MainAlbumView: View {
         #endif
     }
 
+    // WCAG 2.1 AA contrast helper: returns .white or .black for best contrast
+    private func contrastColor(for background: Color) -> Color {
+        // Simplified luminance check for common colors
+        // Red, Orange, Blue → white text; Yellow → black text
+        if background == .yellow {
+            return .black
+        }
+        return .white
+    }
+
     @ViewBuilder
     private var toolbarActions: some View {
         // Visual indicator for Lockdown Mode — shown prominently to remind the user
@@ -648,7 +658,7 @@ struct MainAlbumView: View {
             }) {
                 HStack(spacing: 8) {
                     Image(systemName: "shield.fill")
-                        .foregroundColor(.white)
+                        .foregroundColor(contrastColor(for: .red))
                         .font(.system(size: 12, weight: .semibold))
                         .padding(6)
                         .background(RoundedRectangle(cornerRadius: 6).fill(Color.red))
@@ -656,7 +666,7 @@ struct MainAlbumView: View {
                     Text("LOCKDOWN")
                         .font(.caption2)
                         .fontWeight(.semibold)
-                        .foregroundColor(.white)
+                        .foregroundColor(contrastColor(for: .red))
                 }
                 .padding(.vertical, 4)
                 .padding(.horizontal, 6)
@@ -713,7 +723,7 @@ struct MainAlbumView: View {
             }) {
                 HStack(spacing: 8) {
                     Image(systemName: "antenna.radiowaves.left.and.right.slash")
-                        .foregroundColor(.white)
+                        .foregroundColor(contrastColor(for: .orange))
                         .font(.system(size: 12, weight: .semibold))
                         .padding(6)
                         .background(RoundedRectangle(cornerRadius: 6).fill(Color.orange))
@@ -721,7 +731,7 @@ struct MainAlbumView: View {
                     Text("AIR-GAPPED")
                         .font(.caption2)
                         .fontWeight(.semibold)
-                        .foregroundColor(.white)
+                        .foregroundColor(contrastColor(for: .orange))
                 }
                 .padding(.vertical, 4)
                 .padding(.horizontal, 6)
@@ -746,7 +756,7 @@ struct MainAlbumView: View {
             }) {
                 HStack(spacing: 8) {
                     Image(systemName: "icloud.fill")
-                        .foregroundColor(.white)
+                        .foregroundColor(contrastColor(for: .blue))
                         .font(.system(size: 12, weight: .semibold))
                         .padding(6)
                         .background(RoundedRectangle(cornerRadius: 6).fill(Color.blue))
@@ -754,7 +764,7 @@ struct MainAlbumView: View {
                     Text("CLOUD")
                         .font(.caption2)
                         .fontWeight(.semibold)
-                        .foregroundColor(.white)
+                        .foregroundColor(contrastColor(for: .blue))
                 }
                 .padding(.vertical, 4)
                 .padding(.horizontal, 6)
@@ -770,6 +780,37 @@ struct MainAlbumView: View {
             #if os(macOS)
                 .help("Cloud-Native Mode active — device is a viewer, data lives in iCloud. Click to open Preferences.")
             #endif
+        }
+
+        // Photos-only Mode indicator (camera disabled; Photos-only transfers)
+        if albumManager.photosOnlyMode && !albumManager.lockdownModeEnabled {
+            Button(action: {
+                preferencesAnchor = .photosOnly
+                showingPreferences = true
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "photo.fill")
+                        .foregroundColor(contrastColor(for: .yellow))
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(6)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.yellow))
+
+                    Text("PHOTOS-ONLY")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(contrastColor(for: .yellow))
+                }
+                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color.yellow.opacity(0.7), lineWidth: 0.5)
+                )
+            }
+            .accessibilityIdentifier("photosOnlyChipButton")
+            .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel("Photos-only mode enabled — tap to open Preferences")
+            .accessibilityHint("Camera is disabled. Transfers are limited to Photos.")
         }
         Button {
             #if os(iOS)
