@@ -1,7 +1,7 @@
 /* English translations for ShareExtensionMac */
-"Share.Placeholder" = "Import to Encrypted Album — Save shared photos & videos to the app's ImportInbox";
+"Share.Placeholder" = "Import to Obscura — Save shared photos & videos to the app's ImportInbox";
 "Share.ImportedTitle" = "Imported %d item(s)";
-"Share.ImportedMessage" = "Encrypted Album saved shared items to the ImportInbox. Open the app to finish importing.";
+"Share.ImportedMessage" = "Obscura saved shared items to the ImportInbox. Open the app to finish importing.";
 "Share.NothingImportedTitle" = "Nothing imported";
 "Share.NothingImportedMessage" = "No supported files were available to import.";
 "Share.Preview.ImageLabel" = "Image";

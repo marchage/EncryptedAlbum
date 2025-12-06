@@ -177,10 +177,10 @@
                     appIconView
                         .frame(width: 80, height: 80)
 
-                    Text("Encrypted Album Locked")
+                    Text("Obscura Locked")
                         .font(.title2)
                         .fontWeight(.semibold)
-                        .foregroundStyle(style == .light ? .black : .white)
+                        .foregroundStyle((style == .light || style == .obscuraLight) ? .black : .white)
                 }
             }
         }
@@ -205,7 +205,7 @@
                 // Fallback to lock icon if no app icon available
                 Image(systemName: "lock.fill")
                     .font(.system(size: 60))
-                    .foregroundStyle(style == .light ? .black : .white)
+                    .foregroundStyle((style == .light || style == .obscuraLight) ? .black : .white)
             }
         }
     }

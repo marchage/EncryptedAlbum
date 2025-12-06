@@ -221,7 +221,7 @@ struct UnlockView: View {
 
                         appIconView()
 
-                        Text("Encrypted Album")
+                        Text("Obscura")
                             .font(.largeTitle)
                             .fontWeight(.bold)
 

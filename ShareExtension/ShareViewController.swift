@@ -22,7 +22,7 @@ class ShareViewController: SLComposeServiceViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.title = "Import to Encrypted Album"
+        self.title = "Import to Obscura"
         self.navigationController?.navigationBar.topItem?.rightBarButtonItem?.title = "Save"
         self.placeholder = NSLocalizedString(
             "Share.Placeholder", value: "Tap Save to import photos/videos",
@@ -50,7 +50,7 @@ class ShareViewController: SLComposeServiceViewController {
         // Check app group's lockdown flag and refuse if Lockdown Mode is enabled
         if let suite = UserDefaults(suiteName: appGroupIdentifier), suite.bool(forKey: "lockdownModeEnabled") {
             let alert = UIAlertController(
-                title: "Import blocked", message: "Encrypted Album is in Lockdown Mode. Imports are disabled.",
+                title: "Import blocked", message: "Obscura is in Lockdown Mode. Imports are disabled.",
                 preferredStyle: .alert)
             alert.addAction(
                 UIAlertAction(title: "OK", style: .cancel) { _ in
@@ -220,7 +220,7 @@ class ShareViewController: SLComposeServiceViewController {
                     savedCount)
                 alertMessage = NSLocalizedString(
                     "Share.ImportedMessage",
-                    value: "Encrypted Album saved shared items to the ImportInbox. Open the app to finish importing.",
+                    value: "Obscura saved shared items to the ImportInbox. Open the app to finish importing.",
                     comment: "Imported informative message")
             } else {
                 alertTitle = NSLocalizedString(

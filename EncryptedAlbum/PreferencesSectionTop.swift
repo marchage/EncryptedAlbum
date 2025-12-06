@@ -216,7 +216,8 @@ struct PreferencesSectionTop: View {
                 Spacer()
                 Picker("Accent", selection: $storedAccentColorName) {
                     // Classic
-                    Text("Blue").tag("blue")
+                    Text("Blue (Cobalt)").tag("blue")
+                    Text("Cobalt").tag("cobalt")
                     Text("Green").tag("green")
                     Text("Pink").tag("pink")
                     Text("Red").tag("red")
@@ -230,6 +231,7 @@ struct PreferencesSectionTop: View {
                     Text("Mint").tag("mint")
                     Text("Coral").tag("coral")
                     Text("Lavender").tag("lavender")
+                    Text("White").tag("white")
                     // Retro/Fun
                     Text("Cyberpunk").tag("cyberpunk")
                     Text("Terminal").tag("terminal")

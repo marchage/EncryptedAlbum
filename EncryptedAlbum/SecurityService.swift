@@ -444,7 +444,7 @@ class SecurityService {
 
     /// Retrieves the stored biometric password
     /// This will trigger the system biometric prompt automatically due to SecAccessControl
-    func retrieveBiometricPassword(prompt: String = "Authenticate to unlock Encrypted Album") async throws -> String? {
+    func retrieveBiometricPassword(prompt: String = "Authenticate to unlock Obscura") async throws -> String? {
         // Skip biometrics if a trusted modal (e.g., system share sheet, photo picker) is active
         if await isTrustedModalActive() {
             throw AlbumError.biometricCancelled

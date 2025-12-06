@@ -29,9 +29,9 @@ struct ContentView: View {
 
     private var colorScheme: ColorScheme? {
         switch style {
-        case .light, .retroTV, .fifties, .sepia:
+        case .light, .retroTV, .fifties, .sepia, .obscuraLight:
             return .light
-        case .dark, .rainbow, .mesh, .nightTown, .nineties, .webOne, .matrix, .sunset, .ocean, .noir, .atomic, .retroFuture, .cyberpunk, .terminal, .winamp:
+        case .dark, .rainbow, .mesh, .nightTown, .nineties, .webOne, .matrix, .sunset, .ocean, .noir, .atomic, .retroFuture, .cyberpunk, .terminal, .winamp, .obscura, .lonelyPlanet:
             return .dark
         case .followSystem:
             return nil

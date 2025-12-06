@@ -45,7 +45,7 @@ import SwiftUI
                                 Image(systemName: "lock.fill")
                                     .font(.system(size: 60))
                                     .foregroundStyle(.white)
-                                Text("Encrypted Album")
+                                Text("Obscura")
                                     .font(.title2.bold())
                                     .foregroundStyle(.white)
                             }
@@ -55,6 +55,7 @@ import SwiftUI
                     }
                     // Apply user-selected accent color across the top-level view
                     .accentColor(albumManager.accentColorResolved)
+                    .tint(albumManager.accentColorResolved)
 
                     // Ensure AlbumManager is authoritative about idle state when app appears
                     .onAppear {
@@ -167,7 +168,7 @@ import SwiftUI
                         Text("Screen capture disabled")
                             .font(.headline)
                             .foregroundStyle(.white)
-                        Text("Stop recording or screenshots to continue using Encrypted Album.")
+                        Text("Stop recording or screenshots to continue using Obscura.")
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.75))
                             .multilineTextAlignment(.center)

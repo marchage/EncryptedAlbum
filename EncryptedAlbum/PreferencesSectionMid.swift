@@ -12,6 +12,8 @@ struct PreferencesSectionMid: View {
     @Binding var showCameraAutoRemoveConfirm: Bool
     @Binding var pendingCameraAutoRemoveValue: Bool
 
+    @AppStorage("photosOnlyMode") private var storedPhotosOnlyMode: Bool = false
+
     // Lockdown state (AppStorage)
     @AppStorage("lockdownModeEnabled") private var storedLockdownMode: Bool = false
     @Binding var showLockdownConfirm: Bool
@@ -58,7 +60,7 @@ struct PreferencesSectionMid: View {
                 }
             } message: {
                 Text(
-                    "Enabling this will automatically remove photos from the Photos app after they are securely imported into Encrypted Album. This is potentially destructive — make sure you have backups and understand the behaviour."
+                    "Enabling this will automatically remove photos from the Photos app after they are securely imported into Obscura. This is potentially destructive — make sure you have backups and understand the behaviour."
                 )
             }
 
@@ -67,6 +69,19 @@ struct PreferencesSectionMid: View {
             )
             .font(.caption)
             .foregroundStyle(.secondary)
+
+            Toggle("Photos-only (no camera)", isOn: Binding(
+                get: { albumManager.photosOnlyMode },
+                set: { newValue in
+                    albumManager.photosOnlyMode = newValue
+                    storedPhotosOnlyMode = newValue
+                    albumManager.saveSettings()
+                }
+            ))
+
+            Text("Disable camera capture. Allow transfers only via Photos.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             Button("Change Album Password") {
                 showChangePasswordSheet = true

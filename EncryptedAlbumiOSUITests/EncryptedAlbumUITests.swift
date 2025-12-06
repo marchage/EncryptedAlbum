@@ -26,7 +26,7 @@ final class EncryptedAlbumUITests: XCTestCase {
         setupPasswordAndUnlock(app: app)
 
         // Verify we are inside the album
-        let navBar = app.navigationBars["Encrypted Album"]
+        let navBar = app.navigationBars["Obscura"]
         XCTAssertTrue(navBar.waitForExistence(timeout: 2.0), "Should be inside the album")
     }
 
@@ -79,8 +79,8 @@ final class EncryptedAlbumUITests: XCTestCase {
         app.typeText("WrongPass")
 
         // Dismiss keyboard to ensure Unlock button is visible
-        // The title is "Encrypted Album" or "Enter your password to unlock" based on the error log
-        app.staticTexts["Encrypted Album"].tap()
+        // The title is "Obscura" or "Enter your password to unlock" based on the error log
+        app.staticTexts["Obscura"].tap()
 
         app.buttons["Unlock"].tap()
 
@@ -135,7 +135,7 @@ final class EncryptedAlbumUITests: XCTestCase {
         cancelButton.tap()
 
         // Verify the picker has dismissed by checking that the main album UI is visible again
-        let navBar = app.navigationBars["Encrypted Album"]
+        let navBar = app.navigationBars["Obscura"]
         XCTAssertTrue(navBar.waitForExistence(timeout: 3.0), "Should return to main album after dismissing picker")
     }
 

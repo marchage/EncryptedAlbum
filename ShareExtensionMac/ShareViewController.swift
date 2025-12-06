@@ -50,7 +50,7 @@ final class ShareViewController: NSViewController {
         let hintField = NSTextField(
             labelWithString: NSLocalizedString(
                 "Share.Placeholder",
-                value: "Import to Encrypted Album — Save shared photos & videos to the app's ImportInbox",
+                value: "Import to Obscura — Save shared photos & videos to the app's ImportInbox",
                 comment: "hint text in macOS share sheet"))
         hintField.translatesAutoresizingMaskIntoConstraints = false
         hintField.lineBreakMode = .byWordWrapping
@@ -160,7 +160,7 @@ final class ShareViewController: NSViewController {
         if let suite = UserDefaults(suiteName: appGroupIdentifier), suite.bool(forKey: "lockdownModeEnabled") {
             let alert = NSAlert()
             alert.messageText = "Import blocked"
-            alert.informativeText = "Encrypted Album is in Lockdown Mode. Imports are disabled."
+            alert.informativeText = "Obscura is in Lockdown Mode. Imports are disabled."
             alert.addButton(withTitle: "OK")
             alert.alertStyle = .warning
             alert.beginSheetModal(for: self.view.window ?? NSApp.mainWindow ?? NSWindow()) { _ in
@@ -349,7 +349,7 @@ final class ShareViewController: NSViewController {
                     savedCount)
                 alert.informativeText = NSLocalizedString(
                     "Share.ImportedMessage",
-                    value: "Encrypted Album saved shared items to the ImportInbox. Open the app to finish importing.",
+                    value: "Obscura saved shared items to the ImportInbox. Open the app to finish importing.",
                     comment: "Imported informative message")
                 alert.addButton(withTitle: "OK")
             } else {

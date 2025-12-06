@@ -75,10 +75,10 @@ import SwiftUI
                 appIconView
                     .frame(width: 80, height: 80)
 
-                Text("Encrypted Album is obscured")
+                Text("Obscura is obscured")
                     .font(.title2)
                     .fontWeight(.semibold)
-                    .foregroundStyle(style == .light ? .black : .white)
+                    .foregroundStyle((style == .light || style == .obscuraLight) ? .black : .white)
             }
             .padding(24)
         }
@@ -108,7 +108,7 @@ import SwiftUI
                 // Fallback to lock icon
                 Image(systemName: "lock.fill")
                     .font(.system(size: 60))
-                    .foregroundStyle(style == .light ? .black : .white)
+                    .foregroundStyle((style == .light || style == .obscuraLight) ? .black : .white)
             }
         }
     }

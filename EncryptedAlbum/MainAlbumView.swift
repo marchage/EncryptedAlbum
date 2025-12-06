@@ -802,10 +802,17 @@ struct MainAlbumView: View {
                 Image(systemName: "camera.fill")
             }
             .accessibilityLabel("Capture Photo or Video")
+            .disabled(albumManager.photosOnlyMode)
         #else
             Button {
                 #if os(iOS)
-                    startCameraCaptureFlow()
+                    if albumManager.photosOnlyMode {
+                        albumManager.hideNotification = HideNotification(
+                            message: "Camera disabled in Photos-only mode.",
+                            type: .warning, photos: nil)
+                    } else {
+                        startCameraCaptureFlow()
+                    }
                 #else
                     showingCamera = true
                 #endif
@@ -814,6 +821,7 @@ struct MainAlbumView: View {
                     .imageScale(albumManager.compactLayoutEnabled ? .small : .large)
             }
             .accessibilityLabel("Capture Photo or Video")
+            .disabled(albumManager.photosOnlyMode)
         #endif
 
         Menu {
@@ -1409,7 +1417,7 @@ struct MainAlbumView: View {
                 .background(Color.clear)
         }
         .background(Color.clear)
-        .navigationTitle("Encrypted Album")
+        .navigationTitle("Obscura")
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
@@ -1585,7 +1593,7 @@ struct MainAlbumView: View {
                     pendingDeletionPhotos.removeAll()
                 }
             } message: {
-                Text("This action permanently removes the selected content from Encrypted Album.")
+                Text("This action permanently removes the selected content from Obscura.")
             }
 
             // Dedup confirmation dialog
@@ -1965,11 +1973,18 @@ struct MainAlbumView: View {
                     directImportProgress.isImporting || albumManager.exportProgress.isExporting)
 
                 Button {
-                    showingCamera = true
+                    if albumManager.photosOnlyMode {
+                        albumManager.hideNotification = HideNotification(
+                            message: "Camera disabled in Photos-only mode.",
+                            type: .warning, photos: nil)
+                    } else {
+                        showingCamera = true
+                    }
                 } label: {
                     Label("Camera", systemImage: "camera.fill")
                 }
                 .buttonStyle(.bordered)
+                .disabled(albumManager.photosOnlyMode)
             }
             .controlSize(.small)
             .padding(6)
@@ -2134,6 +2149,13 @@ struct MainAlbumView: View {
 
         @MainActor
         private func presentCameraCaptureFlow() async {
+            if albumManager.photosOnlyMode {
+                albumManager.hideNotification = HideNotification(
+                    message: "Camera disabled in Photos-only mode.",
+                    type: .warning, photos: nil)
+                return
+            }
+
             let coordinator = UltraPrivacyCoordinator.shared
             coordinator.beginTrustedModal()
 
@@ -2298,7 +2320,7 @@ extension MainAlbumView {
             #if os(macOS)
                 let alert = NSAlert()
                 alert.messageText = "Album Locked"
-                alert.informativeText = "Please unlock Encrypted Album before importing items."
+                alert.informativeText = "Please unlock Obscura before importing items."
                 alert.runModal()
             #endif
             return

@@ -31,6 +31,7 @@ struct EncryptedAlbumApp: App {
                 }
                 // Apply the user's chosen accent color at the app level
                 .accentColor(albumManager.accentColorResolved)
+                .tint(albumManager.accentColorResolved)
 
                 .onChange(of: albumManager.isBusy) { isBusy in
                     if !isBusy {
@@ -72,7 +73,7 @@ struct EncryptedAlbumApp: App {
         let content = UNMutableNotificationContent()
         content.title = "Album Operation in Progress"
         content.body =
-            "Encrypted Album is performing a task in the background and will remain unlocked until it completes."
+            "Obscura is performing a task in the background and will remain unlocked until it completes."
         content.sound = nil
 
         let request = UNNotificationRequest(identifier: "backgroundActivity", content: content, trigger: nil)
@@ -105,7 +106,7 @@ struct EncryptedAlbumApp: App {
             guard AlbumManager.shared.isUnlocked else {
                 let alert = NSAlert()
                 alert.messageText = "Album Locked"
-                alert.informativeText = "Please unlock Encrypted Album before importing items."
+                alert.informativeText = "Please unlock Obscura before importing items."
                 alert.alertStyle = .warning
                 alert.addButton(withTitle: "OK")
                 alert.runModal()

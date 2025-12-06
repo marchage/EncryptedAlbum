@@ -29,6 +29,9 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
     case terminal
     case sepia
     case winamp
+    case obscura
+    case obscuraLight
+    case lonelyPlanet
 
     var id: String { self.rawValue }
 
@@ -56,6 +59,9 @@ enum PrivacyBackgroundStyle: String, CaseIterable, Identifiable {
         case .terminal: return "Terminal"
         case .sepia: return "Sepia"
         case .winamp: return "Winamp"
+        case .obscura: return "Obscura Noir"
+        case .obscuraLight: return "Obscura Light"
+        case .lonelyPlanet: return "Lonely Planet"
         }
     }
 }
@@ -231,10 +237,180 @@ struct PrivacyOverlayBackground: View {
                 SepiaView()
             case .winamp:
                 WinampView()
+            case .obscura:
+                ObscuraView(asBackground: asBackground)
+            case .obscuraLight:
+                ObscuraLightView(asBackground: asBackground)
+            case .lonelyPlanet:
+                LonelyPlanetView(asBackground: asBackground)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
+    }
+}
+
+private struct ObscuraView: View {
+    var asBackground: Bool
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(red: 0.05, green: 0.05, blue: 0.08), Color(red: 0.02, green: 0.02, blue: 0.04)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            RadialGradient(
+                colors: [Color(red: 0.14, green: 0.14, blue: 0.2).opacity(asBackground ? 0.45 : 0.65), .clear],
+                center: .center,
+                startRadius: 40,
+                endRadius: 420
+            )
+
+            RadialGradient(
+                colors: [Color.purple.opacity(asBackground ? 0.25 : 0.4), .clear],
+                center: .topTrailing,
+                startRadius: 10,
+                endRadius: 520
+            )
+
+            LinearGradient(
+                colors: [Color.black.opacity(0.65), .clear, Color.black.opacity(0.65)],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .blendMode(.multiply)
+            .opacity(asBackground ? 0.55 : 0.75)
+        }
+    }
+}
+
+private struct ObscuraLightView: View {
+    var asBackground: Bool
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.98, green: 0.94, blue: 0.88),
+                    Color(red: 0.94, green: 0.88, blue: 0.80)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            RadialGradient(
+                colors: [
+                    Color(red: 0.99, green: 0.90, blue: 0.76).opacity(asBackground ? 0.5 : 0.65),
+                    .clear
+                ],
+                center: .center,
+                startRadius: 40,
+                endRadius: 420
+            )
+
+            RadialGradient(
+                colors: [
+                    Color(red: 0.82, green: 0.66, blue: 0.44).opacity(asBackground ? 0.18 : 0.26),
+                    .clear
+                ],
+                center: .bottomTrailing,
+                startRadius: 20,
+                endRadius: 520
+            )
+
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(asBackground ? 0.22 : 0.3),
+                    Color.clear,
+                    Color(red: 0.7, green: 0.55, blue: 0.4).opacity(asBackground ? 0.08 : 0.12)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.black.opacity(asBackground ? 0.08 : 0.12),
+                            .clear,
+                            Color.black.opacity(asBackground ? 0.08 : 0.12)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .blendMode(.multiply)
+
+            if !asBackground {
+                RoundedRectangle(cornerRadius: 28)
+                    .stroke(Color(red: 0.7, green: 0.55, blue: 0.4).opacity(0.35), lineWidth: 1.2)
+                    .padding(32)
+                    .blendMode(.multiply)
+            }
+        }
+    }
+}
+
+private struct LonelyPlanetView: View {
+    var asBackground: Bool
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.08, green: 0.34, blue: 0.78),   // brighter mid-cobalt
+                    Color(red: 0.03, green: 0.46, blue: 0.96)    // lifted cobalt glow
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            RadialGradient(
+                colors: [
+                    Color(red: 0.36, green: 0.66, blue: 1.0).opacity(asBackground ? 0.28 : 0.38),
+                    .clear
+                ],
+                center: .topLeading,
+                startRadius: 60,
+                endRadius: 520
+            )
+
+            LinearGradient(
+                colors: [Color.white.opacity(0.18), Color.clear],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .blendMode(.screen)
+
+            // Subtle horizon haze
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.16), Color.clear],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(maxHeight: .infinity)
+                .padding(.top, 180)
+                .opacity(asBackground ? 0.5 : 0.7)
+
+            // Minimal latitude lines for a travel vibe
+            if !asBackground {
+                VStack(spacing: 32) {
+                    ForEach(0..<6) { idx in
+                        Rectangle()
+                            .fill(Color.white.opacity(0.08))
+                            .frame(height: 1)
+                            .opacity(0.6 - Double(idx) * 0.08)
+                    }
+                }
+                .padding(.horizontal, 12)
+            }
+        }
     }
 }
 
@@ -248,7 +424,7 @@ private struct WebOneView: View {
             VStack(spacing: 0) {
                 // Title Bar
                 HStack {
-                    Text("Encrypted Album")
+                    Text("Obscura")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(.white)
                         .padding(.leading, 4)
@@ -307,7 +483,7 @@ private struct WebOneView: View {
                     }
 
                     VStack(spacing: 4) {
-                        Text("Encrypted Album")
+                        Text("Obscura")
                             .font(.system(size: 28, weight: .bold, design: .serif))
                         Text("Professional Edition")
                             .font(.system(size: 16, design: .serif))
@@ -1582,7 +1758,7 @@ private struct WinampView: View {
                             )
                         
                         // Title
-                        Text("ENCRYPTED ALBUM")
+                        Text("OBSCURA")
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
                             .foregroundColor(winampGreen)
                         
@@ -1620,7 +1796,7 @@ private struct WinampView: View {
                                 .font(.system(size: 14))
                             
                             GeometryReader { geo in
-                                Text("It really whips the llama's ass! *** ENCRYPTED ALBUM - PROTECTED ***")
+                                Text("It really whips the llama's ass! *** OBSCURA - PROTECTED ***")
                                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                                     .foregroundColor(winampGreen)
                                     .fixedSize()
@@ -1895,7 +2071,7 @@ struct PrivacyCardBackground: ViewModifier {
                         }
                     case .dark, .nightTown, .nineties, .webOne:
                         Color.black.opacity(0.6)
-                    case .light, .retroTV:
+                    case .light, .retroTV, .obscuraLight:
                         Color.white.opacity(0.8)
                     case .classic:
                         #if os(macOS)
@@ -1917,13 +2093,19 @@ struct PrivacyCardBackground: ViewModifier {
                 RoundedRectangle(cornerRadius: 16)
                     .strokeBorder(
                         style == .glass
-                            ? Color.white.opacity(0.3) : (style == .light ? Color.black.opacity(0.1) : Color.clear),
+                            ? Color.white.opacity(0.3)
+                            : ((style == .light || style == .obscuraLight)
+                                ? Color.black.opacity(0.1)
+                                : Color.clear),
                         lineWidth: 1
                     )
             )
             .shadow(
                 color: style == .glass
-                    ? Color.black.opacity(0.1) : (style == .light ? Color.black.opacity(0.05) : Color.clear),
+                    ? Color.black.opacity(0.1)
+                    : ((style == .light || style == .obscuraLight)
+                        ? Color.black.opacity(0.05)
+                        : Color.clear),
                 radius: 10, x: 0, y: 5)
     }
 }

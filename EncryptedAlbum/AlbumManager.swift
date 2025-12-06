@@ -342,19 +342,25 @@ public class AlbumManager: ObservableObject {
         case "winamp":
             // Nostalgic Winamp-y accent tone
             return Color(red: 0.98, green: 0.6, blue: 0.07)
+        case "white":
+            // High-contrast neutral for dark themes
+            return Color.white
+        case "cobalt":
+            // Lonely Planet-inspired cobalt, slightly brighter than #0046BA for contrast
+            return Color(red: 0.18, green: 0.48, blue: 1.0) // ~#2E7BFF
         case "system":
             // Defer to system / asset catalog accent where applicable
             return Color.accentColor
         default:
-            // default to blue
-            return Color.blue
+            // default to a bright cobalt for good contrast
+            return Color(red: 0.18, green: 0.48, blue: 1.0)
         }
     }
 
     /// Machine-friendly identifier for the currently selected accent color.
     /// Useful for tests and logic that don't depend on SwiftUI `Color` equality.
     enum AccentColorId: String {
-        case blue, green, pink, indigo, teal, orange, cyberpunk, terminal, sepia, red, cyan, gold, mint, coral, lavender, winamp, system
+        case blue, green, pink, indigo, teal, orange, cyberpunk, terminal, sepia, red, cyan, gold, mint, coral, lavender, winamp, system, white, cobalt
     }
 
     var accentColorId: AccentColorId {
@@ -366,6 +372,7 @@ public class AlbumManager: ObservableObject {
     // `cameraSaveToAlbumDirectly` preference was removed for safety.
     @Published var cameraMaxQuality: Bool = true
     @Published var cameraAutoRemoveFromPhotos: Bool = false
+    @Published var photosOnlyMode: Bool = false  // Disable camera; restrict flows to Photos
     @Published var authenticationPromptActive: Bool = false
     @Published var isLoading: Bool = true
     @Published var isDecoyMode: Bool = false
@@ -2297,6 +2304,7 @@ public class AlbumManager: ObservableObject {
                 "accentColorName": accentColorName,
                 "cameraMaxQuality": String(cameraMaxQuality),
                 "cameraAutoRemoveFromPhotos": String(cameraAutoRemoveFromPhotos),
+                "photosOnlyMode": String(photosOnlyMode),
                 // New settings
                 "autoWipeOnFailedAttemptsEnabled": String(autoWipeOnFailedAttemptsEnabled),
                 "autoWipeFailedAttemptsThreshold": String(autoWipeFailedAttemptsThreshold),
@@ -2469,6 +2477,12 @@ public class AlbumManager: ObservableObject {
 
             if let autoRemoveString = settings["cameraAutoRemoveFromPhotos"], let autoRemove = Bool(autoRemoveString) {
                 cameraAutoRemoveFromPhotos = autoRemove
+            }
+
+            if let photosOnlyString = settings["photosOnlyMode"], let photosOnly = Bool(photosOnlyString) {
+                photosOnlyMode = photosOnly
+            } else {
+                photosOnlyMode = false
             }
 
             // New settings mapping (provide safe defaults when missing)

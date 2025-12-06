@@ -63,7 +63,7 @@ extension XCTestCase {
             app.typeText("TestPass123!")
         }
 
-        app.staticTexts["Welcome to Encrypted Album"].tap()
+        app.staticTexts["Welcome to Obscura"].tap()
 
         app.buttons["Create Album"].tap()
 

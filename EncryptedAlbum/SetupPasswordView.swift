@@ -163,7 +163,7 @@ struct SetupPasswordView: View {
                     }
                 #endif
 
-                Text("Welcome to Encrypted Album")
+                Text("Welcome to Obscura - Encrypted Photos")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                 // .padding(.horizontal)
@@ -616,7 +616,7 @@ struct SetupPasswordView: View {
 
     private func authenticateAndSetup() {
         let context = LAContext()
-        let reason = "Authenticate to set up your Encrypted Album"
+        let reason = "Authenticate to set up your Obscura"
 
         // Delay slightly so the biometric sheet does not pop immediately, matching unlock behavior.
         Thread.sleep(forTimeInterval: 1.0)
