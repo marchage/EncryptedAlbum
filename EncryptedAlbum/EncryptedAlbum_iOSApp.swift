@@ -87,6 +87,30 @@ import SwiftUI
     final class ScreenshotBlocker: ObservableObject {
         static let shared = ScreenshotBlocker()
 
+        private enum Config {
+            static let disableBlocking: Bool = {
+                #if DEBUG
+                    // Allow several debug toggles to align with existing secure-wrapper flags.
+                    let args = CommandLine.arguments
+                    let env = ProcessInfo.processInfo.environment
+
+                    if args.contains("--disable-screen-blocker") || args.contains("--disable-secure-wrapper") {
+                        return true
+                    }
+
+                    if env["SECRET_VAULT_DISABLE_SCREEN_BLOCKER"] == "1"
+                        || env["SECRET_VAULT_DISABLE_SECURE_WRAPPER"] == "1"
+                        || env["SECRET_VAULT_DISABLE_CAPTURE_OVERLAY"] == "1" {
+                        return true
+                    }
+                #endif
+                return false
+            }()
+        }
+
+        /// Expose whether blocking is disabled (for overlay gating).
+        static var isDisabled: Bool { Config.disableBlocking }
+
         @Published private(set) var overlayVisible = false
         private var isBlocking = false
 
@@ -94,6 +118,11 @@ import SwiftUI
 
         func enableBlocking() {
             guard !isBlocking else { return }
+            guard !Config.disableBlocking else {
+                isBlocking = false
+                overlayVisible = false
+                return
+            }
             isBlocking = true
             updateSecureFlag(true)
             subscribeToNotifications()
@@ -128,6 +157,10 @@ import SwiftUI
 
         @objc private func screenCaptureChanged() {
             guard isBlocking else { return }
+            guard !Config.disableBlocking else {
+                overlayVisible = false
+                return
+            }
             overlayVisible = isAnyScreenCaptured()
         }
 
@@ -158,7 +191,7 @@ import SwiftUI
 
         var body: some View {
             ZStack {
-                if screenshotBlocker.overlayVisible {
+                if screenshotBlocker.overlayVisible && !ScreenshotBlocker.isDisabled {
                     Color.black.opacity(0.85)
                         .ignoresSafeArea()
                     VStack(spacing: 12) {
