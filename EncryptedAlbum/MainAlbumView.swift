@@ -284,6 +284,14 @@ struct MainAlbumView: View {
     }
 
     func exportSelectedPhotos() {
+        // Block exports during Camera-only mode to avoid media leaving the album
+        if albumManager.cameraOnlyMode {
+            albumManager.hideNotification = HideNotification(
+                message: "Export is disabled while Camera-only mode is active.",
+                type: .info,
+                photos: nil)
+            return
+        }
         #if os(macOS)
             guard !albumManager.exportProgress.isExporting else {
                 albumManager.hideNotification = HideNotification(
@@ -310,6 +318,14 @@ struct MainAlbumView: View {
     }
 
     func exportPhotos(to folderURL: URL) {
+        // Block exports during Camera-only mode
+        if albumManager.cameraOnlyMode {
+            albumManager.hideNotification = HideNotification(
+                message: "Export is disabled while Camera-only mode is active.",
+                type: .info,
+                photos: nil)
+            return
+        }
         let photosToExport = albumManager.hiddenPhotos.filter { selectedPhotos.contains($0.id) }
         guard !photosToExport.isEmpty else { return }
 
@@ -809,11 +825,49 @@ struct MainAlbumView: View {
             .accessibilityLabel("Photos-only mode enabled — tap to open Preferences")
             .accessibilityHint("Camera is disabled. Transfers are limited to Photos.")
         }
+        // Camera-only mode indicator (allow only in-app camera; disable imports)
+        if albumManager.cameraOnlyMode && !albumManager.lockdownModeEnabled {
+            Button(action: {
+                preferencesAnchor = .cameraOnly
+                showingPreferences = true
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "camera.fill")
+                        .foregroundColor(contrastColor(for: .purple))
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(6)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Color.purple))
+
+                    Text("CAMERA-ONLY")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(contrastColor(for: .purple))
+                }
+                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color.purple.opacity(0.7), lineWidth: 0.5)
+                )
+            }
+            .accessibilityIdentifier("cameraOnlyChipButton")
+            .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel("Camera-only mode enabled — tap to open Preferences")
+            .accessibilityHint("Only in-app camera capture is allowed; Photos and file imports are disabled")
+        }
         Button {
             #if os(iOS)
-                startPhotoLibraryFlow()
+                if albumManager.cameraOnlyMode {
+                    albumManager.hideNotification = HideNotification(message: "Photo Library imports are disabled in Camera-only mode.", type: .info, photos: nil)
+                } else {
+                    startPhotoLibraryFlow()
+                }
             #else
-                showingPhotosLibrary = true
+                if albumManager.cameraOnlyMode {
+                    albumManager.hideNotification = HideNotification(message: "File/Photos imports are disabled in Camera-only mode.", type: .info, photos: nil)
+                } else {
+                    showingPhotosLibrary = true
+                }
             #endif
         } label: {
             Image(systemName: "photo.fill.on.rectangle.fill")
@@ -830,7 +884,7 @@ struct MainAlbumView: View {
             }
             .accessibilityLabel("Import Files")
             .accessibilityIdentifier("importFilesButton")
-            .disabled(directImportProgress.isImporting || albumManager.exportProgress.isExporting)
+            .disabled(directImportProgress.isImporting || albumManager.exportProgress.isExporting || albumManager.cameraOnlyMode)
         #endif
 
         #if os(macOS)
@@ -1994,7 +2048,11 @@ struct MainAlbumView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
                 Button {
-                    showingPhotosLibrary = true
+                    if albumManager.cameraOnlyMode {
+                        albumManager.hideNotification = HideNotification(message: "Photo Library imports are disabled in Camera-only mode.", type: .info, photos: nil)
+                    } else {
+                        showingPhotosLibrary = true
+                    }
                 } label: {
                     Label("Photos", systemImage: "photo")
                 }
@@ -2008,7 +2066,7 @@ struct MainAlbumView: View {
                 .buttonStyle(.bordered)
                 .padding(4)
                 .disabled(
-                    directImportProgress.isImporting || albumManager.exportProgress.isExporting)
+                    directImportProgress.isImporting || albumManager.exportProgress.isExporting || albumManager.cameraOnlyMode)
 
                 Button {
                     if albumManager.photosOnlyMode {
@@ -2084,10 +2142,18 @@ struct MainAlbumView: View {
 
             Button {
                 #if os(iOS)
-                    // Use the safe flow on iOS so we ask for permission inside a trusted modal
-                    startPhotoLibraryFlow()
+                    if albumManager.cameraOnlyMode {
+                        albumManager.hideNotification = HideNotification(message: "Photo Library imports are disabled in Camera-only mode.", type: .info, photos: nil)
+                    } else {
+                        // Use the safe flow on iOS so we ask for permission inside a trusted modal
+                        startPhotoLibraryFlow()
+                    }
                 #else
-                    showingPhotosLibrary = true
+                    if albumManager.cameraOnlyMode {
+                        albumManager.hideNotification = HideNotification(message: "Photo Library imports are disabled in Camera-only mode.", type: .info, photos: nil)
+                    } else {
+                        showingPhotosLibrary = true
+                    }
                 #endif
             } label: {
                 Image(systemName: "lock.fill")
@@ -2218,6 +2284,11 @@ struct MainAlbumView: View {
 
         @MainActor
         private func presentPhotoLibraryFlow() async {
+                // Block photo library flow if we're in camera-only mode
+                if albumManager.cameraOnlyMode {
+                    albumManager.hideNotification = HideNotification(message: "Photo Library imports are disabled in Camera-only mode.", type: .info, photos: nil)
+                    return
+                }
             let coordinator = UltraPrivacyCoordinator.shared
             coordinator.beginTrustedModal()
 

@@ -373,6 +373,7 @@ public class AlbumManager: ObservableObject {
     @Published var cameraMaxQuality: Bool = true
     @Published var cameraAutoRemoveFromPhotos: Bool = false
     @Published var photosOnlyMode: Bool = false  // Disable camera; restrict flows to Photos
+    @Published var cameraOnlyMode: Bool = false  // Only allow in-app camera capture; disable Photo/Files imports
     @Published var authenticationPromptActive: Bool = false
     @Published var isLoading: Bool = true
     @Published var isDecoyMode: Bool = false
@@ -2305,6 +2306,7 @@ public class AlbumManager: ObservableObject {
                 "cameraMaxQuality": String(cameraMaxQuality),
                 "cameraAutoRemoveFromPhotos": String(cameraAutoRemoveFromPhotos),
                 "photosOnlyMode": String(photosOnlyMode),
+                "cameraOnlyMode": String(cameraOnlyMode),
                 // New settings
                 "autoWipeOnFailedAttemptsEnabled": String(autoWipeOnFailedAttemptsEnabled),
                 "autoWipeFailedAttemptsThreshold": String(autoWipeFailedAttemptsThreshold),
@@ -2483,6 +2485,12 @@ public class AlbumManager: ObservableObject {
                 photosOnlyMode = photosOnly
             } else {
                 photosOnlyMode = false
+            }
+
+            if let cameraOnlyString = settings["cameraOnlyMode"], let cameraOnly = Bool(cameraOnlyString) {
+                cameraOnlyMode = cameraOnly
+            } else {
+                cameraOnlyMode = false
             }
 
             // New settings mapping (provide safe defaults when missing)

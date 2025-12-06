@@ -13,6 +13,7 @@ struct PreferencesSectionMid: View {
     @Binding var pendingCameraAutoRemoveValue: Bool
 
     @AppStorage("photosOnlyMode") private var storedPhotosOnlyMode: Bool = false
+    @AppStorage("cameraOnlyMode") private var storedCameraOnlyMode: Bool = false
 
     // Lockdown state (AppStorage)
     @AppStorage("lockdownModeEnabled") private var storedLockdownMode: Bool = false
@@ -73,6 +74,11 @@ struct PreferencesSectionMid: View {
             Toggle("Photos-only (no camera)", isOn: Binding(
                 get: { albumManager.photosOnlyMode },
                 set: { newValue in
+                    // If enabling Photos-only, disable Camera-only
+                    if newValue && albumManager.cameraOnlyMode {
+                        albumManager.cameraOnlyMode = false
+                        storedCameraOnlyMode = false
+                    }
                     albumManager.photosOnlyMode = newValue
                     storedPhotosOnlyMode = newValue
                     albumManager.saveSettings()
@@ -81,6 +87,24 @@ struct PreferencesSectionMid: View {
             .id(PreferencesAnchor.photosOnly)
 
             Text("Disable camera capture. Allow transfers only via Photos.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Toggle("Camera-only (in-app capture only)", isOn: Binding(
+                get: { albumManager.cameraOnlyMode },
+                set: { newValue in
+                    // If enabling Camera-only, disable Photos-only
+                    if newValue && albumManager.photosOnlyMode {
+                        albumManager.photosOnlyMode = false
+                        storedPhotosOnlyMode = false
+                    }
+                    albumManager.cameraOnlyMode = newValue
+                    storedCameraOnlyMode = newValue
+                    albumManager.saveSettings()
+                }
+            ))
+
+            Text("Allow capture only from the app's camera UI. Disable Photos and file imports while enabled.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

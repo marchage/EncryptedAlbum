@@ -6,6 +6,7 @@ enum PreferencesAnchor: Hashable {
     case airGapped
     case cloudNative
     case photosOnly
+    case cameraOnly
 }
 
 struct PreferencesView: View {
