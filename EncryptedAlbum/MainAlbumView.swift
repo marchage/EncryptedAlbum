@@ -638,12 +638,9 @@ struct MainAlbumView: View {
 
     // WCAG 2.1 AA contrast helper: returns .white or .black for best contrast
     private func contrastColor(for background: Color) -> Color {
-        // Simplified luminance check for common colors
-        // Red, Orange, Blue → white text; Yellow → black text
-        if background == .yellow {
-            return .black
-        }
-        return .white
+        // Use the more robust Color extension which computes relative luminance
+        // and chooses the best of black or white per WCAG contrast testing.
+        return background.idealTextColorAgainstBackground()
     }
 
     @ViewBuilder

@@ -86,6 +86,8 @@
 		98BE89432EDCF0D200AF3A5A /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BE893C2EDCF0D200AF3A5A /* ThumbnailCache.swift */; };
 		98BE89442EDCF0D200AF3A5A /* PreferencesSectionBottom.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BE893D2EDCF0D200AF3A5A /* PreferencesSectionBottom.swift */; };
 		98BE89452EDCF0D200AF3A5A /* PreferencesSectionBottom.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98BE893D2EDCF0D200AF3A5A /* PreferencesSectionBottom.swift */; };
+		98C306FD2EE4775500DA7053 /* Color+Contrast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98C306FC2EE4775400DA7053 /* Color+Contrast.swift */; };
+		98C306FE2EE4775500DA7053 /* Color+Contrast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98C306FC2EE4775400DA7053 /* Color+Contrast.swift */; };
 		98C6A2E62ED905F500290D1E /* TelemetryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E2D3C4B5A6978877665544 /* TelemetryService.swift */; };
 		98C6A2E72ED905F500290D1E /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDEEFF001122334455667788 /* Logging.swift */; };
 		98C835F92EC9E6CD000997CF /* PhotosLibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8468BE05BF043F9FF7E5706 /* PhotosLibraryService.swift */; };
@@ -259,6 +261,7 @@
 		98BE893B2EDCF0D200AF3A5A /* PreferencesSectionTop.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreferencesSectionTop.swift; sourceTree = "<group>"; };
 		98BE893C2EDCF0D200AF3A5A /* ThumbnailCache.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
 		98BE893D2EDCF0D200AF3A5A /* PreferencesSectionBottom.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PreferencesSectionBottom.swift; sourceTree = "<group>"; };
+		98C306FC2EE4775400DA7053 /* Color+Contrast.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Color+Contrast.swift"; sourceTree = "<group>"; };
 		98D6909B2EDB369700200BB7 /* OnChangeCompat.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OnChangeCompat.swift; sourceTree = "<group>"; };
 		98D6909C2EDB369700200BB7 /* SharedModels.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
 		98D6909D2EDB369700200BB7 /* SharePreviewHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SharePreviewHelper.swift; sourceTree = "<group>"; };
@@ -404,6 +407,7 @@
 		9849B4532EB9893D00B17DAC /* EncryptedAlbum */ = {
 			isa = PBXGroup;
 			children = (
+				98C306FC2EE4775400DA7053 /* Color+Contrast.swift */,
 				984D79E42EE354B5006E1402 /* DockProgressService.swift */,
 				98BE893D2EDCF0D200AF3A5A /* PreferencesSectionBottom.swift */,
 				98BE893A2EDCF0D200AF3A5A /* PreferencesSectionMid.swift */,
@@ -788,6 +792,7 @@
 				98797BCB2ED7C9C6008E03C4 /* PhotoThumbnailView.swift in Sources */,
 				984EC6762ED5DDB300038F9F /* PasswordChangeJournal.swift in Sources */,
 				989ADDDE2ED5BDE400994E72 /* AlbumStorage.swift in Sources */,
+				98C306FE2EE4775500DA7053 /* Color+Contrast.swift in Sources */,
 				984EC6782ED5DDB300038F9F /* ImportService.swift in Sources */,
 				986328C92ECE882D00EAE9A9 /* ContentView.swift in Sources */,
 				981926552EC854B600C67291 /* EncryptedAlbum_iOSApp.swift in Sources */,
@@ -848,6 +853,7 @@
 				98797BCA2ED7C9C6008E03C4 /* PhotoThumbnailView.swift in Sources */,
 				984EC6752ED5DDB300038F9F /* PasswordChangeJournal.swift in Sources */,
 				989ADDDD2ED5BDE400994E72 /* AlbumStorage.swift in Sources */,
+				98C306FD2EE4775500DA7053 /* Color+Contrast.swift in Sources */,
 				984EC6772ED5DDB300038F9F /* ImportService.swift in Sources */,
 				988B2C9A2ECF9CB700605DDA /* CameraCaptureView.swift in Sources */,
 				9849B4572EB9893D00B17DAC /* ContentView.swift in Sources */,
@@ -1078,7 +1084,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = EncryptedAlbum/Info_iOS.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Obscura";
+				INFOPLIST_KEY_CFBundleDisplayName = Obscura;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Obscura needs camera access to capture photos and videos directly into your encrypted library.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Obscura uses Face ID to securely unlock your album without entering a password.";
@@ -1122,7 +1128,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = EncryptedAlbum/Info_iOS.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Obscura";
+				INFOPLIST_KEY_CFBundleDisplayName = Obscura;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Obscura needs camera access to capture photos and videos directly into your encrypted library.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Obscura uses Face ID to securely unlock your album without entering a password.";
@@ -1347,7 +1353,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = EncryptedAlbum/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Obscura";
+				INFOPLIST_KEY_CFBundleDisplayName = Obscura;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1383,7 +1389,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = EncryptedAlbum/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Obscura";
+				INFOPLIST_KEY_CFBundleDisplayName = Obscura;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
