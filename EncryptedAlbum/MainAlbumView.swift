@@ -652,10 +652,10 @@ struct MainAlbumView: View {
         #endif
     }
 
-    // For our filled chips/buttons, match the standard “tinted” look by using white foregrounds.
-    // This keeps the chips visually consistent and avoids unexpected black text on colored fills.
+    // Foreground should follow the surrounding tint/primary color rather than a forced white.
+    // Using primary keeps text/icons readable when backgrounds are translucent over privacy layers.
     private func contrastColor(for background: Color) -> Color {
-        return .white
+        return Color.primary
     }
 
     @ViewBuilder
