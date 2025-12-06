@@ -93,7 +93,7 @@ struct PreferencesSectionMid: View {
                         // Try to authenticate then switch modes
                         Task {
                             do {
-                                _ = try await albumManager.authenticateAndRetrievePassword()
+                                try await albumManager.authenticateWithBiometrics(reason: "Confirm to switch to Photos-only")
                                 // disable camera-only and enable photos-only
                                 albumManager.cameraOnlyMode = false
                                 storedCameraOnlyMode = false
@@ -135,7 +135,7 @@ struct PreferencesSectionMid: View {
                     if newValue && albumManager.photosOnlyMode {
                         Task {
                             do {
-                                _ = try await albumManager.authenticateAndRetrievePassword()
+                                try await albumManager.authenticateWithBiometrics(reason: "Confirm to switch to Camera-only")
                                 // disable photos-only and enable camera-only
                                 albumManager.photosOnlyMode = false
                                 storedPhotosOnlyMode = false
